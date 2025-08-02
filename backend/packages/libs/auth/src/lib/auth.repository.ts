@@ -17,15 +17,11 @@ export class AuthRepository {
       const result = await this.persistentService.pgPool.query(
         sql.type(UserSchema)`
           INSERT INTO kedge_gateway.users (
-            wallet_address,
-            username,
-            created_at,
+// TODO: add more
             updated_at
           )
           VALUES (
-            ${data.wallet_address},
-            ${data.username},
-            now(),
+// TODO: add more
             now()
           )
           RETURNING *
