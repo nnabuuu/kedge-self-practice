@@ -2,7 +2,6 @@
   "name": "@kedge/auth",
   "version": "0.0.1",
   "dependencies": {
-    "@kedge/common": "*",
     "@kedge/models": "*",
     "@kedge/persistent": "*",
     "@nestjs/common": "^10.0.0",
@@ -11,7 +10,9 @@
     "slonik": "^37.2.0",
     "zod": "^3.22.4",
     "@nestjs/jwt": "^11.0.0",
-    "@nestjs/passport": "^11.0.5"
+    "@nestjs/passport": "^11.0.5",
+    "passport-jwt": "^4.0.1",
+    "jsonwebtoken": "^9.0.2"
   },
   "type": "commonjs",
   "main": "./src/index.js",

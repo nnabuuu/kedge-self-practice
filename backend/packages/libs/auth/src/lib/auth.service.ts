@@ -1,31 +1,54 @@
-import {
-  Injectable,
-  Logger,
-  NotImplementedException,
-  UnauthorizedException
-} from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { AuthService } from "./auth.interface";
-import { AuthRepository } from "./auth.repository";
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { pbkdf2Sync, randomBytes } from 'crypto';
+import { AuthService } from './auth.interface';
+import { AuthRepository } from './auth.repository';
+import { User, UserRole } from '@kedge/models';
 
 
 @Injectable()
 export class DefaultAuthService implements AuthService {
+  private readonly logger = new Logger(AuthService.name);
 
-    private readonly logger = new Logger(AuthService.name);
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly authRepository: AuthRepository,
+  ) {}
 
-    constructor(
-        private readonly jwtService: JwtService,
-        private readonly authRepository: AuthRepository,
-    ) {}
+  async createUser(
+    name: string,
+    password: string,
+    role: UserRole,
+  ): Promise<User> {
+    const salt = randomBytes(16).toString('hex');
+    const passwordHash = pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+    return this.authRepository.createUser({
+      name,
+      passwordHash,
+      salt,
+      role,
+    });
+  }
 
-    async signIn(message: string, signature: string): Promise<{ accessToken: string}> {
-      throw new NotImplementedException();
+  async signIn(
+    name: string,
+    password: string,
+  ): Promise<{ accessToken: string; userId: string }> {
+    const user = await this.authRepository.findUserByName(name);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const passwordHash = pbkdf2Sync(password, user.salt, 1000, 64, 'sha512').toString('hex');
+    if (passwordHash !== user.password_hash) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    async verifySignature(message: string, signature: string, publicKey: string): Promise<boolean> {
-        return true;
-    }
+    const payload = { sub: user.id, role: user.role };
+    return {
+      accessToken: await this.jwtService.signAsync(payload),
+      userId: user.id,
+    };
+  }
 }
 
 export const AuthServiceProvider = {
