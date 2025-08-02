@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PersistentService } from '@kedge/persistent';
 import { sql } from 'slonik';
-import { UserSchema, User } from '@kedge/models';
+import { UserSchema, User, UserRole } from '@kedge/models';
 
 @Injectable()
 export class AuthRepository {
@@ -12,7 +12,7 @@ export class AuthRepository {
   /**
    * create new user
    */
-  async createUser(data: { wallet_address: string, username: string }): Promise<User> {
+  async createUser(data: { name: string, password: string, role: UserRole }): Promise<User> {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(UserSchema)`

@@ -8,6 +8,8 @@ export const AuthSchema = {
 export {
   UserSchema,
   User,
+    UserRoleSchema,
+    UserRole,
   AuthRepositorySchemas
 } from './auth.repository.schema';
 

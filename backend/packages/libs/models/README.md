@@ -1,11 +1,37 @@
-# models
+# Kedge Boilerplate
 
-This library was generated with [Nx](https://nx.dev).
+- We use Nx as our build system.
 
-## Building
+## Structure
 
-Run `nx build models` to build the library.
+All libraries are located at /packages/libs:
+- auth:
+- models: all zod defined data model including database
+- persistent: database related
 
-## Running unit tests
+All database related SQL are located at /packages/dev/database/schema/migrations
+To add new database schema, define the schema in a new migration file (the timestamp should increase)
 
-Run `nx test models` to execute the unit tests via [Jest](https://jestjs.io).
+
+## How to contribute:
+
+## Workflow development
+- `nx run api-server:serve` to start api-server, endpoint exposed at http://localhost:8716/api/v1/
+
+## Development
+
+## Prerequisite
+
+### Install asdf
+1. install asdf
+   https://asdf-vm.com/guide/getting-started.html
+
+2. install asdf plugins
+```
+cat .tool-versions | awk '{print $1}' | xargs -n 1 asdf plugin add
+```
+
+### Build all
+nx run-many --target=build --all
+
+
