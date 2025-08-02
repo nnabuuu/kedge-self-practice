@@ -2,18 +2,10 @@ import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { env } from '../env';
-import { z } from 'zod';
 import { m } from '@kedge/models';
-
+import {JwtPayload} from "jsonwebtoken";
 
 // 定义验证后返回的用户对象类型
-export const JwtUserSchema = z.object({
-  walletAddress: z.string(),
-  userId: z.string(),
-  sub: z.string()
-});
-
-export type JwtUser = z.infer<typeof JwtUserSchema>;
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -27,7 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: unknown): Promise<JwtUser> {
+  async validate(payload: unknown): Promise<JwtPayload> {
     try {
       // 验证 JWT payload
       if (!payload) {
@@ -38,7 +30,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // 使用 Zod 验证 payload
       const result = m.auth('jwt_payload').safeParse(payload);
       if (!result.success) {
-
         throw new UnauthorizedException('Invalid token payload: validation failed');
       }
 
@@ -46,13 +37,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
       // 创建用户对象并验证
       const user = {
-        walletAddress: validatedPayload.address,
-        userId: validatedPayload.userId,
+        role: validatedPayload.role,
         sub: validatedPayload.sub,
       };
 
       // 确保返回的用户对象符合 JwtUser 类型
-      return JwtUserSchema.parse(user);
+      return m.auth('jwt_payload').parse(user);
     } catch (error) {
       this.logger.error(`JWT validation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw new UnauthorizedException('Token validation failed');

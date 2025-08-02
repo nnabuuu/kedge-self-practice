@@ -10,7 +10,7 @@ export class AuthRepository {
   constructor(private readonly persistentService: PersistentService) {}
 
   /**
-   * 创建新用户
+   * create new user
    */
   async createUser(data: { wallet_address: string, username: string }): Promise<User> {
     try {

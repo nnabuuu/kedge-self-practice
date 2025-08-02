@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-/**
- * 用户模型
- */
+export const UserRoleSchema = z.enum(['student', 'teacher'])
+export type UserRole = z.infer<typeof UserRoleSchema>;
+
 export const UserSchema = z.object({
   id: z.string().uuid(),
-  wallet_address: z.string(),
   username: z.string(),
+  role: UserRoleSchema,
   created_at: z.string(),
   updated_at: z.string()
 });
@@ -14,8 +14,9 @@ export const UserSchema = z.object({
 export type User = z.infer<typeof UserSchema>;
 
 /**
- * 导出所有Auth相关的Schema
+ * All auth related schemas
  */
 export const AuthRepositorySchemas = {
-  User: UserSchema
+  User: UserSchema,
+  UserRole: UserRoleSchema,
 };
