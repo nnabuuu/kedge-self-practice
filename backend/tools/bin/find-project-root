@@ -10,6 +10,7 @@ async function run() {
   if (project == null) {
     throw new Error(`Project ${name} not found`);
   } else {
+    console.log(project.data.root);
   }
 }
 

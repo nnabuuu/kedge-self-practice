@@ -24,6 +24,7 @@ async function downloadFile(fileUrl, outputLocationPath) {
         // after download completed close file stream
         file.on('finish', () => {
           file.close();
+          console.log('Download Completed');
           resolve();
         });
         file.on('error', err => {
@@ -42,8 +43,10 @@ if (process.argv.length !== 4) {
 
 const url = process.argv[2];
 const output = process.argv[3];
+console.log(`Downloading ${url}`);
 downloadFile(url, output).then(
   () => {
+    console.log(`Saved ${url} to ${output}`);
     process.exit(0);
   },
   e => {
