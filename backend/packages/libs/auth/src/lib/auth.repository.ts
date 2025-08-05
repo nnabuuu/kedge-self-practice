@@ -1,15 +1,14 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PersistentService } from '@kedge/persistent';
 import { sql } from 'slonik';
-import { UserSchema, User, UserRole } from '@kedge/models';
-import { z } from 'zod';
 
-const UserWithCredentialsSchema = UserSchema.extend({
-  password_hash: z.string(),
-  salt: z.string(),
-});
-
-type UserWithCredentials = z.infer<typeof UserWithCredentialsSchema>;
+import {
+  UserSchema,
+  UserWithCredentialsSchema,
+  User,
+  UserWithCredentials,
+  UserRole,
+} from '@kedge/models';
 
 @Injectable()
 export class AuthRepository {
@@ -45,7 +44,7 @@ export class AuthRepository {
             now(),
             now()
           )
-          RETURNING id, name AS username, role, created_at, updated_at
+          RETURNING id, name, role, created_at, updated_at
         `,
       );
 
@@ -62,7 +61,7 @@ export class AuthRepository {
       const result = await this.persistentService.pgPool.query(
         sql.type(UserWithCredentialsSchema)`
           SELECT id,
-                 name AS username,
+                 name,
                  password_hash,
                  salt,
                  role,
