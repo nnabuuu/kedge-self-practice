@@ -2,9 +2,7 @@
   "name": "@kedge/models",
   "version": "0.0.1",
   "dependencies": {
-    "viem": "^1.18.2",
-    "zod": "^3.22.2",
-    "@kedge/models-workflow": "*"
+    "zod": "^3.22.2"
   },
   "type": "commonjs",
   "main": "./src/index.js",
