@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PersistentService } from '@kedge/persistent';
 import { sql } from 'slonik';
+
 import {
   UserSchema,
   UserWithCredentialsSchema,

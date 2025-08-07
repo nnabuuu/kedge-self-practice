@@ -14,7 +14,11 @@ function normalizePlatform(platform) {
 }
 
 if (process.argv.includes('--platform')) {
+  console.log(normalizePlatform(os.platform()));
 } else if (process.argv.includes('--arch')) {
+  console.log(normalizeArch(os.arch()));
 } else {
- 
+  console.log(
+    normalizePlatform(os.platform()) + '-' + normalizeArch(os.arch()),
+  );
 }
