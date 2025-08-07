@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z } from 'zod';
-import {AuthSchema} from "./auth";
-import {AppSchema} from "./app";
+import { AuthSchema } from './auth';
+import { AppSchema } from './app';
+import { PracticeSchema } from './practice';
 
 const Models = {
   database: {
-    kedge_auth: AuthSchema
+    kedge_auth: AuthSchema,
+    kedge_practice: PracticeSchema,
   },
   app: AppSchema,
-  auth: AuthSchema
+  auth: AuthSchema,
+  practice: PracticeSchema,
 } as const;
 
 export type ModelOfDatabase<
