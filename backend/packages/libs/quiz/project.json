@@ -1,0 +1,29 @@
+{
+  "name": "lib-quiz",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/libs/quiz/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/libs/quiz",
+        "main": "packages/libs/quiz/src/index.ts",
+        "tsConfig": "packages/libs/quiz/tsconfig.lib.json",
+        "assets": ["packages/libs/quiz/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "packages/libs/quiz/**/*.ts",
+          "packages/libs/quiz/package.json"
+        ]
+      }
+    }
+  },
+  "tags": []
+}
