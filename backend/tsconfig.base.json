@@ -24,6 +24,7 @@
       "@kedge/persistent": ["packages/libs/persistent/src/index.ts"],
       "@kedge/knowledge-point": ["packages/libs/knowledge-point/src/index.ts"],
       "@kedge/quiz": ["packages/libs/quiz/src/index.ts"],
+      "@kedge/quiz-parser": ["packages/libs/quiz-parser/src/index.ts"],
     }
   },
   "exclude": ["node_modules", "tmp"],

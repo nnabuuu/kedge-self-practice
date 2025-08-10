@@ -1,0 +1,29 @@
+{
+  "name": "lib-quiz-parser",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/libs/quiz-parser/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/libs/quiz-parser",
+        "main": "packages/libs/quiz-parser/src/index.ts",
+        "tsConfig": "packages/libs/quiz-parser/tsconfig.lib.json",
+        "assets": ["packages/libs/quiz-parser/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "packages/libs/quiz-parser/**/*.ts",
+          "packages/libs/quiz-parser/package.json"
+        ]
+      }
+    }
+  },
+  "tags": []
+}
