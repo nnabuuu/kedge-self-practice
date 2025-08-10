@@ -1,0 +1,29 @@
+{
+  "name": "lib-knowledge-point",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/libs/knowledge-point/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/libs/knowledge-point",
+        "main": "packages/libs/knowledge-point/src/index.ts",
+        "tsConfig": "packages/libs/knowledge-point/tsconfig.lib.json",
+        "assets": ["packages/libs/knowledge-point/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "packages/libs/knowledge-point/**/*.ts",
+          "packages/libs/knowledge-point/package.json"
+        ]
+      }
+    }
+  },
+  "tags": []
+}
