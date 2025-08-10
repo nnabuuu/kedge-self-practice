@@ -6,7 +6,6 @@ export const QuizItemSchema = z.object({
   question: z.string(),
   options: z.array(z.string()),
   images: z.array(z.string()).optional(),
-  // Images can be embedded via Markdown/URLs and stored separately on the file system
   answer: z.union([z.string(), z.array(z.string()), z.array(z.number())]),
   originalParagraph: z.string().optional(),
 });
