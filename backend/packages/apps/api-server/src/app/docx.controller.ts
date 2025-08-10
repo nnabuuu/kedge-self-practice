@@ -1,5 +1,6 @@
-import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Post, UploadedFile, UseInterceptors, UseGuards } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { DocxService, GptService } from '@kedge/quiz-parser';
 
 interface MulterFile {
@@ -7,6 +8,7 @@ interface MulterFile {
   [key: string]: unknown;
 }
 
+@UseGuards(JwtAuthGuard, TeacherGuard)
 @Controller('docx')
 export class DocxController {
   constructor(
