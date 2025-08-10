@@ -5,7 +5,7 @@ export const QuizItemSchema = z.object({
   type: z.enum(['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective', 'other']),
   question: z.string(),
   options: z.array(z.string()),
-  // Images can be embedded via Markdown or URLs in question/options strings
+  images: z.array(z.string()).optional(),
   answer: z.union([z.string(), z.array(z.string()), z.array(z.number())]),
   originalParagraph: z.string().optional(),
 });

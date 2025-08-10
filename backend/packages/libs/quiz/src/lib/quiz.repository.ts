@@ -18,16 +18,18 @@ export class QuizRepository {
             question,
             options,
             answer,
-            original_paragraph
+            original_paragraph,
+            images
           )
           VALUES (
             ${item.type},
             ${item.question},
             ${sql.json(item.options)},
             ${sql.json(item.answer)},
-            ${item.originalParagraph ?? null}
+            ${item.originalParagraph ?? null},
+            ${sql.json(item.images ?? [])}
           )
-          RETURNING type, question, options, answer, original_paragraph
+          RETURNING type, question, options, answer, original_paragraph, images
         `,
       );
       return result.rows[0];
@@ -42,7 +44,7 @@ export class QuizRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT type, question, options, answer, original_paragraph
+          SELECT type, question, options, answer, original_paragraph, images
           FROM kedge_practice.quizzes
           WHERE id = ${id}
         `,
@@ -59,7 +61,7 @@ export class QuizRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT type, question, options, answer, original_paragraph
+          SELECT type, question, options, answer, original_paragraph, images
           FROM kedge_practice.quizzes
         `,
       );
