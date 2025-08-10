@@ -1,7 +1,7 @@
 -- Enable UUID generation extension
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Create the schema
+-- Create the schema if it does not exist
 CREATE SCHEMA IF NOT EXISTS kedge_gateway;
 
 -- Trigger function to update the updated_at column
@@ -18,9 +18,8 @@ END;
 $$
 LANGUAGE plpgsql;
 
-
 -- Users table
-CREATE TABLE kedge_gateway.users (
+CREATE TABLE IF NOT EXISTS kedge_gateway.users (
                                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                                    name VARCHAR(255) NOT NULL UNIQUE,
                                    password_hash TEXT NOT NULL,

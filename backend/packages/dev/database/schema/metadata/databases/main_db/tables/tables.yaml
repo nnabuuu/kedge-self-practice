@@ -2,3 +2,4 @@
 - "!include saito_tasks.yaml"
 - "!include knowledge_points.yaml"
 - "!include quizzes.yaml"
+- "!include users.yaml"
