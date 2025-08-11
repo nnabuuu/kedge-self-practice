@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
-import { QuizService } from '@kedge/quiz';
+import { QuizService, EnhancedQuizStorageService, AttachmentMetadata } from '@kedge/quiz';
 import { QuizItemSchema, QuizWithKnowledgePointSchema, QuizWithKnowledgePoint } from '@kedge/models';
 import { z } from 'zod';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
@@ -40,7 +40,10 @@ interface MulterFile {
 @UseGuards(JwtAuthGuard)
 @Controller('quiz')
 export class QuizController {
-  constructor(private readonly quizService: QuizService) {}
+  constructor(
+    private readonly quizService: QuizService,
+    private readonly storageService: EnhancedQuizStorageService,
+  ) {}
 
   @Post('submit')
   @UseGuards(TeacherGuard)
@@ -184,28 +187,52 @@ export class QuizController {
       const parsedQuizData = JSON.parse(quizData);
       const validatedData = QuizWithKnowledgePointSchema.parse(parsedQuizData);
       
+      // Save attachments using enhanced storage service
+      let attachmentMetadata: AttachmentMetadata[] = [];
+      if (files && files.length > 0) {
+        const attachmentFiles = files.map(file => ({
+          filename: file.originalname,
+          data: file.buffer,
+          mimetype: file.mimetype,
+        }));
+        
+        attachmentMetadata = await this.storageService.saveAttachments(attachmentFiles);
+      }
+      
+      // Build image URLs that can be accessed via the attachments endpoint
+      const imageUrls = attachmentMetadata.map(
+        meta => `/attachments/quiz/${meta.relativePath}`
+      );
+      
       const quizItem = {
         type: validatedData.type,
         question: validatedData.question,
         options: validatedData.options,
         answer: validatedData.answer,
         originalParagraph: validatedData.originalParagraph,
-        images: validatedData.images,
+        images: imageUrls, // Store URLs instead of file paths
       };
 
-      // Convert MulterFile to the format expected by QuizStorageService
+      // For backward compatibility, still use the old storage service
+      // but we're storing URLs instead of file paths now
       const imageFiles = files?.map(file => ({
         filename: file.originalname,
         data: file.buffer,
       })) || [];
 
-      const createdQuiz = await this.quizService.createQuiz(quizItem, imageFiles);
+      const createdQuiz = await this.quizService.createQuiz(quizItem, []);
 
       return {
         success: true,
         data: createdQuiz,
         knowledgePoint: validatedData.knowledgePoint,
-        uploadedImages: files?.length || 0,
+        attachments: attachmentMetadata.map(meta => ({
+          id: meta.id,
+          url: `/attachments/quiz/${meta.relativePath}`,
+          originalName: meta.originalName,
+          size: meta.size,
+          mimetype: meta.mimetype,
+        })),
       };
     } catch (error) {
       if (error instanceof z.ZodError) {

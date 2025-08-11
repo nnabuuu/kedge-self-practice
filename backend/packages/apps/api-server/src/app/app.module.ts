@@ -10,6 +10,7 @@ import { IndexController } from './index.controller';
 import { GptController } from './gpt.controller';
 import { DocxController } from './docx.controller';
 import { QuizController } from './quiz.controller';
+import { AttachmentsController } from './attachments.controller';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { QuizController } from './quiz.controller';
     GptController,
     DocxController,
     QuizController,
+    AttachmentsController,
   ],
   providers: [
     {
