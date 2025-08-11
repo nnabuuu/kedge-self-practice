@@ -9,6 +9,7 @@ import { AuthController } from './auth.controller';
 import { IndexController } from './index.controller';
 import { GptController } from './gpt.controller';
 import { DocxController } from './docx.controller';
+import { QuizController } from './quiz.controller';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { DocxController } from './docx.controller';
     IndexController,
     GptController,
     DocxController,
+    QuizController,
   ],
   providers: [
     {
