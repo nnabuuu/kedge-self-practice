@@ -3,10 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   CreatePracticeSession,
   PracticeSession,
-  PracticeQuestion,
-  SubmitAnswer,
-  SkipQuestion,
   PracticeSessionResponse,
+  SubmitAnswer,
   PracticeStatistics,
   PracticeSessionStatus
 } from '@kedge/models';
@@ -22,68 +20,74 @@ export class PracticeService {
   ): Promise<PracticeSessionResponse> {
     const sessionId = uuidv4();
     
+    // Fetch quizzes based on criteria
     const quizzes = await this.practiceRepository.fetchQuizzes(
       data.knowledge_point_ids,
       data.question_count,
       data.difficulty,
-      data.strategy,
-      studentId
+      data.strategy
     );
 
     if (quizzes.length === 0) {
       throw new BadRequestException('No quizzes available for selected knowledge points');
     }
 
-    const shuffledQuizzes = data.shuffle_questions 
+    // Shuffle quizzes if requested
+    const finalQuizzes = data.shuffle_questions 
       ? this.shuffleArray(quizzes)
       : quizzes;
 
-    const session = await this.practiceRepository.createSession(
-      sessionId,
-      studentId,
-      {
-        strategy: data.strategy,
-        knowledge_point_ids: data.knowledge_point_ids,
-        total_questions: shuffledQuizzes.length,
-        time_limit_minutes: data.time_limit_minutes,
-        difficulty: data.difficulty
-      }
-    );
+    // Prepare session data
+    const sessionData = {
+      strategy: data.strategy,
+      knowledge_point_ids: data.knowledge_point_ids,
+      total_questions: finalQuizzes.length,
+      time_limit_minutes: data.time_limit_minutes,
+      difficulty: data.difficulty
+    };
 
-    const questions: PracticeQuestion[] = [];
-    for (let i = 0; i < shuffledQuizzes.length; i++) {
-      const quiz = shuffledQuizzes[i];
-      const questionId = uuidv4();
+    // Prepare questions data
+    const questionsData = finalQuizzes.map((quiz, index) => {
       const options = data.shuffle_options && quiz.options
         ? this.shuffleArray(quiz.options)
         : quiz.options;
 
-      const question = await this.practiceRepository.createQuestion({
-        id: questionId,
-        session_id: sessionId,
+      return {
+        id: uuidv4(),
         quiz_id: quiz.id,
-        question_number: i + 1,
+        question_number: index + 1,
         question: quiz.question,
         options: options || [],
-        correct_answer: data.show_answer_immediately ? quiz.correct_answer : quiz.correct_answer,
+        correct_answer: quiz.correct_answer,
         knowledge_point_id: quiz.knowledge_point_id,
         difficulty: quiz.difficulty || 'medium',
-        attachments: quiz.attachments
-      });
-      questions.push(question);
-    }
+        attachments: quiz.attachments || []
+      };
+    });
+
+    // Create session with all questions in one transaction
+    const result = await this.practiceRepository.createSessionWithQuestions(
+      sessionId,
+      studentId,
+      sessionData,
+      questionsData
+    );
 
     return {
-      session,
-      current_question: questions[0] || undefined
+      session: result.session,
+      questions: result.questions
     };
   }
 
   async startSession(sessionId: string, studentId: string): Promise<PracticeSessionResponse> {
-    const session = await this.getSession(sessionId, studentId);
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, studentId);
     
-    if (session.status !== 'created') {
-      throw new BadRequestException(`Session cannot be started from status: ${session.status}`);
+    if (!sessionData) {
+      throw new NotFoundException('Practice session not found');
+    }
+    
+    if (sessionData.session.status !== 'created') {
+      throw new BadRequestException(`Session cannot be started from status: ${sessionData.session.status}`);
     }
 
     const updatedSession = await this.practiceRepository.updateSessionStatus(
@@ -93,81 +97,47 @@ export class PracticeService {
       { started_at: true }
     );
 
-    const currentQuestion = await this.practiceRepository.getCurrentQuestion(sessionId);
-
     return {
       session: updatedSession,
-      current_question: currentQuestion || undefined
+      questions: sessionData.questions
     };
   }
 
-  async submitAnswer(data: SubmitAnswer, studentId: string): Promise<PracticeSessionResponse> {
-    const session = await this.getSession(data.session_id, studentId);
+  async submitAnswer(data: SubmitAnswer, studentId: string): Promise<{ isCorrect: boolean }> {
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(data.session_id, studentId);
     
-    if (session.status !== 'in_progress') {
+    if (!sessionData) {
+      throw new NotFoundException('Practice session not found');
+    }
+    
+    if (sessionData.session.status !== 'in_progress') {
       throw new BadRequestException('Session is not in progress');
     }
 
-    const { isCorrect } = await this.practiceRepository.submitAnswer(
+    const result = await this.practiceRepository.submitAnswer(
       data.question_id,
       data.session_id,
       data.answer,
       data.time_spent_seconds
     );
 
-    const updatedSession = await this.getSession(data.session_id, studentId);
-    const nextQuestion = await this.practiceRepository.getNextQuestion(data.session_id);
-
-    if (!nextQuestion && updatedSession.answered_questions >= updatedSession.total_questions) {
-      const completedSession = await this.completeSession(data.session_id, studentId);
-      return {
-        session: completedSession,
-        current_question: undefined
-      };
+    // Check if session should be completed
+    const updatedSessionData = await this.practiceRepository.getSessionWithQuestions(data.session_id, studentId);
+    if (updatedSessionData && updatedSessionData.session.answered_questions >= updatedSessionData.session.total_questions) {
+      await this.completeSession(data.session_id, studentId);
     }
 
-    return {
-      session: updatedSession,
-      current_question: nextQuestion || undefined
-    };
-  }
-
-  async skipQuestion(data: SkipQuestion, studentId: string): Promise<PracticeSessionResponse> {
-    const session = await this.getSession(data.session_id, studentId);
-    
-    if (session.status !== 'in_progress') {
-      throw new BadRequestException('Session is not in progress');
-    }
-
-    await this.practiceRepository.skipQuestion(
-      data.question_id,
-      data.session_id,
-      data.time_spent_seconds
-    );
-
-    const updatedSession = await this.getSession(data.session_id, studentId);
-    const nextQuestion = await this.practiceRepository.getNextQuestion(data.session_id);
-
-    return {
-      session: updatedSession,
-      current_question: nextQuestion || undefined
-    };
-  }
-
-  async getNextQuestion(sessionId: string): Promise<PracticeQuestion | undefined> {
-    const question = await this.practiceRepository.getNextQuestion(sessionId);
-    return question || undefined;
-  }
-
-  async getCurrentQuestion(sessionId: string): Promise<PracticeQuestion | undefined> {
-    const question = await this.practiceRepository.getCurrentQuestion(sessionId);
-    return question || undefined;
+    return result;
   }
 
   async pauseSession(sessionId: string, studentId: string): Promise<PracticeSession> {
-    const session = await this.getSession(sessionId, studentId);
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, studentId);
     
-    if (session.status !== 'in_progress') {
+    if (!sessionData) {
+      throw new NotFoundException('Practice session not found');
+    }
+    
+    if (sessionData.session.status !== 'in_progress') {
       throw new BadRequestException('Only in-progress sessions can be paused');
     }
 
@@ -179,9 +149,13 @@ export class PracticeService {
   }
 
   async resumeSession(sessionId: string, studentId: string): Promise<PracticeSessionResponse> {
-    const session = await this.getSession(sessionId, studentId);
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, studentId);
     
-    if (session.status !== 'paused') {
+    if (!sessionData) {
+      throw new NotFoundException('Practice session not found');
+    }
+    
+    if (sessionData.session.status !== 'paused') {
       throw new BadRequestException('Only paused sessions can be resumed');
     }
 
@@ -191,11 +165,9 @@ export class PracticeService {
       'in_progress'
     );
 
-    const currentQuestion = await this.practiceRepository.getCurrentQuestion(sessionId);
-
     return {
       session: updatedSession,
-      current_question: currentQuestion || undefined
+      questions: sessionData.questions
     };
   }
 
@@ -208,14 +180,17 @@ export class PracticeService {
     );
   }
 
-  async getSession(sessionId: string, studentId: string): Promise<PracticeSession> {
-    const session = await this.practiceRepository.getSession(sessionId, studentId);
+  async getSession(sessionId: string, studentId: string): Promise<PracticeSessionResponse> {
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, studentId);
 
-    if (!session) {
+    if (!sessionData) {
       throw new NotFoundException('Practice session not found');
     }
 
-    return session;
+    return {
+      session: sessionData.session,
+      questions: sessionData.questions
+    };
   }
 
   async getSessionHistory(
@@ -232,60 +207,15 @@ export class PracticeService {
     );
   }
 
-  async getStatistics(studentId: string): Promise<PracticeStatistics> {
-    const { stats, knowledgePointPerformance, difficultyPerformance } = 
-      await this.practiceRepository.getStatistics(studentId);
-
+  async getStatistics(studentId: string): Promise<any> {
+    const basicStats = await this.practiceRepository.getBasicStatistics(studentId);
     const recentSessions = await this.getSessionHistory(studentId, undefined, 10, 0);
-
-    const totalQuestionsAnswered = parseInt(stats.total_questions_answered || 0);
-    const totalCorrect = parseInt(stats.total_correct || 0);
 
     return {
       student_id: studentId,
-      total_sessions: parseInt(stats.total_sessions || 0),
-      completed_sessions: parseInt(stats.completed_sessions || 0),
-      total_questions_answered: totalQuestionsAnswered,
-      total_correct: totalCorrect,
-      total_incorrect: parseInt(stats.total_incorrect || 0),
-      total_skipped: parseInt(stats.total_skipped || 0),
-      average_accuracy: totalQuestionsAnswered > 0 
-        ? (totalCorrect / totalQuestionsAnswered) * 100 
-        : 0,
-      total_time_spent_minutes: parseFloat(stats.total_time_spent_minutes || 0),
-      knowledge_point_performance: knowledgePointPerformance.map((kp: any) => ({
-        knowledge_point_id: kp.knowledge_point_id,
-        knowledge_point_name: kp.knowledge_point_name || 'Unknown',
-        total_questions: parseInt(kp.total_questions || 0),
-        correct_answers: parseInt(kp.correct_answers || 0),
-        accuracy: parseInt(kp.total_questions || 0) > 0 
-          ? (parseInt(kp.correct_answers || 0) / parseInt(kp.total_questions || 0)) * 100 
-          : 0,
-        average_time_seconds: parseFloat(kp.average_time_seconds || 0)
-      })),
-      difficulty_performance: {
-        easy: {
-          total: parseInt(difficultyPerformance?.easy_total || 0),
-          correct: parseInt(difficultyPerformance?.easy_correct || 0),
-          accuracy: parseInt(difficultyPerformance?.easy_total || 0) > 0
-            ? (parseInt(difficultyPerformance?.easy_correct || 0) / parseInt(difficultyPerformance?.easy_total || 0)) * 100
-            : 0
-        },
-        medium: {
-          total: parseInt(difficultyPerformance?.medium_total || 0),
-          correct: parseInt(difficultyPerformance?.medium_correct || 0),
-          accuracy: parseInt(difficultyPerformance?.medium_total || 0) > 0
-            ? (parseInt(difficultyPerformance?.medium_correct || 0) / parseInt(difficultyPerformance?.medium_total || 0)) * 100
-            : 0
-        },
-        hard: {
-          total: parseInt(difficultyPerformance?.hard_total || 0),
-          correct: parseInt(difficultyPerformance?.hard_correct || 0),
-          accuracy: parseInt(difficultyPerformance?.hard_total || 0) > 0
-            ? (parseInt(difficultyPerformance?.hard_correct || 0) / parseInt(difficultyPerformance?.hard_total || 0)) * 100
-            : 0
-        }
-      },
+      total_sessions: parseInt(basicStats.total_sessions || 0),
+      completed_sessions: parseInt(basicStats.completed_sessions || 0),
+      average_score: parseFloat(basicStats.average_score || 0),
       recent_sessions: recentSessions
     };
   }

@@ -7,12 +7,25 @@ import {
 import { SubjectSchema } from './subject.schema';
 import {
   PracticeSessionSchema,
-  PracticeHistorySchema,
-  QuizConfigSchema,
-  KnowledgePointPerformanceSchema,
+  CreatePracticeSessionSchema,
+  PracticeQuestionSchema,
+  SubmitAnswerSchema,
+  SkipQuestionSchema,
+  PauseSessionSchema,
+  ResumeSessionSchema,
+  CompleteSessionSchema,
+  PracticeSessionResponseSchema,
+  PracticeStatisticsSchema,
+  PracticeHistoryQuerySchema,
+  PracticeStrategySchema,
+  PracticeSessionStatusSchema,
+  BasicStatisticsSchema,
 } from './practice-session.schema';
 
+// Knowledge Point exports
 export { KnowledgePointSchema, type KnowledgePoint } from './knowledge-point.schema';
+
+// Quiz exports  
 export {
   QuizItemSchema,
   type QuizItem,
@@ -21,6 +34,8 @@ export {
   KnowledgePointMatchResultSchema,
   type KnowledgePointMatchResult,
 } from './quiz.schema';
+
+// Subject exports
 export { 
   SubjectSchema, 
   type Subject,
@@ -29,19 +44,42 @@ export {
   UpdateSubjectSchema,
   type UpdateSubjectRequest,
 } from './subject.schema';
+
+// Practice Session exports
 export {
+  // Main schemas
   PracticeSessionSchema,
   type PracticeSession,
   CreatePracticeSessionSchema,
-  type CreatePracticeSessionRequest,
-  UpdatePracticeSessionSchema,
-  type UpdatePracticeSessionRequest,
-  PracticeHistorySchema,
-  type PracticeHistory,
-  QuizConfigSchema,
-  type QuizConfig,
-  KnowledgePointPerformanceSchema,
-  type KnowledgePointPerformance,
+  type CreatePracticeSession,
+  PracticeQuestionSchema,
+  type PracticeQuestion,
+  
+  // Action schemas
+  SubmitAnswerSchema,
+  type SubmitAnswer,
+  SkipQuestionSchema,
+  type SkipQuestion,
+  PauseSessionSchema,
+  ResumeSessionSchema,
+  CompleteSessionSchema,
+  
+  // Response schemas
+  PracticeSessionResponseSchema,
+  type PracticeSessionResponse,
+  PracticeStatisticsSchema,
+  type PracticeStatistics,
+  PracticeHistoryQuerySchema,
+  
+  // Enums
+  PracticeStrategySchema,
+  type PracticeStrategy,
+  PracticeSessionStatusSchema,
+  type PracticeSessionStatus,
+  
+  // Statistics
+  BasicStatisticsSchema,
+  type BasicStatistics,
 } from './practice-session.schema';
 
 export const PracticeSchema = {
@@ -51,7 +89,12 @@ export const PracticeSchema = {
   KnowledgePointMatchResult: KnowledgePointMatchResultSchema,
   Subject: SubjectSchema,
   PracticeSession: PracticeSessionSchema,
-  PracticeHistory: PracticeHistorySchema,
-  QuizConfig: QuizConfigSchema,
-  KnowledgePointPerformance: KnowledgePointPerformanceSchema,
+  CreatePracticeSession: CreatePracticeSessionSchema,
+  PracticeQuestion: PracticeQuestionSchema,
+  SubmitAnswer: SubmitAnswerSchema,
+  SkipQuestion: SkipQuestionSchema,
+  PracticeSessionResponse: PracticeSessionResponseSchema,
+  PracticeStatistics: PracticeStatisticsSchema,
+  PracticeStrategy: PracticeStrategySchema,
+  PracticeSessionStatus: PracticeSessionStatusSchema,
 } as const;

@@ -12,17 +12,23 @@ import {
   HttpStatus,
   ForbiddenException
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';
 import { JwtAuthGuard } from '@kedge/auth';
 import { PracticeService } from '@kedge/practice';
+
+interface AuthenticatedRequest extends ExpressRequest {
+  user: {
+    userId: string;
+    role: string;
+  };
+}
 import {
   CreatePracticeSessionSchema,
   PracticeSessionSchema,
   PracticeSessionResponseSchema,
   SubmitAnswerSchema,
-  SkipQuestionSchema,
-  PracticeStatisticsSchema,
   PracticeHistoryQuerySchema,
   PauseSessionSchema,
   ResumeSessionSchema,
@@ -33,8 +39,6 @@ class CreatePracticeSessionDto extends createZodDto(CreatePracticeSessionSchema)
 class PracticeSessionDto extends createZodDto(PracticeSessionSchema) {}
 class PracticeSessionResponseDto extends createZodDto(PracticeSessionResponseSchema) {}
 class SubmitAnswerDto extends createZodDto(SubmitAnswerSchema) {}
-class SkipQuestionDto extends createZodDto(SkipQuestionSchema) {}
-class PracticeStatisticsDto extends createZodDto(PracticeStatisticsSchema) {}
 class PracticeHistoryQueryDto extends createZodDto(PracticeHistoryQuerySchema) {}
 class PauseSessionDto extends createZodDto(PauseSessionSchema) {}
 class ResumeSessionDto extends createZodDto(ResumeSessionSchema) {}
@@ -55,7 +59,7 @@ export class PracticeController {
     type: PracticeSessionResponseDto 
   })
   async createSession(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() createSessionDto: CreatePracticeSessionDto
   ): Promise<PracticeSessionResponseDto> {
     const studentId = req.user.userId;
@@ -71,7 +75,7 @@ export class PracticeController {
     type: PracticeSessionResponseDto 
   })
   async startSession(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Param('sessionId') sessionId: string
   ): Promise<PracticeSessionResponseDto> {
     const studentId = req.user.userId;
@@ -83,31 +87,14 @@ export class PracticeController {
   @ApiOperation({ summary: 'Submit an answer to a practice question' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
-    description: 'Answer submitted successfully',
-    type: PracticeSessionResponseDto 
+    description: 'Answer submitted successfully'
   })
   async submitAnswer(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() submitAnswerDto: SubmitAnswerDto
-  ): Promise<PracticeSessionResponseDto> {
+  ): Promise<{ isCorrect: boolean }> {
     const studentId = req.user.userId;
     return await this.practiceService.submitAnswer(submitAnswerDto, studentId);
-  }
-
-  @Post('sessions/skip-question')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Skip a practice question' })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
-    description: 'Question skipped',
-    type: PracticeSessionResponseDto 
-  })
-  async skipQuestion(
-    @Request() req,
-    @Body() skipQuestionDto: SkipQuestionDto
-  ): Promise<PracticeSessionResponseDto> {
-    const studentId = req.user.userId;
-    return await this.practiceService.skipQuestion(skipQuestionDto, studentId);
   }
 
   @Post('sessions/pause')
@@ -119,7 +106,7 @@ export class PracticeController {
     type: PracticeSessionDto 
   })
   async pauseSession(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() pauseSessionDto: PauseSessionDto
   ): Promise<PracticeSessionDto> {
     const studentId = req.user.userId;
@@ -135,7 +122,7 @@ export class PracticeController {
     type: PracticeSessionResponseDto 
   })
   async resumeSession(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() resumeSessionDto: ResumeSessionDto
   ): Promise<PracticeSessionResponseDto> {
     const studentId = req.user.userId;
@@ -151,7 +138,7 @@ export class PracticeController {
     type: PracticeSessionDto 
   })
   async completeSession(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() completeSessionDto: CompleteSessionDto
   ): Promise<PracticeSessionDto> {
     const studentId = req.user.userId;
@@ -159,48 +146,18 @@ export class PracticeController {
   }
 
   @Get('sessions/:sessionId')
-  @ApiOperation({ summary: 'Get practice session details' })
+  @ApiOperation({ summary: 'Get practice session details with all questions' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
-    description: 'Practice session details',
-    type: PracticeSessionDto 
+    description: 'Practice session details with questions',
+    type: PracticeSessionResponseDto 
   })
   async getSession(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Param('sessionId') sessionId: string
-  ): Promise<PracticeSessionDto> {
+  ): Promise<PracticeSessionResponseDto> {
     const studentId = req.user.userId;
     return await this.practiceService.getSession(sessionId, studentId);
-  }
-
-  @Get('sessions/:sessionId/current-question')
-  @ApiOperation({ summary: 'Get current question for a practice session' })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
-    description: 'Current question'
-  })
-  async getCurrentQuestion(
-    @Request() req,
-    @Param('sessionId') sessionId: string
-  ): Promise<any> {
-    const studentId = req.user.userId;
-    await this.practiceService.getSession(sessionId, studentId);
-    return await this.practiceService.getCurrentQuestion(sessionId);
-  }
-
-  @Get('sessions/:sessionId/next-question')
-  @ApiOperation({ summary: 'Get next unanswered question' })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
-    description: 'Next question'
-  })
-  async getNextQuestion(
-    @Request() req,
-    @Param('sessionId') sessionId: string
-  ): Promise<any> {
-    const studentId = req.user.userId;
-    await this.practiceService.getSession(sessionId, studentId);
-    return await this.practiceService.getNextQuestion(sessionId);
   }
 
   @Get('history')
@@ -211,7 +168,7 @@ export class PracticeController {
     type: [PracticeSessionDto]
   })
   async getHistory(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query() query: PracticeHistoryQueryDto
   ): Promise<PracticeSessionDto[]> {
     const studentId = req.user.userId;
@@ -227,10 +184,9 @@ export class PracticeController {
   @ApiOperation({ summary: 'Get practice statistics for the current student' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
-    description: 'Practice statistics',
-    type: PracticeStatisticsDto 
+    description: 'Practice statistics'
   })
-  async getStatistics(@Request() req): Promise<PracticeStatisticsDto> {
+  async getStatistics(@Request() req: AuthenticatedRequest): Promise<any> {
     const studentId = req.user.userId;
     return await this.practiceService.getStatistics(studentId);
   }
@@ -239,13 +195,12 @@ export class PracticeController {
   @ApiOperation({ summary: 'Get practice statistics for a specific student (teacher/admin only)' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
-    description: 'Practice statistics',
-    type: PracticeStatisticsDto 
+    description: 'Practice statistics'
   })
   async getStudentStatistics(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Param('studentId') studentId: string
-  ): Promise<PracticeStatisticsDto> {
+  ): Promise<any> {
     if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
       throw new ForbiddenException('Only teachers and admins can view other students statistics');
     }

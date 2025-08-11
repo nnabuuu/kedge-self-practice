@@ -1,81 +1,172 @@
 import { z } from 'zod';
 
-export const QuizConfigSchema = z.object({
-  questionType: z.enum(['new', 'with-wrong', 'wrong-only']),
-  questionCount: z.union([z.literal('unlimited'), z.number().positive()]),
-  timeLimit: z.number().optional(),
-  shuffleQuestions: z.boolean().default(true),
-  showExplanation: z.boolean().default(true),
-});
+// Practice Strategy Enums
+export const PracticeStrategySchema = z.enum([
+  'random',
+  'sequential',
+  'difficulty_adaptive',
+  'weakness_focused',
+  'review_incorrect'
+]);
 
-export type QuizConfig = z.infer<typeof QuizConfigSchema>;
+export const PracticeSessionStatusSchema = z.enum([
+  'created',
+  'in_progress',
+  'paused',
+  'completed',
+  'abandoned'
+]);
+
+// Practice Session Schemas
+export const CreatePracticeSessionSchema = z.object({
+  knowledge_point_ids: z.array(z.string()).min(1),
+  question_count: z.number().int().min(1).max(100).default(20),
+  time_limit_minutes: z.number().int().min(5).max(180).optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard', 'mixed']).default('mixed'),
+  strategy: PracticeStrategySchema.default('random'),
+  shuffle_questions: z.boolean().default(true),
+  shuffle_options: z.boolean().default(true),
+  allow_review: z.boolean().default(true),
+  show_answer_immediately: z.boolean().default(false)
+});
 
 export const PracticeSessionSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  subjectId: z.string(),
-  knowledgePointIds: z.array(z.string()),
-  questionIds: z.array(z.string()),
-  config: QuizConfigSchema,
-  answers: z.array(z.union([z.string(), z.array(z.string()), z.null()])),
-  questionDurations: z.array(z.number()).optional(), // in seconds
-  startTime: z.date(),
-  endTime: z.date().optional(),
-  completed: z.boolean().default(false),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
+  id: z.string().uuid(),
+  student_id: z.string().uuid(),
+  status: PracticeSessionStatusSchema,
+  strategy: PracticeStrategySchema,
+  knowledge_point_ids: z.array(z.string()),
+  total_questions: z.number().int(),
+  answered_questions: z.number().int().default(0),
+  correct_answers: z.number().int().default(0),
+  incorrect_answers: z.number().int().default(0),
+  skipped_questions: z.number().int().default(0),
+  time_limit_minutes: z.number().int().optional(),
+  time_spent_seconds: z.number().int().default(0),
+  difficulty: z.string(),
+  score: z.number().default(0),
+  started_at: z.string().datetime().optional(),
+  completed_at: z.string().datetime().optional(),
+  created_at: z.string().datetime(),
+  updated_at: z.string().datetime()
 });
 
+export const PracticeQuestionSchema = z.object({
+  id: z.string().uuid(),
+  session_id: z.string().uuid(),
+  quiz_id: z.string().uuid(),
+  question_number: z.number().int(),
+  question: z.string(),
+  options: z.array(z.string()),
+  correct_answer: z.string().optional(),
+  student_answer: z.string().optional(),
+  is_correct: z.boolean().optional(),
+  time_spent_seconds: z.number().int().default(0),
+  answered_at: z.string().datetime().optional(),
+  attachments: z.array(z.string()).optional(),
+  knowledge_point_id: z.string(),
+  difficulty: z.string()
+});
+
+// Action Schemas
+export const SubmitAnswerSchema = z.object({
+  session_id: z.string().uuid(),
+  question_id: z.string().uuid(),
+  answer: z.string(),
+  time_spent_seconds: z.number().int().min(0)
+});
+
+export const SkipQuestionSchema = z.object({
+  session_id: z.string().uuid(),
+  question_id: z.string().uuid(),
+  time_spent_seconds: z.number().int().min(0)
+});
+
+export const GetNextQuestionSchema = z.object({
+  session_id: z.string().uuid()
+});
+
+export const PauseSessionSchema = z.object({
+  session_id: z.string().uuid()
+});
+
+export const ResumeSessionSchema = z.object({
+  session_id: z.string().uuid()
+});
+
+export const CompleteSessionSchema = z.object({
+  session_id: z.string().uuid()
+});
+
+// Response Schemas
+export const PracticeSessionResponseSchema = z.object({
+  session: PracticeSessionSchema,
+  questions: z.array(PracticeQuestionSchema)
+});
+
+export const PracticeStatisticsSchema = z.object({
+  student_id: z.string().uuid(),
+  total_sessions: z.number().int(),
+  completed_sessions: z.number().int(),
+  total_questions_answered: z.number().int(),
+  total_correct: z.number().int(),
+  total_incorrect: z.number().int(),
+  total_skipped: z.number().int(),
+  average_accuracy: z.number(),
+  total_time_spent_minutes: z.number(),
+  knowledge_point_performance: z.array(z.object({
+    knowledge_point_id: z.string(),
+    knowledge_point_name: z.string(),
+    total_questions: z.number().int(),
+    correct_answers: z.number().int(),
+    accuracy: z.number(),
+    average_time_seconds: z.number()
+  })),
+  difficulty_performance: z.object({
+    easy: z.object({
+      total: z.number().int(),
+      correct: z.number().int(),
+      accuracy: z.number()
+    }),
+    medium: z.object({
+      total: z.number().int(),
+      correct: z.number().int(),
+      accuracy: z.number()
+    }),
+    hard: z.object({
+      total: z.number().int(),
+      correct: z.number().int(),
+      accuracy: z.number()
+    })
+  }),
+  recent_sessions: z.array(PracticeSessionSchema).optional()
+});
+
+export const PracticeHistoryQuerySchema = z.object({
+  student_id: z.string().uuid().optional(),
+  status: PracticeSessionStatusSchema.optional(),
+  from_date: z.string().datetime().optional(),
+  to_date: z.string().datetime().optional(),
+  limit: z.number().int().min(1).max(100).default(20),
+  offset: z.number().int().min(0).default(0)
+});
+
+export const BasicStatisticsSchema = z.object({
+  total_sessions: z.string(),
+  completed_sessions: z.string(),
+  average_score: z.string().nullable()
+});
+
+
+// Type exports
+export type CreatePracticeSession = z.infer<typeof CreatePracticeSessionSchema>;
 export type PracticeSession = z.infer<typeof PracticeSessionSchema>;
+export type PracticeQuestion = z.infer<typeof PracticeQuestionSchema>;
+export type SubmitAnswer = z.infer<typeof SubmitAnswerSchema>;
+export type SkipQuestion = z.infer<typeof SkipQuestionSchema>;
+export type PracticeSessionResponse = z.infer<typeof PracticeSessionResponseSchema>;
+export type PracticeStatistics = z.infer<typeof PracticeStatisticsSchema>;
+export type PracticeStrategy = z.infer<typeof PracticeStrategySchema>;
+export type PracticeSessionStatus = z.infer<typeof PracticeSessionStatusSchema>;
+export type BasicStatistics = z.infer<typeof BasicStatisticsSchema>;
 
-export const CreatePracticeSessionSchema = z.object({
-  subjectId: z.string(),
-  knowledgePointIds: z.array(z.string()),
-  config: QuizConfigSchema,
-});
-
-export type CreatePracticeSessionRequest = z.infer<typeof CreatePracticeSessionSchema>;
-
-export const UpdatePracticeSessionSchema = z.object({
-  answers: z.array(z.union([z.string(), z.array(z.string()), z.null()])).optional(),
-  questionDurations: z.array(z.number()).optional(),
-  endTime: z.date().optional(),
-  completed: z.boolean().optional(),
-});
-
-export type UpdatePracticeSessionRequest = z.infer<typeof UpdatePracticeSessionSchema>;
-
-export const PracticeHistorySchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  subjectId: z.string(),
-  subjectName: z.string(),
-  knowledgePointIds: z.array(z.string()),
-  totalQuestions: z.number(),
-  correctAnswers: z.number(),
-  wrongAnswers: z.number(),
-  completionRate: z.number(), // percentage
-  averageTimePerQuestion: z.number().optional(), // in seconds
-  totalDuration: z.number(), // in minutes
-  practiceDate: z.date(),
-  config: QuizConfigSchema,
-  createdAt: z.date().optional(),
-});
-
-export type PracticeHistory = z.infer<typeof PracticeHistorySchema>;
-
-export const KnowledgePointPerformanceSchema = z.object({
-  knowledgePointId: z.string(),
-  volume: z.string(),
-  unit: z.string(),
-  lesson: z.string(),
-  section: z.string(),
-  topic: z.string(),
-  correctCount: z.number(),
-  totalCount: z.number(),
-  accuracy: z.number(), // percentage
-  status: z.enum(['excellent', 'good', 'needs-improvement', 'poor']),
-  lastPracticed: z.date(),
-});
-
-export type KnowledgePointPerformance = z.infer<typeof KnowledgePointPerformanceSchema>;
