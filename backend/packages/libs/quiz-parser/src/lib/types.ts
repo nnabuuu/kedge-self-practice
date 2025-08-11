@@ -1,6 +1,16 @@
+export interface DocxImage {
+  id: string;
+  filename: string;
+  data: Buffer;
+  contentType: string;
+  width?: number;
+  height?: number;
+}
+
 export interface ParagraphBlock {
   paragraph: string;
   highlighted: { text: string; color: string }[];
+  images: DocxImage[];
 }
 
 export interface QuizItem {

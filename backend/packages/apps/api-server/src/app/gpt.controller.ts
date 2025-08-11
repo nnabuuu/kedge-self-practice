@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
-import { GptService, QuizItem } from '@kedge/quiz-parser';
+import { GptService, QuizItem, ParagraphBlock } from '@kedge/quiz-parser';
 
 @UseGuards(JwtAuthGuard, TeacherGuard)
 @Controller('gpt')
@@ -11,7 +11,7 @@ export class GptController {
   async extractQuiz(
     @Body()
     body: {
-      paragraphs: { paragraph: string; highlighted: { text: string; color: string }[] }[];
+      paragraphs: ParagraphBlock[];
     },
   ) {
     return this.gptService.extractQuizItems(body.paragraphs);

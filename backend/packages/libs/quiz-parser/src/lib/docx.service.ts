@@ -56,6 +56,7 @@ export class DocxService {
       result.push({
         paragraph: allText.join(''),
         highlighted,
+        images: [], // Original service doesn't extract images
       });
     }
 
