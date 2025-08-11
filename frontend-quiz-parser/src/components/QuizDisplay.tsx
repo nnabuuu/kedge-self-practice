@@ -2,6 +2,7 @@ import React from 'react';
 import { QuizItem } from '../types/quiz';
 import { Brain, CheckCircle, Edit3, List, FileText, HelpCircle, Wand2, RefreshCw, Loader2, Undo2, RotateCcw, Sparkles } from 'lucide-react';
 import { polishQuizItem, changeQuizType } from '../services/quizService';
+import { QuizImageDisplay } from './QuizImageDisplay';
 
 interface QuizDisplayProps {
   quizItems: QuizItem[];
@@ -296,9 +297,11 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
         </div>
         
         <div className="mb-4">
-          <p className="text-gray-700 text-base leading-relaxed">
-            {item.question}
-          </p>
+          <QuizImageDisplay 
+            content={item.question}
+            images={item.images}
+            className="text-gray-700 text-base leading-relaxed"
+          />
         </div>
         
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
@@ -358,9 +361,11 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
         </div>
         
         <div className="mb-4">
-          <p className="text-gray-700 text-base leading-relaxed font-medium">
-            {item.question}
-          </p>
+          <QuizImageDisplay 
+            content={item.question}
+            images={item.images}
+            className="text-gray-700 text-base leading-relaxed font-medium"
+          />
         </div>
         
         {item.options && item.options.length > 0 && (
@@ -390,11 +395,13 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
                         <span className="text-xs font-bold text-gray-500">{optionLabel}</span>
                       )}
                     </div>
-                    <span className={`${
-                      isCorrect ? 'text-emerald-800 font-semibold' : 'text-gray-700'
-                    }`}>
-                      {optionLabel}. {option}
-                    </span>
+                    <QuizImageDisplay 
+                      content={`${optionLabel}. ${option}`}
+                      images={item.images}
+                      className={`${
+                        isCorrect ? 'text-emerald-800 font-semibold' : 'text-gray-700'
+                      }`}
+                    />
                   </div>
                 </div>
               );
@@ -443,9 +450,11 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
         </div>
         
         <div className="mb-4">
-          <p className="text-gray-700 text-base leading-relaxed font-medium">
-            {item.question}
-          </p>
+          <QuizImageDisplay 
+            content={item.question}
+            images={item.images}
+            className="text-gray-700 text-base leading-relaxed font-medium"
+          />
         </div>
         
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">

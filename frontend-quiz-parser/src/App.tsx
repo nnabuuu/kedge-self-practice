@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileUploader } from './components/FileUploader';
 import { ParseResults } from './components/ParseResults';
 import { QuizDisplay } from './components/QuizDisplay';
 import { KnowledgePointMatching } from './components/KnowledgePointMatching';
 import { Footer } from './components/Footer';
-import { uploadDocxFile, extractQuizFromParagraphs } from './services/quizService';
+import { AuthModal } from './components/AuthModal';
+import { 
+  uploadDocxFileWithImages, 
+  extractQuizFromParagraphsLocal,
+  batchSubmitQuizzesWithKnowledgePoints 
+} from './services/localQuizService';
+import { getAuthToken } from './services/api';
 import { exportToExcel } from './utils/exportUtils';
 import { ParagraphData, QuizItem, QuizWithKnowledgePoint, UploadStatus } from './types/quiz';
-import { BookOpen, ArrowRight, Download } from 'lucide-react';
+import { BookOpen, ArrowRight, Download, User, LogOut, AlertCircle, Upload } from 'lucide-react';
 
 function App() {
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
@@ -16,11 +22,30 @@ function App() {
     message: '',
   });
   const [parseResults, setParseResults] = useState<ParagraphData[]>([]);
+  const [extractedImages, setExtractedImages] = useState<string[]>([]);
   const [quizItems, setQuizItems] = useState<QuizItem[]>([]);
   const [quizWithKnowledgePoints, setQuizWithKnowledgePoints] = useState<QuizWithKnowledgePoint[]>([]);
   const [currentStep, setCurrentStep] = useState<'upload' | 'parse' | 'quiz' | 'knowledge-point' | 'final'>('upload');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [useLocalBackend, setUseLocalBackend] = useState(true);
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    const token = getAuthToken();
+    if (token) {
+      setIsAuthenticated(true);
+    }
+  }, []);
 
   const handleFileUpload = async (file: File) => {
+    // Check authentication if using local backend
+    if (useLocalBackend && !isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+
     try {
       setUploadStatus({
         status: 'uploading',
@@ -28,7 +53,19 @@ function App() {
         message: '正在上传文件...',
       });
 
-      const results = await uploadDocxFile(file);
+      let results: ParagraphData[] = [];
+      let images: string[] = [];
+
+      if (useLocalBackend) {
+        // Use local backend with image support
+        const response = await uploadDocxFileWithImages(file);
+        results = response.paragraphs;
+        images = response.images;
+      } else {
+        // Fallback to external API (no image support)
+        const { uploadDocxFile } = await import('./services/quizService');
+        results = await uploadDocxFile(file);
+      }
       
       setUploadStatus({
         status: 'processing',
@@ -40,6 +77,7 @@ function App() {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       setParseResults(Array.isArray(results) ? results : []);
+      setExtractedImages(images);
       setUploadStatus({
         status: 'success',
         progress: 100,
@@ -48,6 +86,7 @@ function App() {
       
       setCurrentStep('parse');
     } catch (error) {
+      console.error('Upload error:', error);
       setUploadStatus({
         status: 'error',
         progress: 0,
@@ -64,17 +103,23 @@ function App() {
         message: '正在生成题目...',
       });
 
-      const quiz = await extractQuizFromParagraphs(parseResults);
+      let items: QuizItem[] = [];
+
+      if (useLocalBackend) {
+        // Use local backend with image support
+        items = await extractQuizFromParagraphsLocal(parseResults, extractedImages);
+        // Add images to quiz items
+        items = items.map(item => ({
+          ...item,
+          images: extractedImages
+        }));
+      } else {
+        // Fallback to external API
+        const { extractQuizFromParagraphs } = await import('./services/quizService');
+        items = await extractQuizFromParagraphs(parseResults);
+      }
       
-      console.log('Quiz generated successfully:', quiz);
-      
-      // 先设置题目数据
-      setQuizItems(quiz);
-      
-      // 添加短暂延迟确保状态更新
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // 然后更新状态并跳转
+      setQuizItems(items);
       setUploadStatus({
         status: 'success',
         progress: 100,
@@ -92,8 +137,43 @@ function App() {
     }
   };
 
-  const handleKnowledgePointComplete = (quizWithKnowledgePoints: QuizWithKnowledgePoint[]) => {
+  const handleKnowledgePointComplete = async (quizWithKnowledgePoints: QuizWithKnowledgePoint[]) => {
     setQuizWithKnowledgePoints(quizWithKnowledgePoints);
+    
+    // Submit to backend if using local backend
+    if (useLocalBackend) {
+      try {
+        setUploadStatus({
+          status: 'processing',
+          progress: 50,
+          message: '正在提交题目到后端...',
+        });
+
+        const result = await batchSubmitQuizzesWithKnowledgePoints(quizWithKnowledgePoints);
+        
+        if (result.success) {
+          setUploadStatus({
+            status: 'success',
+            progress: 100,
+            message: `成功提交 ${result.successCount} 道题目到后端！`,
+          });
+        } else {
+          setUploadStatus({
+            status: 'error',
+            progress: 0,
+            message: `提交失败：${result.failCount} 道题目失败`,
+          });
+        }
+      } catch (error) {
+        console.error('Submit error:', error);
+        setUploadStatus({
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : '提交失败',
+        });
+      }
+    }
+    
     setCurrentStep('final');
   };
 
@@ -112,6 +192,7 @@ function App() {
       message: '',
     });
     setParseResults([]);
+    setExtractedImages([]);
     setQuizItems([]);
     setQuizWithKnowledgePoints([]);
     setCurrentStep('upload');
@@ -127,6 +208,18 @@ function App() {
       newItems[index] = updatedItem;
       return newItems;
     });
+  };
+
+  const handleAuthSuccess = (user: any) => {
+    setIsAuthenticated(true);
+    setCurrentUser(user);
+    setShowAuthModal(false);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    handleReset();
   };
 
   const renderStepIndicator = () => {
@@ -155,7 +248,7 @@ function App() {
               <span className="font-medium">{step.label}</span>
             </div>
             {index < steps.length - 1 && (
-              <ArrowRight className="w-5 h-5 text-gray-300" />
+              <ArrowRight className="w-5 h-5 text-gray-400" />
             )}
           </React.Fragment>
         ))}
@@ -164,149 +257,188 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <div className="bg-blue-100 p-3 rounded-full">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Header with Auth Status */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-3">
               <BookOpen className="w-8 h-8 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">题库解析系统</h1>
             </div>
-            <h1 className="text-4xl font-bold text-gray-800">题目解析器</h1>
-          </div>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            上传您的 DOCX 题目文档，自动提取题目并识别高亮答案
-          </p>
-        </div>
-
-        {/* Step Indicator */}
-        {renderStepIndicator()}
-
-        {/* Main Content */}
-        <div className="space-y-8">
-          {currentStep === 'upload' && (
-            <FileUploader
-              onUpload={handleFileUpload}
-              uploadStatus={uploadStatus}
-              onReset={handleReset}
-            />
-          )}
-
-          {currentStep === 'parse' && parseResults.length > 0 && (
-            <div className="space-y-6">
-              <ParseResults results={parseResults} />
-              <div className="text-center">
-                <button
-                  onClick={handleGenerateQuiz}
-                  className="inline-flex items-center px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors shadow-md"
-                  disabled={uploadStatus.status === 'processing'}
-                >
-                  <BookOpen className="w-5 h-5 mr-2" />
-                  {uploadStatus.status === 'processing' ? '正在生成题目...' : '生成题目'}
-                </button>
+            
+            <div className="flex items-center gap-4">
+              {/* Backend Toggle */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">使用本地后端:</label>
+                <input
+                  type="checkbox"
+                  checked={useLocalBackend}
+                  onChange={(e) => setUseLocalBackend(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
               </div>
-              {uploadStatus.status === 'processing' && (
-                <div className="text-center">
-                  <div className="w-full max-w-xs mx-auto">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-600">{uploadStatus.message}</span>
-                      <span className="text-sm text-gray-500">{uploadStatus.progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadStatus.progress}%` }}
-                      />
-                    </div>
+
+              {/* Auth Status */}
+              {useLocalBackend && (
+                isAuthenticated ? (
+                  <div className="flex items-center gap-2">
+                    <User className="w-5 h-5 text-gray-600" />
+                    <span className="text-sm text-gray-600">
+                      {currentUser?.email || '已登录'}
+                    </span>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-700"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      退出
+                    </button>
                   </div>
-                </div>
+                ) : (
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    <User className="w-4 h-4" />
+                    登录
+                  </button>
+                )
               )}
             </div>
-          )}
+          </div>
+        </div>
+      </header>
 
-          {currentStep === 'quiz' && quizItems.length > 0 && (
-            <div className="space-y-6">
-              <QuizDisplay 
-                quizItems={quizItems} 
-                onQuizItemUpdate={handleQuizItemUpdate}
-              />
-              <div className="text-center">
-                <div className="flex justify-center space-x-4">
-                  <button
-                    onClick={handleProceedToKnowledgePoint}
-                    className="inline-flex items-center px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors shadow-md"
-                  >
-                    匹配知识点
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </button>
-                  <button
-                    onClick={handleReset}
-                    className="inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors shadow-md"
-                  >
-                    上传其他文档
-                  </button>
-                </div>
-              </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {renderStepIndicator()}
+
+        {/* Authentication Warning */}
+        {useLocalBackend && !isAuthenticated && currentStep === 'upload' && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-600" />
+            <div>
+              <p className="text-sm text-yellow-800">
+                使用本地后端需要先登录。请点击右上角登录按钮进行认证。
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">
+                提示：您可以切换到外部API模式无需登录即可使用。
+              </p>
             </div>
-          )}
+          </div>
+        )}
 
-          {currentStep === 'knowledge-point' && quizItems.length > 0 && (
+        {/* Image Support Notice */}
+        {useLocalBackend && extractedImages.length > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              已提取 {extractedImages.length} 张图片，将在题目中显示。
+            </p>
+          </div>
+        )}
+
+        {currentStep === 'upload' && (
+          <div className="max-w-2xl mx-auto">
+            <FileUploader 
+              onFileUpload={handleFileUpload}
+              uploadStatus={uploadStatus}
+            />
+          </div>
+        )}
+
+        {currentStep === 'parse' && (
+          <div className="space-y-8">
+            <ParseResults 
+              results={parseResults}
+              onReset={handleReset}
+              onGenerateQuiz={handleGenerateQuiz}
+            />
+          </div>
+        )}
+
+        {currentStep === 'quiz' && (
+          <div className="space-y-8">
+            <QuizDisplay 
+              quizItems={quizItems}
+              onQuizItemUpdate={handleQuizItemUpdate}
+            />
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={handleReset}
+                className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                重新开始
+              </button>
+              <button
+                onClick={handleProceedToKnowledgePoint}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              >
+                <span>继续匹配知识点</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {currentStep === 'knowledge-point' && (
+          <div className="space-y-8">
             <KnowledgePointMatching
               quizItems={quizItems}
               onComplete={handleKnowledgePointComplete}
               onBack={handleBackToQuiz}
             />
-          )}
+          </div>
+        )}
 
-          {currentStep === 'final' && quizWithKnowledgePoints.length > 0 && (
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                <div className="text-center">
-                  <div className="bg-emerald-100 p-4 rounded-full w-16 h-16 mx-auto mb-4">
-                    <BookOpen className="w-8 h-8 text-emerald-600" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">处理完成！</h2>
-                  <p className="text-gray-600 mb-6">
-                    已成功生成 {quizWithKnowledgePoints.length} 道题目并完成知识点匹配
+        {currentStep === 'final' && (
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="bg-white rounded-xl shadow-lg p-8">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">处理完成！</h2>
+              <p className="text-gray-600 mb-6">
+                成功生成 {quizWithKnowledgePoints.length} 道题目并匹配知识点
+              </p>
+              
+              {useLocalBackend && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <Upload className="w-5 h-5 text-green-600 mx-auto mb-2" />
+                  <p className="text-sm text-green-800">
+                    题目已成功提交到后端数据库
                   </p>
-                  <div className="flex justify-center space-x-4 mb-6">
-                    <button
-                      onClick={() => setCurrentStep('quiz')}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                    >
-                      查看题目
-                    </button>
-                    <button
-                      onClick={() => setCurrentStep('knowledge-point')}
-                      className="px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors"
-                    >
-                      查看知识点
-                    </button>
-                    <button
-                      onClick={handleReset}
-                      className="px-6 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
-                    >
-                      重新开始
-                    </button>
-                  </div>
-                  
-                  {/* Export Section */}
-                  <div className="border-t border-gray-200 pt-6">
-                    <button
-                      onClick={handleExportToExcel}
-                      className="inline-flex items-center px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors shadow-md"
-                    >
-                      <Download className="w-5 h-5 mr-2" />
-                      导出为 Excel 文件
-                    </button>
-                  </div>
                 </div>
+              )}
+
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={handleExportToExcel}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                >
+                  <Download className="w-5 h-5" />
+                  <span>导出为 Excel</span>
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  处理新文档
+                </button>
               </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
+      </main>
+
       <Footer />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }

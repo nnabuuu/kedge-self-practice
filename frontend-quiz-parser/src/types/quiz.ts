@@ -14,6 +14,8 @@ export interface QuizItem {
   options: string[];
   answer: string | string[] | number[];
   originalParagraph?: string;
+  images?: string[]; // URLs or base64 encoded images
+  attachments?: string[]; // Server attachment URLs
 }
 
 export interface GPTQuizResponse {

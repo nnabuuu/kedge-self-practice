@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup": "npm install && cp .env.example .env",
+    "check-env": "test -f .env || (echo 'Creating .env file...' && cp .env.example .env)"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
