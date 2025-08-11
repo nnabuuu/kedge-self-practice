@@ -11,6 +11,7 @@ import { GptController } from './gpt.controller';
 import { DocxController } from './docx.controller';
 import { QuizController } from './quiz.controller';
 import { AttachmentsController } from './attachments.controller';
+import { PracticeModule } from './practice/practice.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AttachmentsController } from './attachments.controller';
     KnowledgePointModule,
     QuizModule,
     QuizParserModule,
+    PracticeModule,
   ],
   controllers: [
     AuthController,
