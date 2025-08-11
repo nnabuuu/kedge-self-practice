@@ -28,7 +28,7 @@ export class AuthRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(UserSchema)`
-          INSERT INTO kedge_gateway.users (
+          INSERT INTO kedge_practice.users (
             name,
             password_hash,
             salt,
@@ -67,7 +67,7 @@ export class AuthRepository {
                  role,
                  created_at,
                  updated_at
-          FROM kedge_gateway.users
+          FROM kedge_practice.users
           WHERE name = ${name}
         `,
       );

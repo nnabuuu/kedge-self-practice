@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Create the schema if it does not exist
-CREATE SCHEMA IF NOT EXISTS kedge_gateway;
+CREATE SCHEMA IF NOT EXISTS kedge_practice;
 
 -- Trigger function to update the updated_at column
 CREATE OR REPLACE FUNCTION public.set_current_timestamp_updated_at()
@@ -19,7 +19,7 @@ $$
 LANGUAGE plpgsql;
 
 -- Users table
-CREATE TABLE IF NOT EXISTS kedge_gateway.users (
+CREATE TABLE IF NOT EXISTS kedge_practice.users (
                                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                                    name VARCHAR(255) NOT NULL UNIQUE,
                                    password_hash TEXT NOT NULL,
@@ -31,6 +31,6 @@ CREATE TABLE IF NOT EXISTS kedge_gateway.users (
 
 -- Add updated_at auto-update trigger for users
 CREATE TRIGGER trigger_set_timestamp_users
-  BEFORE UPDATE ON kedge_gateway.users
+  BEFORE UPDATE ON kedge_practice.users
   FOR EACH ROW
   EXECUTE FUNCTION public.set_current_timestamp_updated_at();

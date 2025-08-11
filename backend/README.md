@@ -6,6 +6,10 @@
 - `nx run api-server:serve` to start api-server, endpoint exposed at http://localhost:8716/api/v1/
 
 ## Development
+To manually update database, run:
+
+hasura migrate status --skip-update-check --endpoint $HASURA_ENDPOINT --admin-secret $HASURA_SECRET
+
 
 ## Prerequisite
 
