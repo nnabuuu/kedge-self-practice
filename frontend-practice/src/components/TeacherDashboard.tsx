@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, BookOpen, FileText, Users, BarChart3, Settings, Plus, Search, Filter, Download, Upload, Brain, Sparkles, Target, Clock, CheckCircle, AlertCircle, Eye, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, Users, BarChart3, Settings, Plus, Search, Filter, Download, Upload, Brain, Sparkles, Target, Clock, CheckCircle, AlertCircle, Eye, Edit, Trash2, ExternalLink } from 'lucide-react';
 import { Subject, KnowledgePoint, QuizQuestion } from '../types/quiz';
 import { Teacher, QuestionDraft, KnowledgePointDraft, AIAnalysisResult } from '../types/teacher';
 import { useSubjects, useKnowledgePoints, useQuestionSearch } from '../hooks/useApi';
+import { authService } from '../services/authService';
 
 interface TeacherDashboardProps {
   teacher: Teacher;
@@ -312,7 +313,18 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
 
       {/* 快速操作 */}
       <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-bold text-gray-900 mb-6">快速操作</h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-gray-900">快速操作</h3>
+          <button
+            onClick={() => authService.navigateToQuizParser()}
+            className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-300 group"
+            title="打开DOCX题库解析器 - 上传Word文档提取题目"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            <span>题库解析器</span>
+            <ExternalLink className="w-4 h-4 ml-1 opacity-60 group-hover:opacity-100" />
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={() => {

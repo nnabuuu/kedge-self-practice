@@ -1,0 +1,551 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Kedge Self-Practice API",
+    "description": "Self-practice learning platform API for middle school students",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8718/api/v1",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "example": "student123" },
+          "password": { "type": "string", "example": "password123" }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["username", "password", "role", "name"],
+        "properties": {
+          "username": { "type": "string", "example": "teacher001" },
+          "password": { "type": "string", "example": "securePass123" },
+          "role": { "type": "string", "enum": ["student", "teacher", "admin"] },
+          "name": { "type": "string", "example": "John Doe" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": { "type": "string" },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "username": { "type": "string" },
+              "name": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          }
+        }
+      },
+      "Quiz": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "question": { "type": "string" },
+          "options": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "correct_answer": { "type": "string" },
+          "knowledge_point_id": { "type": "string" },
+          "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+          "attachments": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "KnowledgePoint": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "subject": { "type": "string" },
+          "grade": { "type": "number" },
+          "parent_id": { "type": "string", "nullable": true },
+          "description": { "type": "string" }
+        }
+      },
+      "DocxUploadResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "quizzes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Quiz" }
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "placeholder": { "type": "string" },
+                "url": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Login user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quiz": {
+      "get": {
+        "tags": ["Quiz"],
+        "summary": "Get all quizzes",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "knowledge_point_id",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "difficulty",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["easy", "medium", "hard"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of quizzes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Quiz" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Quiz"],
+        "summary": "Create a new quiz",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Quiz" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Quiz created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Quiz" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quiz/{id}": {
+      "get": {
+        "tags": ["Quiz"],
+        "summary": "Get quiz by ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quiz details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Quiz" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Quiz"],
+        "summary": "Update quiz",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Quiz" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Quiz updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Quiz" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Quiz"],
+        "summary": "Delete quiz",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Quiz deleted"
+          }
+        }
+      }
+    },
+    "/quiz/submit-with-images": {
+      "post": {
+        "tags": ["Quiz"],
+        "summary": "Submit quiz with image attachments",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "quiz": { "$ref": "#/components/schemas/Quiz" },
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Quiz created with images",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Quiz" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/knowledge-point": {
+      "get": {
+        "tags": ["Knowledge Points"],
+        "summary": "Get all knowledge points",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "grade",
+            "in": "query",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of knowledge points",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/KnowledgePoint" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Knowledge Points"],
+        "summary": "Create knowledge point",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/KnowledgePoint" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Knowledge point created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/KnowledgePoint" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/docx/extract-quiz-with-images": {
+      "post": {
+        "tags": ["Document Processing"],
+        "summary": "Extract quizzes from DOCX with images",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "DOCX file to process"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Extracted quizzes with images",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocxUploadResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gpt/generate-quiz": {
+      "post": {
+        "tags": ["AI Generation"],
+        "summary": "Generate quiz using GPT",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content", "knowledge_point_id"],
+                "properties": {
+                  "content": { 
+                    "type": "string",
+                    "description": "Content to generate quiz from"
+                  },
+                  "knowledge_point_id": { "type": "string" },
+                  "count": { 
+                    "type": "integer", 
+                    "default": 5,
+                    "description": "Number of questions to generate"
+                  },
+                  "difficulty": { 
+                    "type": "string", 
+                    "enum": ["easy", "medium", "hard"],
+                    "default": "medium"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Generated quizzes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Quiz" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachments/quiz/{year}/{month}/{filename}": {
+      "get": {
+        "tags": ["Attachments"],
+        "summary": "Get quiz attachment",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image file",
+            "content": {
+              "image/png": {},
+              "image/jpeg": {}
+            }
+          }
+        }
+      }
+    },
+    "/attachments/stats": {
+      "get": {
+        "tags": ["Attachments"],
+        "summary": "Get attachment statistics",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Attachment statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_files": { "type": "integer" },
+                    "total_size": { "type": "integer" },
+                    "by_type": {
+                      "type": "object",
+                      "additionalProperties": { "type": "integer" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

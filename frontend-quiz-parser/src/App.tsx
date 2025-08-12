@@ -32,10 +32,52 @@ function App() {
   const [useLocalBackend, setUseLocalBackend] = useState(true);
 
   useEffect(() => {
-    // Check if user is already authenticated
-    const token = getAuthToken();
-    if (token) {
-      setIsAuthenticated(true);
+    // Check for shared token from URL parameters (from frontend-practice)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedToken = urlParams.get('token');
+    
+    if (sharedToken) {
+      // Store the shared token
+      localStorage.setItem('jwt_token', sharedToken);
+      
+      // Get shared user data
+      const sharedUserData = localStorage.getItem('shared_user_data');
+      if (sharedUserData) {
+        const userData = JSON.parse(sharedUserData);
+        setCurrentUser(userData);
+        setIsAuthenticated(true);
+        
+        // Clean up URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('token');
+        window.history.replaceState({}, document.title, url.toString());
+        
+        console.log('Successfully authenticated via shared token from frontend-practice');
+      }
+    } else {
+      // Check for existing authentication
+      const token = getAuthToken();
+      if (token) {
+        setIsAuthenticated(true);
+        
+        // Try to get user data from local storage
+        const userData = localStorage.getItem('user_data');
+        if (userData) {
+          setCurrentUser(JSON.parse(userData));
+        }
+      } else {
+        // Check for shared token in localStorage
+        const sharedToken = localStorage.getItem('shared_jwt_token');
+        const sharedUserData = localStorage.getItem('shared_user_data');
+        
+        if (sharedToken && sharedUserData) {
+          localStorage.setItem('jwt_token', sharedToken);
+          const userData = JSON.parse(sharedUserData);
+          setCurrentUser(userData);
+          setIsAuthenticated(true);
+          console.log('Authenticated using shared token from localStorage');
+        }
+      }
     }
   }, []);
 
@@ -285,7 +327,12 @@ function App() {
                   <div className="flex items-center gap-2">
                     <User className="w-5 h-5 text-gray-600" />
                     <span className="text-sm text-gray-600">
-                      {currentUser?.email || '已登录'}
+                      {currentUser?.name || currentUser?.email || '已登录'}
+                      {currentUser?.role && (
+                        <span className="ml-1 text-xs text-blue-600">
+                          ({currentUser.role === 'teacher' ? '教师' : '学生'})
+                        </span>
+                      )}
                     </span>
                     <button
                       onClick={handleLogout}

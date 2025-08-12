@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Subject, PracticeSession, PracticeHistory } from './types/quiz';
 import { Teacher } from './types/teacher';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { authService } from './services/authService';
 import LoginPage from './components/LoginPage';
 import HomePage from './components/HomePage';
 import SubjectSelection from './components/SubjectSelection';
@@ -48,6 +49,16 @@ function App() {
   const [currentSession, setCurrentSession] = useState<PracticeSession | null>(null);
   const [practiceHistory, setPracticeHistory] = useLocalStorage<PracticeHistory[]>('practice-history', []);
 
+  // Check for existing authentication on app start
+  useEffect(() => {
+    const existingUser = authService.getCurrentUser();
+    if (existingUser && authService.isAuthenticated()) {
+      setUserType(existingUser.role);
+      setCurrentUser(existingUser);
+      setCurrentScreen('home');
+    }
+  }, []);
+
   const handleLogin = (type: 'student' | 'teacher', userData: any) => {
     setUserType(type);
     setCurrentUser(userData);
@@ -55,6 +66,7 @@ function App() {
   };
 
   const handleLogout = () => {
+    authService.logout();
     setUserType(null);
     setCurrentUser(null);
     setCurrentScreen('login');
