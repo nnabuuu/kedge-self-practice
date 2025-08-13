@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Remote/Integration Environment Configuration
+# Copy this to .envrc.override and update with actual values
+
+# Required for migrations:
+# export NODE_DATABASE_URL="postgres://arthur:arthur@134.146.192.19/arthur_test"
+# export HASURA_ENDPOINT="http://134.146.192.19:8080"  # Your Hasura instance URL
+# export HASURA_SECRET="your-admin-secret"            # Your Hasura admin secret
+
+# Optional: Override other settings for remote environment
+# export API_PORT=8718
+# export REDIS_HOST=134.146.192.19
+# export REDIS_PORT=6379
+# export JWT_SECRET="remote-jwt-secret"

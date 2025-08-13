@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCHEMA_DIR="${PROJECT_ROOT}/packages/dev/database/schema"
+
+# Load environment variables
+if [[ -f "${PROJECT_ROOT}/.envrc" ]]; then
+    source "${PROJECT_ROOT}/.envrc"
+fi
+
+# Allow environment name to be passed as argument
+ENV_NAME="${1:-remote}"
+
+echo "🔧 Hasura Migration Tool for ${ENV_NAME} environment"
+echo ""
+
+# Check required environment variables
+if [[ -z "${NODE_DATABASE_URL:-}" ]]; then
+    echo "❌ NODE_DATABASE_URL is not set"
+    echo ""
+    echo "   Please set in .envrc or .envrc.override:"
+    echo "   export NODE_DATABASE_URL=\"postgres://user:pass@host:port/database\""
+    exit 1
+fi
+
+if [[ -z "${HASURA_ENDPOINT:-}" ]]; then
+    echo "❌ HASURA_ENDPOINT is not set"
+    echo ""
+    echo "   Please set in .envrc or .envrc.override:"
+    echo "   export HASURA_ENDPOINT=\"http://your-hasura-host:port\""
+    exit 1
+fi
+
+if [[ -z "${HASURA_SECRET:-}" ]] && [[ -z "${HASURA_GRAPHQL_ADMIN_SECRET:-}" ]]; then
+    echo "❌ HASURA_SECRET or HASURA_GRAPHQL_ADMIN_SECRET is not set"
+    echo ""
+    echo "   Please set in .envrc or .envrc.override:"
+    echo "   export HASURA_SECRET=\"your-admin-secret\""
+    exit 1
+fi
+
+ADMIN_SECRET="${HASURA_SECRET:-${HASURA_GRAPHQL_ADMIN_SECRET}}"
+
+echo "🚀 Migrating with Hasura"
+echo "   Database: ${NODE_DATABASE_URL}"
+echo "   Hasura: ${HASURA_ENDPOINT}"
+echo ""
+
+cd "${SCHEMA_DIR}"
+
+# Check if Hasura CLI exists
+HASURA_CLI="${PROJECT_ROOT}/packages/dev/database/bin/cli-hasura-darwin-arm64-2.35.1"
+if [[ ! -f "${HASURA_CLI}" ]]; then
+    echo "❌ Hasura CLI not found at ${HASURA_CLI}"
+    echo "   Please run: cd ${PROJECT_ROOT}/packages/dev/database && ./fix-hasura-cli.sh"
+    exit 1
+fi
+
+# Apply migrations
+echo "📦 Applying migrations..."
+"${HASURA_CLI}" migrate apply \
+    --database-name main_db \
+    --endpoint "${HASURA_ENDPOINT}" \
+    --admin-secret "${ADMIN_SECRET}" \
+    --skip-update-check
+
+# Apply metadata if needed
+if [[ -d "${SCHEMA_DIR}/metadata" ]]; then
+    echo "📋 Applying metadata..."
+    "${HASURA_CLI}" metadata apply \
+        --endpoint "${HASURA_ENDPOINT}" \
+        --admin-secret "${ADMIN_SECRET}" \
+        --skip-update-check
+fi
+
+echo ""
+echo "✅ Migration complete!"
+
+# Show migration status
+echo ""
+echo "📊 Migration Status:"
+"${HASURA_CLI}" migrate status \
+    --database-name main_db \
+    --endpoint "${HASURA_ENDPOINT}" \
+    --admin-secret "${ADMIN_SECRET}" \
+    --skip-update-check
