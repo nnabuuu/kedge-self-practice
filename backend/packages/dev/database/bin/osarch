@@ -13,3 +13,8 @@ function normalizePlatform(platform) {
   return platform;
 }
 
+const arch = normalizeArch(os.arch());
+const platform = normalizePlatform(os.platform());
+
+console.log(`${platform}-${arch}`);
+

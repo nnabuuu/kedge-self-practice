@@ -6,12 +6,21 @@ export PROJECT_NAME="dev-database"
 source "$NX_WORKSPACE_ROOT"/tools/bin/_dev_utils
 echo_welcome
 
-HASURA_PORT=${HASURA_GRAPHQL_SERVER_PORT:-'8080'}
-HASURA_SECRET=${HASURA_GRAPHQL_ADMIN_SECRET:-'mysecretkey'}
+HASURA_PORT=${HASURA_GRAPHQL_SERVER_PORT:-'28717'}
+HASURA_SECRET=${HASURA_GRAPHQL_ADMIN_SECRET:-'9AgJckEMHPRgrasj7Ey8jR'}
 HASURA_ENDPOINT=${HASURA_GRAPHQL_ENDPOINT:-"http://localhost:$HASURA_PORT"}
 
 print_usage() {
-  echo "Usage: $0 {up|upd|deploy|down|logs|clean|reset|sync}"
+  echo "Usage: $0 {up|upd|deploy|down|logs|clean|reset|sync|init}"
+  echo ""
+  echo "Commands:"
+  echo "  up     - Start database and apply migrations"
+  echo "  down   - Stop database services"
+  echo "  logs   - Show service logs"
+  echo "  clean  - Stop and remove volumes"
+  echo "  reset  - Clean and restart with fresh database"
+  echo "  init   - Manually apply migrations (if up failed)"
+  echo "  sync   - Upload artifact (development)"
 }
 
 main() {
@@ -45,12 +54,54 @@ main() {
       echo -n .
       if curl -so /dev/null "$HASURA_ENDPOINT"/v1/version; then
         echo
+        echo "Hasura is ready!"
+        
+        # Change to the directory containing Hasura config.yaml
+        cd "$PROJECT_ROOT/schema"
+        
+        # Wait for Hasura to fully initialize
+        echo "Waiting for Hasura to initialize catalog and database connection..."
+        
+        # Wait up to 60 seconds for Hasura to be fully ready
+        local retries=0
+        while [ $retries -lt 12 ]; do
+          sleep 5
+          echo -n "."
+          if curl -s -H "X-Hasura-Admin-Secret: $HASURA_SECRET" "$HASURA_ENDPOINT/v1/metadata" | grep -q "inconsistent_objects" 2>/dev/null; then
+            echo " Ready!"
+            break
+          fi
+          retries=$((retries + 1))
+        done
+        
+        if [ $retries -eq 12 ]; then
+          echo " Timeout, but proceeding anyway..."
+        fi
+        
         echo "Applying migrations..."
-
+        
+        # Apply migrations first (this creates the database schema)
+        hasura migrate apply --all-databases \
+          --endpoint "$HASURA_ENDPOINT" \
+          --admin-secret "$HASURA_SECRET" \
+          --skip-update-check || echo "Migration apply failed or already applied"
+        
+        # Then apply metadata (this sets up GraphQL schema)
+        echo "Applying metadata..."
         hasura metadata apply \
-          && hasura migrate apply --all-databases \
-          && hasura metadata reload
-#          && hasura seed apply --all-databases
+          --endpoint "$HASURA_ENDPOINT" \
+          --admin-secret "$HASURA_SECRET" \
+          --skip-update-check || echo "Metadata apply failed or already applied"
+        
+        # Finally reload metadata to ensure consistency
+        echo "Reloading metadata..."
+        hasura metadata reload \
+          --endpoint "$HASURA_ENDPOINT" \
+          --admin-secret "$HASURA_SECRET" \
+          --skip-update-check || echo "Metadata reload failed"
+#          && hasura seed apply --all-databases \
+#          --endpoint "$HASURA_ENDPOINT" \
+#          --admin-secret "$HASURA_SECRET"
         exit 0
       fi
       sleep 0.5
@@ -73,8 +124,27 @@ main() {
   pull)
     _docker_compose pull
     ;;
+  init)
+    echo "Manually applying Hasura migrations..."
+    cd "$PROJECT_ROOT/schema"
+    echo "Applying migrations..."
+    hasura migrate apply --all-databases \
+      --endpoint "$HASURA_ENDPOINT" \
+      --admin-secret "$HASURA_SECRET" \
+      --skip-update-check
+    echo "Applying metadata..."
+    hasura metadata apply \
+      --endpoint "$HASURA_ENDPOINT" \
+      --admin-secret "$HASURA_SECRET" \
+      --skip-update-check
+    echo "Reloading metadata..."
+    hasura metadata reload \
+      --endpoint "$HASURA_ENDPOINT" \
+      --admin-secret "$HASURA_SECRET" \
+      --skip-update-check
+    ;;
   *)
-    echo "Usage: $0 {up|down|logs|clean|reset|pull}"
+    print_usage
     exit 1
     ;;
   esac

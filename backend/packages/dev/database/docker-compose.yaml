@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   postgres:
     restart: always
@@ -17,11 +16,13 @@ services:
       - default
   hasura:
     restart: always
-    image: hasura/graphql-engine:v${HASURA_VERSION}
+    image: hasura/graphql-engine:v${HASURA_VERSION:-2.35.1}
+    depends_on:
+      - postgres
     environment:
       HASURA_GRAPHQL_METADATA_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/kedge_db'
       HASURA_GRAPHQL_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/kedge_db
-      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET}
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:-9AgJckEMHPRgrasj7Ey8jR}
       HASURA_GRAPHQL_SERVER_PORT: 8080
       HASURA_GRAPHQL_ENABLE_CONSOLE: 'true'
       HASURA_GRAPHQL_LOG_LEVEL: 'info'
@@ -29,12 +30,12 @@ services:
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: 'startup, http-log, webhook-log, websocket-log, query-log'
       HASURA_GRAPHQL_DEV_MODE: 'true'
     ports:
-      - '${HASURA_GRAPHQL_SERVER_PORT}:8080'
+      - '${HASURA_GRAPHQL_SERVER_PORT:-28717}:8080'
     networks:
       - default
 volumes:
   pgdata: {}
 networks:
   default:
-    name: ${DEV_NETWORK_NAME}
+    name: ${DEV_NETWORK_NAME:-kedge_network}
     external: true

@@ -1,3 +1,4 @@
 version: 3
-endpoint: http://localhost:8080
+endpoint: http://localhost:28717
 metadata_directory: metadata
+admin_secret: 9AgJckEMHPRgrasj7Ey8jR
