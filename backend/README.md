@@ -3,7 +3,7 @@
 - We use [Nx](./README_NX.md) as our build system.
 
 ## Workflow development
-- `nx run api-server:serve` to start api-server, endpoint exposed at http://localhost:8716/api/v1/
+- `nx run api-server:serve` to start api-server, endpoint exposed at http://localhost:8718/v1/
 
 ## Development
 To manually update database, run:

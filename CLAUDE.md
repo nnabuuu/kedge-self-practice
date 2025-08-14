@@ -185,7 +185,7 @@ backend/
 - JWT secret configured via `JWT_SECRET` env var
 
 **API Structure**:
-- REST endpoints served at `http://localhost:8718/api/v1/`
+- REST endpoints served at `http://localhost:8718/v1/`
 - Controllers in `packages/apps/api-server/src/app/controllers/`
 - Swagger documentation auto-generated
 
@@ -270,7 +270,7 @@ Two React-based frontend proof of concepts are available at the project root:
 // Current (external)
 'https://api.zhushou.one/docx/upload'
 // Should be
-'http://localhost:8718/api/v1/docx/extract-quiz-with-images'
+'http://localhost:8718/v1/docx/extract-quiz-with-images'
 
 // New endpoints available
 POST /quiz/submit-with-images

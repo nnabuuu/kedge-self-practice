@@ -1,7 +1,7 @@
 import { Subject, Quiz, KnowledgePoint } from '../types/quiz';
 import { authService } from './authService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
 
 interface ApiResponse<T = any> {
   success: boolean;

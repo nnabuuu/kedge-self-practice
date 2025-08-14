@@ -29,7 +29,7 @@ const SignInSchema = z.object({
 
 export class SignInDto extends createZodDto(SignInSchema) {}
 
-@Controller('api/v1/auth')
+@Controller('v1/auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,

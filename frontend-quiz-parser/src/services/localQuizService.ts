@@ -83,9 +83,9 @@ export const submitQuizWithImages = async (
 
 // Get quiz attachment URL
 export const getQuizAttachmentUrl = (path: string): string => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/api/v1';
-  // Remove /api/v1 from base URL if it's already included in the path
-  const cleanBaseUrl = baseUrl.replace(/\/api\/v1$/, '');
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
+  // Remove /v1 from base URL if it's already included in the path
+  const cleanBaseUrl = baseUrl.replace(/\/v1$/, '');
   return `${cleanBaseUrl}${path}`;
 };
 

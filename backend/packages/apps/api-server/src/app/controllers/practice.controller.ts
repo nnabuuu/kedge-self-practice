@@ -60,7 +60,7 @@ class RecordMistakeDto extends createZodDto(RecordMistakeSchema) {}
 class RecordCorrectionDto extends createZodDto(RecordCorrectionSchema) {}
 
 @ApiTags('Practice')
-@Controller('api/v1/practice')
+@Controller('v1/practice')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class PracticeController {

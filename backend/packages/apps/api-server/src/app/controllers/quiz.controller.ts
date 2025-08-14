@@ -38,7 +38,7 @@ interface MulterFile {
 @ApiTags('quiz')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('quiz')
+@Controller('v1/quiz')
 export class QuizController {
   constructor(
     private readonly quizService: QuizService,

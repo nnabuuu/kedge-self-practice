@@ -3,7 +3,7 @@ import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { GptService, QuizItem, ParagraphBlock } from '@kedge/quiz-parser';
 
 @UseGuards(JwtAuthGuard, TeacherGuard)
-@Controller('gpt')
+@Controller('v1/gpt')
 export class GptController {
   constructor(private readonly gptService: GptService) {}
 

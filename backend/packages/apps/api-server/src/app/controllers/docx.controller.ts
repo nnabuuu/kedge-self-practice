@@ -15,7 +15,7 @@ interface MulterFile {
 @ApiTags('docx')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, TeacherGuard)
-@Controller('docx')
+@Controller('v1/docx')
 export class DocxController {
   constructor(
     private readonly docxService: DocxService,

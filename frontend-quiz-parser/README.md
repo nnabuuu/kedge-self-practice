@@ -41,7 +41,7 @@ Frontend will be available at: http://localhost:5173
 ## 🔧 Configuration
 
 ### Environment Variables
-- `VITE_API_BASE_URL`: Backend API endpoint (default: `http://localhost:8718/api/v1`)
+- `VITE_API_BASE_URL`: Backend API endpoint (default: `http://localhost:8718/v1`)
 
 ### Authentication
 - Demo credentials: `teacher@example.com` / `password123`
