@@ -1,7 +1,7 @@
 import React from 'react';
 import { QuizItem } from '../types/quiz';
 import { Brain, CheckCircle, Edit3, List, FileText, HelpCircle, Wand2, RefreshCw, Loader2, Undo2, RotateCcw, Sparkles } from 'lucide-react';
-import { polishQuizItem, changeQuizType } from '../services/quizService';
+import { polishQuizItem, changeQuizType } from '../services/localQuizService';
 import { QuizImageDisplay } from './QuizImageDisplay';
 
 interface QuizDisplayProps {

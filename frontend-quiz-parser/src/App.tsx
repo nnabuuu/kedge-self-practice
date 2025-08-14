@@ -29,7 +29,6 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [useLocalBackend, setUseLocalBackend] = useState(true);
 
   useEffect(() => {
     // Check for shared token from URL parameters (from frontend-practice)
@@ -82,8 +81,8 @@ function App() {
   }, []);
 
   const handleFileUpload = async (file: File) => {
-    // Check authentication if using local backend
-    if (useLocalBackend && !isAuthenticated) {
+    // Check authentication
+    if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
@@ -95,19 +94,10 @@ function App() {
         message: '正在上传文件...',
       });
 
-      let results: ParagraphData[] = [];
-      let images: string[] = [];
-
-      if (useLocalBackend) {
-        // Use local backend with image support
-        const response = await uploadDocxFileWithImages(file);
-        results = response.paragraphs;
-        images = response.images;
-      } else {
-        // Fallback to external API (no image support)
-        const { uploadDocxFile } = await import('./services/quizService');
-        results = await uploadDocxFile(file);
-      }
+      // Use backend with image support
+      const response = await uploadDocxFileWithImages(file);
+      const results = response.paragraphs;
+      const images = response.images;
       
       setUploadStatus({
         status: 'processing',
@@ -145,21 +135,13 @@ function App() {
         message: '正在生成题目...',
       });
 
-      let items: QuizItem[] = [];
-
-      if (useLocalBackend) {
-        // Use local backend with image support
-        items = await extractQuizFromParagraphsLocal(parseResults, extractedImages);
-        // Add images to quiz items
-        items = items.map(item => ({
-          ...item,
-          images: extractedImages
-        }));
-      } else {
-        // Fallback to external API
-        const { extractQuizFromParagraphs } = await import('./services/quizService');
-        items = await extractQuizFromParagraphs(parseResults);
-      }
+      // Use backend with image support
+      let items = await extractQuizFromParagraphsLocal(parseResults, extractedImages);
+      // Add images to quiz items
+      items = items.map(item => ({
+        ...item,
+        images: extractedImages
+      }));
       
       setQuizItems(items);
       setUploadStatus({
@@ -182,38 +164,36 @@ function App() {
   const handleKnowledgePointComplete = async (quizWithKnowledgePoints: QuizWithKnowledgePoint[]) => {
     setQuizWithKnowledgePoints(quizWithKnowledgePoints);
     
-    // Submit to backend if using local backend
-    if (useLocalBackend) {
-      try {
-        setUploadStatus({
-          status: 'processing',
-          progress: 50,
-          message: '正在提交题目到后端...',
-        });
+    // Submit to backend
+    try {
+      setUploadStatus({
+        status: 'processing',
+        progress: 50,
+        message: '正在提交题目到后端...',
+      });
 
-        const result = await batchSubmitQuizzesWithKnowledgePoints(quizWithKnowledgePoints);
-        
-        if (result.success) {
-          setUploadStatus({
-            status: 'success',
-            progress: 100,
-            message: `成功提交 ${result.successCount} 道题目到后端！`,
-          });
-        } else {
-          setUploadStatus({
-            status: 'error',
-            progress: 0,
-            message: `提交失败：${result.failCount} 道题目失败`,
-          });
-        }
-      } catch (error) {
-        console.error('Submit error:', error);
+      const result = await batchSubmitQuizzesWithKnowledgePoints(quizWithKnowledgePoints);
+      
+      if (result.success) {
+        setUploadStatus({
+          status: 'success',
+          progress: 100,
+          message: `成功提交 ${result.successCount} 道题目到后端！`,
+        });
+      } else {
         setUploadStatus({
           status: 'error',
           progress: 0,
-          message: error instanceof Error ? error.message : '提交失败',
+          message: `提交失败：${result.failCount} 道题目失败`,
         });
       }
+    } catch (error) {
+      console.error('Submit error:', error);
+      setUploadStatus({
+        status: 'error',
+        progress: 0,
+        message: error instanceof Error ? error.message : '提交失败',
+      });
     }
     
     setCurrentStep('final');
@@ -310,20 +290,8 @@ function App() {
             </div>
             
             <div className="flex items-center gap-4">
-              {/* Backend Toggle */}
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">使用本地后端:</label>
-                <input
-                  type="checkbox"
-                  checked={useLocalBackend}
-                  onChange={(e) => setUseLocalBackend(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-              </div>
-
               {/* Auth Status */}
-              {useLocalBackend && (
-                isAuthenticated ? (
+              {isAuthenticated ? (
                   <div className="flex items-center gap-2">
                     <User className="w-5 h-5 text-gray-600" />
                     <span className="text-sm text-gray-600">
@@ -342,15 +310,14 @@ function App() {
                       退出
                     </button>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    <User className="w-4 h-4" />
-                    登录
-                  </button>
-                )
+              ) : (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  <User className="w-4 h-4" />
+                  登录
+                </button>
               )}
             </div>
           </div>
@@ -362,22 +329,19 @@ function App() {
         {renderStepIndicator()}
 
         {/* Authentication Warning */}
-        {useLocalBackend && !isAuthenticated && currentStep === 'upload' && (
+        {!isAuthenticated && currentStep === 'upload' && (
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-600" />
             <div>
               <p className="text-sm text-yellow-800">
-                使用本地后端需要先登录。请点击右上角登录按钮进行认证。
-              </p>
-              <p className="text-xs text-yellow-600 mt-1">
-                提示：您可以切换到外部API模式无需登录即可使用。
+                需要先登录才能使用系统。请点击右上角登录按钮进行认证。
               </p>
             </div>
           </div>
         )}
 
         {/* Image Support Notice */}
-        {useLocalBackend && extractedImages.length > 0 && (
+        {extractedImages.length > 0 && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
               已提取 {extractedImages.length} 张图片，将在题目中显示。

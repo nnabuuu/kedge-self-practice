@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { QuizItem, QuizWithKnowledgePoint, KnowledgePointMatchResult } from '../types/quiz';
-import { matchKnowledgePoint } from '../services/quizService';
+import { matchKnowledgePoint } from '../services/localQuizService';
 import { Brain, BookOpen, CheckCircle, AlertCircle, Loader2, ArrowRight, Target, ChevronDown, ChevronUp, Tag, Globe, Crown, Search, Edit3, X, Check } from 'lucide-react';
 
 interface KnowledgePointMatchingProps {

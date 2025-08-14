@@ -144,7 +144,51 @@ export const listKnowledgePoints = async (): Promise<KnowledgePoint[]> => {
   return data;
 };
 
+// Polish quiz item using GPT
+export const polishQuizItem = async (item: QuizItem): Promise<QuizItem> => {
+  const response = await apiFetch('/gpt/polish-quiz', {
+    method: 'POST',
+    body: JSON.stringify({ item }),
+  });
+
+  const data: QuizItem = await response.json();
+  return data;
+};
+
+// Change quiz type
+export const changeQuizType = async (
+  item: QuizItem, 
+  newType: 'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective'
+): Promise<QuizItem> => {
+  const response = await apiFetch('/gpt/change-quiz-type', {
+    method: 'POST',
+    body: JSON.stringify({ item, newType }),
+  });
+
+  const data: QuizItem = await response.json();
+  return data;
+};
+
 // Match knowledge point for a quiz item
+export const matchKnowledgePoint = async (
+  item: QuizItem
+): Promise<{
+  matched?: KnowledgePoint;
+  candidates: KnowledgePoint[];
+  keywords: string[];
+  country?: string;
+  dynasty?: string;
+}> => {
+  const response = await apiFetch('/knowledge-points/match', {
+    method: 'POST',
+    body: JSON.stringify(item),
+  });
+  
+  const data = await response.json();
+  return data;
+};
+
+// Match knowledge point for a quiz item (keep for backward compatibility)
 export const matchKnowledgePointLocal = async (
   item: QuizItem
 ): Promise<{

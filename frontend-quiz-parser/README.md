@@ -57,17 +57,18 @@ Frontend will be available at: http://localhost:5173
 6. **Submit** - Save to backend database
 7. **Export** - Download as Excel file
 
-## 🔄 Backend vs External API
+## 🔧 Backend Integration
 
-Toggle "使用本地后端" in the header to switch between:
+This application is now fully integrated with the local backend API and includes:
 
-| Feature | External API | Local Backend |
-|---------|-------------|--------------|
-| Upload DOCX | ✅ | ✅ |
-| Extract Images | ❌ | ✅ |
-| Authentication | ❌ | ✅ |
-| Save to Database | ❌ | ✅ |
-| Image Display | ❌ | ✅ |
+| Feature | Status |
+|---------|--------|
+| DOCX Upload & Processing | ✅ |
+| Image Extraction & Display | ✅ |
+| JWT Authentication | ✅ |
+| Database Storage | ✅ |
+| Knowledge Point Matching | ✅ |
+| Excel Export | ✅ |
 
 ## 🛠️ Development
 
