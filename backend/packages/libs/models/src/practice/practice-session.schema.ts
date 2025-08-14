@@ -6,8 +6,24 @@ export const PracticeStrategySchema = z.enum([
   'sequential',
   'difficulty_adaptive',
   'weakness_focused',
-  'review_incorrect'
+  'review_incorrect',
+  'QUICK_PRACTICE',
+  'WEAKNESS_REINFORCEMENT',
+  'MISTAKE_REINFORCEMENT'
 ]);
+
+export const PracticeStrategyCode = {
+  QUICK_PRACTICE: 'QUICK_PRACTICE',
+  WEAKNESS_REINFORCEMENT: 'WEAKNESS_REINFORCEMENT',
+  MISTAKE_REINFORCEMENT: 'MISTAKE_REINFORCEMENT',
+} as const;
+
+export const DifficultyLevel = {
+  EASY: 'EASY',
+  MEDIUM: 'MEDIUM',
+  HARD: 'HARD',
+  AUTO: 'AUTO',
+} as const;
 
 export const PracticeSessionStatusSchema = z.enum([
   'created',
@@ -157,6 +173,87 @@ export const BasicStatisticsSchema = z.object({
   average_score: z.string().nullable()
 });
 
+// Strategy-specific schemas
+export const StrategyDefinitionSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  isActive: z.boolean().default(true),
+  requiredHistory: z.boolean().default(false),
+  minimumPracticeCount: z.number().int().min(0).default(0),
+  minimumMistakeCount: z.number().int().min(0).default(0),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const GeneratePracticeRequestSchema = z.object({
+  strategyCode: z.string(),
+  knowledgePointIds: z.array(z.string().uuid()).min(1),
+  questionCount: z.number().int().min(1).max(100).default(20),
+  timeLimit: z.number().int().min(60).max(7200).optional(),
+  difficulty: z.string().default('AUTO'),
+  options: z.object({
+    includeExplanations: z.boolean().default(true),
+    allowSkip: z.boolean().default(false),
+    showProgress: z.boolean().default(true),
+    instantFeedback: z.boolean().default(true),
+  }).optional(),
+});
+
+export const StudentWeaknessSchema = z.object({
+  id: z.string().uuid(),
+  studentId: z.string().uuid(),
+  knowledgePointId: z.string().uuid(),
+  accuracyRate: z.number().min(0).max(100),
+  practiceCount: z.number().int().min(0),
+  lastPracticed: z.date().optional(),
+  improvementTrend: z.number().optional(),
+  isWeak: z.boolean().default(false),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const StudentMistakeSchema = z.object({
+  id: z.string().uuid(),
+  studentId: z.string().uuid(),
+  quizId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  incorrectAnswer: z.string(),
+  correctAnswer: z.string(),
+  mistakeCount: z.number().int().min(1).default(1),
+  lastAttempted: z.date(),
+  isCorrected: z.boolean().default(false),
+  correctionCount: z.number().int().min(0).default(0),
+  nextReviewDate: z.date().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const StrategyRecommendationSchema = z.object({
+  strategyCode: z.string(),
+  reason: z.string(),
+  priority: z.number().int().min(1).max(10),
+  metadata: z.record(z.any()).optional(),
+});
+
+export const StrategyAnalyticsSchema = z.object({
+  strategyCode: z.string(),
+  usage: z.object({
+    totalSessions: z.number().int(),
+    lastUsed: z.date().optional(),
+    averageScore: z.number().min(0).max(100),
+    improvement: z.number(),
+  }),
+  effectiveness: z.object({
+    weakPointsImproved: z.number().int().optional(),
+    weakPointsRemaining: z.number().int().optional(),
+    averageImprovementRate: z.number().optional(),
+    mistakesCorrected: z.number().int().optional(),
+    mistakesRemaining: z.number().int().optional(),
+  }),
+});
 
 // Type exports
 export type CreatePracticeSession = z.infer<typeof CreatePracticeSessionSchema>;
@@ -169,4 +266,10 @@ export type PracticeStatistics = z.infer<typeof PracticeStatisticsSchema>;
 export type PracticeStrategy = z.infer<typeof PracticeStrategySchema>;
 export type PracticeSessionStatus = z.infer<typeof PracticeSessionStatusSchema>;
 export type BasicStatistics = z.infer<typeof BasicStatisticsSchema>;
+export type StrategyDefinition = z.infer<typeof StrategyDefinitionSchema>;
+export type GeneratePracticeRequest = z.infer<typeof GeneratePracticeRequestSchema>;
+export type StudentWeakness = z.infer<typeof StudentWeaknessSchema>;
+export type StudentMistake = z.infer<typeof StudentMistakeSchema>;
+export type StrategyRecommendation = z.infer<typeof StrategyRecommendationSchema>;
+export type StrategyAnalytics = z.infer<typeof StrategyAnalyticsSchema>;
 

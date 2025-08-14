@@ -11,6 +11,20 @@ To manually update database, run:
 hasura migrate status --skip-update-check --endpoint $HASURA_ENDPOINT --admin-secret $HASURA_SECRET
 
 
+## Environment Configuration
+
+### Setting up environment variables
+1. The `.envrc` file contains safe default values for local development
+2. For production or environment-specific credentials:
+   - Copy `.envrc.override.example` to `.envrc.override`
+   - Update `.envrc.override` with your actual credentials
+   - **IMPORTANT**: `.envrc.override` is gitignored and should NEVER be committed
+
+```bash
+cp .envrc.override.example .envrc.override
+# Edit .envrc.override with your credentials
+```
+
 ## Prerequisite
 
 ### Install asdf

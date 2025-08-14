@@ -20,6 +20,12 @@ import {
   PracticeStrategySchema,
   PracticeSessionStatusSchema,
   BasicStatisticsSchema,
+  StrategyDefinitionSchema,
+  GeneratePracticeRequestSchema,
+  StudentWeaknessSchema,
+  StudentMistakeSchema,
+  StrategyRecommendationSchema,
+  StrategyAnalyticsSchema,
 } from './practice-session.schema';
 
 // Knowledge Point exports
@@ -80,6 +86,24 @@ export {
   // Statistics
   BasicStatisticsSchema,
   type BasicStatistics,
+  
+  // Strategy exports
+  StrategyDefinitionSchema,
+  type StrategyDefinition,
+  GeneratePracticeRequestSchema,
+  type GeneratePracticeRequest,
+  StudentWeaknessSchema,
+  type StudentWeakness,
+  StudentMistakeSchema,
+  type StudentMistake,
+  StrategyRecommendationSchema,
+  type StrategyRecommendation,
+  StrategyAnalyticsSchema,
+  type StrategyAnalytics,
+  
+  // Constants
+  PracticeStrategyCode,
+  DifficultyLevel,
 } from './practice-session.schema';
 
 export const PracticeSchema = {

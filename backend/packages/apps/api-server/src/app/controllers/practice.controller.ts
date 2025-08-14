@@ -16,7 +16,7 @@ import { Request as ExpressRequest } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';
 import { JwtAuthGuard } from '@kedge/auth';
-import { PracticeService } from '@kedge/practice';
+import { PracticeService, StrategyService } from '@kedge/practice';
 
 interface AuthenticatedRequest extends ExpressRequest {
   user: {
@@ -32,7 +32,8 @@ import {
   PracticeHistoryQuerySchema,
   PauseSessionSchema,
   ResumeSessionSchema,
-  CompleteSessionSchema
+  CompleteSessionSchema,
+  GeneratePracticeRequestSchema
 } from '@kedge/models';
 
 class CreatePracticeSessionDto extends createZodDto(CreatePracticeSessionSchema) {}
@@ -43,13 +44,17 @@ class PracticeHistoryQueryDto extends createZodDto(PracticeHistoryQuerySchema) {
 class PauseSessionDto extends createZodDto(PauseSessionSchema) {}
 class ResumeSessionDto extends createZodDto(ResumeSessionSchema) {}
 class CompleteSessionDto extends createZodDto(CompleteSessionSchema) {}
+class GeneratePracticeRequestDto extends createZodDto(GeneratePracticeRequestSchema) {}
 
 @ApiTags('Practice')
 @Controller('api/v1/practice')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class PracticeController {
-  constructor(private readonly practiceService: PracticeService) {}
+  constructor(
+    private readonly practiceService: PracticeService,
+    private readonly strategyService: StrategyService
+  ) {}
 
   @Post('sessions/create')
   @ApiOperation({ summary: 'Create a new practice session' })
@@ -205,5 +210,121 @@ export class PracticeController {
       throw new ForbiddenException('Only teachers and admins can view other students statistics');
     }
     return await this.practiceService.getStatistics(studentId);
+  }
+
+  // Strategy endpoints
+  @Get('strategies')
+  @ApiOperation({ summary: 'Get available practice strategies' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'List of available practice strategies',
+  })
+  async getAvailableStrategies(@Request() req: AuthenticatedRequest) {
+    const strategies = await this.strategyService.getAvailableStrategies(req.user.userId);
+    
+    return {
+      strategies: strategies.map(strategy => ({
+        code: strategy.code,
+        name: strategy.name,
+        description: strategy.description,
+        icon: strategy.icon,
+        recommended: false,
+        requiredHistory: strategy.requiredHistory,
+        minimumPracticeCount: strategy.minimumPracticeCount,
+        minimumMistakeCount: strategy.minimumMistakeCount,
+      })),
+    };
+  }
+
+  @Post('strategies/generate')
+  @ApiOperation({ summary: 'Generate a practice session using a specific strategy' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Practice session generated successfully',
+  })
+  async generateStrategySession(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: GeneratePracticeRequestDto
+  ) {
+    const { questions, metadata } = await this.strategyService.generateStrategySession(
+      req.user.userId,
+      body
+    );
+
+    return {
+      strategy: body.strategyCode,
+      questions: questions.map(q => ({
+        id: q.id,
+        content: q.content,
+        options: q.options,
+        difficulty: q.difficulty,
+        knowledgePointId: q.knowledgePointId,
+        hasExplanation: !!q.explanation,
+      })),
+      metadata,
+    };
+  }
+
+  @Get('strategies/recommendations')
+  @ApiOperation({ summary: 'Get strategy recommendations for the current user' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Strategy recommendations',
+  })
+  async getRecommendations(@Request() req: AuthenticatedRequest) {
+    return await this.strategyService.getStrategyRecommendations(req.user.userId);
+  }
+
+  @Get('strategies/analytics/:strategyCode')
+  @ApiOperation({ summary: 'Get analytics for a specific strategy' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Strategy analytics',
+  })
+  async getStrategyAnalytics(
+    @Request() req: AuthenticatedRequest,
+    @Param('strategyCode') strategyCode: string
+  ) {
+    return await this.strategyService.getStrategyAnalytics(req.user.userId, strategyCode);
+  }
+
+  @Post('sessions/:sessionId/mistakes')
+  @ApiOperation({ summary: 'Record a mistake in the practice session' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Mistake recorded',
+  })
+  async recordMistake(
+    @Request() req: AuthenticatedRequest,
+    @Param('sessionId') sessionId: string,
+    @Body() body: {
+      quizId: string;
+      incorrectAnswer: string;
+      correctAnswer: string;
+    }
+  ) {
+    await this.strategyService.recordMistake(
+      req.user.userId,
+      body.quizId,
+      sessionId,
+      body.incorrectAnswer,
+      body.correctAnswer
+    );
+
+    return { success: true };
+  }
+
+  @Post('corrections')
+  @ApiOperation({ summary: 'Record a correction for a previously mistaken question' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Correction recorded',
+  })
+  async recordCorrection(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: { quizId: string }
+  ) {
+    await this.strategyService.recordCorrection(req.user.userId, body.quizId);
+    return { success: true };
   }
 }

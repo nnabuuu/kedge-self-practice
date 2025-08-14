@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Example override file for environment-specific configurations
+# Copy this file to .envrc.override and update with your actual values
+# DO NOT COMMIT .envrc.override TO VERSION CONTROL
+
+# Database credentials for non-local environments
+# export NODE_DATABASE_URL="postgres://username:password@host:port/database"
+# export HASURA_GRAPHQL_DATABASE_URL="postgres://username:password@host:port/database"
+
+# OpenAI API key for GPT-based features
+# export OPENAI_API_KEY="sk-..."
+
+# Redis configuration override
+# export REDIS_HOST="your-redis-host"
+# export REDIS_PORT=6379
+# export REDIS_DB=0
+
+# API configuration override
+# export API_PORT=8718
+
+# JWT secret for production
+# export JWT_SECRET="your-secure-jwt-secret"
+
+# Hasura admin secret for production
+# export HASURA_GRAPHQL_ADMIN_SECRET="your-secure-admin-secret"
