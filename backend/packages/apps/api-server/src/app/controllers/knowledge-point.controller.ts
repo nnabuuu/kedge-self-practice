@@ -96,38 +96,26 @@ export class KnowledgePointController {
       this.logger.log(`Found ${candidatePoints.length} candidate knowledge points`);
 
       // Step 4: Use GPT to disambiguate and select best matches
-      const {selectedId, candidateIds} = await this.gptService.disambiguateTopicFromCandidates(
+      const {selectedId, candidates} = await this.gptService.disambiguateTopicFromCandidates(
         quizText,
         candidatePoints,
       );
 
-      // Step 5: Build response with matches
+      this.logger.log(`GPT disambiguation results: selectedId=${selectedId}, candidates count=${candidates.length}`);
+
+      // Step 5: Build response with matches using GPT confidence scores
       const matches: KnowledgePointMatch[] = [];
       
-      if (selectedId) {
-        const selectedPoint = this.storage.getKnowledgePointById(selectedId);
-        if (selectedPoint) {
+      for (const candidate of candidates) {
+        const knowledgePoint = this.storage.getKnowledgePointById(candidate.id);
+        if (knowledgePoint) {
           matches.push({
-            knowledgePoint: selectedPoint,
-            confidence: 0.95, // Primary match
-            reasoning: '通过多步骤筛选确定的最佳匹配',
+            knowledgePoint,
+            confidence: candidate.confidence,
+            reasoning: candidate.reasoning,
           });
         }
       }
-
-      // Add other candidates with lower confidence
-      const otherCandidates = candidateIds
-        .filter(id => id !== selectedId)
-        .map(id => this.storage.getKnowledgePointById(id))
-        .filter(Boolean) as KnowledgePoint[];
-
-      otherCandidates.slice(0, maxMatches - 1).forEach((point, index) => {
-        matches.push({
-          knowledgePoint: point,
-          confidence: 0.8 - (index * 0.1), // Decreasing confidence
-          reasoning: '候选匹配项',
-        });
-      });
 
       this.logger.log(`Matched ${matches.length} knowledge points for quiz text`);
 

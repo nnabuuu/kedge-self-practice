@@ -203,10 +203,10 @@ ${units.map((u, i) => `索引 ${i}: ${u}`).join('\n')}
   async disambiguateTopicFromCandidates(
     quizText: string,
     knowledgePoints: KnowledgePoint[],
-  ): Promise<{ selectedId: string; candidateIds: string[] }> {
+  ): Promise<{ selectedId: string; candidates: Array<{id: string, confidence: number, reasoning: string}> }> {
     const apiKey = this.configsService.getOptional('OPENAI_API_KEY');
     if (!apiKey) {
-      return { selectedId: '', candidateIds: [] };
+      return { selectedId: '', candidates: [] };
     }
 
     this.logger.log(`筛选知识点：
@@ -226,15 +226,23 @@ ${JSON.stringify(knowledgePoints, null, 2)}
             type: 'string',
             description: '最终选择的知识点 ID',
           },
-          candidateIds: {
+          candidates: {
             type: 'array',
-            items: { type: 'string' },
-            description: '最多三个与该题相关的候选知识点 ID（含 selectedId）',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                confidence: { type: 'number', minimum: 0, maximum: 1 },
+                reasoning: { type: 'string' }
+              },
+              required: ['id', 'confidence', 'reasoning']
+            },
+            description: '最多三个与该题相关的候选知识点，按相关性降序排列',
             minItems: 1,
             maxItems: 3,
           },
         },
-        required: ['selectedId', 'candidateIds'],
+        required: ['selectedId', 'candidates'],
         additionalProperties: false,
       },
     };
@@ -282,7 +290,12 @@ ${hierarchyDescription}
 ### Quiz
 ${quizText}
 
-最终请返回 JSON，包含 selectedId 和 candidateIds 字段（candidateIds 应该是包含 selectedId 的最多三个候选 ID）。`;
+最终请返回 JSON，包含 selectedId 和 candidates 字段。candidates 应该包含最多三个候选项，每个包含：
+- id: 知识点ID
+- confidence: 匹配置信度 (0-1)
+- reasoning: 匹配理由
+
+confidence 应该体现该知识点与题目的匹配程度，selectedId 对应的候选项应该有最高的 confidence。`;
 
     try {
       const response = await this.openai.chat.completions.create({
@@ -306,11 +319,11 @@ ${quizText}
       const parsed = JSON.parse(raw || '');
       return {
         selectedId: parsed.selectedId ?? '',
-        candidateIds: Array.isArray(parsed.candidateIds) ? parsed.candidateIds.slice(0, 3) : [],
+        candidates: Array.isArray(parsed.candidates) ? parsed.candidates.slice(0, 3) : [],
       };
     } catch (error) {
       this.logger.error('Failed to disambiguate topics', error);
-      return { selectedId: '', candidateIds: [] };
+      return { selectedId: '', candidates: [] };
     }
   }
 }
