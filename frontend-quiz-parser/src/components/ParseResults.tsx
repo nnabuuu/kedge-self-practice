@@ -1,12 +1,14 @@
 import React from 'react';
 import { ParagraphData } from '../types/quiz';
-import { FileText, Highlighter as Highlight } from 'lucide-react';
+import { FileText, Highlighter as Highlight, ArrowRight, RotateCcw } from 'lucide-react';
 
 interface ParseResultsProps {
   results: ParagraphData[];
+  onReset?: () => void;
+  onGenerateQuiz?: () => void;
 }
 
-export const ParseResults: React.FC<ParseResultsProps> = ({ results }) => {
+export const ParseResults: React.FC<ParseResultsProps> = ({ results, onReset, onGenerateQuiz }) => {
   const renderHighlightedText = (paragraph: string, highlighted: Array<{text: string; color: string}>) => {
     if (highlighted.length === 0) return paragraph;
     
@@ -98,6 +100,25 @@ export const ParseResults: React.FC<ParseResultsProps> = ({ results }) => {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-200">
+            <button
+              onClick={onReset}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              重新上传
+            </button>
+            
+            <button
+              onClick={onGenerateQuiz}
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              生成题目
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
