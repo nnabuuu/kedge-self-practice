@@ -16,7 +16,8 @@ export class DefaultAuthService implements AuthService {
   ) {}
 
   async createUser(
-    name: string,
+    name: string | null,
+    accountId: string,
     password: string,
     role: UserRole,
   ): Promise<User> {
@@ -24,6 +25,7 @@ export class DefaultAuthService implements AuthService {
     const passwordHash = pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
     return this.authRepository.createUser({
       name,
+      accountId,
       passwordHash,
       salt,
       role,
@@ -31,10 +33,10 @@ export class DefaultAuthService implements AuthService {
   }
 
   async signIn(
-    name: string,
+    accountId: string,
     password: string,
   ): Promise<{ accessToken: string; userId: string }> {
-    const user = await this.authRepository.findUserByName(name);
+    const user = await this.authRepository.findUserByAccountId(accountId);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }

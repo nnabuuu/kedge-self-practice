@@ -5,7 +5,8 @@ export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const UserSchema = z.object({
   id: z.string().uuid(),
-  name: z.string(),
+  name: z.string().nullable(), // Name is optional
+  account_id: z.string().email().or(z.string().min(1)), // Support email or any non-empty string
   role: UserRoleSchema,
   created_at: z.string(),
   updated_at: z.string(),

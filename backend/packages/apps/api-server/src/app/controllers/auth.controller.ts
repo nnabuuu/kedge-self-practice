@@ -14,7 +14,8 @@ import { AuthService, JwtAuthGuard, AdminGuard } from '@kedge/auth';
 import { User, UserRole, UserRoleSchema } from '@kedge/models';
 
 const SignUpSchema = z.object({
-  name: z.string(),
+  name: z.string().nullable().optional(), // Name is optional
+  account_id: z.string().email().or(z.string().min(1)), // Support email or any non-empty string
   password: z.string(),
   role: UserRoleSchema,
 });
@@ -22,13 +23,13 @@ const SignUpSchema = z.object({
 export class SignUpDto extends createZodDto(SignUpSchema) {}
 
 const SignInSchema = z.object({
-  name: z.string(),
+  account_id: z.string().email().or(z.string().min(1)), // Support email or any non-empty string  
   password: z.string(),
 });
 
 export class SignInDto extends createZodDto(SignInSchema) {}
 
-@Controller('auth')
+@Controller('api/v1/auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -38,12 +39,41 @@ export class AuthController {
   @Post('sign-up')
   @UseGuards(JwtAuthGuard, AdminGuard)
   signUp(@Body() body: SignUpDto): Promise<User> {
-    return this.authService.createUser(body.name, body.password, body.role);
+    return this.authService.createUser(body.name || null, body.account_id, body.password, body.role);
   }
 
   @Post('sign-in')
   signIn(@Body() body: SignInDto) {
-    return this.authService.signIn(body.name, body.password);
+    return this.authService.signIn(body.account_id, body.password);
+  }
+
+  // Frontend-compatible endpoints
+  @Post('login')
+  async login(@Body() body: { email: string; password: string }) {
+    const result = await this.authService.signIn(body.email, body.password);
+    return {
+      token: result.accessToken,
+      user: { id: result.userId },
+    };
+  }
+
+  @Post('register')
+  async register(@Body() body: { email: string; password: string; name?: string; role?: UserRole }) {
+    const user = await this.authService.createUser(
+      body.name || null, // Optional display name
+      body.email, // account_id (email)
+      body.password,
+      body.role || 'teacher'
+    );
+    
+    // Generate token for immediate login after registration
+    const payload = { sub: user.id, role: user.role };
+    const token = await this.jwtService.signAsync(payload);
+    
+    return {
+      token,
+      user,
+    };
   }
 
   @Post('mock-admin-sign-in')

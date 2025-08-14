@@ -75,10 +75,10 @@ export const login = async (email: string, password: string) => {
   return data;
 };
 
-export const register = async (email: string, password: string, role: 'student' | 'teacher' = 'teacher') => {
+export const register = async (email: string, password: string, name?: string, role: 'student' | 'teacher' = 'teacher') => {
   const response = await apiFetch('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password, role }),
+    body: JSON.stringify({ email, password, name, role }),
   });
   
   const data = await response.json();
