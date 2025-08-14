@@ -3,7 +3,6 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import {
   KnowledgePointGPTService,
   KnowledgePointStorage,
-  KnowledgePointMatch,
 } from '@kedge/knowledge-point';
 import { KnowledgePoint } from '@kedge/models';
 
@@ -13,8 +12,11 @@ interface MatchKnowledgePointRequest {
 }
 
 interface MatchKnowledgePointResponse {
-  matches: KnowledgePointMatch[];
-  totalAvailable: number;
+  matched: KnowledgePoint | null;
+  candidates: KnowledgePoint[];
+  keywords: string[];
+  country: string;
+  dynasty: string;
 }
 
 interface SearchKnowledgePointsResponse {
@@ -59,8 +61,11 @@ export class KnowledgePointController {
       if (allPoints.length === 0) {
         this.logger.warn('No knowledge points available for matching');
         return {
-          matches: [],
-          totalAvailable: 0,
+          matched: null,
+          candidates: [],
+          keywords: [],
+          country: '未知',
+          dynasty: '无',
         };
       }
 
@@ -69,8 +74,11 @@ export class KnowledgePointController {
       if (keywords.length === 0) {
         this.logger.warn('No keywords extracted from quiz text');
         return {
-          matches: [],
-          totalAvailable: allPoints.length,
+          matched: null,
+          candidates: [],
+          keywords,
+          country,
+          dynasty,
         };
       }
 
@@ -88,40 +96,36 @@ export class KnowledgePointController {
       if (candidatePoints.length === 0) {
         this.logger.warn('No candidate points found in suggested units');
         return {
-          matches: [],
-          totalAvailable: allPoints.length,
+          matched: null,
+          candidates: [],
+          keywords,
+          country,
+          dynasty,
         };
       }
 
       this.logger.log(`Found ${candidatePoints.length} candidate knowledge points`);
 
       // Step 4: Use GPT to disambiguate and select best matches
-      const {selectedId, candidates} = await this.gptService.disambiguateTopicFromCandidates(
+      const {selectedId, candidateIds} = await this.gptService.disambiguateTopicFromCandidates(
         quizText,
         candidatePoints,
       );
 
-      this.logger.log(`GPT disambiguation results: selectedId=${selectedId}, candidates count=${candidates.length}`);
+      this.logger.log(`GPT disambiguation results: selectedId=${selectedId}, candidateIds=${JSON.stringify(candidateIds)}`);
 
-      // Step 5: Build response with matches using GPT confidence scores
-      const matches: KnowledgePointMatch[] = [];
+      // Step 5: Build response - exactly as in example-gist
+      const matched = this.storage.getKnowledgePointById(selectedId);
+      const candidates = this.storage.getKnowledgePointsByIds(candidateIds);
       
-      for (const candidate of candidates) {
-        const knowledgePoint = this.storage.getKnowledgePointById(candidate.id);
-        if (knowledgePoint) {
-          matches.push({
-            knowledgePoint,
-            confidence: candidate.confidence,
-            reasoning: candidate.reasoning,
-          });
-        }
-      }
-
-      this.logger.log(`Matched ${matches.length} knowledge points for quiz text`);
+      this.logger.log(`matched: ${matched?.topic}, candidates: ${candidates.length}`);
 
       return {
-        matches,
-        totalAvailable: allPoints.length,
+        matched,
+        candidates,
+        keywords,
+        country,
+        dynasty,
       };
     } catch (error) {
       this.logger.error('Failed to match knowledge points', error);
