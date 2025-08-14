@@ -4,9 +4,26 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCHEMA_DIR="${PROJECT_ROOT}/packages/dev/database/schema"
 
-# Load environment variables
+# Load environment variables manually (avoid direnv-specific functions)
 if [[ -f "${PROJECT_ROOT}/.envrc" ]]; then
-    source "${PROJECT_ROOT}/.envrc"
+    # Set NX_WORKSPACE_ROOT manually since DIR won't be available
+    export NX_WORKSPACE_ROOT="${PROJECT_ROOT}"
+    
+    # Extract and evaluate only simple export statements
+    while IFS= read -r line; do
+        if [[ $line =~ ^export\ [A-Z_]+=.*$ ]] && [[ ! $line =~ __prevEnv__ ]] && [[ ! $line =~ \$\{DIR\} ]]; then
+            eval "$line"
+        fi
+    done < "${PROJECT_ROOT}/.envrc"
+fi
+
+# Load override file if exists
+if [[ -f "${PROJECT_ROOT}/.envrc.override" ]]; then
+    while IFS= read -r line; do
+        if [[ $line =~ ^export\ [A-Z_]+=.*$ ]]; then
+            eval "$line"
+        fi
+    done < "${PROJECT_ROOT}/.envrc.override"
 fi
 
 # Allow environment name to be passed as argument
@@ -59,19 +76,31 @@ fi
 
 # Apply migrations
 echo "📦 Applying migrations..."
-"${HASURA_CLI}" migrate apply \
+if ! "${HASURA_CLI}" migrate apply \
     --database-name main_db \
     --endpoint "${HASURA_ENDPOINT}" \
     --admin-secret "${ADMIN_SECRET}" \
-    --skip-update-check
+    --skip-update-check; then
+    echo ""
+    echo "❌ Migration failed!"
+    echo "   Please check the database connection and Hasura configuration."
+    echo "   Database URL: ${NODE_DATABASE_URL}"
+    echo "   Hasura endpoint: ${HASURA_ENDPOINT}"
+    exit 1
+fi
 
 # Apply metadata if needed
 if [[ -d "${SCHEMA_DIR}/metadata" ]]; then
     echo "📋 Applying metadata..."
-    "${HASURA_CLI}" metadata apply \
+    if ! "${HASURA_CLI}" metadata apply \
         --endpoint "${HASURA_ENDPOINT}" \
         --admin-secret "${ADMIN_SECRET}" \
-        --skip-update-check
+        --skip-update-check; then
+        echo ""
+        echo "❌ Metadata application failed!"
+        echo "   Please check the Hasura configuration."
+        exit 1
+    fi
 fi
 
 echo ""
@@ -80,8 +109,12 @@ echo "✅ Migration complete!"
 # Show migration status
 echo ""
 echo "📊 Migration Status:"
-"${HASURA_CLI}" migrate status \
+if ! "${HASURA_CLI}" migrate status \
     --database-name main_db \
     --endpoint "${HASURA_ENDPOINT}" \
     --admin-secret "${ADMIN_SECRET}" \
-    --skip-update-check
+    --skip-update-check; then
+    echo ""
+    echo "⚠️  Warning: Could not retrieve migration status"
+    echo "   This might indicate a connection or configuration issue."
+fi

@@ -35,6 +35,17 @@ import {
   CompleteSessionSchema,
   GeneratePracticeRequestSchema
 } from '@kedge/models';
+import { z } from 'zod';
+
+const RecordMistakeSchema = z.object({
+  quiz_id: z.string().uuid(),
+  incorrect_answer: z.string(),
+  correct_answer: z.string(),
+});
+
+const RecordCorrectionSchema = z.object({
+  quiz_id: z.string().uuid(),
+});
 
 class CreatePracticeSessionDto extends createZodDto(CreatePracticeSessionSchema) {}
 class PracticeSessionDto extends createZodDto(PracticeSessionSchema) {}
@@ -45,6 +56,8 @@ class PauseSessionDto extends createZodDto(PauseSessionSchema) {}
 class ResumeSessionDto extends createZodDto(ResumeSessionSchema) {}
 class CompleteSessionDto extends createZodDto(CompleteSessionSchema) {}
 class GeneratePracticeRequestDto extends createZodDto(GeneratePracticeRequestSchema) {}
+class RecordMistakeDto extends createZodDto(RecordMistakeSchema) {}
+class RecordCorrectionDto extends createZodDto(RecordCorrectionSchema) {}
 
 @ApiTags('Practice')
 @Controller('api/v1/practice')
@@ -212,57 +225,29 @@ export class PracticeController {
     return await this.practiceService.getStatistics(studentId);
   }
 
-  // Strategy endpoints
   @Get('strategies')
   @ApiOperation({ summary: 'Get available practice strategies' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of available practice strategies',
   })
-  async getAvailableStrategies(@Request() req: AuthenticatedRequest) {
-    const strategies = await this.strategyService.getAvailableStrategies(req.user.userId);
-    
-    return {
-      strategies: strategies.map(strategy => ({
-        code: strategy.code,
-        name: strategy.name,
-        description: strategy.description,
-        icon: strategy.icon,
-        recommended: false,
-        requiredHistory: strategy.requiredHistory,
-        minimumPracticeCount: strategy.minimumPracticeCount,
-        minimumMistakeCount: strategy.minimumMistakeCount,
-      })),
-    };
+  async getAvailableStrategies(@Request() req: AuthenticatedRequest): Promise<any> {
+    const studentId = req.user.userId;
+    return await this.strategyService.getAvailableStrategies(studentId);
   }
 
-  @Post('strategies/generate')
-  @ApiOperation({ summary: 'Generate a practice session using a specific strategy' })
+  @Post('sessions/create-with-strategy')
+  @ApiOperation({ summary: 'Create a practice session using a specific strategy' })
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Practice session generated successfully',
   })
-  async generateStrategySession(
+  async createSessionWithStrategy(
     @Request() req: AuthenticatedRequest,
-    @Body() body: GeneratePracticeRequestDto
-  ) {
-    const { questions, metadata } = await this.strategyService.generateStrategySession(
-      req.user.userId,
-      body
-    );
-
-    return {
-      strategy: body.strategyCode,
-      questions: questions.map(q => ({
-        id: q.id,
-        content: q.content,
-        options: q.options,
-        difficulty: q.difficulty,
-        knowledgePointId: q.knowledgePointId,
-        hasExplanation: !!q.explanation,
-      })),
-      metadata,
-    };
+    @Body() generateRequestDto: GeneratePracticeRequestDto
+  ): Promise<any> {
+    const studentId = req.user.userId;
+    return await this.strategyService.generateStrategySession(studentId, generateRequestDto);
   }
 
   @Get('strategies/recommendations')
@@ -271,8 +256,9 @@ export class PracticeController {
     status: HttpStatus.OK,
     description: 'Strategy recommendations',
   })
-  async getRecommendations(@Request() req: AuthenticatedRequest) {
-    return await this.strategyService.getStrategyRecommendations(req.user.userId);
+  async getStrategyRecommendations(@Request() req: AuthenticatedRequest): Promise<any> {
+    const studentId = req.user.userId;
+    return await this.strategyService.getStrategyRecommendations(studentId);
   }
 
   @Get('strategies/analytics/:strategyCode')
@@ -284,47 +270,49 @@ export class PracticeController {
   async getStrategyAnalytics(
     @Request() req: AuthenticatedRequest,
     @Param('strategyCode') strategyCode: string
-  ) {
-    return await this.strategyService.getStrategyAnalytics(req.user.userId, strategyCode);
+  ): Promise<any> {
+    const studentId = req.user.userId;
+    return await this.strategyService.getStrategyAnalytics(studentId, strategyCode);
   }
 
-  @Post('sessions/:sessionId/mistakes')
+  @Post('sessions/:sessionId/record-mistake')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Record a mistake in the practice session' })
   @ApiResponse({
-    status: HttpStatus.CREATED,
+    status: HttpStatus.OK,
     description: 'Mistake recorded',
   })
   async recordMistake(
     @Request() req: AuthenticatedRequest,
     @Param('sessionId') sessionId: string,
-    @Body() body: {
-      quizId: string;
-      incorrectAnswer: string;
-      correctAnswer: string;
-    }
-  ) {
+    @Body() recordMistakeDto: RecordMistakeDto
+  ): Promise<{ success: boolean }> {
+    const studentId = req.user.userId;
     await this.strategyService.recordMistake(
-      req.user.userId,
-      body.quizId,
+      studentId,
+      recordMistakeDto.quiz_id,
       sessionId,
-      body.incorrectAnswer,
-      body.correctAnswer
+      recordMistakeDto.incorrect_answer,
+      recordMistakeDto.correct_answer
     );
 
     return { success: true };
   }
 
-  @Post('corrections')
+  @Post('sessions/:sessionId/record-correction')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Record a correction for a previously mistaken question' })
   @ApiResponse({
-    status: HttpStatus.CREATED,
+    status: HttpStatus.OK,
     description: 'Correction recorded',
   })
   async recordCorrection(
     @Request() req: AuthenticatedRequest,
-    @Body() body: { quizId: string }
-  ) {
-    await this.strategyService.recordCorrection(req.user.userId, body.quizId);
+    @Param('sessionId') sessionId: string,
+    @Body() recordCorrectionDto: RecordCorrectionDto
+  ): Promise<{ success: boolean }> {
+    const studentId = req.user.userId;
+    await this.strategyService.recordCorrection(studentId, recordCorrectionDto.quiz_id);
     return { success: true };
   }
 }

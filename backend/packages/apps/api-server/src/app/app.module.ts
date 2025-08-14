@@ -5,12 +5,12 @@ import { AuthModule } from '@kedge/auth';
 import { KnowledgePointModule } from '@kedge/knowledge-point';
 import { QuizModule } from '@kedge/quiz';
 import { QuizParserModule } from '@kedge/quiz-parser';
-import { AuthController } from './auth.controller';
-import { IndexController } from './index.controller';
-import { GptController } from './gpt.controller';
-import { DocxController } from './docx.controller';
-import { QuizController } from './quiz.controller';
-import { AttachmentsController } from './attachments.controller';
+import { AuthController } from './controllers/auth.controller';
+import { IndexController } from './controllers/index.controller';
+import { GptController } from './controllers/gpt.controller';
+import { DocxController } from './controllers/docx.controller';
+import { QuizController } from './controllers/quiz.controller';
+import { AttachmentsController } from './controllers/attachments.controller';
 import { PracticeController } from './controllers/practice.controller';
 import { PracticeModule } from '@kedge/practice';
 
