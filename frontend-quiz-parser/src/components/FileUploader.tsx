@@ -6,20 +6,24 @@ interface FileUploaderProps {
   onUpload: (file: File) => Promise<void>;
   uploadStatus: UploadStatus;
   onReset: () => void;
+  disabled?: boolean;
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = ({
   onUpload,
   uploadStatus,
-  onReset
+  onReset,
+  disabled = false
 }) => {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setDragOver(true);
-  }, []);
+    if (!disabled) {
+      setDragOver(true);
+    }
+  }, [disabled]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -29,6 +33,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
+    
+    if (disabled) return;
     
     const files = Array.from(e.dataTransfer.files);
     const docxFile = files.find(file => 
@@ -40,15 +46,17 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       setSelectedFile(docxFile);
       onUpload(docxFile);
     }
-  }, [onUpload]);
+  }, [onUpload, disabled]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
+    
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
       onUpload(file);
     }
-  }, [onUpload]);
+  }, [onUpload, disabled]);
 
   const handleReset = () => {
     setSelectedFile(null);
@@ -79,6 +87,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       case 'error':
         return 'border-red-300 bg-red-50';
       default:
+        if (disabled) {
+          return 'border-gray-200 bg-gray-50';
+        }
         return dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white';
     }
   };
@@ -95,8 +106,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           type="file"
           accept=".docx"
           onChange={handleFileSelect}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          disabled={uploadStatus.status === 'uploading' || uploadStatus.status === 'processing'}
+          className={`absolute inset-0 w-full h-full opacity-0 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+          disabled={disabled || uploadStatus.status === 'uploading' || uploadStatus.status === 'processing'}
         />
         
         <div className="flex flex-col items-center space-y-4">
@@ -117,11 +128,11 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             </div>
           ) : (
             <div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+              <h3 className={`text-lg font-semibold mb-2 ${disabled ? 'text-gray-400' : 'text-gray-700'}`}>
                 上传题目文档
               </h3>
-              <p className="text-gray-500 mb-4">
-                拖拽 DOCX 文件到此处，或点击选择文件
+              <p className={`mb-4 ${disabled ? 'text-gray-400' : 'text-gray-500'}`}>
+                {disabled ? '请先登录后再上传文件' : '拖拽 DOCX 文件到此处，或点击选择文件'}
               </p>
             </div>
           )}

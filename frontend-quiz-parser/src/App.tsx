@@ -352,8 +352,10 @@ function App() {
         {currentStep === 'upload' && (
           <div className="max-w-2xl mx-auto">
             <FileUploader 
-              onFileUpload={handleFileUpload}
+              onUpload={handleFileUpload}
               uploadStatus={uploadStatus}
+              onReset={handleReset}
+              disabled={!isAuthenticated}
             />
           </div>
         )}
