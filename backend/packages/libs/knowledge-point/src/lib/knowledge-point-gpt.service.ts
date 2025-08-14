@@ -242,7 +242,11 @@ ${JSON.stringify(knowledgePoints, null, 2)}
 
 请根据下列题目内容、选项、答案和提供的多个候选知识点，选择其中最贴切、最能准确覆盖该题目考查意图的知识点，并返回其 ID。
 
-同时返回不超过三个相关度较高的备选知识点 ID（包括最终选中的，按照相关性从高到低排列）。
+**重要**：你必须返回一个 candidateIds 数组，包含 1-3 个相关的知识点 ID。
+- candidateIds 数组必须包含 selectedId
+- 如果有其他相关的知识点，也要加入到 candidateIds 中（总共最多3个）
+- 即使只有一个匹配的知识点，candidateIds 仍然要是一个数组
+- 按相关性从高到低排列（selectedId 应该是最相关的）
 
 ---
 
@@ -276,7 +280,18 @@ ${hierarchyDescription}
 ### Quiz
 ${quizText}
 
-最终请返回 JSON，包含 selectedId 和 candidateIds 字段（candidateIds 应该是包含 selectedId 的最多三个候选 ID）。`;
+### 返回格式要求
+请返回 JSON，必须包含以下两个字段：
+1. selectedId: 最匹配的知识点 ID（字符串）
+2. candidateIds: 包含 1-3 个相关知识点 ID 的数组（必须包含 selectedId，如果有其他相关的也要加入）
+
+示例返回格式：
+{
+  "selectedId": "kp_25",
+  "candidateIds": ["kp_25", "kp_23", "kp_27"]
+}
+
+注意：即使只有一个匹配项，candidateIds 也必须是数组格式，如：["kp_25"]`;
 
     try {
       const response = await this.openai.chat.completions.create({
@@ -298,10 +313,26 @@ ${quizText}
       this.logger.log(`筛选结果： ${raw}`);
 
       const parsed = JSON.parse(raw || '');
-      return {
+      
+      // Debug logging
+      this.logger.log(`=== GPT Response Debug ===`);
+      this.logger.log(`Raw response: ${raw}`);
+      this.logger.log(`Parsed selectedId: ${parsed.selectedId}`);
+      this.logger.log(`Parsed candidateIds type: ${typeof parsed.candidateIds}`);
+      this.logger.log(`Parsed candidateIds isArray: ${Array.isArray(parsed.candidateIds)}`);
+      this.logger.log(`Parsed candidateIds value: ${JSON.stringify(parsed.candidateIds)}`);
+      this.logger.log(`Parsed candidateIds length: ${parsed.candidateIds?.length}`);
+      
+      const result = {
         selectedId: parsed.selectedId ?? '',
         candidateIds: Array.isArray(parsed.candidateIds) ? parsed.candidateIds.slice(0, 3) : [],
       };
+      
+      this.logger.log(`Final result selectedId: ${result.selectedId}`);
+      this.logger.log(`Final result candidateIds: ${JSON.stringify(result.candidateIds)}`);
+      this.logger.log(`=== End GPT Response Debug ===`);
+      
+      return result;
     } catch (error) {
       this.logger.error('Failed to disambiguate topics', error);
       return { selectedId: '', candidateIds: [] };

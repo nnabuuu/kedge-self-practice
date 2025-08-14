@@ -86,9 +86,12 @@ export class KnowledgePointController {
 
       // Step 2: Get all units and filter by country/dynasty
       const units = this.storage.getAllUnits();
+      this.logger.log(`Total units available: ${units.length}`);
+      this.logger.log(`All units: ${JSON.stringify(units)}`);
+      
       const unitFilter = await this.gptService.suggestUnitsByCountryAndDynasty(quizText, units);
       
-      this.logger.log(`Suggested units: ${JSON.stringify(unitFilter)}`);
+      this.logger.log(`Suggested units (${unitFilter.length}): ${JSON.stringify(unitFilter)}`);
 
       // Step 3: Get candidate knowledge points from filtered units
       const candidatePoints = this.storage.getKnowledgePointsByUnits(unitFilter);
@@ -105,6 +108,7 @@ export class KnowledgePointController {
       }
 
       this.logger.log(`Found ${candidatePoints.length} candidate knowledge points`);
+      this.logger.log(`First 5 candidates: ${JSON.stringify(candidatePoints.slice(0, 5).map(p => ({id: p.id, topic: p.topic})))}`);
 
       // Step 4: Use GPT to disambiguate and select best matches
       const {selectedId, candidateIds} = await this.gptService.disambiguateTopicFromCandidates(
@@ -118,7 +122,13 @@ export class KnowledgePointController {
       const matched = this.storage.getKnowledgePointById(selectedId);
       const candidates = this.storage.getKnowledgePointsByIds(candidateIds);
       
-      this.logger.log(`matched: ${matched?.topic}, candidates: ${candidates.length}`);
+      this.logger.log(`=== Controller Debug ===`);
+      this.logger.log(`matched ID: ${matched?.id}, topic: ${matched?.topic}`);
+      this.logger.log(`candidateIds array: ${JSON.stringify(candidateIds)}`);
+      this.logger.log(`candidateIds length: ${candidateIds?.length}`);
+      this.logger.log(`candidates retrieved: ${candidates.length}`);
+      this.logger.log(`candidates details: ${JSON.stringify(candidates.map(c => ({id: c.id, topic: c.topic})))}`);
+      this.logger.log(`=== End Controller Debug ===`);
 
       return {
         matched,
