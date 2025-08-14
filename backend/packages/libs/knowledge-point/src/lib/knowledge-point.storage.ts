@@ -132,4 +132,28 @@ export class KnowledgePointStorage implements OnModuleInit {
     this.knowledgePoints = [];
     await this.loadKnowledgePoints();
   }
+
+  getAllUnits(): string[] {
+    const units = new Set<string>();
+    this.knowledgePoints.forEach(point => {
+      if (point.unit && point.unit.trim().length > 0) {
+        units.add(point.unit);
+      }
+    });
+    return Array.from(units);
+  }
+
+  getKnowledgePointsByUnits(units: string[]): KnowledgePoint[] {
+    return this.knowledgePoints.filter(point => 
+      units.some(unit => point.unit.includes(unit))
+    );
+  }
+
+  getKnowledgePointById(id: string): KnowledgePoint | null {
+    return this.knowledgePoints.find(point => point.id === id) || null;
+  }
+
+  getKnowledgePointsByIds(ids: string[]): KnowledgePoint[] {
+    return ids.map(id => this.getKnowledgePointById(id)).filter(Boolean) as KnowledgePoint[];
+  }
 }

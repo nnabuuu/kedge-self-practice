@@ -54,9 +54,9 @@ export class KnowledgePointController {
         throw new Error('Quiz text is required');
       }
 
-      const availablePoints = this.storage.getAllKnowledgePoints();
+      const allPoints = this.storage.getAllKnowledgePoints();
       
-      if (availablePoints.length === 0) {
+      if (allPoints.length === 0) {
         this.logger.warn('No knowledge points available for matching');
         return {
           matches: [],
@@ -64,17 +64,76 @@ export class KnowledgePointController {
         };
       }
 
-      const matches = await this.gptService.matchKnowledgePoints(
+      // Step 1: Extract keywords
+      const {keywords, country, dynasty} = await this.gptService.extractKeywordsFromQuiz(quizText);
+      if (keywords.length === 0) {
+        this.logger.warn('No keywords extracted from quiz text');
+        return {
+          matches: [],
+          totalAvailable: allPoints.length,
+        };
+      }
+
+      this.logger.log(`Extracted keywords: ${JSON.stringify({keywords, country, dynasty})}`);
+
+      // Step 2: Get all units and filter by country/dynasty
+      const units = this.storage.getAllUnits();
+      const unitFilter = await this.gptService.suggestUnitsByCountryAndDynasty(quizText, units);
+      
+      this.logger.log(`Suggested units: ${JSON.stringify(unitFilter)}`);
+
+      // Step 3: Get candidate knowledge points from filtered units
+      const candidatePoints = this.storage.getKnowledgePointsByUnits(unitFilter);
+      
+      if (candidatePoints.length === 0) {
+        this.logger.warn('No candidate points found in suggested units');
+        return {
+          matches: [],
+          totalAvailable: allPoints.length,
+        };
+      }
+
+      this.logger.log(`Found ${candidatePoints.length} candidate knowledge points`);
+
+      // Step 4: Use GPT to disambiguate and select best matches
+      const {selectedId, candidateIds} = await this.gptService.disambiguateTopicFromCandidates(
         quizText,
-        availablePoints,
-        maxMatches,
+        candidatePoints,
       );
+
+      // Step 5: Build response with matches
+      const matches: KnowledgePointMatch[] = [];
+      
+      if (selectedId) {
+        const selectedPoint = this.storage.getKnowledgePointById(selectedId);
+        if (selectedPoint) {
+          matches.push({
+            knowledgePoint: selectedPoint,
+            confidence: 0.95, // Primary match
+            reasoning: '通过多步骤筛选确定的最佳匹配',
+          });
+        }
+      }
+
+      // Add other candidates with lower confidence
+      const otherCandidates = candidateIds
+        .filter(id => id !== selectedId)
+        .map(id => this.storage.getKnowledgePointById(id))
+        .filter(Boolean) as KnowledgePoint[];
+
+      otherCandidates.slice(0, maxMatches - 1).forEach((point, index) => {
+        matches.push({
+          knowledgePoint: point,
+          confidence: 0.8 - (index * 0.1), // Decreasing confidence
+          reasoning: '候选匹配项',
+        });
+      });
 
       this.logger.log(`Matched ${matches.length} knowledge points for quiz text`);
 
       return {
         matches,
-        totalAvailable: availablePoints.length,
+        totalAvailable: allPoints.length,
       };
     } catch (error) {
       this.logger.error('Failed to match knowledge points', error);
