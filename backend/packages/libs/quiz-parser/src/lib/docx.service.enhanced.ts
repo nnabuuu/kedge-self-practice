@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ParagraphBlock, DocxImage } from './types';
+import * as unzipper from 'unzipper';
+import { XMLParser } from 'fast-xml-parser';
 
 @Injectable()
 export class EnhancedDocxService {
@@ -9,8 +11,7 @@ export class EnhancedDocxService {
     paragraphs: ParagraphBlock[];
     allImages: DocxImage[];
   }> {
-    const unzipper: any = eval('require')('unzipper');
-    const { XMLParser }: any = eval('require')('fast-xml-parser');
+    // Dependencies imported at top of file
 
     const zip = await unzipper.Open.buffer(file);
     
