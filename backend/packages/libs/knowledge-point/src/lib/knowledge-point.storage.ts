@@ -28,29 +28,68 @@ export class KnowledgePointStorage implements OnModuleInit {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
-      // Convert to JSON, skipping header row
-      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      // Convert to JSON with default values for empty cells
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, string>[];
       
-      // Skip header row and process data
-      const dataRows = rawData.slice(1) as string[][];
+      // Variables to track last non-empty values for inheritance
+      let lastVolume = '未知册';
+      let lastUnit = '未知单元';
+      let lastLesson = '未知单课';
+      let lastSub = '未知子目';
+      let idCounter = 1;
       
-      this.knowledgePoints = dataRows
-        .filter(row => row.length >= 5 && row.some(cell => cell && cell.toString().trim()))
-        .map((row, index) => ({
-          id: `kp_${index + 1}`,
-          volume: this.sanitizeCell(row[0]) || '',
-          unit: this.sanitizeCell(row[1]) || '',
-          lesson: this.sanitizeCell(row[2]) || '',
-          sub: this.sanitizeCell(row[3]) || '',
-          topic: this.sanitizeCell(row[4]) || '',
-        }))
-        .filter(point => point.topic.trim().length > 0);
-
+      const result: KnowledgePoint[] = [];
+      
+      rows.forEach((row) => {
+        // Get raw values, using the column headers from the Excel file
+        const rawVolume = row['分册']?.trim();
+        const rawUnit = row['单元名称']?.trim();
+        const rawLesson = row['单课名称']?.trim();
+        const rawSub = row['子目']?.trim();
+        let topic = row['知识点']?.trim();
+        
+        // Inherit from previous row if current cell is empty
+        if (rawVolume) lastVolume = rawVolume;
+        if (rawUnit) lastUnit = rawUnit;
+        if (rawLesson) lastLesson = rawLesson;
+        if (rawSub) lastSub = rawSub;
+        
+        // If topic is empty but sub exists, use sub as topic
+        if (!topic && rawSub) {
+          topic = rawSub;
+        }
+        
+        // Skip rows without a topic
+        if (!topic) {
+          this.logger.debug(`Skipping row without topic`);
+          return;
+        }
+        
+        const newKnowledgePoint: KnowledgePoint = {
+          id: `kp_${idCounter++}`,
+          topic,
+          volume: lastVolume,
+          unit: lastUnit,
+          lesson: lastLesson,
+          sub: lastSub,
+        };
+        
+        result.push(newKnowledgePoint);
+      });
+      
+      this.knowledgePoints = result;
+      
       this.logger.log(`Loaded ${this.knowledgePoints.length} knowledge points from Excel file`);
       
       // Log sample data for debugging
       if (this.knowledgePoints.length > 0) {
-        this.logger.debug(`Sample knowledge point: ${JSON.stringify(this.knowledgePoints[0])}`);
+        this.logger.log(`First knowledge point: ${JSON.stringify(this.knowledgePoints[0])}`);
+        this.logger.log(`Last knowledge point: ${JSON.stringify(this.knowledgePoints[this.knowledgePoints.length - 1])}`);
+        
+        // Log unique units to verify variety
+        const uniqueUnits = new Set(this.knowledgePoints.map(kp => kp.unit));
+        this.logger.log(`Unique units loaded: ${uniqueUnits.size}`);
+        this.logger.log(`Sample units: ${Array.from(uniqueUnits).slice(0, 5).join(', ')}`);
       }
     } catch (error) {
       this.logger.error('Failed to load knowledge points from Excel file', error);
