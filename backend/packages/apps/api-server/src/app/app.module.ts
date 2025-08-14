@@ -12,6 +12,7 @@ import { DocxController } from './controllers/docx.controller';
 import { QuizController } from './controllers/quiz.controller';
 import { AttachmentsController } from './controllers/attachments.controller';
 import { PracticeController } from './controllers/practice.controller';
+import { KnowledgePointController } from './controllers/knowledge-point.controller';
 import { PracticeModule } from '@kedge/practice';
 
 @Module({
@@ -30,6 +31,7 @@ import { PracticeModule } from '@kedge/practice';
     QuizController,
     AttachmentsController,
     PracticeController,
+    KnowledgePointController,
   ],
   providers: [
     {

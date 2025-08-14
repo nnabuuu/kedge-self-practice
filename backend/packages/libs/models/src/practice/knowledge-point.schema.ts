@@ -5,19 +5,17 @@ import { z } from 'zod';
  * - `volume`: such as "上册" or "下册"
  * - `unit`: e.g. "第一单元"
  * - `lesson`: e.g. "第1课"
- * - `section`: sub topic or category
+ * - `sub`: sub topic or category (renamed from section)
  * - `topic`: actual knowledge point description
  * - `id`: unique identifier for the knowledge point
- * - `subjectId`: the subject this knowledge point belongs to
  */
 export const KnowledgePointSchema = z.object({
   id: z.string(),
-  subjectId: z.string(),
   topic: z.string(),
   volume: z.string(),
   unit: z.string(),
   lesson: z.string(),
-  section: z.string(),
+  sub: z.string(),
 });
 
 export type KnowledgePoint = z.infer<typeof KnowledgePointSchema>;

@@ -173,32 +173,39 @@ export const changeQuizType = async (
 export const matchKnowledgePoint = async (
   item: QuizItem
 ): Promise<{
-  matched?: KnowledgePoint;
-  candidates: KnowledgePoint[];
-  keywords: string[];
-  country?: string;
-  dynasty?: string;
+  matches: Array<{
+    knowledgePoint: KnowledgePoint;
+    confidence: number;
+    reasoning: string;
+  }>;
+  totalAvailable: number;
 }> => {
   const response = await apiFetch('/knowledge-points/match', {
     method: 'POST',
-    body: JSON.stringify(item),
+    body: JSON.stringify({
+      quizText: item.question,
+      maxMatches: 3,
+    }),
   });
   
   const data = await response.json();
   return data;
 };
 
-// Match knowledge point for a quiz item (keep for backward compatibility)
-export const matchKnowledgePointLocal = async (
-  item: QuizItem
+// Search knowledge points
+export const searchKnowledgePoints = async (
+  query?: string,
+  limit?: number
 ): Promise<{
-  matched?: KnowledgePoint;
-  candidates: KnowledgePoint[];
-  keywords: string[];
+  knowledgePoints: KnowledgePoint[];
+  total: number;
 }> => {
-  const response = await apiFetch('/knowledge-points/match', {
-    method: 'POST',
-    body: JSON.stringify(item),
+  const params = new URLSearchParams();
+  if (query) params.append('q', query);
+  if (limit) params.append('limit', limit.toString());
+  
+  const response = await apiFetch(`/knowledge-points/search?${params.toString()}`, {
+    method: 'GET',
   });
   
   const data = await response.json();

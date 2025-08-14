@@ -16,22 +16,20 @@ export class KnowledgePointRepository {
       const result = await this.persistentService.pgPool.query(
         sql.type(KnowledgePointSchema)`
           INSERT INTO kedge_practice.knowledge_points (
-            subject_id,
             topic,
             volume,
             unit,
             lesson,
-            section
+            sub
           )
           VALUES (
-            ${data.subjectId},
             ${data.topic},
             ${data.volume},
             ${data.unit},
             ${data.lesson},
-            ${data.section}
+            ${data.sub}
           )
-          RETURNING id, subject_id as "subjectId", topic, volume, unit, lesson, section
+          RETURNING id, topic, volume, unit, lesson, sub
         `,
       );
       return result.rows[0];
@@ -46,7 +44,7 @@ export class KnowledgePointRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(KnowledgePointSchema)`
-          SELECT id, subject_id as "subjectId", topic, volume, unit, lesson, section
+          SELECT id, topic, volume, unit, lesson, sub
           FROM kedge_practice.knowledge_points
           WHERE id = ${id}
         `,
@@ -63,7 +61,7 @@ export class KnowledgePointRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(KnowledgePointSchema)`
-          SELECT id, subject_id as "subjectId", topic, volume, unit, lesson, section
+          SELECT id, topic, volume, unit, lesson, sub
           FROM kedge_practice.knowledge_points
         `,
       );
