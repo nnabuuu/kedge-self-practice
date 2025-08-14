@@ -55,3 +55,6 @@ packages/libs/intent-resolver/assets/*.api-schema-ts
 
 .nx/cache
 
+# Example code and reference materials
+example-gist/
+
