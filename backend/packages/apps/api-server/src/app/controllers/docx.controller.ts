@@ -118,7 +118,17 @@ export class DocxController {
       }
     });
     
-    // Update paragraphs to include saved image URLs
+    // Create paragraphs with image placeholders for GPT (without Buffer data)
+    const paragraphsForGPT = paragraphs.map((para, paraIndex) => ({
+      paragraph: para.paragraph,
+      highlighted: para.highlighted,
+      images: para.images.map((img, imgIndex) => ({
+        placeholder: `{{img:${paraIndex}_${imgIndex}}}`,
+        id: img.id,
+      })),
+    }));
+    
+    // Update paragraphs to include saved image URLs for response
     const enhancedParagraphs = paragraphs.map(para => ({
       ...para,
       images: para.images.map(img => {
@@ -131,8 +141,8 @@ export class DocxController {
       }),
     }));
     
-    // Generate quiz items using GPT
-    const quizItems = await this.gptService.extractQuizItems(paragraphs);
+    // Generate quiz items using GPT with placeholder paragraphs
+    const quizItems = await this.gptService.extractQuizItems(paragraphsForGPT);
     
     return {
       success: true,
