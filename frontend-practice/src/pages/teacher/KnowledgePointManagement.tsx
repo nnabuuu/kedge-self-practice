@@ -39,8 +39,8 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
   const fetchKnowledgePoints = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/knowledge-point/all`, {
+      const token = localStorage.getItem('jwt_token');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/knowledge-points/all`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -48,7 +48,7 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
       
       if (response.ok) {
         const data = await response.json();
-        setKnowledgePoints(data.data || []);
+        setKnowledgePoints(data.knowledgePoints || []);
       }
     } catch (error) {
       console.error('Failed to fetch knowledge points:', error);
@@ -59,8 +59,8 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/knowledge-point/stats`, {
+      const token = localStorage.getItem('jwt_token');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/knowledge-points/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -71,8 +71,8 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
         setStats({
           totalPoints: data.total || 0,
           volumes: data.byVolume ? Object.keys(data.byVolume).length : 0,
-          units: data.totalUnits || 0,
-          quizzes: data.totalQuizzes || 0
+          units: data.byUnit ? Object.keys(data.byUnit).length : 0,
+          quizzes: 0 // Backend doesn't provide quiz count in stats endpoint
         });
       }
     } catch (error) {

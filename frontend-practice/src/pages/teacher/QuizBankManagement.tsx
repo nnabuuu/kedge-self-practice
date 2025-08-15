@@ -44,7 +44,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
   const fetchQuizzes = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('jwt_token');
       
       // Build query params
       const params = new URLSearchParams();
