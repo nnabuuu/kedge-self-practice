@@ -101,6 +101,16 @@ export class DocxController {
       if (paragraphs.length > 1) {
         console.log('Second paragraph text length:', paragraphs[1].paragraph?.length || 0);
       }
+      
+      // Find first paragraph with images to analyze the structure
+      const firstImageParagraph = paragraphs.find(p => p.images && p.images.length > 0);
+      if (firstImageParagraph) {
+        console.log('First paragraph with images has', firstImageParagraph.images.length, 'images');
+        const firstImage = firstImageParagraph.images[0];
+        console.log('First image structure keys:', Object.keys(firstImage));
+        console.log('First image has data?', !!firstImage.data);
+        console.log('First image data size:', firstImage.data ? (Buffer.isBuffer(firstImage.data) ? firstImage.data.length : JSON.stringify(firstImage.data).length) : 0);
+      }
     }
     
     console.log('=== End DOCX Extraction Debug ===');
@@ -150,6 +160,26 @@ export class DocxController {
       highlighted: para.highlighted,
       images: [], // Empty array to satisfy ParagraphBlock type, GPT doesn't process images
     }));
+    
+    // Debug: Verify paragraphsForGPT doesn't contain Buffer data
+    console.log('=== Verifying paragraphsForGPT ===');
+    const gptDataSize = JSON.stringify(paragraphsForGPT).length;
+    console.log('paragraphsForGPT JSON size:', gptDataSize, 'characters');
+    console.log('paragraphsForGPT estimated tokens:', Math.ceil(gptDataSize / 4));
+    
+    // Check if any paragraphsForGPT has image data (should be none)
+    const hasImageDataInGPT = paragraphsForGPT.some(p => p.images && p.images.length > 0);
+    console.log('paragraphsForGPT has any images:', hasImageDataInGPT);
+    
+    if (hasImageDataInGPT) {
+      console.error('ERROR: paragraphsForGPT still contains image data!');
+      paragraphsForGPT.forEach((p, idx) => {
+        if (p.images && p.images.length > 0) {
+          console.error(`paragraphsForGPT[${idx}] has ${p.images.length} images`);
+        }
+      });
+    }
+    console.log('=== End Verification ===');
     
     // Update paragraphs to include saved image URLs for response
     const enhancedParagraphs = paragraphs.map(para => ({
