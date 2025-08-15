@@ -110,29 +110,45 @@ export class EnhancedDocxService {
             ? rawText
             : '';
 
-        if (text) allText.push(text);
-
-        // Extract highlights
-        const highlight =
-          r['w:rPr']?.['w:highlight']?.val ||
-          r['w:rPr']?.['w:highlight']?.['w:val'];
-
-        if (highlight && text) {
-          highlighted.push({ text, color: highlight });
-        }
-
+        // Check for images in this run first
+        const runImages: DocxImage[] = [];
+        
         // Extract images from this run
         const drawing = r['w:drawing'];
         if (drawing) {
           const images = this.extractImagesFromDrawing(drawing, relationships, allImages);
-          paragraphImages.push(...images);
+          runImages.push(...images);
         }
 
         // Also check for inline pictures (older format)
         const pict = r['w:pict'];
         if (pict) {
           const images = this.extractImagesFromPict(pict, relationships, allImages);
-          paragraphImages.push(...images);
+          runImages.push(...images);
+        }
+
+        // Add text or image placeholder to the paragraph text
+        if (runImages.length > 0) {
+          // This run contains images - add placeholders
+          for (let i = 0; i < runImages.length; i++) {
+            const imageIndex = paragraphImages.length + i + 1; // 1-based indexing
+            allText.push(`{{image:${imageIndex}}}`);
+          }
+          paragraphImages.push(...runImages);
+        } else if (text) {
+          // This run contains text - add it normally
+          allText.push(text);
+        }
+
+        // Extract highlights from text (not from image placeholders)
+        if (text) {
+          const highlight =
+            r['w:rPr']?.['w:highlight']?.val ||
+            r['w:rPr']?.['w:highlight']?.['w:val'];
+
+          if (highlight) {
+            highlighted.push({ text, color: highlight });
+          }
         }
       }
 
