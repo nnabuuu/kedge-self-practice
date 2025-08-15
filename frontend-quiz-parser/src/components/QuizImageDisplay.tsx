@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Image, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { getAuthToken as getApiAuthToken } from '../services/api';
 
 interface QuizImageDisplayProps {
   content: string;
@@ -16,21 +17,47 @@ export const QuizImageDisplay: React.FC<QuizImageDisplayProps> = ({
 }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  
+  // Debug logging
+  React.useEffect(() => {
+    if (content && (content.includes('{{image:') || content.includes('{{img:'))) {
+      console.log('=== QuizImageDisplay Debug ===');
+      console.log('Content:', content);
+      console.log('Images (legacy):', images);
+      console.log('Image Mapping (UUID):', imageMapping);
+      console.log('Has UUID placeholders:', /\{\{image:[^}]+\}\}/.test(content));
+      console.log('Has legacy placeholders:', /\{\{img:\d+\}\}/.test(content));
+    }
+  }, [content, images, imageMapping]);
 
   // Helper function to get auth token for protected image requests
   const getAuthToken = (): string | null => {
-    return localStorage.getItem('token') || sessionStorage.getItem('token');
+    // Use the auth token from the API service (in-memory storage)
+    return getApiAuthToken() || 
+           localStorage.getItem('jwt_token') || 
+           localStorage.getItem('token') || 
+           sessionStorage.getItem('jwt_token') ||
+           sessionStorage.getItem('token');
   };
 
   // Helper function to construct authenticated image URL
   const getImageUrl = (baseUrl: string): string => {
-    const token = getAuthToken();
-    if (token && baseUrl.includes('/attachments/')) {
-      // Add token as query parameter for protected endpoints
-      const separator = baseUrl.includes('?') ? '&' : '?';
-      return `${baseUrl}${separator}token=${encodeURIComponent(token)}`;
+    // Construct full URL if it's a relative path
+    let fullUrl = baseUrl;
+    if (baseUrl.startsWith('/')) {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
+      // Remove /v1 from base URL since our paths already include it
+      const cleanBase = apiBase.replace(/\/v1$/, '').replace(/\/$/, '');
+      fullUrl = cleanBase + baseUrl;
     }
-    return baseUrl;
+    
+    const token = getAuthToken();
+    if (token && fullUrl.includes('/attachments/')) {
+      // Add token as query parameter for protected endpoints
+      const separator = fullUrl.includes('?') ? '&' : '?';
+      return `${fullUrl}${separator}token=${encodeURIComponent(token)}`;
+    }
+    return fullUrl;
   };
 
   // Process content to replace image placeholders

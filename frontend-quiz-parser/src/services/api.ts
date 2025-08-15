@@ -1,17 +1,35 @@
 // API configuration and utilities
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
 
-// Store JWT token in memory (you might want to use localStorage in production)
+// Store JWT token in memory and localStorage
 let authToken: string | null = null;
+
+// Initialize token from localStorage on module load
+if (typeof window !== 'undefined') {
+  authToken = localStorage.getItem('jwt_token') || localStorage.getItem('token') || null;
+}
 
 export const setAuthToken = (token: string) => {
   authToken = token;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('jwt_token', token);
+  }
 };
 
-export const getAuthToken = () => authToken;
+export const getAuthToken = () => {
+  // Check localStorage if in-memory token is not available
+  if (!authToken && typeof window !== 'undefined') {
+    authToken = localStorage.getItem('jwt_token') || localStorage.getItem('token') || null;
+  }
+  return authToken;
+};
 
 export const clearAuthToken = () => {
   authToken = null;
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('token');
+  }
 };
 
 // Base fetch wrapper with authentication

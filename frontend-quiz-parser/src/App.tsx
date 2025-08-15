@@ -10,7 +10,7 @@ import {
   extractQuizFromParagraphsLocal,
   batchSubmitQuizzesWithKnowledgePoints 
 } from './services/localQuizService';
-import { getAuthToken } from './services/api';
+import { getAuthToken, setAuthToken } from './services/api';
 import { exportToExcel } from './utils/exportUtils';
 import { ParagraphData, QuizItem, QuizWithKnowledgePoint, UploadStatus } from './types/quiz';
 import { BookOpen, ArrowRight, Download, User, LogOut, AlertCircle, Upload } from 'lucide-react';
@@ -37,8 +37,8 @@ function App() {
     const sharedToken = urlParams.get('token');
     
     if (sharedToken) {
-      // Store the shared token
-      localStorage.setItem('jwt_token', sharedToken);
+      // Store the shared token and sync with API service
+      setAuthToken(sharedToken);
       
       // Get shared user data
       const sharedUserData = localStorage.getItem('shared_user_data');
@@ -71,7 +71,7 @@ function App() {
         const sharedUserData = localStorage.getItem('shared_user_data');
         
         if (sharedToken && sharedUserData) {
-          localStorage.setItem('jwt_token', sharedToken);
+          setAuthToken(sharedToken);
           const userData = JSON.parse(sharedUserData);
           setCurrentUser(userData);
           setIsAuthenticated(true);
@@ -100,6 +100,12 @@ function App() {
       const results = response.paragraphs;
       const images = response.images;
       const imageMap = response.imageMapping;
+      
+      console.log('=== Upload Response Debug ===');
+      console.log('Paragraphs:', results);
+      console.log('Images (legacy):', images);
+      console.log('Image Mapping (UUID):', imageMap);
+      console.log('Extracted Images:', response.extractedImages);
       
       setUploadStatus({
         status: 'processing',
@@ -140,11 +146,16 @@ function App() {
 
       // Use backend with image support
       let items = await extractQuizFromParagraphsLocal(parseResults, extractedImages);
-      // Add images to quiz items
-      items = items.map(item => ({
-        ...item,
-        images: extractedImages
-      }));
+      
+      console.log('=== Quiz Generation Debug ===');
+      console.log('Generated quiz items:', items);
+      console.log('Image mapping available:', imageMapping);
+      
+      // Don't add images array to items - they should use imageMapping instead
+      // items = items.map(item => ({
+      //   ...item,
+      //   images: extractedImages
+      // }));
       
       setQuizItems(items);
       setUploadStatus({
