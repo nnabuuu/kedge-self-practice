@@ -225,18 +225,30 @@ export class DocxController {
     console.log('paragraphsForGPT uses GptParagraphBlock type (no images by design)');
     console.log('=== End Verification ===');
     
-    // Update paragraphs to include saved image URLs for response
-    const enhancedParagraphs = paragraphs.map(para => ({
-      ...para,
-      images: para.images.map(img => {
-        const savedImage = savedImages.find(saved => saved.originalDocxId === img.id);
-        return savedImage ? {
-          ...img,
-          url: savedImage.url,
-          savedId: savedImage.id,
-        } : img;
-      }),
-    }));
+    // Update paragraphs to include saved image URLs AND UUID placeholders for response
+    const enhancedParagraphs = paragraphs.map(para => {
+      let processedText = para.paragraph || '';
+      
+      // Replace {{image:original-path}} with {{image:uuid}} in the response paragraphs too
+      imageIdMap.forEach((savedUuid, originalPath) => {
+        const originalPlaceholder = `{{image:${originalPath}}}`;
+        const uuidPlaceholder = `{{image:${savedUuid}}}`;
+        processedText = processedText.replace(new RegExp(escapeRegExp(originalPlaceholder), 'g'), uuidPlaceholder);
+      });
+      
+      return {
+        ...para,
+        paragraph: processedText, // Use the UUID-processed text
+        images: para.images.map(img => {
+          const savedImage = savedImages.find(saved => saved.originalDocxId === img.id);
+          return savedImage ? {
+            ...img,
+            url: savedImage.url,
+            savedId: savedImage.id,
+          } : img;
+        }),
+      };
+    });
     
     // Generate quiz items using GPT with placeholder paragraphs (no image data)
     const quizItems = await this.gptService.extractQuizItems(paragraphsForGPT);
