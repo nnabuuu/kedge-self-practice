@@ -118,14 +118,12 @@ export class DocxController {
       }
     });
     
-    // Create paragraphs with image placeholders for GPT (without Buffer data)
-    const paragraphsForGPT = paragraphs.map((para, paraIndex) => ({
+    // Create paragraphs for GPT (only text and highlights, no images)
+    const paragraphsForGPT = paragraphs.map(para => ({
       paragraph: para.paragraph,
       highlighted: para.highlighted,
-      images: para.images.map((img, imgIndex) => ({
-        placeholder: `{{img:${paraIndex}_${imgIndex}}}`,
-        id: img.id,
-      })),
+      // Note: Images are intentionally excluded from GPT processing
+      // Images will be handled separately after quiz extraction
     }));
     
     // Update paragraphs to include saved image URLs for response

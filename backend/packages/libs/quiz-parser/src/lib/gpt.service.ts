@@ -21,8 +21,7 @@ export class GptService {
     4. 若原文中未明确列出多个选项，但包含某个高亮词汇，请将其作为"填空题"处理，"填空题"可以有多个高亮指示的空白处。
     5. 若原文中出现大段答案结果且仅有一处高亮，请将其作为"主观题"处理
     6. 如果题干/选项/答案以数字或编号开头(如"1."、"①"、"A. "等)，请将这些部分从题干中去除，仅保留纯粹的题干/选项/答案。
-    7. **图片占位符处理**：如果段落中包含图片占位符（如 {{img:0_1}}），请在题干中保留这些占位符。
-    8. 返回的 JSON 格式必须完全符合以下结构：
+    7. 返回的 JSON 格式必须完全符合以下结构：
     每道题返回：
     - type: "single-choice"、"multiple-choice"、"fill-in-the-blank"、"subjective"、"other"
     - question: 题干
@@ -59,11 +58,6 @@ export class GptService {
                     { type: 'array', items: { type: 'string' } },
                     { type: 'array', items: { type: 'number' } },
                   ],
-                },
-                images: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Image placeholders used in the question (e.g., ["{{img:0_1}}"])',
                 },
               },
               required: ['type', 'question', 'options', 'answer'],
@@ -117,7 +111,6 @@ export class GptService {
               { type: 'array', items: { type: 'number' } },
             ],
           },
-          images: { type: 'array', items: { type: 'string' } },
         },
         required: ['type', 'question', 'options', 'answer'],
       },
