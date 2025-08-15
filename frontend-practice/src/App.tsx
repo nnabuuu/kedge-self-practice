@@ -55,14 +55,16 @@ function App() {
     if (existingUser && authService.isAuthenticated()) {
       setUserType(existingUser.role);
       setCurrentUser(existingUser);
-      setCurrentScreen('home');
+      // Auto-route teachers to teacher dashboard, students to home
+      setCurrentScreen(existingUser.role === 'teacher' ? 'teacher-dashboard' : 'home');
     }
   }, []);
 
   const handleLogin = (type: 'student' | 'teacher', userData: any) => {
     setUserType(type);
     setCurrentUser(userData);
-    setCurrentScreen('home');
+    // Auto-route teachers to teacher dashboard, students to home
+    setCurrentScreen(type === 'teacher' ? 'teacher-dashboard' : 'home');
   };
 
   const handleLogout = () => {
