@@ -129,10 +129,10 @@ export class EnhancedDocxService {
 
         // Add text or image placeholder to the paragraph text
         if (runImages.length > 0) {
-          // This run contains images - add placeholders
-          for (let i = 0; i < runImages.length; i++) {
-            const imageIndex = paragraphImages.length + i + 1; // 1-based indexing
-            allText.push(`{{image:${imageIndex}}}`);
+          // This run contains images - add UUID-based placeholders
+          for (const image of runImages) {
+            // Create placeholder using the saved image UUID that will be generated later
+            allText.push(`{{image:${image.id}}}`);
           }
           paragraphImages.push(...runImages);
         } else if (text) {
