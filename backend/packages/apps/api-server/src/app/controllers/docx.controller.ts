@@ -203,18 +203,8 @@ export class DocxController {
     console.log('paragraphsForGPT JSON size:', gptDataSize, 'characters');
     console.log('paragraphsForGPT estimated tokens:', Math.ceil(gptDataSize / 4));
     
-    // Check if any paragraphsForGPT has image data (should be none)
-    const hasImageDataInGPT = paragraphsForGPT.some(p => p.images && p.images.length > 0);
-    console.log('paragraphsForGPT has any images:', hasImageDataInGPT);
-    
-    if (hasImageDataInGPT) {
-      console.error('ERROR: paragraphsForGPT still contains image data!');
-      paragraphsForGPT.forEach((p, idx) => {
-        if (p.images && p.images.length > 0) {
-          console.error(`paragraphsForGPT[${idx}] has ${p.images.length} images`);
-        }
-      });
-    }
+    // paragraphsForGPT should never have images (GptParagraphBlock type doesn't include images)
+    console.log('paragraphsForGPT uses GptParagraphBlock type (no images by design)');
     console.log('=== End Verification ===');
     
     // Update paragraphs to include saved image URLs for response
