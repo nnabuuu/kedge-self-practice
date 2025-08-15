@@ -29,6 +29,7 @@ import { AuthRepository } from './auth.repository';
   ],
   exports: [
     AuthServiceProvider,
+    AuthRepository,
     JwtAuthGuard,
     JwtOrQueryGuard,
     JwtModule,
