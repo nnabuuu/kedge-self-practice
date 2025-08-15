@@ -20,12 +20,10 @@ export class AttachmentsController {
   constructor(private readonly storageService: EnhancedQuizStorageService) {}
 
   @Get('quiz/:year/:month/:filename')
-  @UseGuards(JwtOrQueryGuard)
-  @ApiOperation({ summary: 'Retrieve quiz attachment by path' })
+  @ApiOperation({ summary: 'Retrieve quiz attachment by path (public access)' })
   @ApiParam({ name: 'year', description: 'Year folder' })
   @ApiParam({ name: 'month', description: 'Month folder' })
   @ApiParam({ name: 'filename', description: 'File name' })
-  @ApiQuery({ name: 'token', description: 'JWT token (optional, can also use Authorization header)', required: false })
   @ApiResponse({ status: 200, description: 'File retrieved successfully' })
   @ApiResponse({ status: 404, description: 'File not found' })
   @Header('Cache-Control', 'public, max-age=3600')

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Image, X, ZoomIn, ZoomOut } from 'lucide-react';
-import { getAuthToken as getApiAuthToken } from '../services/api';
+// Auth imports removed - images are now publicly accessible
 
 interface QuizImageDisplayProps {
   content: string;
@@ -30,17 +30,9 @@ export const QuizImageDisplay: React.FC<QuizImageDisplayProps> = ({
     }
   }, [content, images, imageMapping]);
 
-  // Helper function to get auth token for protected image requests
-  const getAuthToken = (): string | null => {
-    // Use the auth token from the API service (in-memory storage)
-    return getApiAuthToken() || 
-           localStorage.getItem('jwt_token') || 
-           localStorage.getItem('token') || 
-           sessionStorage.getItem('jwt_token') ||
-           sessionStorage.getItem('token');
-  };
+  // Auth function removed - images are now publicly accessible
 
-  // Helper function to construct authenticated image URL
+  // Helper function to construct image URL (public access)
   const getImageUrl = (baseUrl: string): string => {
     // Construct full URL if it's a relative path
     let fullUrl = baseUrl;
@@ -51,12 +43,7 @@ export const QuizImageDisplay: React.FC<QuizImageDisplayProps> = ({
       fullUrl = cleanBase + baseUrl;
     }
     
-    const token = getAuthToken();
-    if (token && fullUrl.includes('/attachments/')) {
-      // Add token as query parameter for protected endpoints
-      const separator = fullUrl.includes('?') ? '&' : '?';
-      return `${fullUrl}${separator}token=${encodeURIComponent(token)}`;
-    }
+    // No authentication needed for public image access
     return fullUrl;
   };
 
