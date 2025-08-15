@@ -4,6 +4,7 @@ import { Subject, KnowledgePoint, QuizQuestion } from '../types/quiz';
 import { Teacher } from '../types/teacher';
 import { useSubjects, useKnowledgePoints, useQuestionSearch } from '../hooks/useApi';
 import { authService } from '../services/authService';
+import { preferencesService } from '../services/preferencesService';
 import KnowledgePointManagement from '../pages/teacher/KnowledgePointManagement';
 import QuizBankManagement from '../pages/teacher/QuizBankManagement';
 
@@ -25,34 +26,54 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 
   // Set selected subject once subjects data is loaded
-  // Remember teacher's last accessed subject preference
+  // Remember teacher's last accessed subject preference using backend
   useEffect(() => {
     if (subjects && subjects.length > 0 && !selectedSubject) {
-      // Try to restore last accessed subject from localStorage
-      const lastSubjectId = localStorage.getItem(`teacher_${teacher.id}_last_subject`);
-      let subjectToSelect = null;
-      
-      if (lastSubjectId) {
-        subjectToSelect = subjects.find(s => s.id === lastSubjectId);
-      }
-      
-      // Fallback to first available subject if no saved preference or subject not found
-      if (!subjectToSelect && subjects.length > 0) {
-        subjectToSelect = subjects[0];
-      }
-      
-      if (subjectToSelect) {
-        setSelectedSubject(subjectToSelect);
-      }
+      const loadLastSubject = async () => {
+        try {
+          // Try to restore last accessed subject from backend preferences
+          const lastSubjectId = await preferencesService.getLastAccessedSubject();
+          let subjectToSelect = null;
+          
+          if (lastSubjectId) {
+            subjectToSelect = subjects.find(s => s.id === lastSubjectId);
+          }
+          
+          // Fallback to first available subject if no saved preference or subject not found
+          if (!subjectToSelect && subjects.length > 0) {
+            subjectToSelect = subjects[0];
+          }
+          
+          if (subjectToSelect) {
+            setSelectedSubject(subjectToSelect);
+          }
+        } catch (error) {
+          console.error('Failed to load subject preference:', error);
+          // Fallback to first subject
+          if (subjects.length > 0) {
+            setSelectedSubject(subjects[0]);
+          }
+        }
+      };
+
+      loadLastSubject();
     }
-  }, [subjects, teacher.id, selectedSubject]);
+  }, [subjects, selectedSubject]);
 
   // Save selected subject preference when it changes
   useEffect(() => {
-    if (selectedSubject && teacher.id) {
-      localStorage.setItem(`teacher_${teacher.id}_last_subject`, selectedSubject.id);
+    if (selectedSubject) {
+      const saveSubjectPreference = async () => {
+        try {
+          await preferencesService.setLastAccessedSubject(selectedSubject.id);
+        } catch (error) {
+          console.error('Failed to save subject preference:', error);
+        }
+      };
+
+      saveSubjectPreference();
     }
-  }, [selectedSubject, teacher.id]);
+  }, [selectedSubject]);
 
   // 教师可以访问所有学科 (内部系统)
   const teacherSubjects = subjects || [];

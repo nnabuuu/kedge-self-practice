@@ -1,8 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   NotFoundException,
+  Param,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -10,7 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { AuthService, JwtAuthGuard, AdminGuard } from '@kedge/auth';
+import { AuthService, AuthRepository, JwtAuthGuard, AdminGuard } from '@kedge/auth';
 import { User, UserRole, UserRoleSchema } from '@kedge/models';
 
 const SignUpSchema = z.object({
@@ -33,6 +36,7 @@ export class SignInDto extends createZodDto(SignInSchema) {}
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -92,5 +96,29 @@ export class AuthController {
       accessToken: await this.jwtService.signAsync(payload),
       userId: 'mock-admin',
     };
+  }
+
+  @Get('preferences')
+  @UseGuards(JwtAuthGuard)
+  async getPreferences(@Req() req: any) {
+    const userId = req.user.sub;
+    const preferences = await this.authRepository.getUserPreferences(userId);
+    return { preferences: preferences || {} };
+  }
+
+  @Put('preferences')
+  @UseGuards(JwtAuthGuard)
+  async updatePreferences(@Req() req: any, @Body() body: { preferences: Record<string, any> }) {
+    const userId = req.user.sub;
+    await this.authRepository.updateUserPreferences(userId, body.preferences);
+    return { success: true };
+  }
+
+  @Put('preferences/:key')
+  @UseGuards(JwtAuthGuard)
+  async updatePreference(@Req() req: any, @Param('key') key: string, @Body() body: { value: any }) {
+    const userId = req.user.sub;
+    await this.authRepository.updateUserPreference(userId, key, body.value);
+    return { success: true };
   }
 }

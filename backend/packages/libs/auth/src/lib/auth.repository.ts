@@ -109,4 +109,65 @@ export class AuthRepository {
       throw new Error('Failed to find user');
     }
   }
+
+  /**
+   * Get user preferences by user ID
+   */
+  async getUserPreferences(userId: string): Promise<Record<string, any> | null> {
+    try {
+      const result = await this.persistentService.pgPool.query(
+        sql.unsafe`
+          SELECT preferences
+          FROM kedge_practice.users
+          WHERE id = ${userId}
+        `,
+      );
+
+      return result.rows[0]?.preferences ?? null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error getting user preferences: ${errorMessage}`);
+      throw new Error('Failed to get user preferences');
+    }
+  }
+
+  /**
+   * Update user preferences by user ID
+   */
+  async updateUserPreferences(userId: string, preferences: Record<string, any>): Promise<void> {
+    try {
+      await this.persistentService.pgPool.query(
+        sql.unsafe`
+          UPDATE kedge_practice.users
+          SET preferences = ${JSON.stringify(preferences)},
+              updated_at = now()
+          WHERE id = ${userId}
+        `,
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error updating user preferences: ${errorMessage}`);
+      throw new Error('Failed to update user preferences');
+    }
+  }
+
+  /**
+   * Update specific preference key for user
+   */
+  async updateUserPreference(userId: string, key: string, value: any): Promise<void> {
+    try {
+      await this.persistentService.pgPool.query(
+        sql.unsafe`
+          UPDATE kedge_practice.users
+          SET preferences = jsonb_set(COALESCE(preferences, '{}'), ${JSON.stringify([key])}, ${JSON.stringify(value)}),
+              updated_at = now()
+          WHERE id = ${userId}
+        `,
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error updating user preference: ${errorMessage}`);
+      throw new Error('Failed to update user preference');
+    }
+  }
 }
