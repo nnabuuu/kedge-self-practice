@@ -49,7 +49,15 @@ export class EnhancedDocxService {
     for (const mediaFile of mediaFiles) {
       try {
         const imageData = await mediaFile.buffer();
-        const filename = mediaFile.path.split('/').pop() || 'unknown';
+        let filename = mediaFile.path.split('/').pop() || 'unknown';
+        
+        // Detect image type from buffer if filename doesn't have an extension
+        if (!filename.includes('.')) {
+          const imageType = this.detectImageTypeFromBuffer(imageData);
+          filename += imageType.ext;
+        }
+        
+        // Get content type from filename (which now has an extension)
         const contentType = this.getContentTypeFromFilename(filename);
         
         allImages.push({
@@ -58,6 +66,8 @@ export class EnhancedDocxService {
           data: imageData,
           contentType,
         });
+        
+        this.logger.debug(`Extracted image: ${filename} (${contentType})`);
       } catch (error) {
         this.logger.warn(`Failed to extract image ${mediaFile.path}:`, error);
       }
@@ -239,7 +249,49 @@ export class EnhancedDocxService {
       'svg': 'image/svg+xml',
     };
     
-    return mimeTypes[ext || ''] || 'application/octet-stream';
+    return mimeTypes[ext || ''] || 'image/png'; // Default to PNG instead of octet-stream
+  }
+  
+  /**
+   * Detect image type from buffer magic bytes
+   */
+  private detectImageTypeFromBuffer(buffer: Buffer): { ext: string; mime: string } {
+    // Check magic bytes for common image formats
+    if (buffer.length >= 4) {
+      const header = buffer.slice(0, 4).toString('hex');
+      
+      // PNG
+      if (header.startsWith('89504e47')) {
+        return { ext: '.png', mime: 'image/png' };
+      }
+      
+      // JPEG
+      if (header.startsWith('ffd8ff')) {
+        return { ext: '.jpg', mime: 'image/jpeg' };
+      }
+      
+      // GIF
+      if (header.startsWith('47494638')) {
+        return { ext: '.gif', mime: 'image/gif' };
+      }
+      
+      // WebP
+      if (buffer.length >= 12) {
+        const webpHeader = buffer.slice(0, 4).toString('ascii');
+        const webpType = buffer.slice(8, 12).toString('ascii');
+        if (webpHeader === 'RIFF' && webpType === 'WEBP') {
+          return { ext: '.webp', mime: 'image/webp' };
+        }
+      }
+      
+      // BMP
+      if (header.startsWith('424d')) {
+        return { ext: '.bmp', mime: 'image/bmp' };
+      }
+    }
+    
+    // Default to PNG if unable to detect
+    return { ext: '.png', mime: 'image/png' };
   }
 
   // Backward compatibility method
