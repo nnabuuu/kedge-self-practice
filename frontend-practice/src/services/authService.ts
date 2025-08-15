@@ -11,12 +11,15 @@ interface LoginRequest {
 }
 
 interface LoginResponse {
-  access_token: string;
+  token: string;
   user: {
     id: string;
-    email: string;
-    name: string;
-    role: 'student' | 'teacher' | 'admin';
+    account_id?: string;  // Backend uses account_id instead of email
+    email?: string;       // Keep for compatibility
+    name?: string;
+    role?: 'student' | 'teacher' | 'admin';
+    created_at?: string;
+    updated_at?: string;
   };
 }
 
@@ -76,9 +79,27 @@ class AuthService {
       body: JSON.stringify(credentials),
     });
 
-    if (response.success && response.data?.access_token) {
-      localStorage.setItem('jwt_token', response.data.access_token);
-      localStorage.setItem('user_data', JSON.stringify(response.data.user));
+    if (response.success && response.data?.token) {
+      const token = response.data.token;
+      localStorage.setItem('jwt_token', token);
+      
+      // Extract role from JWT token payload
+      try {
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        const userWithRole = {
+          ...response.data.user,
+          role: tokenPayload.role,
+          email: response.data.user.account_id || response.data.user.email || credentials.email,
+          name: response.data.user.name || 'User'
+        };
+        localStorage.setItem('user_data', JSON.stringify(userWithRole));
+        
+        // Update response data to include the role
+        response.data.user = userWithRole;
+      } catch (error) {
+        console.error('Failed to decode JWT token:', error);
+        localStorage.setItem('user_data', JSON.stringify(response.data.user));
+      }
     }
 
     return response;
@@ -90,9 +111,21 @@ class AuthService {
       body: JSON.stringify(userData),
     });
 
-    if (response.success && response.data?.access_token) {
-      localStorage.setItem('jwt_token', response.data.access_token);
-      localStorage.setItem('user_data', JSON.stringify(response.data.user));
+    if (response.success && response.data?.token) {
+      const token = response.data.token;
+      localStorage.setItem('jwt_token', token);
+      
+      // Normalize user data for consistent handling
+      const normalizedUser = {
+        ...response.data.user,
+        email: response.data.user.account_id || response.data.user.email || userData.email,
+        name: response.data.user.name || userData.name,
+        role: response.data.user.role || userData.role
+      };
+      localStorage.setItem('user_data', JSON.stringify(normalizedUser));
+      
+      // Update response data
+      response.data.user = normalizedUser;
     }
 
     return response;
