@@ -21,3 +21,13 @@ export const ParagraphBlockSchema = z.object({
 });
 
 export type ParagraphBlock = z.infer<typeof ParagraphBlockSchema>;
+
+/**
+ * Simplified paragraph block for GPT processing (no images/Buffer data)
+ */
+export const GptParagraphBlockSchema = z.object({
+  paragraph: z.string(),
+  highlighted: z.array(HighlightedTextSchema),
+});
+
+export type GptParagraphBlock = z.infer<typeof GptParagraphBlockSchema>;

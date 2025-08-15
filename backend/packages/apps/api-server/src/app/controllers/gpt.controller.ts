@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { GptService } from '@kedge/quiz-parser';
-import { QuizItem, ParagraphBlock } from '@kedge/models';
+import { QuizItem, GptParagraphBlock } from '@kedge/models';
 
 @UseGuards(JwtAuthGuard, TeacherGuard)
 @Controller('v1/gpt')
@@ -12,9 +12,19 @@ export class GptController {
   async extractQuiz(
     @Body()
     body: {
-      paragraphs: ParagraphBlock[];
+      paragraphs: GptParagraphBlock[];
     },
   ) {
+    console.log('=== DIRECT GPT Controller Debug ===');
+    console.log('Direct GPT call - paragraphs count:', body.paragraphs?.length || 0);
+    
+    if (body.paragraphs && body.paragraphs.length > 0) {
+      const totalSize = JSON.stringify(body.paragraphs).length;
+      console.log('Direct GPT call - total data size:', totalSize, 'characters');
+      console.log('Direct GPT call - using GptParagraphBlock (no images)');
+    }
+    
+    console.log('=== Calling GPT service from direct controller ===');
     return this.gptService.extractQuizItems(body.paragraphs);
   }
 

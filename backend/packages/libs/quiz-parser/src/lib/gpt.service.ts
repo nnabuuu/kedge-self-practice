@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
-import { ParagraphBlock, QuizItem, QuizExtractionResult } from '@kedge/models';
+import { GptParagraphBlock, QuizItem, QuizExtractionResult } from '@kedge/models';
 
 @Injectable()
 export class GptService {
@@ -12,7 +12,7 @@ export class GptService {
     });
   }
 
-  async extractQuizItems(paragraphs: ParagraphBlock[]): Promise<QuizItem[]> {
+  async extractQuizItems(paragraphs: GptParagraphBlock[]): Promise<QuizItem[]> {
     // Debug logging to see what's causing the huge token count
     console.log('=== GPT Input Debug ===');
     console.log('Number of paragraphs:', paragraphs.length);
@@ -29,33 +29,12 @@ export class GptService {
       // Analyze paragraph sizes
       const sizes = paragraphs.map((p, idx) => {
         const size = JSON.stringify(p).length;
-        return { idx, size, textLength: p.paragraph?.length || 0, imageCount: p.images?.length || 0 };
+        return { idx, size, textLength: p.paragraph?.length || 0 };
       });
       
       // Find largest paragraphs
       const largest = sizes.sort((a, b) => b.size - a.size).slice(0, 5);
       console.log('Largest paragraphs by JSON size:', largest);
-      
-      // Check for image data
-      const hasImageData = paragraphs.some(p => p.images && p.images.length > 0 && p.images.some((img: any) => img.data));
-      if (hasImageData) {
-        console.error('WARNING: Image data (Buffer) found in paragraphs! This should not happen.');
-        
-        // Log which paragraphs have image data and their sizes
-        paragraphs.forEach((p, idx) => {
-          if (p.images && p.images.length > 0) {
-            p.images.forEach((img: any, imgIdx: number) => {
-              if (img.data) {
-                const bufferSize = Buffer.isBuffer(img.data) ? img.data.length : 
-                                  (typeof img.data === 'string' ? img.data.length : 
-                                   JSON.stringify(img.data).length);
-                console.error(`Paragraph ${idx}, Image ${imgIdx} has data of size:`, bufferSize);
-                console.error(`Image keys:`, Object.keys(img));
-              }
-            });
-          }
-        });
-      }
       
       // Check for abnormally long text content
       const longTextParagraphs = paragraphs.filter(p => p.paragraph && p.paragraph.length > 10000);
