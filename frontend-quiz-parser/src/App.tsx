@@ -23,6 +23,7 @@ function App() {
   });
   const [parseResults, setParseResults] = useState<ParagraphData[]>([]);
   const [extractedImages, setExtractedImages] = useState<string[]>([]);
+  const [imageMapping, setImageMapping] = useState<Record<string, string>>({});
   const [quizItems, setQuizItems] = useState<QuizItem[]>([]);
   const [quizWithKnowledgePoints, setQuizWithKnowledgePoints] = useState<QuizWithKnowledgePoint[]>([]);
   const [currentStep, setCurrentStep] = useState<'upload' | 'parse' | 'quiz' | 'knowledge-point' | 'final'>('upload');
@@ -98,6 +99,7 @@ function App() {
       const response = await uploadDocxFileWithImages(file);
       const results = response.paragraphs;
       const images = response.images;
+      const imageMap = response.imageMapping;
       
       setUploadStatus({
         status: 'processing',
@@ -110,6 +112,7 @@ function App() {
 
       setParseResults(Array.isArray(results) ? results : []);
       setExtractedImages(images);
+      setImageMapping(imageMap);
       setUploadStatus({
         status: 'success',
         progress: 100,
@@ -215,6 +218,7 @@ function App() {
     });
     setParseResults([]);
     setExtractedImages([]);
+    setImageMapping({});
     setQuizItems([]);
     setQuizWithKnowledgePoints([]);
     setCurrentStep('upload');
@@ -375,6 +379,7 @@ function App() {
             <QuizDisplay 
               quizItems={quizItems}
               onQuizItemUpdate={handleQuizItemUpdate}
+              imageMapping={imageMapping}
             />
             <div className="flex justify-center space-x-4">
               <button
@@ -415,14 +420,12 @@ function App() {
                 成功生成 {quizWithKnowledgePoints.length} 道题目并匹配知识点
               </p>
               
-              {useLocalBackend && (
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <Upload className="w-5 h-5 text-green-600 mx-auto mb-2" />
-                  <p className="text-sm text-green-800">
-                    题目已成功提交到后端数据库
-                  </p>
-                </div>
-              )}
+              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <Upload className="w-5 h-5 text-green-600 mx-auto mb-2" />
+                <p className="text-sm text-green-800">
+                  题目已成功提交到后端数据库
+                </p>
+              </div>
 
               <div className="flex justify-center space-x-4">
                 <button

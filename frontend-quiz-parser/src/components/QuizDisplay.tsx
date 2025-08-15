@@ -7,13 +7,14 @@ import { QuizImageDisplay } from './QuizImageDisplay';
 interface QuizDisplayProps {
   quizItems: QuizItem[];
   onQuizItemUpdate?: (index: number, updatedItem: QuizItem) => void;
+  imageMapping?: Record<string, string>; // UUID to URL mapping for new format
 }
 
 interface QuizItemWithHistory extends QuizItem {
   history?: QuizItem[];
 }
 
-export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemUpdate }) => {
+export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemUpdate, imageMapping = {} }) => {
   const [loadingStates, setLoadingStates] = React.useState<{[key: string]: boolean}>({});
   const [itemHistories, setItemHistories] = React.useState<{[key: number]: QuizItem[]}>({});
   const [batchPolishing, setBatchPolishing] = React.useState(false);
@@ -300,6 +301,7 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
           <QuizImageDisplay 
             content={item.question}
             images={item.images}
+            imageMapping={imageMapping}
             className="text-gray-700 text-base leading-relaxed"
           />
         </div>
@@ -364,6 +366,7 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
           <QuizImageDisplay 
             content={item.question}
             images={item.images}
+            imageMapping={imageMapping}
             className="text-gray-700 text-base leading-relaxed font-medium"
           />
         </div>
@@ -398,6 +401,7 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
                     <QuizImageDisplay 
                       content={`${optionLabel}. ${option}`}
                       images={item.images}
+                      imageMapping={imageMapping}
                       className={`${
                         isCorrect ? 'text-emerald-800 font-semibold' : 'text-gray-700'
                       }`}
@@ -453,6 +457,7 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
           <QuizImageDisplay 
             content={item.question}
             images={item.images}
+            imageMapping={imageMapping}
             className="text-gray-700 text-base leading-relaxed font-medium"
           />
         </div>

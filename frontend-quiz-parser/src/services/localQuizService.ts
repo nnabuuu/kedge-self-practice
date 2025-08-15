@@ -16,7 +16,9 @@ export const processImagePlaceholders = (text: string, imageUrls: string[]): str
 // Upload DOCX file with image support
 export const uploadDocxFileWithImages = async (file: File): Promise<{
   paragraphs: ParagraphData[];
-  images: string[];
+  images: string[]; // Legacy format
+  extractedImages: Array<{id: string; url: string; filename: string}>; // New UUID format
+  imageMapping: Record<string, string>; // UUID to URL mapping
 }> => {
   const formData = new FormData();
   formData.append('file', file);
@@ -29,9 +31,21 @@ export const uploadDocxFileWithImages = async (file: File): Promise<{
   
   const data = await response.json();
   
+  // Extract images in both legacy and new formats
+  const extractedImages = data.extractedImages || [];
+  const legacyImageUrls = extractedImages.map((img: any) => img.url); // For backward compatibility
+  
+  // Create UUID to URL mapping
+  const imageMapping: Record<string, string> = {};
+  extractedImages.forEach((img: any) => {
+    imageMapping[img.id] = img.url;
+  });
+  
   return {
     paragraphs: data.paragraphs || [],
-    images: data.images || [],
+    images: legacyImageUrls, // Legacy format for backward compatibility
+    extractedImages, // New format with UUIDs
+    imageMapping, // Direct UUID to URL mapping
   };
 };
 

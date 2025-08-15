@@ -3,45 +3,68 @@ import { Image, X, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface QuizImageDisplayProps {
   content: string;
-  images?: string[];
+  images?: string[]; // Legacy: array of URLs by index (for {{img:N}} format)
+  imageMapping?: Record<string, string>; // New: UUID to URL mapping (for {{image:uuid}} format)
   className?: string;
 }
 
 export const QuizImageDisplay: React.FC<QuizImageDisplayProps> = ({ 
   content, 
-  images = [], 
+  images = [],
+  imageMapping = {},
   className = '' 
 }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+
+  // Helper function to get auth token for protected image requests
+  const getAuthToken = (): string | null => {
+    return localStorage.getItem('token') || sessionStorage.getItem('token');
+  };
+
+  // Helper function to construct authenticated image URL
+  const getImageUrl = (baseUrl: string): string => {
+    const token = getAuthToken();
+    if (token && baseUrl.includes('/attachments/')) {
+      // Add token as query parameter for protected endpoints
+      const separator = baseUrl.includes('?') ? '&' : '?';
+      return `${baseUrl}${separator}token=${encodeURIComponent(token)}`;
+    }
+    return baseUrl;
+  };
 
   // Process content to replace image placeholders
   const processContent = (text: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = [];
-    const regex = /\{\{img:(\d+)\}\}/g;
     let lastIndex = 0;
-    let match;
+    
+    // First, handle new UUID-based format: {{image:uuid}}
+    const uuidRegex = /\{\{image:([^}]+)\}\}/g;
+    let uuidMatch;
+    const processedRanges: Array<{start: number, end: number}> = [];
 
-    while ((match = regex.exec(text)) !== null) {
+    while ((uuidMatch = uuidRegex.exec(text)) !== null) {
+      const uuid = uuidMatch[1];
+      const imageUrl = imageMapping[uuid];
+      
       // Add text before the image
-      if (match.index > lastIndex) {
-        parts.push(text.substring(lastIndex, match.index));
+      if (uuidMatch.index > lastIndex) {
+        parts.push(text.substring(lastIndex, uuidMatch.index));
       }
 
-      const imageIndex = parseInt(match[1], 10);
-      const imageUrl = images[imageIndex];
-
-      if (imageUrl && !imageErrors.has(imageIndex)) {
+      if (imageUrl && !imageErrors.has(uuid)) {
+        const authenticatedUrl = getImageUrl(imageUrl);
         // Add image component
         parts.push(
-          <span key={`img-${match.index}`} className="inline-block align-middle mx-1">
+          <span key={`uuid-img-${uuidMatch.index}`} className="inline-block align-middle mx-1 my-2">
             <img
-              src={imageUrl}
-              alt={`Image ${imageIndex + 1}`}
-              className="inline-block max-h-32 cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => setSelectedImage(imageUrl)}
+              src={authenticatedUrl}
+              alt={`Image ${uuid.substring(0, 8)}`}
+              className="inline-block max-h-40 max-w-full rounded border shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => setSelectedImage(authenticatedUrl)}
               onError={() => {
-                setImageErrors(prev => new Set(prev).add(imageIndex));
+                console.error(`Failed to load image: ${authenticatedUrl}`);
+                setImageErrors(prev => new Set(prev).add(uuid));
               }}
             />
           </span>
@@ -50,19 +73,88 @@ export const QuizImageDisplay: React.FC<QuizImageDisplayProps> = ({
         // Show placeholder for missing or errored images
         parts.push(
           <span 
-            key={`placeholder-${match.index}`} 
-            className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-sm text-gray-500"
+            key={`uuid-placeholder-${uuidMatch.index}`} 
+            className="inline-flex items-center gap-1 px-3 py-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-600 mx-1"
           >
             <Image className="w-4 h-4" />
-            <span>图片 {imageIndex + 1}</span>
+            <span>图片 {uuid.substring(0, 8)}</span>
           </span>
         );
       }
 
-      lastIndex = regex.lastIndex;
+      processedRanges.push({start: uuidMatch.index, end: uuidRegex.lastIndex});
+      lastIndex = uuidRegex.lastIndex;
     }
 
-    // Add remaining text
+    // Then handle legacy numbered format: {{img:N}} (only in unprocessed ranges)
+    if (images.length > 0) {
+      const legacyRegex = /\{\{img:(\d+)\}\}/g;
+      let legacyMatch;
+      let tempLastIndex = 0;
+      const tempParts: React.ReactNode[] = [];
+
+      // Only process text that wasn't already processed by UUID regex
+      const unprocessedText = processedRanges.length > 0 ? text : text;
+      
+      while ((legacyMatch = legacyRegex.exec(unprocessedText)) !== null) {
+        // Check if this range was already processed
+        const isInProcessedRange = processedRanges.some(range => 
+          legacyMatch.index >= range.start && legacyMatch.index < range.end
+        );
+        
+        if (isInProcessedRange) continue;
+
+        // Add text before the image
+        if (legacyMatch.index > tempLastIndex) {
+          tempParts.push(unprocessedText.substring(tempLastIndex, legacyMatch.index));
+        }
+
+        const imageIndex = parseInt(legacyMatch[1], 10);
+        const imageUrl = images[imageIndex];
+
+        if (imageUrl && !imageErrors.has(imageIndex.toString())) {
+          const authenticatedUrl = getImageUrl(imageUrl);
+          // Add image component
+          tempParts.push(
+            <span key={`legacy-img-${legacyMatch.index}`} className="inline-block align-middle mx-1 my-2">
+              <img
+                src={authenticatedUrl}
+                alt={`Image ${imageIndex + 1}`}
+                className="inline-block max-h-40 max-w-full rounded border shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setSelectedImage(authenticatedUrl)}
+                onError={() => {
+                  setImageErrors(prev => new Set(prev).add(imageIndex.toString()));
+                }}
+              />
+            </span>
+          );
+        } else {
+          // Show placeholder for missing or errored images
+          tempParts.push(
+            <span 
+              key={`legacy-placeholder-${legacyMatch.index}`} 
+              className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded text-sm text-gray-500 mx-1"
+            >
+              <Image className="w-4 h-4" />
+              <span>图片 {imageIndex + 1}</span>
+            </span>
+          );
+        }
+
+        tempLastIndex = legacyRegex.lastIndex;
+      }
+
+      // If legacy processing was needed and no UUID processing happened
+      if (tempParts.length > 0 && processedRanges.length === 0) {
+        // Add remaining text
+        if (tempLastIndex < unprocessedText.length) {
+          tempParts.push(unprocessedText.substring(tempLastIndex));
+        }
+        return tempParts.length > 0 ? tempParts : [text];
+      }
+    }
+
+    // Add remaining text for UUID processing
     if (lastIndex < text.length) {
       parts.push(text.substring(lastIndex));
     }
@@ -105,12 +197,12 @@ export const QuizImageDisplay: React.FC<QuizImageDisplayProps> = ({
   );
 };
 
-// Utility function to check if content has images
+// Utility function to check if content has images (both formats)
 export const hasImages = (content: string): boolean => {
-  return /\{\{img:\d+\}\}/.test(content);
+  return /\{\{img:\d+\}\}/.test(content) || /\{\{image:[^}]+\}\}/.test(content);
 };
 
-// Utility function to extract image indices from content
+// Utility function to extract image indices from content (legacy format)
 export const extractImageIndices = (content: string): number[] => {
   const indices: number[] = [];
   const regex = /\{\{img:(\d+)\}\}/g;
@@ -121,4 +213,29 @@ export const extractImageIndices = (content: string): number[] => {
   }
   
   return indices;
+};
+
+// Utility function to extract image UUIDs from content (new format)
+export const extractImageUUIDs = (content: string): string[] => {
+  const uuids: string[] = [];
+  const regex = /\{\{image:([^}]+)\}\}/g;
+  let match;
+  
+  while ((match = regex.exec(content)) !== null) {
+    uuids.push(match[1]);
+  }
+  
+  return uuids;
+};
+
+// Utility function to create image mapping from backend response
+export const createImageMapping = (extractedImages?: Array<{id: string; url: string}>): Record<string, string> => {
+  if (!extractedImages) return {};
+  
+  const mapping: Record<string, string> = {};
+  extractedImages.forEach(image => {
+    mapping[image.id] = image.url;
+  });
+  
+  return mapping;
 };
