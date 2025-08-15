@@ -1,6 +1,5 @@
 import { KnowledgePointSchema } from './knowledge-point.schema';
 import {
-  QuizItemSchema,
   QuizWithKnowledgePointSchema,
   KnowledgePointMatchResultSchema,
 } from './quiz.schema';
@@ -31,10 +30,8 @@ import {
 // Knowledge Point exports
 export { KnowledgePointSchema, type KnowledgePoint } from './knowledge-point.schema';
 
-// Quiz exports  
+// Quiz exports (QuizItem and QuizItemSchema are now in quiz module)
 export {
-  QuizItemSchema,
-  type QuizItem,
   QuizWithKnowledgePointSchema,
   type QuizWithKnowledgePoint,
   KnowledgePointMatchResultSchema,
@@ -108,7 +105,7 @@ export {
 
 export const PracticeSchema = {
   KnowledgePoint: KnowledgePointSchema,
-  QuizItem: QuizItemSchema,
+  // QuizItem is now in the quiz module - import from @kedge/models
   QuizWithKnowledgePoint: QuizWithKnowledgePointSchema,
   KnowledgePointMatchResult: KnowledgePointMatchResultSchema,
   Subject: SubjectSchema,

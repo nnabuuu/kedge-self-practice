@@ -1,16 +1,9 @@
 import { z } from 'zod';
 import { KnowledgePointSchema } from './knowledge-point.schema';
+import { QuizItemSchema } from '../quiz/quiz-item.schema';
 
-export const QuizItemSchema = z.object({
-  type: z.enum(['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective', 'other']),
-  question: z.string(),
-  options: z.array(z.string()),
-  images: z.array(z.string()).optional(),
-  answer: z.union([z.string(), z.array(z.string()), z.array(z.number())]),
-  originalParagraph: z.string().optional(),
-});
-
-export type QuizItem = z.infer<typeof QuizItemSchema>;
+// Note: QuizItem and QuizItemSchema are defined in quiz module
+// External modules should import from @kedge/models
 
 export const KnowledgePointMatchResultSchema = z.object({
   matched: KnowledgePointSchema.optional(),

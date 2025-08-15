@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ParagraphBlock } from './types';
+import { ParagraphBlock } from '@kedge/models';
 
 @Injectable()
 export class DocxService {

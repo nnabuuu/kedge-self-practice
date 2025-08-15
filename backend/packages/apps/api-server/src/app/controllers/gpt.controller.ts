@@ -1,6 +1,7 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
-import { GptService, QuizItem, ParagraphBlock } from '@kedge/quiz-parser';
+import { GptService } from '@kedge/quiz-parser';
+import { QuizItem, ParagraphBlock } from '@kedge/models';
 
 @UseGuards(JwtAuthGuard, TeacherGuard)
 @Controller('v1/gpt')

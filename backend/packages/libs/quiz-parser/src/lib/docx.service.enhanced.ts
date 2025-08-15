@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ParagraphBlock, DocxImage } from './types';
+import { ParagraphBlock, DocxImage } from '@kedge/models';
 import * as unzipper from 'unzipper';
 import { XMLParser } from 'fast-xml-parser';
 
