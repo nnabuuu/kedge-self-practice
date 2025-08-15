@@ -25,17 +25,37 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 
   // Set selected subject once subjects data is loaded
+  // Remember teacher's last accessed subject preference
   useEffect(() => {
     if (subjects && subjects.length > 0 && !selectedSubject) {
-      const teacherSubject = subjects.find(s => teacher.subjects.includes(s.id));
-      if (teacherSubject) {
-        setSelectedSubject(teacherSubject);
+      // Try to restore last accessed subject from localStorage
+      const lastSubjectId = localStorage.getItem(`teacher_${teacher.id}_last_subject`);
+      let subjectToSelect = null;
+      
+      if (lastSubjectId) {
+        subjectToSelect = subjects.find(s => s.id === lastSubjectId);
+      }
+      
+      // Fallback to first available subject if no saved preference or subject not found
+      if (!subjectToSelect && subjects.length > 0) {
+        subjectToSelect = subjects[0];
+      }
+      
+      if (subjectToSelect) {
+        setSelectedSubject(subjectToSelect);
       }
     }
-  }, [subjects, teacher.subjects, selectedSubject]);
+  }, [subjects, teacher.id, selectedSubject]);
 
-  // 获取教师可管理的学科 - with null check
-  const teacherSubjects = (subjects || []).filter(s => teacher.subjects.includes(s.id));
+  // Save selected subject preference when it changes
+  useEffect(() => {
+    if (selectedSubject && teacher.id) {
+      localStorage.setItem(`teacher_${teacher.id}_last_subject`, selectedSubject.id);
+    }
+  }, [selectedSubject, teacher.id]);
+
+  // 教师可以访问所有学科 (内部系统)
+  const teacherSubjects = subjects || [];
 
   // 获取当前学科的知识点 - with null checks
   const currentSubjectKnowledgePoints = selectedSubject 
