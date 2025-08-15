@@ -416,6 +416,7 @@ function App() {
               quizItems={quizItems}
               onComplete={handleKnowledgePointComplete}
               onBack={handleBackToQuiz}
+              imageMapping={imageMapping}
             />
           </div>
         )}

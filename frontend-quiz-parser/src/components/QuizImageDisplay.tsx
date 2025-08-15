@@ -68,6 +68,11 @@ export const QuizImageDisplay: React.FC<QuizImageDisplayProps> = ({
 
       if (imageUrl && !imageErrors.has(uuid)) {
         const authenticatedUrl = getImageUrl(imageUrl);
+        console.log(`=== Image URL Generation ===`);
+        console.log(`UUID: ${uuid}`);
+        console.log(`Original URL: ${imageUrl}`);
+        console.log(`Final URL: ${authenticatedUrl}`);
+        console.log(`=== End Image URL Generation ===`);
         // Add image component
         parts.push(
           <span key={`uuid-img-${uuidMatch.index}`} className="inline-block align-middle mx-1 my-2">
@@ -79,6 +84,9 @@ export const QuizImageDisplay: React.FC<QuizImageDisplayProps> = ({
               onError={() => {
                 console.error(`Failed to load image: ${authenticatedUrl}`);
                 setImageErrors(prev => new Set(prev).add(uuid));
+              }}
+              onLoad={() => {
+                console.log(`Successfully loaded image: ${authenticatedUrl}`);
               }}
             />
           </span>

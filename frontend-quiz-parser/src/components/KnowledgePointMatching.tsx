@@ -2,17 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { QuizItem, QuizWithKnowledgePoint, KnowledgePointMatchResult } from '../types/quiz';
 import { matchKnowledgePoint } from '../services/localQuizService';
 import { Brain, BookOpen, CheckCircle, AlertCircle, Loader2, ArrowRight, Target, ChevronDown, ChevronUp, Tag, Globe, Crown, Search, Edit3, X, Check } from 'lucide-react';
+import { QuizImageDisplay } from './QuizImageDisplay';
 
 interface KnowledgePointMatchingProps {
   quizItems: QuizItem[];
   onComplete: (quizWithKnowledgePoints: QuizWithKnowledgePoint[]) => void;
   onBack: () => void;
+  imageMapping?: Record<string, string>; // UUID to URL mapping for images
 }
 
 export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
   quizItems,
   onComplete,
-  onBack
+  onBack,
+  imageMapping = {}
 }) => {
   const [quizWithKnowledgePoints, setQuizWithKnowledgePoints] = useState<QuizWithKnowledgePoint[]>([]);
   const [currentMatchingIndex, setCurrentMatchingIndex] = useState(0);
@@ -184,7 +187,14 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
           <span className="font-medium text-gray-700">{label}</span>
         </div>
         
-        <h3 className="text-lg font-medium text-gray-800 mb-3">{item.question}</h3>
+        <div className="mb-3">
+          <QuizImageDisplay 
+            content={item.question}
+            images={item.images}
+            imageMapping={imageMapping}
+            className="text-lg font-medium text-gray-800"
+          />
+        </div>
         
         {/* Options for choice questions */}
         {item.options && item.options.length > 0 && (

@@ -271,7 +271,7 @@ export const batchSubmitQuizzesWithKnowledgePoints = async (
   failCount: number;
   results: Array<{ quizId?: string; error?: string }>;
 }> => {
-  const response = await apiFetch('/quiz/batch-with-knowledge-points', {
+  const response = await apiFetch('/quiz/submit-multiple', {
     method: 'POST',
     body: JSON.stringify({ quizzes }),
   });
