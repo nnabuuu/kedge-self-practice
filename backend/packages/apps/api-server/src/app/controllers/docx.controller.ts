@@ -187,11 +187,13 @@ export class DocxController {
     // Create a mapping of original image paths to saved image UUIDs
     const imageIdMap = new Map<string, string>();
     const imageUrlMap = new Map<string, string>();
+    const uuidToUrlMap = new Map<string, string>(); // UUID → URL for frontend
     allImages.forEach((docxImage, index) => {
       const savedImage = savedImages.find(img => img.originalDocxId === docxImage.id);
       if (savedImage) {
         imageIdMap.set(docxImage.id, savedImage.id); // original path → saved UUID
-        imageUrlMap.set(docxImage.id, savedImage.url); // original path → saved URL
+        imageUrlMap.set(docxImage.id, savedImage.url); // original path → saved URL  
+        uuidToUrlMap.set(savedImage.id, savedImage.url); // saved UUID → saved URL (for frontend)
       }
     });
     
@@ -258,7 +260,7 @@ export class DocxController {
       quizItems,
       extractedImages: savedImages,
       paragraphs: enhancedParagraphs,
-      imageMapping: Object.fromEntries(imageUrlMap),
+      imageMapping: Object.fromEntries(uuidToUrlMap),
     };
   }
 }
