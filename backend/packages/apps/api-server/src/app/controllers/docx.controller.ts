@@ -77,8 +77,33 @@ export class DocxController {
     }
   })
   async extractQuizWithImages(@UploadedFile() file: MulterFile) {
+    console.log('=== DOCX Extraction Debug ===');
+    console.log('Uploaded file size:', file.buffer.length, 'bytes');
+    console.log('File name:', file.originalname);
+    
     // Extract paragraphs and images from DOCX
     const { paragraphs, allImages } = await this.enhancedDocxService.extractAllHighlightsWithImages(file.buffer);
+    
+    console.log('Extracted paragraphs count:', paragraphs.length);
+    console.log('Extracted images count:', allImages.length);
+    
+    // Check total content size before processing
+    const totalContentSize = JSON.stringify(paragraphs).length;
+    console.log('Total extracted content size:', totalContentSize, 'characters');
+    console.log('Estimated tokens from extraction:', Math.ceil(totalContentSize / 4));
+    
+    // Log sample of first few paragraphs (if any)
+    if (paragraphs.length > 0) {
+      console.log('First paragraph text length:', paragraphs[0].paragraph?.length || 0);
+      console.log('First paragraph sample:', paragraphs[0].paragraph?.substring(0, 200) || 'No text');
+      console.log('First paragraph image count:', paragraphs[0].images?.length || 0);
+      
+      if (paragraphs.length > 1) {
+        console.log('Second paragraph text length:', paragraphs[1].paragraph?.length || 0);
+      }
+    }
+    
+    console.log('=== End DOCX Extraction Debug ===');
     
     // Save extracted images using the storage service
     const savedImages: Array<{
@@ -139,7 +164,7 @@ export class DocxController {
       }),
     }));
     
-    // Generate quiz items using GPT with placeholder paragraphs
+    // Generate quiz items using GPT with placeholder paragraphs (no image data)
     const quizItems = await this.gptService.extractQuizItems(paragraphsForGPT);
     
     return {

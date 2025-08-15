@@ -13,6 +13,90 @@ export class GptService {
   }
 
   async extractQuizItems(paragraphs: ParagraphBlock[]): Promise<QuizItem[]> {
+    // Debug logging to see what's causing the huge token count
+    console.log('=== GPT Input Debug ===');
+    console.log('Number of paragraphs:', paragraphs.length);
+    
+    // Check the size of the data being sent
+    const jsonString = JSON.stringify(paragraphs, null, 2);
+    console.log('Total JSON string length:', jsonString.length);
+    console.log('Estimated tokens (rough):', Math.ceil(jsonString.length / 4));
+    
+    // Log detailed paragraph analysis
+    if (paragraphs.length > 0) {
+      console.log('First paragraph sample:', JSON.stringify(paragraphs[0], null, 2).substring(0, 1000));
+      
+      // Analyze paragraph sizes
+      const sizes = paragraphs.map((p, idx) => {
+        const size = JSON.stringify(p).length;
+        return { idx, size, textLength: p.paragraph?.length || 0, imageCount: p.images?.length || 0 };
+      });
+      
+      // Find largest paragraphs
+      const largest = sizes.sort((a, b) => b.size - a.size).slice(0, 5);
+      console.log('Largest paragraphs by JSON size:', largest);
+      
+      // Check for image data
+      const hasImageData = paragraphs.some(p => p.images && p.images.length > 0 && p.images.some((img: any) => img.data));
+      if (hasImageData) {
+        console.error('WARNING: Image data (Buffer) found in paragraphs! This should not happen.');
+        
+        // Log which paragraphs have image data and their sizes
+        paragraphs.forEach((p, idx) => {
+          if (p.images && p.images.length > 0) {
+            p.images.forEach((img: any, imgIdx: number) => {
+              if (img.data) {
+                const bufferSize = Buffer.isBuffer(img.data) ? img.data.length : 
+                                  (typeof img.data === 'string' ? img.data.length : 
+                                   JSON.stringify(img.data).length);
+                console.error(`Paragraph ${idx}, Image ${imgIdx} has data of size:`, bufferSize);
+                console.error(`Image keys:`, Object.keys(img));
+              }
+            });
+          }
+        });
+      }
+      
+      // Check for abnormally long text content
+      const longTextParagraphs = paragraphs.filter(p => p.paragraph && p.paragraph.length > 10000);
+      if (longTextParagraphs.length > 0) {
+        console.warn(`Found ${longTextParagraphs.length} paragraphs with text longer than 10k characters`);
+        longTextParagraphs.forEach((p, idx) => {
+          console.log(`Long paragraph ${idx}: ${p.paragraph?.length} chars, preview: "${p.paragraph?.substring(0, 200)}..."`);
+        });
+      }
+    }
+    
+    // If the data is too large, return an error instead of truncating
+    if (jsonString.length > 500000) { // ~125k tokens (close to GPT-4's limit)
+      console.error('Data exceeds safe limits! Rejecting request.');
+      console.log('Data size:', jsonString.length, 'characters');
+      console.log('Estimated tokens:', Math.ceil(jsonString.length / 4));
+      
+      return [{
+        type: 'other',
+        question: '文档内容过大，无法处理。请尝试上传较小的文档或分段处理。',
+        answer: `数据大小: ${Math.ceil(jsonString.length / 4)} tokens (超过限制)`
+      }] as QuizItem[];
+    }
+    
+    // If the data is moderately large, truncate it
+    if (jsonString.length > 400000) { // ~100k tokens
+      console.warn('Data is large, truncating paragraphs for safety...');
+      console.log('Original paragraphs count:', paragraphs.length);
+      
+      // Take only first 10 paragraphs as a safety measure
+      paragraphs = paragraphs.slice(0, 10);
+      console.log('Truncated to:', paragraphs.length, 'paragraphs');
+      
+      // Re-check size after truncation
+      const truncatedJsonString = JSON.stringify(paragraphs, null, 2);
+      console.log('After truncation - JSON length:', truncatedJsonString.length);
+      console.log('After truncation - Estimated tokens:', Math.ceil(truncatedJsonString.length / 4));
+    }
+    
+    console.log('=== End GPT Input Debug ===');
+    
     const prompt = `
     你是一个教育出题助手。你的任务是从提供的段落中提取题目，并严格基于高亮部分生成题干和答案。请遵守以下规则：
     1. **只能使用输入中的内容（包括高亮和原文）**，绝不能添加或虚构任何新的内容、选项或表述。
