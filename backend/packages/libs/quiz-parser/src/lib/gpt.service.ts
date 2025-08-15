@@ -13,29 +13,30 @@ export class GptService {
   }
 
   async extractQuizItems(paragraphs: GptParagraphBlock[]): Promise<QuizItem[]> {
+    console.log(JSON.stringify(paragraphs));
     // Debug logging to see what's causing the huge token count
     console.log('=== GPT Input Debug ===');
     console.log('Number of paragraphs:', paragraphs.length);
-    
+
     // Check the size of the data being sent
     const jsonString = JSON.stringify(paragraphs, null, 2);
     console.log('Total JSON string length:', jsonString.length);
     console.log('Estimated tokens (rough):', Math.ceil(jsonString.length / 4));
-    
+
     // Log detailed paragraph analysis
     if (paragraphs.length > 0) {
       console.log('First paragraph sample:', JSON.stringify(paragraphs[0], null, 2).substring(0, 1000));
-      
+
       // Analyze paragraph sizes
       const sizes = paragraphs.map((p, idx) => {
         const size = JSON.stringify(p).length;
         return { idx, size, textLength: p.paragraph?.length || 0 };
       });
-      
+
       // Find largest paragraphs
       const largest = sizes.sort((a, b) => b.size - a.size).slice(0, 5);
       console.log('Largest paragraphs by JSON size:', largest);
-      
+
       // Check for abnormally long text content
       const longTextParagraphs = paragraphs.filter(p => p.paragraph && p.paragraph.length > 10000);
       if (longTextParagraphs.length > 0) {
@@ -45,41 +46,41 @@ export class GptService {
         });
       }
     }
-    
+
     // If the data is too large, return an error instead of truncating
     if (jsonString.length > 500000) { // ~125k tokens (close to GPT-4's limit)
       console.error('Data exceeds safe limits! Rejecting request.');
       console.log('Data size:', jsonString.length, 'characters');
       console.log('Estimated tokens:', Math.ceil(jsonString.length / 4));
-      
+
       return [{
         type: 'other',
         question: '文档内容过大，无法处理。请尝试上传较小的文档或分段处理。',
         answer: `数据大小: ${Math.ceil(jsonString.length / 4)} tokens (超过限制)`
       }] as QuizItem[];
     }
-    
+
     // If the data is moderately large, truncate it
     if (jsonString.length > 400000) { // ~100k tokens
       console.warn('Data is large, truncating paragraphs for safety...');
       console.log('Original paragraphs count:', paragraphs.length);
-      
+
       // Take only first 10 paragraphs as a safety measure
       paragraphs = paragraphs.slice(0, 10);
       console.log('Truncated to:', paragraphs.length, 'paragraphs');
-      
+
       // Re-check size after truncation
       const truncatedJsonString = JSON.stringify(paragraphs, null, 2);
       console.log('After truncation - JSON length:', truncatedJsonString.length);
       console.log('After truncation - Estimated tokens:', Math.ceil(truncatedJsonString.length / 4));
     }
-    
+
     console.log('=== End GPT Input Debug ===');
-    
+
     const prompt = `
     你是一个教育出题助手。你的任务是从提供的段落中提取题目，并严格基于高亮部分生成题干和答案。请遵守以下规则：
-    1. **只能使用输入中的内容（包括高亮和原文）**，绝不能添加或虚构任何新的内容、选项或表述。
-    2. **高亮的内容为答案或重要知识点**，请据此推断题型和正确答案。
+    1. 只能使用输入中的内容（包括高亮和原文），绝不能添加或虚构任何新的内容、选项或表述，尽量保持完整的题干上下文，包括 {{image: }}表示的placeholder。
+    2. 高亮的内容为答案或重要知识点，请据此推断题型和正确答案。
     3. 不要创造新的选项。仅在原文中明确列出可供选择的选项(如"1."、"①"、"A. "等)时，才可生成选择题。
     4. 若原文中未明确列出多个选项，但包含某个高亮词汇，请将其作为"填空题"处理，"填空题"可以有多个高亮指示的空白处。
     5. 若原文中出现大段答案结果且仅有一处高亮，请将其作为"主观题"处理
