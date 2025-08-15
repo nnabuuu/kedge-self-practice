@@ -211,8 +211,9 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
 
           {/* Search and Filters */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1 relative">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Search Input - takes up more space */}
+              <div className="lg:col-span-6 relative">
                 <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                 <input
                   type="text"
@@ -223,30 +224,36 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
                 />
               </div>
               
-              <select
-                value={selectedVolume}
-                onChange={(e) => {
-                  setSelectedVolume(e.target.value);
-                  setSelectedUnit('all');
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">全部册别</option>
-                {volumes.map(volume => (
-                  <option key={volume} value={volume}>{volume}</option>
-                ))}
-              </select>
+              {/* Volume Select - fixed width */}
+              <div className="lg:col-span-3">
+                <select
+                  value={selectedVolume}
+                  onChange={(e) => {
+                    setSelectedVolume(e.target.value);
+                    setSelectedUnit('all');
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">全部册别</option>
+                  {volumes.map(volume => (
+                    <option key={volume} value={volume}>{volume}</option>
+                  ))}
+                </select>
+              </div>
               
-              <select
-                value={selectedUnit}
-                onChange={(e) => setSelectedUnit(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">全部单元</option>
-                {units.map(unit => (
-                  <option key={unit} value={unit}>{unit}</option>
-                ))}
-              </select>
+              {/* Unit Select - fixed width */}
+              <div className="lg:col-span-3">
+                <select
+                  value={selectedUnit}
+                  onChange={(e) => setSelectedUnit(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">全部单元</option>
+                  {units.map(unit => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

@@ -254,8 +254,9 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
 
           {/* Search and Filters */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1 relative">
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
+              {/* Search Input - takes up more space */}
+              <div className="lg:col-span-6 relative">
                 <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                 <input
                   type="text"
@@ -266,29 +267,35 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                 />
               </div>
               
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">全部题型</option>
-                <option value="single-choice">单选题</option>
-                <option value="multiple-choice">多选题</option>
-                <option value="fill-in-the-blank">填空题</option>
-                <option value="subjective">主观题</option>
-                <option value="other">其他</option>
-              </select>
+              {/* Type Select - fixed width */}
+              <div className="lg:col-span-2">
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">全部题型</option>
+                  <option value="single-choice">单选题</option>
+                  <option value="multiple-choice">多选题</option>
+                  <option value="fill-in-the-blank">填空题</option>
+                  <option value="subjective">主观题</option>
+                  <option value="other">其他</option>
+                </select>
+              </div>
               
-              <select
-                value={selectedDifficulty}
-                onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">全部难度</option>
-                <option value="easy">简单</option>
-                <option value="medium">中等</option>
-                <option value="hard">困难</option>
-              </select>
+              {/* Difficulty Select - fixed width */}
+              <div className="lg:col-span-2">
+                <select
+                  value={selectedDifficulty}
+                  onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">全部难度</option>
+                  <option value="easy">简单</option>
+                  <option value="medium">中等</option>
+                  <option value="hard">困难</option>
+                </select>
+              </div>
             </div>
           </div>
 
