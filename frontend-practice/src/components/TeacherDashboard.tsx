@@ -62,10 +62,9 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
     );
   }
 
-  // Navigate to quiz parser
+  // Navigate to quiz parser with authentication sharing
   const navigateToQuizParser = () => {
-    const quizParserUrl = import.meta.env.VITE_QUIZ_PARSER_URL || 'http://localhost:5173';
-    window.open(quizParserUrl, '_blank');
+    authService.navigateToQuizParser();
   };
 
   // 渲染概览页面

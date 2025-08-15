@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Search, Filter, Upload, Eye, Edit, Trash2, Plus, Calendar, Tag, Target, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { authService } from '../../services/authService';
 
 interface Quiz {
   id: string;
@@ -34,9 +35,6 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
   const [totalPages, setTotalPages] = useState(1);
   const [selectedQuizzes, setSelectedQuizzes] = useState<Set<string>>(new Set());
   const itemsPerPage = 10;
-
-  // Get quiz parser URL from environment
-  const quizParserUrl = import.meta.env.VITE_QUIZ_PARSER_URL || 'http://localhost:5173';
 
   // Fetch quizzes from backend
   useEffect(() => {
@@ -166,7 +164,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
   };
 
   const handleNavigateToQuizParser = () => {
-    window.open(quizParserUrl, '_blank');
+    authService.navigateToQuizParser();
   };
 
   const getQuizTypeLabel = (type: string) => {
