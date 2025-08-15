@@ -4,6 +4,7 @@ import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { DocxService, EnhancedDocxService, GptService } from '@kedge/quiz-parser';
 import { EnhancedQuizStorageService } from '@kedge/quiz';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { ParagraphBlock } from '@kedge/models';
 
 interface MulterFile {
   buffer: Buffer;
@@ -118,12 +119,11 @@ export class DocxController {
       }
     });
     
-    // Create paragraphs for GPT (only text and highlights, no images)
-    const paragraphsForGPT = paragraphs.map(para => ({
+    // Create paragraphs for GPT (only text and highlights, empty images array)
+    const paragraphsForGPT: ParagraphBlock[] = paragraphs.map(para => ({
       paragraph: para.paragraph,
       highlighted: para.highlighted,
-      // Note: Images are intentionally excluded from GPT processing
-      // Images will be handled separately after quiz extraction
+      images: [], // Empty array to satisfy ParagraphBlock type, GPT doesn't process images
     }));
     
     // Update paragraphs to include saved image URLs for response

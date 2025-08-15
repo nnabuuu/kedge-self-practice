@@ -59,7 +59,7 @@ export class GptService {
                     { type: 'array', items: { type: 'number' } },
                   ],
                 },
-              },
+              },g
               required: ['type', 'question', 'options', 'answer'],
             },
           },
