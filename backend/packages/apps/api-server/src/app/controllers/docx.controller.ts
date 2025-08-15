@@ -13,6 +13,11 @@ interface MulterFile {
   [key: string]: unknown;
 }
 
+// Utility function to escape special regex characters
+function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 @ApiTags('docx')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, TeacherGuard)
@@ -179,23 +184,36 @@ export class DocxController {
       }
     }
     
-    // Create a mapping of original image paths to new URLs for GPT processing
+    // Create a mapping of original image paths to saved image UUIDs
+    const imageIdMap = new Map<string, string>();
     const imageUrlMap = new Map<string, string>();
     allImages.forEach((docxImage, index) => {
       const savedImage = savedImages.find(img => img.originalDocxId === docxImage.id);
       if (savedImage) {
-        imageUrlMap.set(docxImage.id, savedImage.url);
+        imageIdMap.set(docxImage.id, savedImage.id); // original path → saved UUID
+        imageUrlMap.set(docxImage.id, savedImage.url); // original path → saved URL
       }
     });
     
-    // Create paragraphs for GPT (only text and highlights, NO images or Buffer data)
-    const paragraphsForGPT: GptParagraphBlock[] = paragraphs.map(para => ({
-      paragraph: para.paragraph || '',
-      highlighted: Array.isArray(para.highlighted) ? para.highlighted.map(h => ({
-        text: h.text || '',
-        color: h.color || ''
-      })) : [],
-    }));
+    // Create paragraphs for GPT with UUID-based image placeholders
+    const paragraphsForGPT: GptParagraphBlock[] = paragraphs.map(para => {
+      let processedText = para.paragraph || '';
+      
+      // Replace {{image:original-path}} with {{image:uuid}}
+      imageIdMap.forEach((savedUuid, originalPath) => {
+        const originalPlaceholder = `{{image:${originalPath}}}`;
+        const uuidPlaceholder = `{{image:${savedUuid}}}`;
+        processedText = processedText.replace(new RegExp(escapeRegExp(originalPlaceholder), 'g'), uuidPlaceholder);
+      });
+      
+      return {
+        paragraph: processedText,
+        highlighted: Array.isArray(para.highlighted) ? para.highlighted.map(h => ({
+          text: h.text || '',
+          color: h.color || ''
+        })) : [],
+      };
+    });
     
     // Debug: Verify paragraphsForGPT doesn't contain Buffer data
     console.log('=== Verifying paragraphsForGPT ===');
