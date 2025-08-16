@@ -38,7 +38,16 @@ class MockDataStore {
   ];
 
   private knowledgePoints: KnowledgePoint[] = [
-    // 历史知识点
+    // 历史知识点 - Updated to match backend IDs
+    {
+      "id": "kp_1",
+      "subjectId": "history",
+      "volume": "中外历史纲要上",
+      "unit": "第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固",
+      "lesson": "第1课 中华文明的起源与早期国家",
+      "section": "第一子目 石器时代的古人类和文化遗存",
+      "topic": "旧石器时代与新石器文明"
+    },
     {
       "id": "HIST-1-1-1",
       "subjectId": "history",
@@ -265,6 +274,106 @@ class MockDataStore {
       "lesson": "第2节 基因在染色体上",
       "section": "第一子目 基因定位",
       "topic": "基因与染色体的关系"
+    },
+    // Backend-compatible knowledge points for quiz associations
+    {
+      "id": "kp_5",
+      "subjectId": "history",
+      "volume": "中外历史纲要上",
+      "unit": "第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固",
+      "lesson": "第1课 中华文明的起源与早期国家",
+      "section": "第二子目 夏商周的政治制度",
+      "topic": "商朝的统治"
+    },
+    {
+      "id": "kp_6",
+      "subjectId": "history",
+      "volume": "中外历史纲要上", 
+      "unit": "第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固",
+      "lesson": "第1课 中华文明的起源与早期国家",
+      "section": "第二子目 夏商周的政治制度",
+      "topic": "西周的政治制度"
+    },
+    {
+      "id": "kp_11",
+      "subjectId": "history",
+      "volume": "中外历史纲要上",
+      "unit": "第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固",
+      "lesson": "第2课 诸侯纷争与变法运动",
+      "section": "第二子目 战国时期的变法",
+      "topic": "商鞅变法"
+    },
+    {
+      "id": "kp_12",
+      "subjectId": "history",
+      "volume": "中外历史纲要上",
+      "unit": "第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固",
+      "lesson": "第2课 诸侯纷争与变法运动",
+      "section": "第三子目 春秋战国时期的思想文化",
+      "topic": "孔子的思想"
+    },
+    {
+      "id": "kp_17",
+      "subjectId": "history",
+      "volume": "中外历史纲要上",
+      "unit": "第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固",
+      "lesson": "第3课 秦统一多民族封建国家的建立",
+      "section": "第一子目 秦的统一",
+      "topic": "秦统一的条件和过程"
+    },
+    {
+      "id": "kp_22",
+      "subjectId": "history",
+      "volume": "中外历史纲要上",
+      "unit": "第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固",
+      "lesson": "第3课 秦统一多民族封建国家的建立",
+      "section": "第二子目 秦朝的政治制度",
+      "topic": "焚书坑儒"
+    },
+    {
+      "id": "kp_26",
+      "subjectId": "history",
+      "volume": "中外历史纲要上",
+      "unit": "第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固",
+      "lesson": "第4课 西汉与东汉——统一多民族封建国家的巩固",
+      "section": "第一子目 西汉的政治制度",
+      "topic": "\"文景之治\""
+    },
+    {
+      "id": "kp_53",
+      "subjectId": "history",
+      "volume": "中外历史纲要上",
+      "unit": "第二单元 中古时期的世界",
+      "lesson": "第7课 隋唐制度的变化与创新",
+      "section": "第二子目 隋唐的政治制度",
+      "topic": "科举制"
+    },
+    {
+      "id": "kp_70",
+      "subjectId": "history",
+      "volume": "中外历史纲要上",
+      "unit": "第三单元 辽宋夏金元时期的制度变化与经济发展",
+      "lesson": "第11课 辽宋夏金元的政治制度",
+      "section": "第二子目 宋代的政治制度",
+      "topic": "王安石变法的目的与内容"
+    },
+    {
+      "id": "kp_144",
+      "subjectId": "history",
+      "volume": "中外历史纲要下",
+      "unit": "第四单元 中国近代化的起步",
+      "lesson": "第12课 鸦片战争",
+      "section": "第一子目 第一次鸦片战争",
+      "topic": "虎门销烟"
+    },
+    {
+      "id": "kp_207",
+      "subjectId": "history",
+      "volume": "中外历史纲要下",
+      "unit": "第五单元 从新民主主义革命到社会主义建设新时期",
+      "lesson": "第17课 中国共产党成立与新民主主义革命兴起",
+      "section": "第一子目 五四运动",
+      "topic": "五四运动"
     }
   ];
 
@@ -281,7 +390,7 @@ class MockDataStore {
         "D": "良渚文化 良渚古城遗址"
       },
       "answer": "D",
-      "relatedKnowledgePointId": "HIST-1-1-1-2"
+      "relatedKnowledgePointId": "kp_1"
     },
     {
       "id": "HIST-Q2",
@@ -294,7 +403,7 @@ class MockDataStore {
         "D": "①②③④"
       },
       "answer": "A",
-      "relatedKnowledgePointId": "HIST-1-1-2-3"
+      "relatedKnowledgePointId": "kp_6"
     },
     {
       "id": "HIST-Q3",
@@ -401,6 +510,138 @@ class MockDataStore {
       },
       "answer": ["A", "B", "C"],
       "relatedKnowledgePointId": "HIST-1-2-1-1"
+    },
+    
+    // Backend-compatible quiz questions matching seeded data
+    {
+      "id": "BACKEND-Q1",
+      "type": "single-choice", 
+      "question": "商朝政治制度的特点不包括（ ）",
+      "options": {
+        "A": "君主专制",
+        "B": "血缘纽带", 
+        "C": "等级制度",
+        "D": "郡县制"
+      },
+      "answer": "D",
+      "relatedKnowledgePointId": "kp_5"
+    },
+    {
+      "id": "BACKEND-Q2", 
+      "type": "single-choice",
+      "question": "商鞅变法的核心内容是（ ）",
+      "options": {
+        "A": "建立郡县制",
+        "B": "奖励耕战",
+        "C": "统一度量衡", 
+        "D": "焚书坑儒"
+      },
+      "answer": "B",
+      "relatedKnowledgePointId": "kp_11"
+    },
+    {
+      "id": "BACKEND-Q3",
+      "type": "single-choice",
+      "question": "孔子思想的核心是（ ）",
+      "options": {
+        "A": "仁",
+        "B": "礼",
+        "C": "义", 
+        "D": "智"
+      },
+      "answer": "A",
+      "relatedKnowledgePointId": "kp_12"
+    },
+    {
+      "id": "BACKEND-Q4",
+      "type": "single-choice", 
+      "question": "秦能够统一六国的根本原因是（ ）",
+      "options": {
+        "A": "军事力量强大",
+        "B": "外交手段高明",
+        "C": "经济实力雄厚",
+        "D": "政治制度先进"
+      },
+      "answer": "D",
+      "relatedKnowledgePointId": "kp_17"
+    },
+    {
+      "id": "BACKEND-Q5",
+      "type": "single-choice",
+      "question": "秦始皇\"焚书坑儒\"的主要目的是（ ）",
+      "options": {
+        "A": "消灭儒家学派",
+        "B": "统一思想文化", 
+        "C": "发展法家思想",
+        "D": "打击政治对手"
+      },
+      "answer": "B",
+      "relatedKnowledgePointId": "kp_22"
+    },
+    {
+      "id": "BACKEND-Q6",
+      "type": "single-choice",
+      "question": "\"文景之治\"的主要特点是（ ）",
+      "options": {
+        "A": "加强中央集权",
+        "B": "休养生息",
+        "C": "对外征战",
+        "D": "重用外戚"
+      },
+      "answer": "B", 
+      "relatedKnowledgePointId": "kp_26"
+    },
+    {
+      "id": "BACKEND-Q7",
+      "type": "single-choice",
+      "question": "科举制正式确立于（ ）",
+      "options": {
+        "A": "隋文帝时期",
+        "B": "隋炀帝时期",
+        "C": "唐太宗时期",
+        "D": "唐高宗时期"
+      },
+      "answer": "B",
+      "relatedKnowledgePointId": "kp_53"
+    },
+    {
+      "id": "BACKEND-Q8",
+      "type": "multiple-choice",
+      "question": "王安石变法的内容包括（ ）",
+      "options": {
+        "A": "青苗法",
+        "B": "募役法",
+        "C": "市易法", 
+        "D": "保甲法"
+      },
+      "answer": ["A", "B", "C", "D"],
+      "relatedKnowledgePointId": "kp_70"
+    },
+    {
+      "id": "BACKEND-Q9",
+      "type": "single-choice",
+      "question": "林则徐虎门销烟的历史意义在于（ ）",
+      "options": {
+        "A": "开启了中国近代化进程",
+        "B": "显示了中华民族反抗外来侵略的坚强意志",
+        "C": "促进了洋务运动的兴起",
+        "D": "推动了戊戌变法的发生"
+      },
+      "answer": "B",
+      "relatedKnowledgePointId": "kp_144"
+    },
+    {
+      "id": "BACKEND-Q10",
+      "type": "single-choice", 
+      "question": "五四运动的导火索是（ ）",
+      "options": {
+        "A": "巴黎和会中国外交失败",
+        "B": "北洋政府镇压学生",
+        "C": "帝国主义瓜分中国",
+        "D": "新文化运动的影响"
+      },
+      "answer": "A",
+      "relatedKnowledgePointId": "kp_207"
     },
 
     // 生物问答题

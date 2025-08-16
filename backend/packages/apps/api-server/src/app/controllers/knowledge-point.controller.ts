@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import {
   KnowledgePointGPTService,
   KnowledgePointStorage,
+  KnowledgePointBootstrapService,
 } from '@kedge/knowledge-point';
 import { KnowledgePoint } from '@kedge/models';
 import { PersistentService } from '@kedge/persistent';
@@ -42,6 +43,7 @@ export class KnowledgePointController {
     private readonly gptService: KnowledgePointGPTService,
     private readonly storage: KnowledgePointStorage,
     private readonly persistentService: PersistentService,
+    private readonly bootstrapService: KnowledgePointBootstrapService,
   ) {}
 
   @Post('match')
@@ -309,6 +311,55 @@ export class KnowledgePointController {
       };
     } catch (error) {
       this.logger.error('Failed to reload knowledge points', error);
+      throw error;
+    }
+  }
+
+  @Get('bootstrap/info')
+  @ApiOperation({ summary: 'Get knowledge points bootstrap information' })
+  @ApiResponse({
+    status: 200,
+    description: 'Bootstrap information retrieved successfully',
+  })
+  async getBootstrapInfo(): Promise<{
+    count: number;
+    lastUpdated: Date | null;
+    currentHash: string | null;
+  }> {
+    try {
+      const info = await this.bootstrapService.getBootstrapInfo();
+      this.logger.log(`Bootstrap info: ${JSON.stringify(info)}`);
+      return info;
+    } catch (error) {
+      this.logger.error('Failed to get bootstrap info', error);
+      throw error;
+    }
+  }
+
+  @Post('bootstrap/refresh')
+  @ApiOperation({ summary: 'Force refresh knowledge points from Excel file' })
+  @ApiResponse({
+    status: 200,
+    description: 'Knowledge points refreshed successfully',
+  })
+  async forceRefreshKnowledgePoints(): Promise<{
+    message: string;
+    count: number;
+    lastUpdated: Date | null;
+  }> {
+    try {
+      await this.bootstrapService.forceRefresh();
+      const info = await this.bootstrapService.getBootstrapInfo();
+      
+      this.logger.log(`Force refresh completed: ${info.count} knowledge points`);
+
+      return {
+        message: 'Knowledge points refreshed successfully from Excel file',
+        count: info.count,
+        lastUpdated: info.lastUpdated,
+      };
+    } catch (error) {
+      this.logger.error('Failed to force refresh knowledge points', error);
       throw error;
     }
   }
