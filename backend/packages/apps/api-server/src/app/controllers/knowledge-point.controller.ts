@@ -289,6 +289,7 @@ export class KnowledgePointController {
     }
   }
 
+
   @Post('reload')
   @ApiOperation({ summary: 'Reload knowledge points from Excel file' })
   @ApiResponse({

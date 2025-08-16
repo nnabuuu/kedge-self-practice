@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Search, Eye, ChevronDown, ChevronUp, Tag, Layers, Book, FileText } from 'lucide-react';
+import { useQuestionSearch } from '../hooks/useApi';
 
 interface KnowledgePoint {
   id: string;
@@ -29,6 +30,38 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
     units: 0,
     quizzes: 0
   });
+
+  // Get all quiz questions to calculate per-knowledge-point counts
+  const { data: allQuestions = [], loading: questionsLoading } = useQuestionSearch('');
+
+  // Calculate quiz counts for each knowledge point
+  const getQuizCountForKnowledgePoint = (knowledgePointId: string): number => {
+    return allQuestions.filter(q => q.relatedKnowledgePointId === knowledgePointId).length;
+  };
+
+  // Calculate quiz counts for volume level
+  const getQuizCountForVolume = (volume: string): number => {
+    return allQuestions.filter(q => {
+      const kp = knowledgePoints.find(kp => kp.id === q.relatedKnowledgePointId);
+      return kp?.volume === volume;
+    }).length;
+  };
+
+  // Calculate quiz counts for unit level
+  const getQuizCountForUnit = (volume: string, unit: string): number => {
+    return allQuestions.filter(q => {
+      const kp = knowledgePoints.find(kp => kp.id === q.relatedKnowledgePointId);
+      return kp?.volume === volume && kp?.unit === unit;
+    }).length;
+  };
+
+  // Calculate quiz counts for lesson level
+  const getQuizCountForLesson = (volume: string, unit: string, lesson: string): number => {
+    return allQuestions.filter(q => {
+      const kp = knowledgePoints.find(kp => kp.id === q.relatedKnowledgePointId);
+      return kp?.volume === volume && kp?.unit === unit && kp?.lesson === lesson;
+    }).length;
+  };
 
   // Fetch knowledge points from backend
   useEffect(() => {
@@ -141,7 +174,7 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
     setExpandedItems(newExpanded);
   };
 
-  if (loading) {
+  if (loading || questionsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
@@ -281,6 +314,9 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
                           <span className="text-sm text-gray-600">
                             ({Object.keys(volumeGroup.units).length} 个单元)
                           </span>
+                          <span className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                            {getQuizCountForVolume(volumeGroup.volume)} 题
+                          </span>
                         </div>
                         {expandedItems.has(`volume-${volumeGroup.volume}`) ? (
                           <ChevronUp className="w-5 h-5 text-gray-600" />
@@ -303,6 +339,9 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
                                   <span className="text-sm text-gray-600">
                                     ({Object.keys(unitGroup.lessons).length} 个课程)
                                   </span>
+                                  <span className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
+                                    {getQuizCountForUnit(volumeGroup.volume, unitGroup.unit)} 题
+                                  </span>
                                 </div>
                                 {expandedItems.has(`unit-${volumeGroup.volume}-${unitGroup.unit}`) ? (
                                   <ChevronUp className="w-4 h-4 text-gray-600" />
@@ -315,7 +354,12 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
                                 <div className="p-3 space-y-2">
                                   {Object.values(unitGroup.lessons).map((lessonGroup: any) => (
                                     <div key={lessonGroup.lesson} className="space-y-2">
-                                      <div className="font-medium text-gray-700 px-2">{lessonGroup.lesson}</div>
+                                      <div className="flex items-center justify-between px-2">
+                                        <div className="font-medium text-gray-700">{lessonGroup.lesson}</div>
+                                        <span className="text-sm text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                                          {getQuizCountForLesson(volumeGroup.volume, unitGroup.unit, lessonGroup.lesson)} 题
+                                        </span>
+                                      </div>
                                       <div className="space-y-1">
                                         {lessonGroup.points.map((point: KnowledgePoint) => (
                                           <div key={point.id} className="flex items-center justify-between px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors duration-300">
@@ -325,6 +369,9 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
                                               {point.sub && (
                                                 <span className="text-sm text-gray-500">({point.sub})</span>
                                               )}
+                                              <span className="text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded ml-auto">
+                                                {getQuizCountForKnowledgePoint(point.id)} 题
+                                              </span>
                                             </div>
                                             <button className="p-1 text-gray-400 hover:text-blue-600 transition-colors duration-300">
                                               <Eye className="w-4 h-4" />
