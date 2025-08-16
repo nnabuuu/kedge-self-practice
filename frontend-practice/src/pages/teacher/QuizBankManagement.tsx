@@ -86,11 +86,47 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       },
       createdAt: '2024-01-14',
       tags: ['政治制度', '秦汉']
+    },
+    {
+      id: '4',
+      type: 'single-choice',
+      question: '下图展示了古代中国的行政区划演变。请问该图反映的是哪个朝代的制度？\n{{img:0}}',
+      options: ['秦朝', '汉朝', '唐朝', '元朝'],
+      answer: 2,
+      difficulty: 'medium',
+      images: ['https://via.placeholder.com/400x300/4F46E5/ffffff?text=唐朝行政区划图'],
+      knowledgePoint: {
+        topic: '行政区划',
+        lesson: '第4课 古代行政制度',
+        unit: '第一单元 中国古代政治制度',
+        volume: '中外历史纲要上'
+      },
+      createdAt: '2024-01-17',
+      tags: ['政治制度', '唐朝', '含图片']
     }
   ];
 
-  // Fetch quizzes from backend
+  // Store whether we're using mock data
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  // Track if data has been initially loaded
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Fetch quizzes from backend - only on initial load for mock data
   useEffect(() => {
+    // Always fetch on initial load
+    if (!dataLoaded) {
+      fetchQuizzes();
+      return;
+    }
+    
+    // If using mock data, don't refetch when filters change
+    // The mock data deletions should persist until page refresh
+    if (isUsingMockData) {
+      console.log('Using mock data, skipping refetch');
+      return;
+    }
+    
+    // For real backend data, refetch when filters change
     fetchQuizzes();
   }, [currentPage, searchTerm, selectedType, selectedDifficulty]);
 
@@ -118,29 +154,45 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       
       if (response.ok) {
         const data = await response.json();
+        console.log('API response:', data);
+        console.log('First quiz raw from API:', data.data?.[0]);
         // Check if we actually got quiz data
         if (data.data && data.data.length > 0) {
-          setQuizzes(data.data);
+          // Ensure each quiz has an id field
+          const quizzesWithIds = data.data.map((quiz: any, index: number) => {
+            console.log(`Quiz ${index}:`, quiz, 'has ID:', quiz.id);
+            return {
+              ...quiz,
+              id: quiz.id || quiz._id || `quiz-${index}` // Fallback to generated ID if missing
+            };
+          });
+          console.log('Processed quizzes:', quizzesWithIds);
+          setQuizzes(quizzesWithIds);
+          setIsUsingMockData(false);
           setTotalPages(Math.ceil((data.count || data.data.length) / itemsPerPage));
         } else {
           // No quizzes in database, use mock data
           console.log('No quizzes found in database, using mock data');
-          setQuizzes(mockQuizzes);
+          setQuizzes([...mockQuizzes]); // Create a copy to avoid reference issues
+          setIsUsingMockData(true);
           setTotalPages(Math.ceil(mockQuizzes.length / itemsPerPage));
         }
       } else {
         // API call failed, use mock data
         console.log('API call failed with status:', response.status, ', using mock data');
-        setQuizzes(mockQuizzes);
+        setQuizzes([...mockQuizzes]); // Create a copy to avoid reference issues
+        setIsUsingMockData(true);
         setTotalPages(Math.ceil(mockQuizzes.length / itemsPerPage));
       }
     } catch (error) {
       console.error('Failed to fetch quizzes:', error);
       // Use mock data for development
-      setQuizzes(mockQuizzes);
+      setQuizzes([...mockQuizzes]); // Create a copy to avoid reference issues
+      setIsUsingMockData(true);
       setTotalPages(Math.ceil(mockQuizzes.length / itemsPerPage));
     } finally {
       setLoading(false);
+      setDataLoaded(true);
     }
   };
 
@@ -172,10 +224,26 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       return;
     }
     
-    // TODO: Implement batch delete API call
-    console.log('Deleting quizzes:', Array.from(selectedQuizzes));
+    // Remove selected quizzes from local state
+    const quizIdsToDelete = Array.from(selectedQuizzes);
+    console.log('Deleting quizzes:', quizIdsToDelete);
+    
+    // Filter out the deleted quizzes
+    setQuizzes(prev => {
+      const filtered = prev.filter(q => !selectedQuizzes.has(q.id));
+      console.log(`Batch deleted ${selectedQuizzes.size} quizzes, remaining: ${filtered.length}`);
+      return filtered;
+    });
+    
+    // Clear selections
     setSelectedQuizzes(new Set());
-    fetchQuizzes();
+    
+    // Don't refetch - we've already updated the local state
+    // Only refetch if we're working with real backend data
+    if (!isUsingMockData) {
+      // TODO: Implement batch delete API call
+      // For now, just update local state
+    }
   };
 
   const handleNavigateToQuizParser = () => {
@@ -183,6 +251,14 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
   };
 
   const handleDeleteQuiz = async (quizId: string) => {
+    console.log('Attempting to delete quiz with ID:', quizId);
+    
+    if (!quizId) {
+      console.error('Cannot delete quiz: ID is undefined');
+      alert('无法删除题目：题目ID无效');
+      return;
+    }
+    
     if (!confirm('确定要删除这道题目吗？此操作不可恢复。')) {
       return;
     }
@@ -201,7 +277,11 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
 
       if (response.ok) {
         // Remove from local state
-        setQuizzes(prev => prev.filter(q => q.id !== quizId));
+        setQuizzes(prev => {
+          const filtered = prev.filter(q => q.id !== quizId);
+          console.log(`Deleted quiz ${quizId}, remaining quizzes:`, filtered.length);
+          return filtered;
+        });
         // Clear selection if this quiz was selected
         setSelectedQuizzes(prev => {
           const newSet = new Set(prev);
@@ -211,12 +291,32 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       } else {
         // For now, just remove from local state even if API fails (mock data scenario)
         console.log('Delete API failed, removing from local state anyway');
-        setQuizzes(prev => prev.filter(q => q.id !== quizId));
+        setQuizzes(prev => {
+          const filtered = prev.filter(q => q.id !== quizId);
+          console.log(`Deleted quiz ${quizId} (API failed), remaining quizzes:`, filtered.length);
+          return filtered;
+        });
+        // Clear selection if this quiz was selected
+        setSelectedQuizzes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(quizId);
+          return newSet;
+        });
       }
     } catch (error) {
       console.error('Failed to delete quiz:', error);
       // Remove from local state anyway for demo purposes
-      setQuizzes(prev => prev.filter(q => q.id !== quizId));
+      setQuizzes(prev => {
+        const filtered = prev.filter(q => q.id !== quizId);
+        console.log(`Deleted quiz ${quizId} (error), remaining quizzes:`, filtered.length);
+        return filtered;
+      });
+      // Clear selection if this quiz was selected
+      setSelectedQuizzes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(quizId);
+        return newSet;
+      });
     }
   };
 
@@ -296,6 +396,94 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       'hard': '困难'
     };
     return labelMap[difficulty] || difficulty;
+  };
+
+  // Render question text with embedded images
+  const renderQuestionWithImages = (text: string, images?: string[]) => {
+    if (!text) return null;
+    
+    // Handle different image placeholder formats
+    // Format 1: {{img:0}}, {{img:1}}, etc. (index-based)
+    // Format 2: {{image:uuid}} (UUID-based)
+    
+    const parts = text.split(/(\{\{(?:img|image):[^}]+\}\})/g);
+    
+    return (
+      <>
+        {parts.map((part, index) => {
+          // Check if this part is an image placeholder
+          const imgMatch = part.match(/\{\{(?:img|image):([^}]+)\}\}/);
+          
+          if (imgMatch) {
+            const imageRef = imgMatch[1];
+            let imageUrl: string | undefined;
+            
+            // Check if it's an index (number)
+            if (/^\d+$/.test(imageRef)) {
+              const imageIndex = parseInt(imageRef);
+              imageUrl = images?.[imageIndex];
+            } else {
+              // It's a UUID or filename, construct the URL
+              // Check if it's already a full URL or relative path
+              if (imageRef.startsWith('http') || imageRef.startsWith('/')) {
+                imageUrl = imageRef;
+              } else if (imageRef.includes('/')) {
+                // Already has path structure (e.g., "2025/08/uuid.png")
+                imageUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/attachments/quiz/${imageRef}`;
+              } else {
+                // Just a UUID, try to construct path with current year/month
+                // This is a guess - in production, the full path should be stored with the quiz
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                
+                // Check if imageRef already has extension
+                const hasExtension = /\.\w+$/.test(imageRef);
+                const filename = hasExtension ? imageRef : `${imageRef}.png`; // Default to .png if no extension
+                
+                imageUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/attachments/quiz/${year}/${month}/${filename}`;
+              }
+            }
+            
+            if (imageUrl) {
+              // Add JWT token to image URL if needed for authentication
+              const token = localStorage.getItem('jwt_token');
+              const authenticatedUrl = token && imageUrl.includes('/attachments/') 
+                ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+                : imageUrl;
+                
+              return (
+                <div key={index} className="my-3">
+                  <img
+                    src={authenticatedUrl}
+                    alt={`Quiz image ${imageRef}`}
+                    className="max-w-full h-auto rounded-lg shadow-md"
+                    onError={(e) => {
+                      // Fallback for broken images
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y0ZjRmNCIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBub3QgYXZhaWxhYmxlPC90ZXh0Pgo8L3N2Zz4=';
+                      target.alt = 'Image not available';
+                    }}
+                  />
+                </div>
+              );
+            } else {
+              // No image URL available, show placeholder
+              return (
+                <div key={index} className="my-3 p-4 bg-gray-100 rounded-lg text-gray-500 text-sm">
+                  <Tag className="w-4 h-4 inline mr-2" />
+                  图片加载失败: {imageRef}
+                </div>
+              );
+            }
+          } else {
+            // Regular text
+            return <span key={index}>{part}</span>;
+          }
+        })}
+      </>
+    );
   };
 
   if (loading) {
@@ -459,8 +647,10 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                             ))}
                           </div>
                           
-                          {/* Question */}
-                          <h4 className="font-medium text-gray-900 mb-2 line-clamp-2">{quiz.question}</h4>
+                          {/* Question with image rendering */}
+                          <div className="font-medium text-gray-900 mb-2">
+                            {renderQuestionWithImages(quiz.question, quiz.images)}
+                          </div>
                           
                           {/* Options for choice questions */}
                           {quiz.options && quiz.options.length > 0 && (
@@ -617,6 +807,13 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   rows={3}
                 />
+                {/* Preview with images */}
+                {editingQuiz.question && editingQuiz.question.includes('{{') && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-2">预览:</p>
+                    {renderQuestionWithImages(editingQuiz.question, editingQuiz.images as string[])}
+                  </div>
+                )}
               </div>
 
               {/* Options for choice questions */}

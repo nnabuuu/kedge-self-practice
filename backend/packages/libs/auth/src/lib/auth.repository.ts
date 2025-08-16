@@ -139,7 +139,7 @@ export class AuthRepository {
       await this.persistentService.pgPool.query(
         sql.unsafe`
           UPDATE kedge_practice.users
-          SET preferences = ${JSON.stringify(preferences)},
+          SET preferences = ${sql.json(preferences)},
               updated_at = now()
           WHERE id = ${userId}
         `,
@@ -156,10 +156,13 @@ export class AuthRepository {
    */
   async updateUserPreference(userId: string, key: string, value: any): Promise<void> {
     try {
+      // Use jsonb_set to update a specific key in the JSONB object
+      // jsonb_set(target, path, new_value)
+      const keyPath = `{${key}}`;
       await this.persistentService.pgPool.query(
         sql.unsafe`
           UPDATE kedge_practice.users
-          SET preferences = jsonb_set(COALESCE(preferences, '{}'), ${JSON.stringify([key])}, ${JSON.stringify(value)}),
+          SET preferences = jsonb_set(COALESCE(preferences, '{}'), ${keyPath}, ${sql.json(value)}),
               updated_at = now()
           WHERE id = ${userId}
         `,
