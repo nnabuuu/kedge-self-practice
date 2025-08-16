@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Search, Eye, ChevronDown, ChevronUp, Tag, Layers, Book, FileText } from 'lucide-react';
-import { useQuestionSearch } from '../hooks/useApi';
+import { useQuestionSearch } from '../../hooks/useApi';
 
 interface KnowledgePoint {
   id: string;
@@ -32,15 +32,17 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
   });
 
   // Get all quiz questions to calculate per-knowledge-point counts
-  const { data: allQuestions = [], loading: questionsLoading } = useQuestionSearch('');
+  const { data: allQuestions = [], loading: questionsLoading } = useQuestionSearch('*');
 
   // Calculate quiz counts for each knowledge point
   const getQuizCountForKnowledgePoint = (knowledgePointId: string): number => {
+    if (!allQuestions || !Array.isArray(allQuestions)) return 0;
     return allQuestions.filter(q => q.relatedKnowledgePointId === knowledgePointId).length;
   };
 
   // Calculate quiz counts for volume level
   const getQuizCountForVolume = (volume: string): number => {
+    if (!allQuestions || !Array.isArray(allQuestions) || !knowledgePoints || !Array.isArray(knowledgePoints)) return 0;
     return allQuestions.filter(q => {
       const kp = knowledgePoints.find(kp => kp.id === q.relatedKnowledgePointId);
       return kp?.volume === volume;
@@ -49,6 +51,7 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
 
   // Calculate quiz counts for unit level
   const getQuizCountForUnit = (volume: string, unit: string): number => {
+    if (!allQuestions || !Array.isArray(allQuestions) || !knowledgePoints || !Array.isArray(knowledgePoints)) return 0;
     return allQuestions.filter(q => {
       const kp = knowledgePoints.find(kp => kp.id === q.relatedKnowledgePointId);
       return kp?.volume === volume && kp?.unit === unit;
@@ -57,6 +60,7 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
 
   // Calculate quiz counts for lesson level
   const getQuizCountForLesson = (volume: string, unit: string, lesson: string): number => {
+    if (!allQuestions || !Array.isArray(allQuestions) || !knowledgePoints || !Array.isArray(knowledgePoints)) return 0;
     return allQuestions.filter(q => {
       const kp = knowledgePoints.find(kp => kp.id === q.relatedKnowledgePointId);
       return kp?.volume === volume && kp?.unit === unit && kp?.lesson === lesson;

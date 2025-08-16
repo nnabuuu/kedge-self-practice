@@ -32,6 +32,8 @@ export const QuizItemSchema = z.object({
   originalParagraph: z.string().optional(),
   // Tags/keywords for the quiz item
   tags: z.array(z.string()).optional(),
+  // Knowledge point ID this quiz is associated with
+  knowledge_point_id: z.string().optional(),
 });
 
 export type QuizItem = z.infer<typeof QuizItemSchema>;

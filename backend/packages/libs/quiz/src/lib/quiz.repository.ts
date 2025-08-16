@@ -20,7 +20,8 @@ export class QuizRepository {
             answer,
             original_paragraph,
             images,
-            tags
+            tags,
+            knowledge_point_id
           )
           VALUES (
             ${item.type},
@@ -29,9 +30,10 @@ export class QuizRepository {
             ${sql.json(item.answer)},
             ${item.originalParagraph ?? null},
             ${sql.json(item.images ?? [])},
-            ${sql.json(item.tags ?? [])}
+            ${sql.json(item.tags ?? [])},
+            ${item.knowledge_point_id ?? null}
           )
-          RETURNING id, type, question, options, answer, original_paragraph, images, tags
+          RETURNING id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id
         `,
       );
       return result.rows[0];
@@ -46,7 +48,7 @@ export class QuizRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, original_paragraph, images, tags
+          SELECT id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id
           FROM kedge_practice.quizzes
           WHERE id = ${id}
         `,
@@ -63,7 +65,7 @@ export class QuizRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, original_paragraph, images, tags
+          SELECT id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id
           FROM kedge_practice.quizzes
         `,
       );
@@ -137,7 +139,7 @@ export class QuizRepository {
 
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, original_paragraph, images, tags
+          SELECT id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id
           FROM kedge_practice.quizzes
           WHERE tags ?| ${sql.array(tags, 'text')}
           ORDER BY id DESC
