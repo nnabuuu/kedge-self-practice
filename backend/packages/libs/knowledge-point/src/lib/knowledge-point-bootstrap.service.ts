@@ -113,7 +113,8 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
       return knowledgePoints;
     } catch (error) {
       this.logger.error('Failed to read Excel file:', error);
-      throw new Error(`Failed to parse knowledge points Excel file: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to parse knowledge points Excel file: ${errorMessage}`);
     }
   }
 
