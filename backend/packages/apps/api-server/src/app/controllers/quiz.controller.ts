@@ -118,6 +118,8 @@ export class QuizController {
             answer: quiz.answer,
             originalParagraph: quiz.originalParagraph,
             images: quiz.images,
+            tags: quiz.tags,
+            knowledge_point_id: quiz.knowledgePoint?.id,
           };
 
           const createdQuiz = await this.quizService.createQuiz(quizItem);
