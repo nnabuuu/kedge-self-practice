@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -281,6 +282,22 @@ export class QuizController {
       success: true,
       count: quizzes.length,
       data: quizzes,
+    };
+  }
+
+  @Delete(':id')
+  @UseGuards(TeacherGuard)
+  @ApiOperation({ summary: 'Delete a quiz by ID' })
+  @ApiResponse({ status: 200, description: 'Quiz deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Quiz not found' })
+  async deleteQuiz(@Param('id') id: string) {
+    const deleted = await this.quizService.deleteQuiz(id);
+    if (!deleted) {
+      throw new HttpException('Quiz not found', HttpStatus.NOT_FOUND);
+    }
+    return {
+      success: true,
+      message: 'Quiz deleted successfully',
     };
   }
 }

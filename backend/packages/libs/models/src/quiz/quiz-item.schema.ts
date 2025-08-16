@@ -17,6 +17,7 @@ export type QuizType = z.infer<typeof QuizTypeSchema>;
  * Core quiz item structure with image support
  */
 export const QuizItemSchema = z.object({
+  id: z.string().optional(), // Database generated ID
   type: QuizTypeSchema,
   question: z.string(),
   options: z.array(z.string()).optional(),

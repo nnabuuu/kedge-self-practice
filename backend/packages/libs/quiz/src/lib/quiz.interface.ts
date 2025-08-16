@@ -7,4 +7,6 @@ export abstract class QuizService {
   abstract findQuizById(id: string): Promise<QuizItem | null>;
 
   abstract listQuizzes(): Promise<QuizItem[]>;
+
+  abstract deleteQuiz(id: string): Promise<boolean>;
 }

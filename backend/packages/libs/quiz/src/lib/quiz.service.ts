@@ -27,6 +27,10 @@ export class DefaultQuizService implements QuizService {
   listQuizzes(): Promise<QuizItem[]> {
     return this.repository.listQuizzes();
   }
+
+  deleteQuiz(id: string): Promise<boolean> {
+    return this.repository.deleteQuiz(id);
+  }
 }
 
 export const QuizServiceProvider = {

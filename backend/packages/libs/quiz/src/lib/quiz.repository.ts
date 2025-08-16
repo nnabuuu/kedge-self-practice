@@ -29,7 +29,7 @@ export class QuizRepository {
             ${item.originalParagraph ?? null},
             ${sql.json(item.images ?? [])}
           )
-          RETURNING type, question, options, answer, original_paragraph, images
+          RETURNING id, type, question, options, answer, original_paragraph, images
         `,
       );
       return result.rows[0];
@@ -44,7 +44,7 @@ export class QuizRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT type, question, options, answer, original_paragraph, images
+          SELECT id, type, question, options, answer, original_paragraph, images
           FROM kedge_practice.quizzes
           WHERE id = ${id}
         `,
@@ -61,7 +61,7 @@ export class QuizRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT type, question, options, answer, original_paragraph, images
+          SELECT id, type, question, options, answer, original_paragraph, images
           FROM kedge_practice.quizzes
         `,
       );
@@ -70,6 +70,22 @@ export class QuizRepository {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error listing quizzes: ${errorMessage}`);
       throw new Error('Failed to list quizzes');
+    }
+  }
+
+  async deleteQuiz(id: string): Promise<boolean> {
+    try {
+      const result = await this.persistentService.pgPool.query(
+        sql.unsafe`
+          DELETE FROM kedge_practice.quizzes
+          WHERE id = ${id}
+        `,
+      );
+      return result.rowCount > 0;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error deleting quiz: ${errorMessage}`);
+      throw new Error('Failed to delete quiz');
     }
   }
 }
