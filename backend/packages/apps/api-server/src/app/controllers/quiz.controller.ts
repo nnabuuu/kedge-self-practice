@@ -3,8 +3,10 @@ import {
   Post,
   Get,
   Delete,
+  Put,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpException,
   HttpStatus,
@@ -14,7 +16,7 @@ import {
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { QuizService, EnhancedQuizStorageService, AttachmentMetadata } from '@kedge/quiz';
-import { QuizItemSchema, QuizWithKnowledgePointSchema, QuizWithKnowledgePoint } from '@kedge/models';
+import { QuizItemSchema, QuizWithKnowledgePointSchema, QuizWithKnowledgePoint, QuizItem } from '@kedge/models';
 import { z } from 'zod';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 
@@ -298,6 +300,66 @@ export class QuizController {
     return {
       success: true,
       message: 'Quiz deleted successfully',
+    };
+  }
+
+  @Put(':id')
+  @UseGuards(TeacherGuard)
+  @ApiOperation({ summary: 'Update a quiz by ID' })
+  @ApiResponse({ status: 200, description: 'Quiz updated successfully' })
+  @ApiResponse({ status: 404, description: 'Quiz not found' })
+  async updateQuiz(@Param('id') id: string, @Body() body: { quiz: Partial<QuizItem> }) {
+    try {
+      const validatedQuiz = QuizItemSchema.partial().parse(body.quiz);
+      const updatedQuiz = await this.quizService.updateQuiz(id, validatedQuiz);
+      
+      if (!updatedQuiz) {
+        throw new HttpException('Quiz not found', HttpStatus.NOT_FOUND);
+      }
+      
+      return {
+        success: true,
+        data: updatedQuiz,
+      };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new HttpException(
+          {
+            message: 'Validation failed',
+            errors: error.errors,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw new HttpException(
+        'Failed to update quiz',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('search/by-tags')
+  @ApiOperation({ summary: 'Search quizzes by tags' })
+  @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
+  async searchQuizzesByTags(@Query('tags') tags: string) {
+    const tagArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
+    const quizzes = await this.quizService.searchQuizzesByTags(tagArray);
+    return {
+      success: true,
+      count: quizzes.length,
+      data: quizzes,
+    };
+  }
+
+  @Get('tags')
+  @ApiOperation({ summary: 'Get all available tags' })
+  @ApiResponse({ status: 200, description: 'Tags retrieved successfully' })
+  async getAllTags() {
+    const tags = await this.quizService.getAllTags();
+    return {
+      success: true,
+      count: tags.length,
+      data: tags,
     };
   }
 }

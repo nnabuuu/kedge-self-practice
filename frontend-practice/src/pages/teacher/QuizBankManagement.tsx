@@ -31,11 +31,14 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedQuizzes, setSelectedQuizzes] = useState<Set<string>>(new Set());
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [newTag, setNewTag] = useState('');
   const itemsPerPage = 10;
 
   // Mock data for development - defined early so it can be used in fetchQuizzes
@@ -128,7 +131,12 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
     
     // For real backend data, refetch when filters change
     fetchQuizzes();
-  }, [currentPage, searchTerm, selectedType, selectedDifficulty]);
+  }, [currentPage, searchTerm, selectedType, selectedDifficulty, selectedTags]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedType, selectedDifficulty, selectedTags]);
 
   const fetchQuizzes = async () => {
     try {
@@ -170,12 +178,30 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
           setQuizzes(quizzesWithIds);
           setIsUsingMockData(false);
           setTotalPages(Math.ceil((data.count || data.data.length) / itemsPerPage));
+          
+          // Extract available tags from the quizzes
+          const allTags = new Set<string>();
+          quizzesWithIds.forEach((quiz: any) => {
+            if (quiz.tags && Array.isArray(quiz.tags)) {
+              quiz.tags.forEach((tag: string) => allTags.add(tag));
+            }
+          });
+          setAvailableTags(Array.from(allTags).sort());
         } else {
           // No quizzes in database, use mock data
           console.log('No quizzes found in database, using mock data');
           setQuizzes([...mockQuizzes]); // Create a copy to avoid reference issues
           setIsUsingMockData(true);
           setTotalPages(Math.ceil(mockQuizzes.length / itemsPerPage));
+          
+          // Extract available tags from mock data
+          const allTags = new Set<string>();
+          mockQuizzes.forEach(quiz => {
+            if (quiz.tags && Array.isArray(quiz.tags)) {
+              quiz.tags.forEach(tag => allTags.add(tag));
+            }
+          });
+          setAvailableTags(Array.from(allTags).sort());
         }
       } else {
         // API call failed, use mock data
@@ -322,6 +348,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
 
   const handleEditQuiz = (quiz: Quiz) => {
     setEditingQuiz(quiz);
+    setNewTag(''); // Clear the new tag input
     setShowEditModal(true);
   };
 
@@ -336,7 +363,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(updatedQuiz)
+          body: JSON.stringify({ quiz: updatedQuiz })
         }
       );
 
@@ -356,6 +383,25 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
     
     setShowEditModal(false);
     setEditingQuiz(null);
+    setNewTag('');
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && editingQuiz) {
+      const trimmedTag = newTag.trim();
+      const currentTags = editingQuiz.tags || [];
+      
+      // Check if tag already exists
+      if (!currentTags.includes(trimmedTag)) {
+        setEditingQuiz({
+          ...editingQuiz,
+          tags: [...currentTags, trimmedTag]
+        });
+      }
+      
+      // Clear the input
+      setNewTag('');
+    }
   };
 
   const getQuizTypeLabel = (type: string) => {
@@ -533,9 +579,9 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
 
           {/* Search and Filters */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               {/* Search Input - takes up more space */}
-              <div className="lg:col-span-6 relative">
+              <div className="lg:col-span-5 relative">
                 <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                 <input
                   type="text"
@@ -546,7 +592,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                 />
               </div>
               
-              {/* Type Select - fixed width */}
+              {/* Type Select */}
               <div className="lg:col-span-2">
                 <select
                   value={selectedType}
@@ -562,7 +608,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                 </select>
               </div>
               
-              {/* Difficulty Select - fixed width */}
+              {/* Difficulty Select */}
               <div className="lg:col-span-2">
                 <select
                   value={selectedDifficulty}
@@ -574,6 +620,29 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                   <option value="medium">中等</option>
                   <option value="hard">困难</option>
                 </select>
+              </div>
+
+              {/* Tags Filter */}
+              <div className="lg:col-span-3">
+                <div className="relative">
+                  <Tag className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  <select
+                    value={selectedTags.length > 0 ? selectedTags[0] : 'all'}
+                    onChange={(e) => {
+                      if (e.target.value === 'all') {
+                        setSelectedTags([]);
+                      } else {
+                        setSelectedTags([e.target.value]);
+                      }
+                    }}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">全部标签</option>
+                    {availableTags.map(tag => (
+                      <option key={tag} value={tag}>{tag}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -603,20 +672,102 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
               </div>
 
               {/* Quiz Items */}
-              {quizzes.length === 0 ? (
+              {(() => {
+                // Apply filters
+                let filteredQuizzes = quizzes;
+
+                // Filter by search term
+                if (searchTerm) {
+                  filteredQuizzes = filteredQuizzes.filter(quiz =>
+                    quiz.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (quiz.tags && quiz.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+                    (quiz.knowledgePoint && (
+                      quiz.knowledgePoint.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      quiz.knowledgePoint.lesson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      quiz.knowledgePoint.unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      quiz.knowledgePoint.volume.toLowerCase().includes(searchTerm.toLowerCase())
+                    ))
+                  );
+                }
+
+                // Filter by type
+                if (selectedType !== 'all') {
+                  filteredQuizzes = filteredQuizzes.filter(quiz => quiz.type === selectedType);
+                }
+
+                // Filter by difficulty
+                if (selectedDifficulty !== 'all') {
+                  filteredQuizzes = filteredQuizzes.filter(quiz => quiz.difficulty === selectedDifficulty);
+                }
+
+                // Filter by tags
+                if (selectedTags.length > 0) {
+                  filteredQuizzes = filteredQuizzes.filter(quiz =>
+                    quiz.tags && selectedTags.some(selectedTag => quiz.tags!.includes(selectedTag))
+                  );
+                }
+
+                // Calculate pagination for filtered results
+                const totalFilteredPages = Math.ceil(filteredQuizzes.length / itemsPerPage);
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const paginatedQuizzes = filteredQuizzes.slice(startIndex, endIndex);
+
+                return {
+                  filteredQuizzes,
+                  paginatedQuizzes,
+                  totalFilteredPages
+                };
+              })().filteredQuizzes.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">暂无题目</p>
-                  <button
-                    onClick={handleNavigateToQuizParser}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
-                  >
-                    批量导入题目
-                  </button>
+                  {quizzes.length === 0 ? (
+                    <>
+                      <p className="text-gray-600 mb-4">暂无题目</p>
+                      <button
+                        onClick={handleNavigateToQuizParser}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
+                      >
+                        批量导入题目
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-gray-600">没有符合筛选条件的题目</p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {quizzes.map((quiz) => (
+                  {(() => {
+                    // Re-calculate for render (this is not ideal but needed due to current structure)
+                    let filteredQuizzes = quizzes;
+                    if (searchTerm) {
+                      filteredQuizzes = filteredQuizzes.filter(quiz =>
+                        quiz.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (quiz.tags && quiz.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+                        (quiz.knowledgePoint && (
+                          quiz.knowledgePoint.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          quiz.knowledgePoint.lesson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          quiz.knowledgePoint.unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          quiz.knowledgePoint.volume.toLowerCase().includes(searchTerm.toLowerCase())
+                        ))
+                      );
+                    }
+                    if (selectedType !== 'all') {
+                      filteredQuizzes = filteredQuizzes.filter(quiz => quiz.type === selectedType);
+                    }
+                    if (selectedDifficulty !== 'all') {
+                      filteredQuizzes = filteredQuizzes.filter(quiz => quiz.difficulty === selectedDifficulty);
+                    }
+                    if (selectedTags.length > 0) {
+                      filteredQuizzes = filteredQuizzes.filter(quiz =>
+                        quiz.tags && selectedTags.some(selectedTag => quiz.tags!.includes(selectedTag))
+                      );
+                    }
+                    
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const endIndex = startIndex + itemsPerPage;
+                    return filteredQuizzes.slice(startIndex, endIndex);
+                  })().map((quiz) => (
                     <div key={quiz.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all duration-300">
                       <div className="flex items-start space-x-4">
                         {/* Checkbox */}
@@ -714,10 +865,39 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                     </div>
                   ))}
                 </div>
-              )}
+                );
+              })()}
 
               {/* Pagination */}
-              {totalPages > 1 && (
+              {(() => {
+                // Calculate filtered pagination info
+                let filteredQuizzes = quizzes;
+                if (searchTerm) {
+                  filteredQuizzes = filteredQuizzes.filter(quiz =>
+                    quiz.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (quiz.tags && quiz.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+                    (quiz.knowledgePoint && (
+                      quiz.knowledgePoint.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      quiz.knowledgePoint.lesson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      quiz.knowledgePoint.unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      quiz.knowledgePoint.volume.toLowerCase().includes(searchTerm.toLowerCase())
+                    ))
+                  );
+                }
+                if (selectedType !== 'all') {
+                  filteredQuizzes = filteredQuizzes.filter(quiz => quiz.type === selectedType);
+                }
+                if (selectedDifficulty !== 'all') {
+                  filteredQuizzes = filteredQuizzes.filter(quiz => quiz.difficulty === selectedDifficulty);
+                }
+                if (selectedTags.length > 0) {
+                  filteredQuizzes = filteredQuizzes.filter(quiz =>
+                    quiz.tags && selectedTags.some(selectedTag => quiz.tags!.includes(selectedTag))
+                  );
+                }
+                const totalFilteredPages = Math.ceil(filteredQuizzes.length / itemsPerPage);
+                return totalFilteredPages;
+              })() > 1 && (
                 <div className="flex items-center justify-center space-x-2 mt-6 pt-6 border-t border-gray-200">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
@@ -727,30 +907,142 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = i + 1;
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 rounded-lg font-medium transition-all duration-300 ${
-                          currentPage === pageNum
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
+                  {(() => {
+                    // Calculate filtered pages for pagination buttons
+                    let filteredQuizzes = quizzes;
+                    if (searchTerm) {
+                      filteredQuizzes = filteredQuizzes.filter(quiz =>
+                        quiz.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (quiz.tags && quiz.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+                        (quiz.knowledgePoint && (
+                          quiz.knowledgePoint.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          quiz.knowledgePoint.lesson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          quiz.knowledgePoint.unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          quiz.knowledgePoint.volume.toLowerCase().includes(searchTerm.toLowerCase())
+                        ))
+                      );
+                    }
+                    if (selectedType !== 'all') {
+                      filteredQuizzes = filteredQuizzes.filter(quiz => quiz.type === selectedType);
+                    }
+                    if (selectedDifficulty !== 'all') {
+                      filteredQuizzes = filteredQuizzes.filter(quiz => quiz.difficulty === selectedDifficulty);
+                    }
+                    if (selectedTags.length > 0) {
+                      filteredQuizzes = filteredQuizzes.filter(quiz =>
+                        quiz.tags && selectedTags.some(selectedTag => quiz.tags!.includes(selectedTag))
+                      );
+                    }
+                    const totalFilteredPages = Math.ceil(filteredQuizzes.length / itemsPerPage);
+                    
+                    return Array.from({ length: Math.min(5, totalFilteredPages) }, (_, i) => {
+                      const pageNum = i + 1;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-1 rounded-lg font-medium transition-all duration-300 ${
+                            currentPage === pageNum
+                              ? 'bg-blue-600 text-white'
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    });
+                  })()}
                   
-                  {totalPages > 5 && (
-                    <span className="text-gray-400">...</span>
-                  )}
+                  {(() => {
+                    let filteredQuizzes = quizzes;
+                    if (searchTerm) {
+                      filteredQuizzes = filteredQuizzes.filter(quiz =>
+                        quiz.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (quiz.tags && quiz.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+                        (quiz.knowledgePoint && (
+                          quiz.knowledgePoint.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          quiz.knowledgePoint.lesson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          quiz.knowledgePoint.unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          quiz.knowledgePoint.volume.toLowerCase().includes(searchTerm.toLowerCase())
+                        ))
+                      );
+                    }
+                    if (selectedType !== 'all') {
+                      filteredQuizzes = filteredQuizzes.filter(quiz => quiz.type === selectedType);
+                    }
+                    if (selectedDifficulty !== 'all') {
+                      filteredQuizzes = filteredQuizzes.filter(quiz => quiz.difficulty === selectedDifficulty);
+                    }
+                    if (selectedTags.length > 0) {
+                      filteredQuizzes = filteredQuizzes.filter(quiz =>
+                        quiz.tags && selectedTags.some(selectedTag => quiz.tags!.includes(selectedTag))
+                      );
+                    }
+                    const totalFilteredPages = Math.ceil(filteredQuizzes.length / itemsPerPage);
+                    
+                    return totalFilteredPages > 5 && (
+                      <span className="text-gray-400">...</span>
+                    );
+                  })()}
                   
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
+                    onClick={() => {
+                      // Calculate max page for filtered results
+                      let filteredQuizzes = quizzes;
+                      if (searchTerm) {
+                        filteredQuizzes = filteredQuizzes.filter(quiz =>
+                          quiz.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (quiz.tags && quiz.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+                          (quiz.knowledgePoint && (
+                            quiz.knowledgePoint.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            quiz.knowledgePoint.lesson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            quiz.knowledgePoint.unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            quiz.knowledgePoint.volume.toLowerCase().includes(searchTerm.toLowerCase())
+                          ))
+                        );
+                      }
+                      if (selectedType !== 'all') {
+                        filteredQuizzes = filteredQuizzes.filter(quiz => quiz.type === selectedType);
+                      }
+                      if (selectedDifficulty !== 'all') {
+                        filteredQuizzes = filteredQuizzes.filter(quiz => quiz.difficulty === selectedDifficulty);
+                      }
+                      if (selectedTags.length > 0) {
+                        filteredQuizzes = filteredQuizzes.filter(quiz =>
+                          quiz.tags && selectedTags.some(selectedTag => quiz.tags!.includes(selectedTag))
+                        );
+                      }
+                      const totalFilteredPages = Math.ceil(filteredQuizzes.length / itemsPerPage);
+                      setCurrentPage(prev => Math.min(totalFilteredPages, prev + 1));
+                    }}
+                    disabled={(() => {
+                      let filteredQuizzes = quizzes;
+                      if (searchTerm) {
+                        filteredQuizzes = filteredQuizzes.filter(quiz =>
+                          quiz.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (quiz.tags && quiz.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+                          (quiz.knowledgePoint && (
+                            quiz.knowledgePoint.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            quiz.knowledgePoint.lesson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            quiz.knowledgePoint.unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            quiz.knowledgePoint.volume.toLowerCase().includes(searchTerm.toLowerCase())
+                          ))
+                        );
+                      }
+                      if (selectedType !== 'all') {
+                        filteredQuizzes = filteredQuizzes.filter(quiz => quiz.type === selectedType);
+                      }
+                      if (selectedDifficulty !== 'all') {
+                        filteredQuizzes = filteredQuizzes.filter(quiz => quiz.difficulty === selectedDifficulty);
+                      }
+                      if (selectedTags.length > 0) {
+                        filteredQuizzes = filteredQuizzes.filter(quiz =>
+                          quiz.tags && selectedTags.some(selectedTag => quiz.tags!.includes(selectedTag))
+                        );
+                      }
+                      const totalFilteredPages = Math.ceil(filteredQuizzes.length / itemsPerPage);
+                      return currentPage === totalFilteredPages;
+                    })()}
                     className="p-2 text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors duration-300"
                   >
                     <ChevronRight className="w-5 h-5" />
@@ -903,6 +1195,59 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                   <option value="medium">中等</option>
                   <option value="hard">困难</option>
                 </select>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">标签</label>
+                <div className="space-y-2">
+                  {/* Current tags display */}
+                  <div className="flex flex-wrap gap-2 min-h-[2rem] p-2 border border-gray-300 rounded-lg bg-gray-50">
+                    {(editingQuiz.tags || []).map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md"
+                      >
+                        {tag}
+                        <button
+                          onClick={() => {
+                            const newTags = (editingQuiz.tags || []).filter((_, i) => i !== index);
+                            setEditingQuiz({...editingQuiz, tags: newTags});
+                          }}
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    {(!editingQuiz.tags || editingQuiz.tags.length === 0) && (
+                      <span className="text-gray-400 text-sm">暂无标签</span>
+                    )}
+                  </div>
+                  
+                  {/* Add new tag input */}
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddTag();
+                        }
+                      }}
+                      placeholder="输入新标签"
+                      className="flex-1 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <button
+                      onClick={handleAddTag}
+                      className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      添加
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 

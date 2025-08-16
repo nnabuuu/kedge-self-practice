@@ -9,4 +9,10 @@ export abstract class QuizService {
   abstract listQuizzes(): Promise<QuizItem[]>;
 
   abstract deleteQuiz(id: string): Promise<boolean>;
+
+  abstract updateQuiz(id: string, updates: Partial<QuizItem>): Promise<QuizItem | null>;
+
+  abstract searchQuizzesByTags(tags: string[]): Promise<QuizItem[]>;
+
+  abstract getAllTags(): Promise<string[]>;
 }

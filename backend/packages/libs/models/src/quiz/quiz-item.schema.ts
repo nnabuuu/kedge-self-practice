@@ -30,6 +30,8 @@ export const QuizItemSchema = z.object({
   images: z.array(z.string()).optional(),
   // Original paragraph text from which this quiz was extracted
   originalParagraph: z.string().optional(),
+  // Tags/keywords for the quiz item
+  tags: z.array(z.string()).optional(),
 });
 
 export type QuizItem = z.infer<typeof QuizItemSchema>;

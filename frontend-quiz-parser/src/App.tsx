@@ -35,21 +35,44 @@ function App() {
     // Check for shared token from URL parameters (from frontend-practice)
     const urlParams = new URLSearchParams(window.location.search);
     const sharedToken = urlParams.get('token');
+    const sharedUserStr = urlParams.get('user');
     
     if (sharedToken) {
       // Store the shared token and sync with API service
       setAuthToken(sharedToken);
       
-      // Get shared user data
-      const sharedUserData = localStorage.getItem('shared_user_data');
-      if (sharedUserData) {
-        const userData = JSON.parse(sharedUserData);
+      // Get shared user data from URL parameter or localStorage
+      let userData = null;
+      
+      // First try to get from URL parameter
+      if (sharedUserStr) {
+        try {
+          userData = JSON.parse(decodeURIComponent(sharedUserStr));
+        } catch (e) {
+          console.error('Failed to parse user data from URL:', e);
+        }
+      }
+      
+      // Fallback to localStorage (won't work across different ports)
+      if (!userData) {
+        const sharedUserData = localStorage.getItem('shared_user_data');
+        if (sharedUserData) {
+          try {
+            userData = JSON.parse(sharedUserData);
+          } catch (e) {
+            console.error('Failed to parse user data from localStorage:', e);
+          }
+        }
+      }
+      
+      if (userData) {
         setCurrentUser(userData);
         setIsAuthenticated(true);
         
         // Clean up URL
         const url = new URL(window.location.href);
         url.searchParams.delete('token');
+        url.searchParams.delete('user');
         window.history.replaceState({}, document.title, url.toString());
         
         console.log('Successfully authenticated via shared token from frontend-practice');

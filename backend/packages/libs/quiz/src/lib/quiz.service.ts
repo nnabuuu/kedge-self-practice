@@ -31,6 +31,18 @@ export class DefaultQuizService implements QuizService {
   deleteQuiz(id: string): Promise<boolean> {
     return this.repository.deleteQuiz(id);
   }
+
+  updateQuiz(id: string, updates: Partial<QuizItem>): Promise<QuizItem | null> {
+    return this.repository.updateQuiz(id, updates);
+  }
+
+  searchQuizzesByTags(tags: string[]): Promise<QuizItem[]> {
+    return this.repository.searchQuizzesByTags(tags);
+  }
+
+  getAllTags(): Promise<string[]> {
+    return this.repository.getAllTags();
+  }
 }
 
 export const QuizServiceProvider = {

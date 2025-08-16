@@ -169,8 +169,19 @@ class AuthService {
     if (token && userData?.role === 'teacher') {
       this.shareTokenWithQuizParser();
       
-      // Open quiz parser in new tab with token parameter
-      const quizParserUrl = 'http://localhost:5173/?token=' + encodeURIComponent(token);
+      // Open quiz parser in new tab with token and user data parameters
+      // Note: localStorage is not shared across different ports, so we pass user data via URL
+      const params = new URLSearchParams({
+        token: token,
+        user: JSON.stringify({
+          name: userData.name || 'Teacher',
+          email: userData.email || userData.account_id,
+          role: userData.role
+        })
+      });
+      
+      // Try port 5174 first (common Vite dev server port when 5173 is taken)
+      const quizParserUrl = `http://localhost:5174/?${params.toString()}`;
       window.open(quizParserUrl, '_blank');
     }
   }

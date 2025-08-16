@@ -271,9 +271,16 @@ export const batchSubmitQuizzesWithKnowledgePoints = async (
   failCount: number;
   results: Array<{ quizId?: string; error?: string }>;
 }> => {
+  // Transform quizzes to include keywords as tags
+  const quizzesWithTags = quizzes.map(quiz => ({
+    ...quiz,
+    // Include keywords from matching result as tags
+    tags: quiz.matchingResult?.keywords || [],
+  }));
+
   const response = await apiFetch('/quiz/submit-multiple', {
     method: 'POST',
-    body: JSON.stringify({ quizzes }),
+    body: JSON.stringify({ quizzes: quizzesWithTags }),
   });
   
   const data = await response.json();
