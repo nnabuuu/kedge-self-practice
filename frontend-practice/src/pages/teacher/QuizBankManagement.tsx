@@ -10,6 +10,7 @@ interface Quiz {
   answer: string | string[] | number | number[];
   difficulty?: 'easy' | 'medium' | 'hard';
   knowledgePointId?: string;
+  knowledge_point_id?: string; // Backend field name
   knowledgePoint?: {
     topic: string;
     lesson: string;
@@ -21,6 +22,14 @@ interface Quiz {
   tags?: string[];
 }
 
+interface KnowledgePoint {
+  id: string;
+  topic: string;
+  lesson: string;
+  unit: string;
+  volume: string;
+}
+
 interface QuizBankManagementProps {
   onBack?: () => void;
 }
@@ -28,6 +37,8 @@ interface QuizBankManagementProps {
 export default function QuizBankManagement({ onBack }: QuizBankManagementProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
+  const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
+  const [loadingKnowledgePoints, setLoadingKnowledgePoints] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
@@ -222,6 +233,36 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
     }
   };
 
+  const fetchKnowledgePoints = async () => {
+    try {
+      setLoadingKnowledgePoints(true);
+      const token = localStorage.getItem('jwt_token');
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1/knowledge-points/all`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Knowledge points response:', data);
+        if (data.knowledgePoints && Array.isArray(data.knowledgePoints)) {
+          setKnowledgePoints(data.knowledgePoints);
+        }
+      } else {
+        console.error('Failed to fetch knowledge points:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Failed to fetch knowledge points:', error);
+    } finally {
+      setLoadingKnowledgePoints(false);
+    }
+  };
+
   const handleSelectQuiz = (quizId: string) => {
     const newSelected = new Set(selectedQuizzes);
     if (newSelected.has(quizId)) {
@@ -401,6 +442,10 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
     setEditingQuiz(quiz);
     setNewTag(''); // Clear the new tag input
     setShowEditModal(true);
+    // Fetch knowledge points for selection
+    if (knowledgePoints.length === 0) {
+      fetchKnowledgePoints();
+    }
   };
 
   const handleSaveQuiz = async (updatedQuiz: Quiz) => {
@@ -1245,6 +1290,46 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                   <option value="medium">中等</option>
                   <option value="hard">困难</option>
                 </select>
+              </div>
+
+              {/* Knowledge Point */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">知识点</label>
+                {loadingKnowledgePoints ? (
+                  <div className="text-sm text-gray-500">加载知识点中...</div>
+                ) : (
+                  <select
+                    value={editingQuiz.knowledgePointId || editingQuiz.knowledge_point_id || ''}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const selectedKnowledgePoint = knowledgePoints.find(kp => kp.id === selectedId);
+                      setEditingQuiz({
+                        ...editingQuiz, 
+                        knowledgePointId: selectedId || undefined,
+                        knowledge_point_id: selectedId || undefined, // Backend field name
+                        knowledgePoint: selectedKnowledgePoint ? {
+                          topic: selectedKnowledgePoint.topic,
+                          lesson: selectedKnowledgePoint.lesson,
+                          unit: selectedKnowledgePoint.unit,
+                          volume: selectedKnowledgePoint.volume
+                        } : undefined
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">选择知识点</option>
+                    {knowledgePoints.map((kp) => (
+                      <option key={kp.id} value={kp.id}>
+                        {kp.volume} - {kp.unit} - {kp.lesson} - {kp.topic}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {editingQuiz.knowledgePoint && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    当前: {editingQuiz.knowledgePoint.volume} - {editingQuiz.knowledgePoint.unit} - {editingQuiz.knowledgePoint.lesson} - {editingQuiz.knowledgePoint.topic}
+                  </div>
+                )}
               </div>
 
               {/* Tags */}
