@@ -29,11 +29,11 @@ export const QuizItemSchema = z.object({
   // Image placeholders in the question text (e.g., "{{img:1}}")
   images: z.array(z.string()).optional(),
   // Original paragraph text from which this quiz was extracted
-  originalParagraph: z.string().optional(),
+  originalParagraph: z.string().nullable().optional(),
   // Tags/keywords for the quiz item
   tags: z.array(z.string()).optional(),
   // Knowledge point ID this quiz is associated with
-  knowledge_point_id: z.string().optional(),
+  knowledge_point_id: z.string().nullable().optional(),
 });
 
 export type QuizItem = z.infer<typeof QuizItemSchema>;
