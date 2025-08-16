@@ -1140,7 +1140,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                 <label className="block text-sm font-medium text-gray-700 mb-2">答案</label>
                 {editingQuiz.type === 'single-choice' && editingQuiz.options ? (
                   <select
-                    value={editingQuiz.answer as number}
+                    value={typeof editingQuiz.answer === 'number' ? editingQuiz.answer : 0}
                     onChange={(e) => setEditingQuiz({...editingQuiz, answer: parseInt(e.target.value)})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -1156,9 +1156,9 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                       <label key={index} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
-                          checked={(editingQuiz.answer as number[]).includes(index)}
+                          checked={Array.isArray(editingQuiz.answer) ? editingQuiz.answer.includes(index) : false}
                           onChange={(e) => {
-                            const currentAnswers = editingQuiz.answer as number[];
+                            const currentAnswers = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [];
                             if (e.target.checked) {
                               setEditingQuiz({...editingQuiz, answer: [...currentAnswers, index]});
                             } else {
