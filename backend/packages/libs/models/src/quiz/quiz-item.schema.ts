@@ -34,6 +34,14 @@ export const QuizItemSchema = z.object({
   tags: z.array(z.string()).optional(),
   // Knowledge point ID this quiz is associated with
   knowledge_point_id: z.string().nullable().optional(),
+  // Full knowledge point information (populated when joining with knowledge_points table)
+  knowledgePoint: z.object({
+    id: z.string(),
+    topic: z.string(),
+    volume: z.string().optional(),
+    unit: z.string().optional(),
+    lesson: z.string().optional(),
+  }).nullable().optional(),
 });
 
 export type QuizItem = z.infer<typeof QuizItemSchema>;

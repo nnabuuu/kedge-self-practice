@@ -66,15 +66,47 @@ export class QuizRepository {
   async listQuizzes(): Promise<QuizItem[]> {
     try {
       const result = await this.persistentService.pgPool.query(
-        sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, 
-                 original_paragraph as "originalParagraph", 
-                 images, tags, knowledge_point_id
-          FROM kedge_practice.quizzes
-          ORDER BY id DESC
+        sql.unsafe`
+          SELECT 
+            q.id, 
+            q.type, 
+            q.question, 
+            q.options, 
+            q.answer, 
+            q.original_paragraph as "originalParagraph", 
+            q.images, 
+            q.tags, 
+            q.knowledge_point_id,
+            kp.id as "knowledgePointDbId",
+            kp.topic as "knowledgePointTopic",
+            kp.volume as "knowledgePointVolume",
+            kp.unit as "knowledgePointUnit",
+            kp.lesson as "knowledgePointLesson"
+          FROM kedge_practice.quizzes q
+          LEFT JOIN kedge_practice.knowledge_points kp ON kp.id::text = q.knowledge_point_id
+          ORDER BY q.id DESC
         `,
       );
-      return [...result.rows];
+      
+      // Transform the results to include knowledge point information
+      return result.rows.map(row => ({
+        id: row.id,
+        type: row.type,
+        question: row.question,
+        options: row.options,
+        answer: row.answer,
+        originalParagraph: row.originalParagraph,
+        images: row.images,
+        tags: row.tags,
+        knowledge_point_id: row.knowledge_point_id,
+        knowledgePoint: row.knowledgePointTopic ? {
+          id: row.knowledgePointDbId,
+          topic: row.knowledgePointTopic,
+          volume: row.knowledgePointVolume,
+          unit: row.knowledgePointUnit,
+          lesson: row.knowledgePointLesson,
+        } : null,
+      }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error listing quizzes: ${errorMessage}`);
