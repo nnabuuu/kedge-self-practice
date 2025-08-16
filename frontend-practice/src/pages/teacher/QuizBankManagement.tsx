@@ -239,7 +239,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       const token = localStorage.getItem('jwt_token');
       
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1/knowledge-points/all`,
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/knowledge-points/all`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
