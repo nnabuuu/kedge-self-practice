@@ -865,8 +865,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                     </div>
                   ))}
                 </div>
-                );
-              })()}
+              )}
 
               {/* Pagination */}
               {(() => {
