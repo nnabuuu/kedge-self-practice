@@ -72,7 +72,7 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
           totalPoints: data.total || 0,
           volumes: data.byVolume ? Object.keys(data.byVolume).length : 0,
           units: data.byUnit ? Object.keys(data.byUnit).length : 0,
-          quizzes: 0 // Backend doesn't provide quiz count in stats endpoint
+          quizzes: data.totalQuizzes || 0
         });
       }
     } catch (error) {

@@ -5,6 +5,8 @@ import {
   KnowledgePointStorage,
 } from '@kedge/knowledge-point';
 import { KnowledgePoint } from '@kedge/models';
+import { PersistentService } from '@kedge/persistent';
+import { sql } from 'slonik';
 
 interface MatchKnowledgePointRequest {
   quizText: string;
@@ -28,6 +30,7 @@ interface KnowledgePointStatsResponse {
   total: number;
   byVolume: Record<string, number>;
   byUnit: Record<string, number>;
+  totalQuizzes: number;
 }
 
 @ApiTags('Knowledge Points')
@@ -38,6 +41,7 @@ export class KnowledgePointController {
   constructor(
     private readonly gptService: KnowledgePointGPTService,
     private readonly storage: KnowledgePointStorage,
+    private readonly persistentService: PersistentService,
   ) {}
 
   @Post('match')
@@ -239,9 +243,24 @@ export class KnowledgePointController {
     try {
       const stats = this.storage.getKnowledgePointStats();
       
-      this.logger.log(`Retrieved stats for ${stats.total} knowledge points`);
+      // Get total quiz count from database
+      let totalQuizzes = 0;
+      try {
+        const quizCountResult = await this.persistentService.pgPool.query(
+          sql.unsafe`SELECT COUNT(*) as count FROM kedge_practice.quizzes`
+        );
+        totalQuizzes = parseInt(quizCountResult.rows[0]?.count || '0', 10);
+      } catch (dbError) {
+        this.logger.warn('Failed to get quiz count from database:', dbError);
+        // Continue with 0 count if database query fails
+      }
+      
+      this.logger.log(`Retrieved stats for ${stats.total} knowledge points and ${totalQuizzes} quizzes`);
 
-      return stats;
+      return {
+        ...stats,
+        totalQuizzes,
+      };
     } catch (error) {
       this.logger.error('Failed to get knowledge point stats', error);
       throw error;
