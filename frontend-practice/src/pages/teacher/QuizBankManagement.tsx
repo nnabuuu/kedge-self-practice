@@ -246,30 +246,81 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       return;
     }
     
-    if (!confirm(`确定要删除选中的 ${selectedQuizzes.size} 道题目吗？`)) {
+    if (!confirm(`确定要删除选中的 ${selectedQuizzes.size} 道题目吗？此操作不可恢复。`)) {
       return;
     }
     
-    // Remove selected quizzes from local state
     const quizIdsToDelete = Array.from(selectedQuizzes);
-    console.log('Deleting quizzes:', quizIdsToDelete);
+    console.log('Batch deleting quizzes:', quizIdsToDelete);
     
-    // Filter out the deleted quizzes
-    setQuizzes(prev => {
-      const filtered = prev.filter(q => !selectedQuizzes.has(q.id));
-      console.log(`Batch deleted ${selectedQuizzes.size} quizzes, remaining: ${filtered.length}`);
-      return filtered;
-    });
-    
-    // Clear selections
-    setSelectedQuizzes(new Set());
-    
-    // Don't refetch - we've already updated the local state
-    // Only refetch if we're working with real backend data
-    if (!isUsingMockData) {
-      // TODO: Implement batch delete API call
-      // For now, just update local state
+    try {
+      const token = localStorage.getItem('jwt_token');
+      const deletePromises = quizIdsToDelete.map(async (quizId) => {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/quiz/${quizId}`,
+            {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          );
+          
+          if (response.ok) {
+            console.log(`Successfully deleted quiz ${quizId}`);
+            return { quizId, success: true };
+          } else {
+            console.error(`Failed to delete quiz ${quizId}:`, response.status);
+            return { quizId, success: false, error: `HTTP ${response.status}` };
+          }
+        } catch (error) {
+          console.error(`Error deleting quiz ${quizId}:`, error);
+          return { quizId, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      });
+      
+      // Wait for all delete operations to complete
+      const results = await Promise.all(deletePromises);
+      
+      // Count successful deletions
+      const successful = results.filter(r => r.success);
+      const failed = results.filter(r => !r.success);
+      
+      console.log(`Batch delete completed: ${successful.length} successful, ${failed.length} failed`);
+      
+      if (failed.length > 0) {
+        console.error('Failed deletions:', failed);
+        alert(`删除完成：${successful.length} 道题目删除成功，${failed.length} 道题目删除失败。请检查网络连接或权限。`);
+      } else {
+        console.log('All quizzes deleted successfully');
+      }
+      
+      // Remove successfully deleted quizzes from local state
+      const successfulIds = new Set(successful.map(r => r.quizId));
+      setQuizzes(prev => {
+        const filtered = prev.filter(q => !successfulIds.has(q.id));
+        console.log(`Removed ${successfulIds.size} quizzes from local state, remaining: ${filtered.length}`);
+        return filtered;
+      });
+      
+    } catch (error) {
+      console.error('Batch delete error:', error);
+      alert('批量删除操作失败，请检查网络连接并重试。');
+      
+      // For demo purposes with mock data, still remove from local state
+      if (isUsingMockData) {
+        console.log('Using mock data, removing from local state anyway');
+        setQuizzes(prev => {
+          const filtered = prev.filter(q => !selectedQuizzes.has(q.id));
+          console.log(`Mock batch deleted ${selectedQuizzes.size} quizzes, remaining: ${filtered.length}`);
+          return filtered;
+        });
+      }
     }
+    
+    // Clear selection
+    setSelectedQuizzes(new Set());
   };
 
   const handleNavigateToQuizParser = () => {
