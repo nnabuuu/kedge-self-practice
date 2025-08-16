@@ -13,7 +13,9 @@ import { QuizController } from './controllers/quiz.controller';
 import { AttachmentsController } from './controllers/attachments.controller';
 import { PracticeController } from './controllers/practice.controller';
 import { KnowledgePointController } from './controllers/knowledge-point.controller';
+import { StatisticsController } from './controllers/statistics.controller';
 import { PracticeModule } from '@kedge/practice';
+import { PersistentModule } from '@kedge/persistent';
 
 @Module({
   imports: [
@@ -22,6 +24,7 @@ import { PracticeModule } from '@kedge/practice';
     QuizModule,
     QuizParserModule,
     PracticeModule,
+    PersistentModule,
   ],
   controllers: [
     AuthController,
@@ -32,6 +35,7 @@ import { PracticeModule } from '@kedge/practice';
     AttachmentsController,
     PracticeController,
     KnowledgePointController,
+    StatisticsController,
   ],
   providers: [
     {

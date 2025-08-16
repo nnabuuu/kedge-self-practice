@@ -5,6 +5,7 @@ import { Teacher } from '../types/teacher';
 import { useSubjects, useKnowledgePoints, useQuestionSearch } from '../hooks/useApi';
 import { authService } from '../services/authService';
 import { preferencesService } from '../services/preferencesService';
+import { statisticsService } from '../services/statisticsService';
 import KnowledgePointManagement from '../pages/teacher/KnowledgePointManagement';
 import QuizBankManagement from '../pages/teacher/QuizBankManagement';
 
@@ -15,6 +16,14 @@ interface TeacherDashboardProps {
 
 type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'analytics' | 'settings';
 
+interface TeacherStats {
+  totalStudents: number;
+  activeStudents: number;
+  totalKnowledgePoints: number;
+  totalQuizzes: number;
+  monthlyPracticeSessions: number;
+}
+
 export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
   
@@ -24,6 +33,32 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
   const { data: quizQuestions = [], loading: questionsLoading } = useQuestionSearch('');
   
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [statistics, setStatistics] = useState<TeacherStats>({
+    totalStudents: 0,
+    activeStudents: 0,
+    totalKnowledgePoints: 0,
+    totalQuizzes: 0,
+    monthlyPracticeSessions: 0,
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  // Fetch statistics on component mount
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      try {
+        setStatsLoading(true);
+        const stats = await statisticsService.getTeacherDashboardStats();
+        setStatistics(stats);
+      } catch (error) {
+        console.error('Failed to fetch statistics:', error);
+        // Keep default values if fetch fails
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStatistics();
+  }, []);
 
   // Set selected subject once subjects data is loaded
   // Remember teacher's last accessed subject preference using backend
@@ -146,7 +181,9 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
             </div>
             <span className="text-sm text-gray-500">学生</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900 mb-1">156</div>
+          <div className="text-2xl font-bold text-gray-900 mb-1">
+            {statsLoading ? '...' : statistics.activeStudents}
+          </div>
           <div className="text-sm text-gray-600">活跃学生数</div>
         </div>
 
@@ -157,7 +194,9 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
             </div>
             <span className="text-sm text-gray-500">练习</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900 mb-1">1,234</div>
+          <div className="text-2xl font-bold text-gray-900 mb-1">
+            {statsLoading ? '...' : statistics.monthlyPracticeSessions.toLocaleString()}
+          </div>
           <div className="text-sm text-gray-600">本月练习次数</div>
         </div>
       </div>
