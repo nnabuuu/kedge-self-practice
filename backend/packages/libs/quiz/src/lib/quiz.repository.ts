@@ -48,7 +48,9 @@ export class QuizRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id
+          SELECT id, type, question, options, answer, 
+                 original_paragraph as "originalParagraph", 
+                 images, tags, knowledge_point_id
           FROM kedge_practice.quizzes
           WHERE id = ${id}
         `,
@@ -65,8 +67,11 @@ export class QuizRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id
+          SELECT id, type, question, options, answer, 
+                 original_paragraph as "originalParagraph", 
+                 images, tags, knowledge_point_id
           FROM kedge_practice.quizzes
+          ORDER BY id DESC
         `,
       );
       return [...result.rows];
@@ -117,9 +122,12 @@ export class QuizRepository {
               original_paragraph = ${updatedQuiz.originalParagraph ?? null},
               images = ${sql.json(updatedQuiz.images ?? [])},
               tags = ${sql.json(updatedQuiz.tags ?? [])},
+              knowledge_point_id = ${updatedQuiz.knowledge_point_id ?? null},
               updated_at = now()
           WHERE id = ${id}
-          RETURNING id, type, question, options, answer, original_paragraph, images, tags
+          RETURNING id, type, question, options, answer, 
+                    original_paragraph as "originalParagraph", 
+                    images, tags, knowledge_point_id
         `,
       );
 
@@ -139,7 +147,9 @@ export class QuizRepository {
 
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id
+          SELECT id, type, question, options, answer, 
+                 original_paragraph as "originalParagraph", 
+                 images, tags, knowledge_point_id
           FROM kedge_practice.quizzes
           WHERE tags ?| ${sql.array(tags, 'text')}
           ORDER BY id DESC

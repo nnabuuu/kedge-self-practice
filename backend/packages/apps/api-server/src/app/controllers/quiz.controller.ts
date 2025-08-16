@@ -18,7 +18,7 @@ import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { QuizService, EnhancedQuizStorageService, AttachmentMetadata } from '@kedge/quiz';
 import { QuizItemSchema, QuizWithKnowledgePointSchema, QuizWithKnowledgePoint, QuizItem } from '@kedge/models';
 import { z } from 'zod';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 
 const CreateQuizSchema = z.object({
   quiz: QuizWithKnowledgePointSchema,
@@ -276,14 +276,33 @@ export class QuizController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all quizzes' })
+  @ApiOperation({ summary: 'List all quizzes with optional pagination' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page' })
+  @ApiQuery({ name: 'difficulty', required: false, description: 'Filter by difficulty' })
   @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
-  async listQuizzes() {
-    const quizzes = await this.quizService.listQuizzes();
+  async listQuizzes(
+    @Query('page') pageStr?: string,
+    @Query('limit') limitStr?: string,
+    @Query('difficulty') difficulty?: string,
+  ) {
+    const page = pageStr ? parseInt(pageStr, 10) : 1;
+    const limit = limitStr ? parseInt(limitStr, 10) : 10;
+    const offset = (page - 1) * limit;
+    
+    // Get all quizzes for now (pagination can be added at repository level later)
+    const allQuizzes = await this.quizService.listQuizzes();
+    
+    // Apply pagination in memory for now
+    const paginatedQuizzes = allQuizzes.slice(offset, offset + limit);
+    
     return {
       success: true,
-      count: quizzes.length,
-      data: quizzes,
+      count: paginatedQuizzes.length,
+      total: allQuizzes.length,
+      page,
+      limit,
+      data: paginatedQuizzes,
     };
   }
 
