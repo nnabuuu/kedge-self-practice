@@ -319,7 +319,6 @@ export function usePracticeSession(config: {
   knowledge_point_ids: string[];
   question_count?: number;
   time_limit_minutes?: number;
-  difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
   strategy?: string;
   shuffle_questions?: boolean;
   shuffle_options?: boolean;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, CheckCircle2, XCircle, ArrowRight, RotateCcw, BookOpen, Brain, Sparkles, MessageSquare, Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
 import { Subject, QuizQuestion, PracticeSession, AIEvaluation } from '../types/quiz';
 import { usePracticeSession, useKnowledgePoints } from '../hooks/useApi';
@@ -48,17 +48,21 @@ export default function QuizPractice({
   const recognitionRef = useRef<any>(null);
 
   // 使用Practice Session Hook获取题目数据
-  const practiceConfig = selectedKnowledgePoints.length > 0 ? {
-    knowledge_point_ids: selectedKnowledgePoints,
-    question_count: typeof config.questionCount === 'number' ? config.questionCount : 20,
-    time_limit_minutes: config.timeLimit,
-    difficulty: 'mixed' as const,
-    strategy: 'random',
-    shuffle_questions: config.shuffleQuestions,
-    shuffle_options: true,
-    allow_review: true,
-    show_answer_immediately: config.showExplanation
-  } : null;
+  // Memoize config to prevent infinite re-renders
+  const practiceConfig = useMemo(() => 
+    selectedKnowledgePoints.length > 0 ? {
+      knowledge_point_ids: selectedKnowledgePoints,
+      question_count: typeof config.questionCount === 'number' ? config.questionCount : 20,
+      time_limit_minutes: config.timeLimit,
+      strategy: 'random',
+      shuffle_questions: config.shuffleQuestions,
+      shuffle_options: true,
+      allow_review: true,
+      show_answer_immediately: config.showExplanation
+    } : null,
+    [selectedKnowledgePoints, config.questionCount, config.timeLimit, 
+     config.shuffleQuestions, config.showExplanation]
+  );
 
   const { 
     session, 
