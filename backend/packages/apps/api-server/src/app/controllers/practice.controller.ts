@@ -61,8 +61,6 @@ class RecordCorrectionDto extends createZodDto(RecordCorrectionSchema) {}
 
 @ApiTags('Practice')
 @Controller('v1/practice')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class PracticeController {
   constructor(
     private readonly practiceService: PracticeService,
@@ -77,10 +75,10 @@ export class PracticeController {
     type: PracticeSessionResponseDto 
   })
   async createSession(
-    @Request() req: AuthenticatedRequest,
     @Body() createSessionDto: CreatePracticeSessionDto
   ): Promise<PracticeSessionResponseDto> {
-    const studentId = req.user.userId;
+    // Use anonymous student ID for practice sessions without authentication
+    const studentId = 'anonymous-student';
     return await this.practiceService.createSession(studentId, createSessionDto);
   }
 
@@ -93,10 +91,10 @@ export class PracticeController {
     type: PracticeSessionResponseDto 
   })
   async startSession(
-    @Request() req: AuthenticatedRequest,
     @Param('sessionId') sessionId: string
   ): Promise<PracticeSessionResponseDto> {
-    const studentId = req.user.userId;
+    // Use anonymous student ID for practice sessions without authentication
+    const studentId = 'anonymous-student';
     return await this.practiceService.startSession(sessionId, studentId);
   }
 
@@ -108,10 +106,10 @@ export class PracticeController {
     description: 'Answer submitted successfully'
   })
   async submitAnswer(
-    @Request() req: AuthenticatedRequest,
     @Body() submitAnswerDto: SubmitAnswerDto
   ): Promise<{ isCorrect: boolean }> {
-    const studentId = req.user.userId;
+    // Use anonymous student ID for practice sessions without authentication
+    const studentId = 'anonymous-student';
     return await this.practiceService.submitAnswer(submitAnswerDto, studentId);
   }
 
@@ -156,10 +154,10 @@ export class PracticeController {
     type: PracticeSessionDto 
   })
   async completeSession(
-    @Request() req: AuthenticatedRequest,
     @Body() completeSessionDto: CompleteSessionDto
   ): Promise<PracticeSessionDto> {
-    const studentId = req.user.userId;
+    // Use anonymous student ID for practice sessions without authentication
+    const studentId = 'anonymous-student';
     return await this.practiceService.completeSession(completeSessionDto.session_id, studentId);
   }
 
@@ -171,14 +169,16 @@ export class PracticeController {
     type: PracticeSessionResponseDto 
   })
   async getSession(
-    @Request() req: AuthenticatedRequest,
     @Param('sessionId') sessionId: string
   ): Promise<PracticeSessionResponseDto> {
-    const studentId = req.user.userId;
+    // Use anonymous student ID for practice sessions without authentication
+    const studentId = 'anonymous-student';
     return await this.practiceService.getSession(sessionId, studentId);
   }
 
   @Get('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get practice session history' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
