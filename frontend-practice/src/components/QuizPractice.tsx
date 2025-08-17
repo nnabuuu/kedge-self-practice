@@ -47,6 +47,97 @@ export default function QuizPractice({
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
 
+  // Function to parse and render question text with images
+  const renderQuestionWithImages = (questionText: string, imageUrls?: string[]) => {
+    // Pattern to match {{image:uuid}} or {{img:N}} placeholders
+    const imagePattern = /\{\{(?:image|img):([a-f0-9-]+|\d+)\}\}/g;
+    
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = imagePattern.exec(questionText)) !== null) {
+      // Add text before the image
+      if (match.index > lastIndex) {
+        parts.push(
+          <span key={`text-${lastIndex}`}>
+            {questionText.substring(lastIndex, match.index)}
+          </span>
+        );
+      }
+      
+      // Determine image URL
+      const imageRef = match[1];
+      let imageUrl = '';
+      
+      // Check if it's a number (index) and we have imageUrls array
+      if (/^\d+$/.test(imageRef) && imageUrls && imageUrls.length > 0) {
+        const index = parseInt(imageRef, 10);
+        if (index < imageUrls.length) {
+          imageUrl = imageUrls[index];
+        }
+      } else {
+        // It's a UUID, but we don't have the proper path structure
+        // For now, we'll show a placeholder message
+        imageUrl = '';
+      }
+      
+      if (imageUrl) {
+        // Ensure the URL is absolute
+        const absoluteUrl = imageUrl.startsWith('http') 
+          ? imageUrl 
+          : `http://localhost:8718${imageUrl}`;
+        
+        parts.push(
+          <div key={`img-${imageRef}`} className="my-4">
+            <img 
+              src={absoluteUrl}
+              alt="题目图片"
+              className="max-w-full h-auto rounded-lg shadow-md"
+              onError={(e) => {
+                // Fallback for broken images
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.parentElement?.insertAdjacentHTML('afterbegin', 
+                  `<div class="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700">
+                    <p class="font-medium">图片暂时无法显示</p>
+                    <p class="text-sm mt-1">图片引用: ${imageRef}</p>
+                  </div>`
+                );
+              }}
+            />
+          </div>
+        );
+      } else {
+        // No valid URL, show placeholder
+        parts.push(
+          <div key={`img-${imageRef}`} className="my-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-amber-700 font-medium">📷 此处应有图片</p>
+            <p className="text-amber-600 text-sm mt-1">
+              图片标识: {imageRef}
+            </p>
+            <p className="text-amber-600 text-xs mt-2">
+              提示: 图片可能尚未上传或路径配置有误
+            </p>
+          </div>
+        );
+      }
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add any remaining text
+    if (lastIndex < questionText.length) {
+      parts.push(
+        <span key={`text-${lastIndex}`}>
+          {questionText.substring(lastIndex)}
+        </span>
+      );
+    }
+    
+    return parts.length > 0 ? <>{parts}</> : questionText;
+  };
+
   // 使用Practice Session Hook获取题目数据
   // Memoize config to prevent infinite re-renders
   const practiceConfig = useMemo(() => 
@@ -160,6 +251,7 @@ export default function QuizPractice({
       question: sessionQuestion.question,
       options,
       answer,
+      images: sessionQuestion.images || [],
       standardAnswer: type === 'essay' ? sessionQuestion.correct_answer : undefined,
       relatedKnowledgePointId: sessionQuestion.knowledge_point_id,
     };
@@ -637,7 +729,7 @@ export default function QuizPractice({
 
           <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-3xl shadow-lg p-8 border border-white/20">
             <h2 className="text-2xl font-bold text-gray-900 mb-6 leading-tight tracking-wide">
-              {currentQuestion.question}
+              {renderQuestionWithImages(currentQuestion.question, currentQuestion.images)}
             </h2>
 
             {/* 单选题选项 */}
