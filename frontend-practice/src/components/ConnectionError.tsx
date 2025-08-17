@@ -24,11 +24,11 @@ export const ConnectionError: React.FC<ConnectionErrorProps> = ({
   const checkConnection = async () => {
     setConnectionStatus('checking');
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/health`, {
-        method: 'HEAD',
-        mode: 'no-cors'
+      // Use /v1/health endpoint
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/health`, {
+        method: 'GET'
       });
-      setConnectionStatus('online');
+      setConnectionStatus(response.ok ? 'online' : 'offline');
     } catch {
       setConnectionStatus('offline');
     }
@@ -87,7 +87,7 @@ export const ConnectionError: React.FC<ConnectionErrorProps> = ({
           <ul className="text-xs text-yellow-700 mt-2 space-y-1">
             <li>• 检查数据库是否已启动 (PostgreSQL on port 7543)</li>
             <li>• 检查 API 服务是否运行 (nx run api-server:serve)</li>
-            <li>• 确认服务地址: {import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}</li>
+            <li>• 确认服务地址: {import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}</li>
           </ul>
         </div>
       )}
@@ -154,7 +154,8 @@ export const useConnectionStatus = () => {
     // Check backend status
     const checkBackend = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/health`);
+        // Use /v1/health endpoint
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/health`);
         setBackendStatus(response.ok ? 'online' : 'offline');
       } catch {
         setBackendStatus('offline');

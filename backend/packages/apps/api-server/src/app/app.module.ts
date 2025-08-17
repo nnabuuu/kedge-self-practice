@@ -6,7 +6,7 @@ import { KnowledgePointModule } from '@kedge/knowledge-point';
 import { QuizModule } from '@kedge/quiz';
 import { QuizParserModule } from '@kedge/quiz-parser';
 import { AuthController } from './controllers/auth.controller';
-import { IndexController } from './controllers/index.controller';
+import { IndexController, HealthController } from './controllers/index.controller';
 import { GptController } from './controllers/gpt.controller';
 import { DocxController } from './controllers/docx.controller';
 import { QuizController } from './controllers/quiz.controller';
@@ -29,6 +29,7 @@ import { PersistentModule } from '@kedge/persistent';
   controllers: [
     AuthController,
     IndexController,
+    HealthController,
     GptController,
     DocxController,
     QuizController,
