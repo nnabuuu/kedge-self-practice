@@ -65,6 +65,14 @@ export class DefaultQuizService implements QuizService {
   getAllTags(): Promise<string[]> {
     return this.repository.getAllTags();
   }
+
+  getRandomQuizzesByKnowledgePoints(
+    knowledgePointIds: string[], 
+    limit: number,
+    difficulty?: string
+  ): Promise<QuizItem[]> {
+    return this.repository.getRandomQuizzesByKnowledgePoints(knowledgePointIds, limit, difficulty);
+  }
 }
 
 export const QuizServiceProvider = {

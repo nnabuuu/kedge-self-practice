@@ -24,19 +24,20 @@ export class PracticeService {
   ): Promise<PracticeSessionResponse> {
     const sessionId = uuidv4();
     
-    // Fetch quizzes based on criteria
-    const allQuizzes = await this.quizService.listQuizzes();
-    
-    // Filter quizzes by knowledge point IDs
-    const filteredQuizzes = allQuizzes.filter(quiz => 
-      quiz.knowledge_point_id && data.knowledge_point_ids.includes(quiz.knowledge_point_id)
+    // Fetch random quizzes based on criteria - let the database do the work
+    const quizzes = await this.quizService.getRandomQuizzesByKnowledgePoints(
+      data.knowledge_point_ids || [],
+      data.question_count,
+      data.difficulty
     );
     
-    // Limit the number of questions
-    const quizzes = filteredQuizzes.slice(0, data.question_count);
-
+    // If no quizzes found, throw error
     if (quizzes.length === 0) {
-      throw new BadRequestException('No quizzes available for selected knowledge points');
+      throw new BadRequestException(
+        data.knowledge_point_ids && data.knowledge_point_ids.length > 0
+          ? `No quizzes available for knowledge points: ${data.knowledge_point_ids.join(', ')}`
+          : 'No quizzes available in the database'
+      );
     }
 
     // Shuffle quizzes if requested

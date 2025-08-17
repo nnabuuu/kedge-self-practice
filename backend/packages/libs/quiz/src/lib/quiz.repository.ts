@@ -185,4 +185,79 @@ export class QuizRepository {
       throw new Error('Failed to get all tags');
     }
   }
+
+  async getRandomQuizzesByKnowledgePoints(
+    knowledgePointIds: string[], 
+    limit: number,
+    difficulty?: string
+  ): Promise<QuizItem[]> {
+    try {
+      this.logger.log(`Fetching random quizzes for knowledge points: ${knowledgePointIds.join(', ')}, limit: ${limit}`);
+      
+      let result;
+      
+      if (knowledgePointIds.length > 0) {
+        // If knowledge points are specified, filter by them
+        if (difficulty && difficulty !== 'mixed') {
+          result = await this.persistentService.pgPool.query(
+            sql.type(QuizItemSchema)`
+              SELECT id, type, question, options, answer, 
+                     original_paragraph as "originalParagraph", 
+                     images, tags, knowledge_point_id
+              FROM kedge_practice.quizzes
+              WHERE knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'text')})
+                AND difficulty = ${difficulty}
+              ORDER BY RANDOM()
+              LIMIT ${limit}
+            `,
+          );
+        } else {
+          result = await this.persistentService.pgPool.query(
+            sql.type(QuizItemSchema)`
+              SELECT id, type, question, options, answer, 
+                     original_paragraph as "originalParagraph", 
+                     images, tags, knowledge_point_id
+              FROM kedge_practice.quizzes
+              WHERE knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'text')})
+              ORDER BY RANDOM()
+              LIMIT ${limit}
+            `,
+          );
+        }
+      } else {
+        // If no knowledge points specified, just get random quizzes
+        if (difficulty && difficulty !== 'mixed') {
+          result = await this.persistentService.pgPool.query(
+            sql.type(QuizItemSchema)`
+              SELECT id, type, question, options, answer, 
+                     original_paragraph as "originalParagraph", 
+                     images, tags, knowledge_point_id
+              FROM kedge_practice.quizzes
+              WHERE difficulty = ${difficulty}
+              ORDER BY RANDOM()
+              LIMIT ${limit}
+            `,
+          );
+        } else {
+          result = await this.persistentService.pgPool.query(
+            sql.type(QuizItemSchema)`
+              SELECT id, type, question, options, answer, 
+                     original_paragraph as "originalParagraph", 
+                     images, tags, knowledge_point_id
+              FROM kedge_practice.quizzes
+              ORDER BY RANDOM()
+              LIMIT ${limit}
+            `,
+          );
+        }
+      }
+      
+      this.logger.log(`Found ${result.rows.length} quizzes`);
+      return [...result.rows];
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error getting random quizzes: ${errorMessage}`);
+      throw new Error('Failed to get random quizzes');
+    }
+  }
 }
