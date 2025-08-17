@@ -3,3 +3,4 @@ pnpm 8.11.0
 direnv 2.32.3
 yarn 1.22.19
 yq 4.40.3
+postgres 15.3
