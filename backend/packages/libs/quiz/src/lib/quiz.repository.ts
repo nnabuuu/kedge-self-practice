@@ -78,8 +78,8 @@ export class QuizRepository {
       
       this.logger.log(`QuizRepository fetched ${result.rows.length} quizzes from database`);
       
-      // Return the quizzes - knowledgePoint is already null in the schema
-      return result.rows;
+      // Return the quizzes - spread to create a new mutable array
+      return [...result.rows];
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error listing quizzes: ${errorMessage}`);
