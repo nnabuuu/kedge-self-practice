@@ -280,13 +280,11 @@ export class QuizController {
   @ApiOperation({ summary: 'List all quizzes with optional pagination' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)' })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page' })
-  @ApiQuery({ name: 'difficulty', required: false, description: 'Filter by difficulty' })
   @ApiQuery({ name: 'knowledge_point_id', required: false, description: 'Filter by knowledge point ID(s) - supports single ID or comma-separated multiple IDs' })
   @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
   async listQuizzes(
     @Query('page') pageStr?: string,
     @Query('limit') limitStr?: string,
-    @Query('difficulty') difficulty?: string,
     @Query('knowledge_point_id') knowledgePointIds?: string,
   ) {
     const page = pageStr ? parseInt(pageStr, 10) : 1;

@@ -21,7 +21,6 @@ const nullableDateSchema = z.preprocess((arg) => {
 export const PracticeStrategySchema = z.enum([
   'random',
   'sequential',
-  'difficulty_adaptive',
   'weakness_focused',
   'review_incorrect',
   'QUICK_PRACTICE',
@@ -35,12 +34,6 @@ export const PracticeStrategyCode = {
   MISTAKE_REINFORCEMENT: 'MISTAKE_REINFORCEMENT',
 } as const;
 
-export const DifficultyLevel = {
-  EASY: 'EASY',
-  MEDIUM: 'MEDIUM',
-  HARD: 'HARD',
-  AUTO: 'AUTO',
-} as const;
 
 export const PracticeSessionStatusSchema = z.enum([
   'created',
@@ -55,7 +48,6 @@ export const CreatePracticeSessionSchema = z.object({
   knowledge_point_ids: z.array(z.string()).min(1),
   question_count: z.number().int().min(1).max(100).default(20),
   time_limit_minutes: z.number().int().min(5).max(180).optional(),
-  difficulty: z.enum(['easy', 'medium', 'hard', 'mixed']).default('mixed'),
   strategy: PracticeStrategySchema.default('random'),
   shuffle_questions: z.boolean().default(true),
   shuffle_options: z.boolean().default(true),
@@ -68,7 +60,7 @@ export const PracticeSessionSchema = z.object({
   user_id: z.string().uuid(),
   status: PracticeSessionStatusSchema,
   strategy: PracticeStrategySchema,
-  knowledge_point_ids: z.array(z.string()),
+  quiz_ids: z.array(z.string().uuid()),
   total_questions: z.number().int(),
   answered_questions: z.number().int().default(0),
   correct_answers: z.number().int().default(0),
@@ -76,7 +68,6 @@ export const PracticeSessionSchema = z.object({
   skipped_questions: z.number().int().default(0),
   time_limit_minutes: z.number().int().nullable().optional(),
   time_spent_seconds: z.number().int().default(0),
-  difficulty: z.string(),
   score: z.number().default(0),
   started_at: nullableDateSchema.optional(),
   completed_at: nullableDateSchema.optional(),
@@ -84,21 +75,14 @@ export const PracticeSessionSchema = z.object({
   updated_at: dateSchema
 });
 
-export const PracticeQuestionSchema = z.object({
+export const PracticeAnswerSchema = z.object({
   id: z.string().uuid(),
   session_id: z.string().uuid(),
   quiz_id: z.string().uuid(),
-  question_number: z.number().int(),
-  question: z.string(),
-  options: z.array(z.string()).nullable().optional(),
-  correct_answer: z.string().nullable().optional(),
-  student_answer: z.string().nullable().optional(),
+  user_answer: z.string().nullable().optional(),
   is_correct: z.boolean().nullable().optional(),
   time_spent_seconds: z.number().int().default(0),
   answered_at: nullableDateSchema.optional(),
-  attachments: z.array(z.string()).nullable().optional(),
-  knowledge_point_id: z.string().nullable().optional(),
-  difficulty: z.string(),
   created_at: dateSchema
 });
 
@@ -135,7 +119,8 @@ export const CompleteSessionSchema = z.object({
 // Response Schemas
 export const PracticeSessionResponseSchema = z.object({
   session: PracticeSessionSchema,
-  questions: z.array(PracticeQuestionSchema)
+  quizzes: z.array(z.any()), // Array of QuizItem from quiz service
+  answers: z.array(PracticeAnswerSchema).optional()
 });
 
 export const PracticeStatisticsSchema = z.object({
@@ -156,23 +141,6 @@ export const PracticeStatisticsSchema = z.object({
     accuracy: z.number(),
     average_time_seconds: z.number()
   })),
-  difficulty_performance: z.object({
-    easy: z.object({
-      total: z.number().int(),
-      correct: z.number().int(),
-      accuracy: z.number()
-    }),
-    medium: z.object({
-      total: z.number().int(),
-      correct: z.number().int(),
-      accuracy: z.number()
-    }),
-    hard: z.object({
-      total: z.number().int(),
-      correct: z.number().int(),
-      accuracy: z.number()
-    })
-  }),
   recent_sessions: z.array(PracticeSessionSchema).optional()
 });
 
@@ -211,7 +179,6 @@ export const GeneratePracticeRequestSchema = z.object({
   knowledgePointIds: z.array(z.string().uuid()).min(1),
   questionCount: z.number().int().min(1).max(100).default(20),
   timeLimit: z.number().int().min(60).max(7200).optional(),
-  difficulty: z.string().default('AUTO'),
   options: z.object({
     includeExplanations: z.boolean().default(true),
     allowSkip: z.boolean().default(false),
@@ -276,7 +243,7 @@ export const StrategyAnalyticsSchema = z.object({
 // Type exports
 export type CreatePracticeSession = z.infer<typeof CreatePracticeSessionSchema>;
 export type PracticeSession = z.infer<typeof PracticeSessionSchema>;
-export type PracticeQuestion = z.infer<typeof PracticeQuestionSchema>;
+export type PracticeAnswer = z.infer<typeof PracticeAnswerSchema>;
 export type SubmitAnswer = z.infer<typeof SubmitAnswerSchema>;
 export type SkipQuestion = z.infer<typeof SkipQuestionSchema>;
 export type PracticeSessionResponse = z.infer<typeof PracticeSessionResponseSchema>;

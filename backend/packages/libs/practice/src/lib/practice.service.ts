@@ -28,8 +28,7 @@ export class PracticeService {
     // Fetch random quizzes based on criteria - let the database do the work
     const quizzes = await this.quizService.getRandomQuizzesByKnowledgePoints(
       data.knowledge_point_ids || [],
-      data.question_count,
-      data.difficulty
+      data.question_count
     );
     
     // If no quizzes found, throw error
@@ -46,58 +45,37 @@ export class PracticeService {
       ? this.shuffleArray(quizzes)
       : quizzes;
 
-    // Prepare session data
-    const sessionData = {
-      strategy: data.strategy,
-      knowledge_point_ids: data.knowledge_point_ids,
-      total_questions: finalQuizzes.length,
-      time_limit_minutes: data.time_limit_minutes,
-      difficulty: data.difficulty
-    };
+    // Extract quiz IDs
+    const quizIds = finalQuizzes.map(quiz => quiz.id || uuidv4());
 
-    // Prepare questions data
-    const questionsData = finalQuizzes.map((quiz: QuizItem, index: number) => {
-      const options = data.shuffle_options && quiz.options
-        ? this.shuffleArray(quiz.options)
-        : quiz.options;
-
-
-      return {
-        id: uuidv4(),
-        quiz_id: quiz.id || uuidv4(), // Make sure quiz.id is a valid UUID
-        question_number: index + 1,
-        question: quiz.question,
-        options: options || [],
-        correct_answer: Array.isArray(quiz.answer) ? quiz.answer.join(',') : (quiz.answer || ''),
-        knowledge_point_id: quiz.knowledge_point_id || '',
-        difficulty: 'medium', // Default difficulty since QuizItem doesn't have this field
-        attachments: quiz.images || [] // Use images array as attachments
-      };
-    });
-
-    // Create session with all questions in one transaction
-    const result = await this.practiceRepository.createSessionWithQuestions(
+    // Create session with quiz IDs
+    const session = await this.practiceRepository.createSession(
       sessionId,
       userId,
-      sessionData,
-      questionsData
+      quizIds,
+      {
+        strategy: data.strategy,
+        total_questions: finalQuizzes.length,
+        time_limit_minutes: data.time_limit_minutes,
+      }
     );
 
     return {
-      session: result.session,
-      questions: result.questions
+      session,
+      quizzes: finalQuizzes,
+      answers: []
     };
   }
 
   async startSession(sessionId: string, userId: string): Promise<PracticeSessionResponse> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, userId);
+    const session = await this.practiceRepository.getSession(sessionId, userId);
     
-    if (!sessionData) {
+    if (!session) {
       throw new NotFoundException('Practice session not found');
     }
     
-    if (sessionData.session.status !== 'created') {
-      throw new BadRequestException(`Session cannot be started from status: ${sessionData.session.status}`);
+    if (session.status !== 'created') {
+      throw new BadRequestException(`Session cannot be started from status: ${session.status}`);
     }
 
     const updatedSession = await this.practiceRepository.updateSessionStatus(
@@ -107,47 +85,64 @@ export class PracticeService {
       { started_at: true }
     );
 
+    // Fetch the actual quiz items from the quiz service
+    const quizzes = await this.quizService.getQuizzesByIds(updatedSession.quiz_ids);
+    const answers = await this.practiceRepository.getAnswersForSession(sessionId);
+
     return {
       session: updatedSession,
-      questions: sessionData.questions
+      quizzes,
+      answers
     };
   }
 
   async submitAnswer(data: SubmitAnswer, userId: string): Promise<{ isCorrect: boolean }> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(data.session_id, userId);
+    const session = await this.practiceRepository.getSession(data.session_id, userId);
     
-    if (!sessionData) {
+    if (!session) {
       throw new NotFoundException('Practice session not found');
     }
     
-    if (sessionData.session.status !== 'in_progress') {
+    if (session.status !== 'in_progress') {
       throw new BadRequestException('Session is not in progress');
     }
 
+    // Get the quiz to check the correct answer
+    const quiz = await this.quizService.getQuizById(data.question_id);
+    if (!quiz) {
+      throw new NotFoundException('Quiz not found');
+    }
+
+    // Determine if answer is correct
+    const correctAnswer = Array.isArray(quiz.answer) ? quiz.answer.join(',') : quiz.answer;
+    const isCorrect = data.answer === correctAnswer;
+
+    // Submit the answer
     const result = await this.practiceRepository.submitAnswer(
-      data.question_id,
       data.session_id,
+      data.question_id,
       data.answer,
+      isCorrect,
       data.time_spent_seconds
     );
 
     // Check if session should be completed
-    const updatedSessionData = await this.practiceRepository.getSessionWithQuestions(data.session_id, userId);
-    if (updatedSessionData && updatedSessionData.session.answered_questions >= updatedSessionData.session.total_questions) {
+    const updatedSession = await this.practiceRepository.getSession(data.session_id, userId);
+    if (updatedSession && updatedSession.answered_questions >= updatedSession.total_questions) {
       await this.completeSession(data.session_id, userId);
     }
 
-    return result;
+    return { isCorrect };
   }
 
   async pauseSession(sessionId: string, userId: string): Promise<PracticeSession> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, userId);
+    const session = await this.practiceRepository.getSession(sessionId, userId);
     
-    if (!sessionData) {
+    if (!session) {
       throw new NotFoundException('Practice session not found');
     }
     
-    if (sessionData.session.status !== 'in_progress') {
+    if (session.status !== 'in_progress') {
       throw new BadRequestException('Only in-progress sessions can be paused');
     }
 
@@ -159,13 +154,13 @@ export class PracticeService {
   }
 
   async resumeSession(sessionId: string, userId: string): Promise<PracticeSessionResponse> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, userId);
+    const session = await this.practiceRepository.getSession(sessionId, userId);
     
-    if (!sessionData) {
+    if (!session) {
       throw new NotFoundException('Practice session not found');
     }
     
-    if (sessionData.session.status !== 'paused') {
+    if (session.status !== 'paused') {
       throw new BadRequestException('Only paused sessions can be resumed');
     }
 
@@ -175,9 +170,14 @@ export class PracticeService {
       'in_progress'
     );
 
+    // Fetch the actual quiz items and answers
+    const quizzes = await this.quizService.getQuizzesByIds(updatedSession.quiz_ids);
+    const answers = await this.practiceRepository.getAnswersForSession(sessionId);
+
     return {
       session: updatedSession,
-      questions: sessionData.questions
+      quizzes,
+      answers
     };
   }
 
@@ -191,15 +191,20 @@ export class PracticeService {
   }
 
   async getSession(sessionId: string, userId: string): Promise<PracticeSessionResponse> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, userId);
+    const session = await this.practiceRepository.getSession(sessionId, userId);
 
-    if (!sessionData) {
+    if (!session) {
       throw new NotFoundException('Practice session not found');
     }
 
+    // Fetch the actual quiz items and answers
+    const quizzes = await this.quizService.getQuizzesByIds(session.quiz_ids);
+    const answers = await this.practiceRepository.getAnswersForSession(sessionId);
+
     return {
-      session: sessionData.session,
-      questions: sessionData.questions
+      session,
+      quizzes,
+      answers
     };
   }
 

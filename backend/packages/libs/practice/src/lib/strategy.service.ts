@@ -3,7 +3,6 @@ import { PersistentService } from '@kedge/persistent';
 import { sql } from 'slonik';
 import {
   PracticeStrategyCode,
-  DifficultyLevel,
   GeneratePracticeRequest,
   PracticeSession,
   StudentWeakness,
@@ -17,7 +16,6 @@ import { v4 as uuidv4 } from 'uuid';
 interface QuizQuestion {
   id: string;
   knowledgePointId: string;
-  difficulty: string;
   content: string;
   options?: string[];
   correctAnswer: string;
@@ -96,14 +94,12 @@ export class StrategyService {
   ): Promise<{ questions: QuizQuestion[]; metadata: any }> {
     const questions = await this.getRandomQuestions(
       request.knowledgePointIds,
-      request.questionCount,
-      request.difficulty
+      request.questionCount
     );
 
     const metadata = {
       totalQuestions: questions.length,
       estimatedTime: request.timeLimit || this.calculateEstimatedTime(questions.length),
-      difficultyDistribution: this.calculateDifficultyDistribution(questions),
       knowledgePointDistribution: this.calculateKnowledgePointDistribution(questions),
     };
 
@@ -127,14 +123,12 @@ export class StrategyService {
 
     const weakQuestions = await this.getRandomQuestions(
       weakKnowledgePointIds,
-      weakQuestionCount,
-      'EASY'
+      weakQuestionCount
     );
 
     const mixedQuestions = await this.getRandomQuestions(
       request.knowledgePointIds,
-      mixedQuestionCount,
-      request.difficulty
+      mixedQuestionCount
     );
 
     const questions = [...weakQuestions, ...mixedQuestions];
@@ -143,7 +137,6 @@ export class StrategyService {
     const metadata = {
       totalQuestions: questions.length,
       estimatedTime: request.timeLimit || this.calculateEstimatedTime(questions.length),
-      difficultyDistribution: this.calculateDifficultyDistribution(questions),
       knowledgePointDistribution: this.calculateKnowledgePointDistribution(questions),
       strategySpecificData: {
         weaknessCount: weaknesses.length,
@@ -185,7 +178,6 @@ export class StrategyService {
     const metadata = {
       totalQuestions: questions.length,
       estimatedTime: request.timeLimit || this.calculateEstimatedTime(questions.length),
-      difficultyDistribution: this.calculateDifficultyDistribution(questions),
       knowledgePointDistribution: this.calculateKnowledgePointDistribution(questions),
       strategySpecificData: {
         mistakeCount: mistakes.length,
@@ -509,33 +501,26 @@ export class StrategyService {
 
   private async getRandomQuestions(
     knowledgePointIds: string[],
-    count: number,
-    difficulty: string
+    count: number
   ): Promise<QuizQuestion[]> {
-    let query = sql.unsafe`
+    const query = sql.unsafe`
       SELECT 
         id,
         knowledge_point_id,
-        difficulty,
         content,
         options,
         correct_answer,
         explanation
       FROM kedge_practice.quizzes
       WHERE knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'uuid')})
+      ORDER BY RANDOM() 
+      LIMIT ${count}
     `;
-
-    if (difficulty !== 'AUTO') {
-      query = sql.unsafe`${query} AND difficulty = ${difficulty}`;
-    }
-
-    query = sql.unsafe`${query} ORDER BY RANDOM() LIMIT ${count}`;
 
     const questions = await this.db.pgPool.any(query);
     return questions.map((q: any) => ({
       id: q.id,
       knowledgePointId: q.knowledge_point_id,
-      difficulty: q.difficulty,
       content: q.content,
       options: q.options,
       correctAnswer: q.correct_answer,
@@ -550,7 +535,6 @@ export class StrategyService {
       SELECT 
         id,
         knowledge_point_id,
-        difficulty,
         content,
         options,
         correct_answer,
@@ -562,7 +546,6 @@ export class StrategyService {
     return questions.map((q: any) => ({
       id: q.id,
       knowledgePointId: q.knowledge_point_id,
-      difficulty: q.difficulty,
       content: q.content,
       options: q.options,
       correctAnswer: q.correct_answer,
@@ -591,8 +574,7 @@ export class StrategyService {
 
     return this.getRandomQuestions(
       Array.from(knowledgePointIds),
-      count,
-      'AUTO'
+      count
     );
   }
 
@@ -600,26 +582,6 @@ export class StrategyService {
     return questionCount * 90;
   }
 
-  private calculateDifficultyDistribution(questions: QuizQuestion[]): {
-    easy: number;
-    medium: number;
-    hard: number;
-  } {
-    const distribution = {
-      easy: 0,
-      medium: 0,
-      hard: 0,
-    };
-
-    questions.forEach(q => {
-      const difficulty = q.difficulty.toLowerCase();
-      if (difficulty in distribution) {
-        distribution[difficulty as keyof typeof distribution]++;
-      }
-    });
-
-    return distribution;
-  }
 
   private calculateKnowledgePointDistribution(
     questions: QuizQuestion[]

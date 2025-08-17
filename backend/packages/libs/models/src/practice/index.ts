@@ -7,7 +7,7 @@ import { SubjectSchema } from './subject.schema';
 import {
   PracticeSessionSchema,
   CreatePracticeSessionSchema,
-  PracticeQuestionSchema,
+  PracticeAnswerSchema,
   SubmitAnswerSchema,
   SkipQuestionSchema,
   PauseSessionSchema,
@@ -55,8 +55,8 @@ export {
   type PracticeSession,
   CreatePracticeSessionSchema,
   type CreatePracticeSession,
-  PracticeQuestionSchema,
-  type PracticeQuestion,
+  PracticeAnswerSchema,
+  type PracticeAnswer,
   
   // Action schemas
   SubmitAnswerSchema,
@@ -100,7 +100,6 @@ export {
   
   // Constants
   PracticeStrategyCode,
-  DifficultyLevel,
 } from './practice-session.schema';
 
 export const PracticeSchema = {
@@ -111,7 +110,7 @@ export const PracticeSchema = {
   Subject: SubjectSchema,
   PracticeSession: PracticeSessionSchema,
   CreatePracticeSession: CreatePracticeSessionSchema,
-  PracticeQuestion: PracticeQuestionSchema,
+  PracticeAnswer: PracticeAnswerSchema,
   SubmitAnswer: SubmitAnswerSchema,
   SkipQuestion: SkipQuestionSchema,
   PracticeSessionResponse: PracticeSessionResponseSchema,

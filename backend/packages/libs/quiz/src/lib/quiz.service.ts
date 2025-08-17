@@ -68,10 +68,20 @@ export class DefaultQuizService implements QuizService {
 
   getRandomQuizzesByKnowledgePoints(
     knowledgePointIds: string[], 
-    limit: number,
-    difficulty?: string
+    limit: number
   ): Promise<QuizItem[]> {
-    return this.repository.getRandomQuizzesByKnowledgePoints(knowledgePointIds, limit, difficulty);
+    return this.repository.getRandomQuizzesByKnowledgePoints(knowledgePointIds, limit);
+  }
+
+  getQuizById(id: string): Promise<QuizItem | null> {
+    return this.repository.findQuizById(id);
+  }
+
+  async getQuizzesByIds(ids: string[]): Promise<QuizItem[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.repository.getQuizzesByIds(ids);
   }
 }
 
