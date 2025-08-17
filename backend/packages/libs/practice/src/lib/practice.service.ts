@@ -61,14 +61,14 @@ export class PracticeService {
 
       return {
         id: uuidv4(),
-        quiz_id: quiz.id,
+        quiz_id: quiz.id || uuidv4(),
         question_number: index + 1,
         question: quiz.question,
         options: options || [],
-        correct_answer: quiz.correct_answer,
-        knowledge_point_id: quiz.knowledge_point_id,
-        difficulty: quiz.difficulty || 'medium',
-        attachments: quiz.attachments || []
+        correct_answer: Array.isArray(quiz.answer) ? quiz.answer.join(',') : (quiz.answer || ''),
+        knowledge_point_id: quiz.knowledge_point_id || '',
+        difficulty: 'medium', // Default difficulty since QuizItem doesn't have this field
+        attachments: quiz.images || [] // Use images array as attachments
       };
     });
 
