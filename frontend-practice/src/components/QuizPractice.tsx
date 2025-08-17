@@ -230,7 +230,27 @@ export default function QuizPractice({
     let type: QuizQuestion['type'] = 'single-choice';
     let answer: string | string[] | undefined;
     
-    if (sessionQuestion.correct_answer) {
+    // Backend returns answer as array of indices for choices, or string for essay
+    if (sessionQuestion.answer !== undefined) {
+      if (Array.isArray(sessionQuestion.answer)) {
+        const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
+        if (sessionQuestion.answer.length === 1) {
+          // Single choice - convert index to letter
+          type = 'single-choice';
+          const index = sessionQuestion.answer[0];
+          answer = keys[index] || String(index);
+        } else {
+          // Multiple choice - convert indices to letters
+          type = 'multiple-choice';
+          answer = sessionQuestion.answer.map((idx: number) => keys[idx] || String(idx));
+        }
+      } else if (typeof sessionQuestion.answer === 'string') {
+        // Essay or fill-in-the-blank
+        type = options ? 'single-choice' : 'essay';
+        answer = sessionQuestion.answer;
+      }
+    } else if (sessionQuestion.correct_answer) {
+      // Fallback to correct_answer field if answer is not present
       if (Array.isArray(sessionQuestion.correct_answer)) {
         type = 'multiple-choice';
         answer = sessionQuestion.correct_answer;
@@ -311,8 +331,10 @@ export default function QuizPractice({
     if (sessionId && submitSessionAnswer && sessionQuestions && sessionQuestions[currentQuestionIndex]) {
       try {
         const questionId = sessionQuestions[currentQuestionIndex].id;
-        console.log('📝 [DEBUG] Submitting single choice answer to session:', sessionId, questionId, answer, duration);
-        await submitSessionAnswer(questionId, answer, duration);
+        // Convert letter (A, B, C, D) to index (0, 1, 2, 3) for backend
+        const optionIndex = answer.charCodeAt(0) - 'A'.charCodeAt(0);
+        console.log('📝 [DEBUG] Submitting single choice answer to session:', sessionId, questionId, `${optionIndex} (from ${answer})`, duration);
+        await submitSessionAnswer(questionId, String(optionIndex), duration);
       } catch (error) {
         console.error('❌ [DEBUG] Failed to submit single choice answer to session:', error);
         // Continue with local handling even if API submission fails
@@ -506,9 +528,19 @@ export default function QuizPractice({
       if (sessionId && submitSessionAnswer && sessionQuestions && sessionQuestions[currentQuestionIndex]) {
         try {
           const questionId = sessionQuestions[currentQuestionIndex].id;
-          const answerString = Array.isArray(currentAnswer) ? currentAnswer.join(',') : currentAnswer;
+          let answerString: string;
           
-          console.log('📝 [DEBUG] Submitting answer to session:', sessionId, questionId, answerString, duration);
+          if (Array.isArray(currentAnswer)) {
+            // Multiple choice - convert letters to indices
+            const indices = currentAnswer.map(letter => letter.charCodeAt(0) - 'A'.charCodeAt(0));
+            answerString = indices.join(',');
+            console.log('📝 [DEBUG] Submitting multiple choice answer:', sessionId, questionId, `${answerString} (from ${currentAnswer.join(',')})`, duration);
+          } else {
+            // Essay or other text answer
+            answerString = currentAnswer;
+            console.log('📝 [DEBUG] Submitting text answer:', sessionId, questionId, answerString, duration);
+          }
+          
           await submitSessionAnswer(questionId, answerString, duration);
         } catch (error) {
           console.error('❌ [DEBUG] Failed to submit answer to session:', error);
