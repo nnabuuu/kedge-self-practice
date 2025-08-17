@@ -6,7 +6,8 @@ import {
   PracticeSessionResponse,
   SubmitAnswer,
   PracticeStatistics,
-  PracticeSessionStatus
+  PracticeSessionStatus,
+  QuizItem
 } from '@kedge/models';
 import { PracticeRepository } from './practice.repository';
 import { QuizService } from '@kedge/quiz';
@@ -55,7 +56,7 @@ export class PracticeService {
     };
 
     // Prepare questions data
-    const questionsData = finalQuizzes.map((quiz, index) => {
+    const questionsData = finalQuizzes.map((quiz: QuizItem, index: number) => {
       const options = data.shuffle_options && quiz.options
         ? this.shuffleArray(quiz.options)
         : quiz.options;

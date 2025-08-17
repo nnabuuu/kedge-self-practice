@@ -15,4 +15,10 @@ export abstract class QuizService {
   abstract searchQuizzesByTags(tags: string[]): Promise<QuizItem[]>;
 
   abstract getAllTags(): Promise<string[]>;
+
+  abstract getRandomQuizzesByKnowledgePoints(
+    knowledgePointIds: string[], 
+    limit: number,
+    difficulty?: string
+  ): Promise<QuizItem[]>;
 }
