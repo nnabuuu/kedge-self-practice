@@ -313,3 +313,118 @@ export function useBatchOperation<T>() {
     reset
   };
 }
+
+// Practice Session Hook
+export function usePracticeSession(config: {
+  knowledge_point_ids: string[];
+  question_count?: number;
+  time_limit_minutes?: number;
+  difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
+  strategy?: string;
+  shuffle_questions?: boolean;
+  shuffle_options?: boolean;
+  allow_review?: boolean;
+  show_answer_immediately?: boolean;
+} | null) {
+  const [state, setState] = useState<{
+    session: any | null;
+    questions: any[] | null;
+    loading: boolean;
+    error: string | null;
+    sessionId: string | null;
+  }>({
+    session: null,
+    questions: null,
+    loading: false,
+    error: null,
+    sessionId: null
+  });
+
+  const createSession = useCallback(async () => {
+    if (!config || config.knowledge_point_ids.length === 0) {
+      setState({
+        session: null,
+        questions: null,
+        loading: false,
+        error: null,
+        sessionId: null
+      });
+      return;
+    }
+
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      console.log('🔥 [DEBUG] Creating practice session with config:', config);
+      const response = await api.practice.createSession(config);
+      
+      if (response.success && response.data) {
+        console.log('✅ [DEBUG] Practice session created successfully:', response.data);
+        
+        // Start the session immediately after creation
+        const startResponse = await api.practice.startSession(response.data.session.id);
+        
+        if (startResponse.success && startResponse.data) {
+          console.log('🎯 [DEBUG] Practice session started successfully:', startResponse.data);
+          setState({
+            session: startResponse.data.session,
+            questions: startResponse.data.questions,
+            loading: false,
+            error: null,
+            sessionId: startResponse.data.session.id
+          });
+        } else {
+          throw new Error(startResponse.error || 'Failed to start practice session');
+        }
+      } else {
+        throw new Error(response.error || 'Failed to create practice session');
+      }
+    } catch (error) {
+      console.error('❌ [DEBUG] Practice session creation failed:', error);
+      let errorMessage = 'Practice session creation failed';
+      if (error instanceof Error) {
+        if (error.message.includes('Network') || error.message.includes('fetch')) {
+          errorMessage = '无法连接到服务器，请检查后端服务是否运行';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      setState({
+        session: null,
+        questions: null,
+        loading: false,
+        error: errorMessage,
+        sessionId: null
+      });
+    }
+  }, [config]);
+
+  const submitAnswer = useCallback(async (questionId: string, answer: string, timeSpent: number) => {
+    if (!state.sessionId) {
+      throw new Error('No active session');
+    }
+
+    const response = await api.practice.submitAnswer(state.sessionId, questionId, answer, timeSpent);
+    return response;
+  }, [state.sessionId]);
+
+  const completeSession = useCallback(async () => {
+    if (!state.sessionId) {
+      throw new Error('No active session');
+    }
+
+    const response = await api.practice.completeSession(state.sessionId);
+    return response;
+  }, [state.sessionId]);
+
+  useEffect(() => {
+    createSession();
+  }, [createSession]);
+
+  return {
+    ...state,
+    submitAnswer,
+    completeSession,
+    refetch: createSession
+  };
+}

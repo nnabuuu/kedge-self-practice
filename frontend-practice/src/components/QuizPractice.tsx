@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, CheckCircle2, XCircle, ArrowRight, RotateCcw, BookOpen, Brain, Sparkles, MessageSquare, Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
 import { Subject, QuizQuestion, PracticeSession, AIEvaluation } from '../types/quiz';
-import { useQuestions, useKnowledgePoints } from '../hooks/useApi';
+import { usePracticeSession, useKnowledgePoints } from '../hooks/useApi';
 
 interface QuizConfig {
   questionType: 'new' | 'with-wrong' | 'wrong-only';
@@ -47,8 +47,28 @@ export default function QuizPractice({
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
 
-  // 使用API Hook获取题目数据
-  const { data: questionsData, loading: questionsLoading, error: questionsError } = useQuestions(selectedKnowledgePoints);
+  // 使用Practice Session Hook获取题目数据
+  const practiceConfig = selectedKnowledgePoints.length > 0 ? {
+    knowledge_point_ids: selectedKnowledgePoints,
+    question_count: typeof config.questionCount === 'number' ? config.questionCount : 20,
+    time_limit_minutes: config.timeLimit,
+    difficulty: 'mixed' as const,
+    strategy: 'random',
+    shuffle_questions: config.shuffleQuestions,
+    shuffle_options: true,
+    allow_review: true,
+    show_answer_immediately: config.showExplanation
+  } : null;
+
+  const { 
+    session, 
+    questions: sessionQuestions, 
+    loading: questionsLoading, 
+    error: questionsError,
+    sessionId,
+    submitAnswer: submitSessionAnswer,
+    completeSession
+  } = usePracticeSession(practiceConfig);
   const { data: knowledgePointsData } = useKnowledgePoints(subject.id);
 
   useEffect(() => {
@@ -96,27 +116,64 @@ export default function QuizPractice({
     }
   }, []);
 
-  useEffect(() => {
-    if (questionsData) {
-      // 根据选择的知识点和配置筛选题目
-      let relevantQuestions = [...questionsData];
-
-      // 打乱题目顺序
-      if (config.shuffleQuestions) {
-        relevantQuestions = relevantQuestions.sort(() => Math.random() - 0.5);
-      }
-
-      // 限制题目数量
-      if (typeof config.questionCount === 'number') {
-        relevantQuestions = relevantQuestions.slice(0, config.questionCount);
-      }
-
-      setQuestions(relevantQuestions);
-      setAnswers(new Array(relevantQuestions.length).fill(null));
-      setQuestionStartTimes(new Array(relevantQuestions.length).fill(null));
-      setQuestionDurations(new Array(relevantQuestions.length).fill(0));
+  // Convert session questions to frontend format
+  const convertSessionQuestion = (sessionQuestion: any): QuizQuestion => {
+    // Parse options if they exist
+    let options: QuizQuestion['options'] | undefined;
+    if (sessionQuestion.options && Array.isArray(sessionQuestion.options)) {
+      // Convert array to object with A, B, C, D keys
+      options = {};
+      const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
+      sessionQuestion.options.forEach((option: string, index: number) => {
+        if (index < keys.length && options) {
+          options[keys[index]] = option;
+        }
+      });
     }
-  }, [questionsData, config]);
+
+    // Determine quiz type and answer format
+    let type: QuizQuestion['type'] = 'single-choice';
+    let answer: string | string[] | undefined;
+    
+    if (sessionQuestion.correct_answer) {
+      if (Array.isArray(sessionQuestion.correct_answer)) {
+        type = 'multiple-choice';
+        answer = sessionQuestion.correct_answer;
+      } else if (typeof sessionQuestion.correct_answer === 'string') {
+        if (options) {
+          type = 'single-choice';
+          answer = sessionQuestion.correct_answer;
+        } else {
+          type = 'essay';
+          answer = sessionQuestion.correct_answer;
+        }
+      }
+    }
+
+    return {
+      id: sessionQuestion.quiz_id || sessionQuestion.id,
+      type,
+      question: sessionQuestion.question,
+      options,
+      answer,
+      standardAnswer: type === 'essay' ? sessionQuestion.correct_answer : undefined,
+      relatedKnowledgePointId: sessionQuestion.knowledge_point_id,
+    };
+  };
+
+  useEffect(() => {
+    if (sessionQuestions && sessionQuestions.length > 0) {
+      console.log('🔄 [DEBUG] Converting session questions to frontend format:', sessionQuestions);
+      
+      const convertedQuestions = sessionQuestions.map(convertSessionQuestion);
+      console.log('✅ [DEBUG] Converted questions:', convertedQuestions);
+      
+      setQuestions(convertedQuestions);
+      setAnswers(new Array(convertedQuestions.length).fill(null));
+      setQuestionStartTimes(new Array(convertedQuestions.length).fill(null));
+      setQuestionDurations(new Array(convertedQuestions.length).fill(0));
+    }
+  }, [sessionQuestions]);
 
   // 记录当前题目开始时间
   useEffect(() => {
@@ -141,7 +198,7 @@ export default function QuizPractice({
     return 0;
   };
 
-  const handleSingleChoiceSelect = (answer: string) => {
+  const handleSingleChoiceSelect = async (answer: string) => {
     // 记录答题用时
     const duration = calculateQuestionDuration();
     const newDurations = [...questionDurations];
@@ -153,6 +210,19 @@ export default function QuizPractice({
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answer;
     setAnswers(newAnswers);
+    
+    // Submit answer to practice session API if available
+    if (sessionId && submitSessionAnswer && sessionQuestions && sessionQuestions[currentQuestionIndex]) {
+      try {
+        const questionId = sessionQuestions[currentQuestionIndex].id;
+        console.log('📝 [DEBUG] Submitting single choice answer to session:', sessionId, questionId, answer, duration);
+        await submitSessionAnswer(questionId, answer, duration);
+      } catch (error) {
+        console.error('❌ [DEBUG] Failed to submit single choice answer to session:', error);
+        // Continue with local handling even if API submission fails
+      }
+    }
+    
     setShowResult(true);
     setShowStandardAnswer(true);
   };
@@ -336,6 +406,20 @@ export default function QuizPractice({
       newAnswers[currentQuestionIndex] = currentAnswer;
       setAnswers(newAnswers);
       
+      // Submit answer to practice session API if available
+      if (sessionId && submitSessionAnswer && sessionQuestions && sessionQuestions[currentQuestionIndex]) {
+        try {
+          const questionId = sessionQuestions[currentQuestionIndex].id;
+          const answerString = Array.isArray(currentAnswer) ? currentAnswer.join(',') : currentAnswer;
+          
+          console.log('📝 [DEBUG] Submitting answer to session:', sessionId, questionId, answerString, duration);
+          await submitSessionAnswer(questionId, answerString, duration);
+        } catch (error) {
+          console.error('❌ [DEBUG] Failed to submit answer to session:', error);
+          // Continue with local handling even if API submission fails
+        }
+      }
+      
       // 立即显示标准答案
       setShowStandardAnswer(true);
       setShowResult(true);
@@ -370,7 +454,7 @@ export default function QuizPractice({
     }
   };
 
-  const handleEndPractice = () => {
+  const handleEndPractice = async () => {
     // 确保最后一题的用时被记录
     if (!questionDurations[currentQuestionIndex] && questionStartTimes[currentQuestionIndex]) {
       const duration = calculateQuestionDuration();
@@ -379,8 +463,18 @@ export default function QuizPractice({
       setQuestionDurations(newDurations);
     }
     
+    // Complete the session via the API if we have an active session
+    if (sessionId && completeSession) {
+      try {
+        console.log('🏁 [DEBUG] Completing practice session:', sessionId);
+        await completeSession();
+      } catch (error) {
+        console.error('❌ [DEBUG] Failed to complete session:', error);
+      }
+    }
+    
     const session: PracticeSession = {
-      id: sessionId,
+      id: sessionId || Date.now().toString(),
       subjectId: subject.id,
       knowledgePoints: selectedKnowledgePoints,
       questions: questions,

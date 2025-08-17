@@ -212,6 +212,8 @@ export default function KnowledgePointSelection({
 
   const handleStartQuiz = () => {
     const selected = Array.from(selectedPoints);
+    console.log('🎯 [DEBUG] Starting quiz with selected knowledge points:', selected);
+    console.log('🎯 [DEBUG] Quiz config:', quizConfig);
     onStartQuiz(selected, quizConfig);
   };
 
