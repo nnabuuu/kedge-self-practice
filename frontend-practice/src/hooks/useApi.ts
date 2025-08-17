@@ -367,7 +367,7 @@ export function usePracticeSession(config: {
           console.log('🎯 [DEBUG] Practice session started successfully:', startResponse.data);
           setState({
             session: startResponse.data.session,
-            questions: startResponse.data.questions,
+            questions: startResponse.data.quizzes, // Backend returns 'quizzes', not 'questions'
             loading: false,
             error: null,
             sessionId: startResponse.data.session.id

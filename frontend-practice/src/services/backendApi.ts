@@ -498,20 +498,18 @@ class BackendApiService {
     knowledge_point_ids: string[];
     question_count?: number;
     time_limit_minutes?: number;
-    difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
     strategy?: string;
     shuffle_questions?: boolean;
     shuffle_options?: boolean;
     allow_review?: boolean;
     show_answer_immediately?: boolean;
-  }): Promise<ApiResponse<{session: any, questions: any[]}>> {
+  }): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
     console.log('🔥 [DEBUG] Creating practice session with config:', config);
     
     const sessionData = {
       knowledge_point_ids: config.knowledge_point_ids,
       question_count: config.question_count || 20,
       time_limit_minutes: config.time_limit_minutes,
-      difficulty: config.difficulty || 'mixed',
       strategy: config.strategy || 'random',
       shuffle_questions: config.shuffle_questions !== false,
       shuffle_options: config.shuffle_options !== false,
@@ -519,7 +517,7 @@ class BackendApiService {
       show_answer_immediately: config.show_answer_immediately || false
     };
 
-    const response = await this.makeRequest<{session: any, questions: any[]}>('/practice/sessions/create', {
+    const response = await this.makeRequest<{session: any, quizzes: any[]}>('/practice/sessions/create', {
       method: 'POST',
       body: JSON.stringify(sessionData)
     });
@@ -528,10 +526,10 @@ class BackendApiService {
     return response;
   }
 
-  async startPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, questions: any[]}>> {
+  async startPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
     console.log('🎯 [DEBUG] Starting practice session:', sessionId);
     
-    const response = await this.makeRequest<{session: any, questions: any[]}>(`/practice/sessions/${sessionId}/start`, {
+    const response = await this.makeRequest<{session: any, quizzes: any[]}>(`/practice/sessions/${sessionId}/start`, {
       method: 'POST'
     });
 
@@ -539,10 +537,10 @@ class BackendApiService {
     return response;
   }
 
-  async getPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, questions: any[]}>> {
+  async getPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
     console.log('📖 [DEBUG] Getting practice session:', sessionId);
     
-    const response = await this.makeRequest<{session: any, questions: any[]}>(`/practice/sessions/${sessionId}`);
+    const response = await this.makeRequest<{session: any, quizzes: any[]}>(`/practice/sessions/${sessionId}`);
 
     console.log('📊 [DEBUG] Practice session get response:', response);
     return response;
