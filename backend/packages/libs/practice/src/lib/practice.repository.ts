@@ -22,7 +22,7 @@ export class PracticeRepository {
 
   async createSessionWithQuestions(
     sessionId: string,
-    studentId: string,
+    userId: string,
     sessionData: {
       strategy: string;
       knowledge_point_ids: string[];
@@ -46,7 +46,7 @@ export class PracticeRepository {
       // Debug logging for session creation
       this.logger.log(`Creating session with data:`, {
         sessionId,
-        studentId,
+        userId,
         strategy: sessionData.strategy,
         knowledge_point_ids: sessionData.knowledge_point_ids,
         total_questions: sessionData.total_questions,
@@ -65,7 +65,7 @@ export class PracticeRepository {
       // Debug the parameters before query
       this.logger.log('Session creation parameters:', {
         sessionId: sessionId,
-        studentId: studentId,
+        userId: userId,
         status: 'created',
         strategy: sessionData.strategy,
         knowledge_point_ids: sessionData.knowledge_point_ids,
@@ -77,7 +77,7 @@ export class PracticeRepository {
       // Use proper type-safe Slonik but with a minimal schema
       const MinimalPracticeSessionSchema = z.object({
         id: z.string(),
-        student_id: z.string(),
+        user_id: z.string(),
         status: z.string(),
         strategy: z.string(),
         knowledge_point_ids: z.array(z.string()),
@@ -90,7 +90,7 @@ export class PracticeRepository {
         sql.type(MinimalPracticeSessionSchema)`
           INSERT INTO kedge_practice.practice_sessions (
             id,
-            student_id,
+            user_id,
             status,
             strategy,
             knowledge_point_ids,
@@ -99,7 +99,7 @@ export class PracticeRepository {
             difficulty
           ) VALUES (
             ${sessionId},
-            ${studentId},
+            ${userId},
             ${'created'},
             ${sessionData.strategy},
             ${sql.array(sessionData.knowledge_point_ids, 'text')},
@@ -170,13 +170,13 @@ export class PracticeRepository {
     }
   }
 
-  async getSessionWithQuestions(sessionId: string, studentId: string): Promise<{ session: PracticeSession; questions: PracticeQuestion[] } | null> {
+  async getSessionWithQuestions(sessionId: string, userId: string): Promise<{ session: PracticeSession; questions: PracticeQuestion[] } | null> {
     try {
       const sessionResult = await this.persistentService.pgPool.query(
         sql.type(PracticeSessionSchema)`
           SELECT * FROM kedge_practice.practice_sessions
           WHERE id = ${sessionId}
-          AND student_id = ${studentId}
+          AND user_id = ${userId}
         `
       );
 
@@ -205,7 +205,7 @@ export class PracticeRepository {
 
   async updateSessionStatus(
     sessionId: string,
-    studentId: string,
+    userId: string,
     status: PracticeSessionStatus,
     additionalUpdates?: {
       started_at?: boolean;
@@ -224,7 +224,7 @@ export class PracticeRepository {
                 completed_at = NOW(),
                 updated_at = NOW()
             WHERE id = ${sessionId}
-            AND student_id = ${studentId}
+            AND user_id = ${userId}
             RETURNING *
           `
         );
@@ -236,7 +236,7 @@ export class PracticeRepository {
                 started_at = NOW(),
                 updated_at = NOW()
             WHERE id = ${sessionId}
-            AND student_id = ${studentId}
+            AND user_id = ${userId}
             RETURNING *
           `
         );
@@ -248,7 +248,7 @@ export class PracticeRepository {
                 completed_at = NOW(),
                 updated_at = NOW()
             WHERE id = ${sessionId}
-            AND student_id = ${studentId}
+            AND user_id = ${userId}
             RETURNING *
           `
         );
@@ -259,7 +259,7 @@ export class PracticeRepository {
             SET status = ${status},
                 updated_at = NOW()
             WHERE id = ${sessionId}
-            AND student_id = ${studentId}
+            AND user_id = ${userId}
             RETURNING *
           `
         );
@@ -335,7 +335,7 @@ export class PracticeRepository {
   }
 
   async getSessionHistory(
-    studentId: string,
+    userId: string,
     status?: PracticeSessionStatus,
     limit = 20,
     offset = 0
@@ -347,7 +347,7 @@ export class PracticeRepository {
         result = await this.persistentService.pgPool.query(
           sql.type(PracticeSessionSchema)`
             SELECT * FROM kedge_practice.practice_sessions
-            WHERE student_id = ${studentId}
+            WHERE user_id = ${userId}
             AND status = ${status}
             ORDER BY created_at DESC
             LIMIT ${limit}
@@ -358,7 +358,7 @@ export class PracticeRepository {
         result = await this.persistentService.pgPool.query(
           sql.type(PracticeSessionSchema)`
             SELECT * FROM kedge_practice.practice_sessions
-            WHERE student_id = ${studentId}
+            WHERE user_id = ${userId}
             ORDER BY created_at DESC
             LIMIT ${limit}
             OFFSET ${offset}
@@ -414,7 +414,7 @@ export class PracticeRepository {
   }
 
   // Simple statistics - can be enhanced later
-  async getBasicStatistics(studentId: string): Promise<any> {
+  async getBasicStatistics(userId: string): Promise<any> {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(BasicStatisticsSchema)`
@@ -423,7 +423,7 @@ export class PracticeRepository {
             COUNT(*) FILTER (WHERE status = 'completed') as completed_sessions,
             AVG(score) as average_score
           FROM kedge_practice.practice_sessions
-          WHERE student_id = ${studentId}
+          WHERE user_id = ${userId}
         `
       );
 
@@ -438,7 +438,7 @@ export class PracticeRepository {
   private mapSession(data: any): PracticeSession {
     return {
       id: data.id,
-      student_id: data.student_id,
+      user_id: data.user_id,
       status: data.status,
       strategy: data.strategy,
       knowledge_point_ids: data.knowledge_point_ids,

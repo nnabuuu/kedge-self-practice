@@ -77,9 +77,9 @@ export class PracticeController {
   async createSession(
     @Body() createSessionDto: CreatePracticeSessionDto
   ): Promise<PracticeSessionResponseDto> {
-    // Use anonymous student ID for practice sessions without authentication
-    const studentId = '00000000-0000-0000-0000-000000000000';
-    return await this.practiceService.createSession(studentId, createSessionDto);
+    // Use anonymous user ID for practice sessions without authentication
+    const userId = '00000000-0000-0000-0000-000000000000';
+    return await this.practiceService.createSession(userId, createSessionDto);
   }
 
   @Post('sessions/:sessionId/start')
@@ -93,9 +93,9 @@ export class PracticeController {
   async startSession(
     @Param('sessionId') sessionId: string
   ): Promise<PracticeSessionResponseDto> {
-    // Use anonymous student ID for practice sessions without authentication
-    const studentId = '00000000-0000-0000-0000-000000000000';
-    return await this.practiceService.startSession(sessionId, studentId);
+    // Use anonymous user ID for practice sessions without authentication
+    const userId = '00000000-0000-0000-0000-000000000000';
+    return await this.practiceService.startSession(sessionId, userId);
   }
 
   @Post('sessions/submit-answer')
@@ -108,9 +108,9 @@ export class PracticeController {
   async submitAnswer(
     @Body() submitAnswerDto: SubmitAnswerDto
   ): Promise<{ isCorrect: boolean }> {
-    // Use anonymous student ID for practice sessions without authentication
-    const studentId = '00000000-0000-0000-0000-000000000000';
-    return await this.practiceService.submitAnswer(submitAnswerDto, studentId);
+    // Use anonymous user ID for practice sessions without authentication
+    const userId = '00000000-0000-0000-0000-000000000000';
+    return await this.practiceService.submitAnswer(submitAnswerDto, userId);
   }
 
   @Post('sessions/pause')
@@ -125,8 +125,8 @@ export class PracticeController {
     @Request() req: AuthenticatedRequest,
     @Body() pauseSessionDto: PauseSessionDto
   ): Promise<PracticeSessionDto> {
-    const studentId = req.user.userId;
-    return await this.practiceService.pauseSession(pauseSessionDto.session_id, studentId);
+    const userId = req.user.userId;
+    return await this.practiceService.pauseSession(pauseSessionDto.session_id, userId);
   }
 
   @Post('sessions/resume')
@@ -141,8 +141,8 @@ export class PracticeController {
     @Request() req: AuthenticatedRequest,
     @Body() resumeSessionDto: ResumeSessionDto
   ): Promise<PracticeSessionResponseDto> {
-    const studentId = req.user.userId;
-    return await this.practiceService.resumeSession(resumeSessionDto.session_id, studentId);
+    const userId = req.user.userId;
+    return await this.practiceService.resumeSession(resumeSessionDto.session_id, userId);
   }
 
   @Post('sessions/complete')
@@ -156,9 +156,9 @@ export class PracticeController {
   async completeSession(
     @Body() completeSessionDto: CompleteSessionDto
   ): Promise<PracticeSessionDto> {
-    // Use anonymous student ID for practice sessions without authentication
-    const studentId = '00000000-0000-0000-0000-000000000000';
-    return await this.practiceService.completeSession(completeSessionDto.session_id, studentId);
+    // Use anonymous user ID for practice sessions without authentication
+    const userId = '00000000-0000-0000-0000-000000000000';
+    return await this.practiceService.completeSession(completeSessionDto.session_id, userId);
   }
 
   @Get('sessions/:sessionId')
@@ -171,9 +171,9 @@ export class PracticeController {
   async getSession(
     @Param('sessionId') sessionId: string
   ): Promise<PracticeSessionResponseDto> {
-    // Use anonymous student ID for practice sessions without authentication
-    const studentId = '00000000-0000-0000-0000-000000000000';
-    return await this.practiceService.getSession(sessionId, studentId);
+    // Use anonymous user ID for practice sessions without authentication
+    const userId = '00000000-0000-0000-0000-000000000000';
+    return await this.practiceService.getSession(sessionId, userId);
   }
 
   @Get('history')
@@ -189,9 +189,9 @@ export class PracticeController {
     @Request() req: AuthenticatedRequest,
     @Query() query: PracticeHistoryQueryDto
   ): Promise<PracticeSessionDto[]> {
-    const studentId = req.user.userId;
+    const userId = req.user.userId;
     return await this.practiceService.getSessionHistory(
-      studentId,
+      userId,
       query.status,
       query.limit,
       query.offset
@@ -205,8 +205,8 @@ export class PracticeController {
     description: 'Practice statistics'
   })
   async getStatistics(@Request() req: AuthenticatedRequest): Promise<any> {
-    const studentId = req.user.userId;
-    return await this.practiceService.getStatistics(studentId);
+    const userId = req.user.userId;
+    return await this.practiceService.getStatistics(userId);
   }
 
   @Get('statistics/:studentId')
@@ -232,8 +232,8 @@ export class PracticeController {
     description: 'List of available practice strategies',
   })
   async getAvailableStrategies(@Request() req: AuthenticatedRequest): Promise<any> {
-    const studentId = req.user.userId;
-    return await this.strategyService.getAvailableStrategies(studentId);
+    const userId = req.user.userId;
+    return await this.strategyService.getAvailableStrategies(userId);
   }
 
   @Post('sessions/create-with-strategy')
@@ -246,8 +246,8 @@ export class PracticeController {
     @Request() req: AuthenticatedRequest,
     @Body() generateRequestDto: GeneratePracticeRequestDto
   ): Promise<any> {
-    const studentId = req.user.userId;
-    return await this.strategyService.generateStrategySession(studentId, generateRequestDto);
+    const userId = req.user.userId;
+    return await this.strategyService.generateStrategySession(userId, generateRequestDto);
   }
 
   @Get('strategies/recommendations')
@@ -257,8 +257,8 @@ export class PracticeController {
     description: 'Strategy recommendations',
   })
   async getStrategyRecommendations(@Request() req: AuthenticatedRequest): Promise<any> {
-    const studentId = req.user.userId;
-    return await this.strategyService.getStrategyRecommendations(studentId);
+    const userId = req.user.userId;
+    return await this.strategyService.getStrategyRecommendations(userId);
   }
 
   @Get('strategies/analytics/:strategyCode')
@@ -271,8 +271,8 @@ export class PracticeController {
     @Request() req: AuthenticatedRequest,
     @Param('strategyCode') strategyCode: string
   ): Promise<any> {
-    const studentId = req.user.userId;
-    return await this.strategyService.getStrategyAnalytics(studentId, strategyCode);
+    const userId = req.user.userId;
+    return await this.strategyService.getStrategyAnalytics(userId, strategyCode);
   }
 
   @Post('sessions/:sessionId/record-mistake')
@@ -287,9 +287,9 @@ export class PracticeController {
     @Param('sessionId') sessionId: string,
     @Body() recordMistakeDto: RecordMistakeDto
   ): Promise<{ success: boolean }> {
-    const studentId = req.user.userId;
+    const userId = req.user.userId;
     await this.strategyService.recordMistake(
-      studentId,
+      userId,
       recordMistakeDto.quiz_id,
       sessionId,
       recordMistakeDto.incorrect_answer,
@@ -311,8 +311,8 @@ export class PracticeController {
     @Param('sessionId') sessionId: string,
     @Body() recordCorrectionDto: RecordCorrectionDto
   ): Promise<{ success: boolean }> {
-    const studentId = req.user.userId;
-    await this.strategyService.recordCorrection(studentId, recordCorrectionDto.quiz_id);
+    const userId = req.user.userId;
+    await this.strategyService.recordCorrection(userId, recordCorrectionDto.quiz_id);
     return { success: true };
   }
 }

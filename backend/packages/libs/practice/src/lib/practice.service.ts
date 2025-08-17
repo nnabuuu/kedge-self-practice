@@ -19,7 +19,7 @@ export class PracticeService {
   ) {}
 
   async createSession(
-    studentId: string,
+    userId: string,
     data: CreatePracticeSession
   ): Promise<PracticeSessionResponse> {
     const sessionId = uuidv4();
@@ -76,7 +76,7 @@ export class PracticeService {
     // Create session with all questions in one transaction
     const result = await this.practiceRepository.createSessionWithQuestions(
       sessionId,
-      studentId,
+      userId,
       sessionData,
       questionsData
     );
@@ -87,8 +87,8 @@ export class PracticeService {
     };
   }
 
-  async startSession(sessionId: string, studentId: string): Promise<PracticeSessionResponse> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, studentId);
+  async startSession(sessionId: string, userId: string): Promise<PracticeSessionResponse> {
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, userId);
     
     if (!sessionData) {
       throw new NotFoundException('Practice session not found');
@@ -100,7 +100,7 @@ export class PracticeService {
 
     const updatedSession = await this.practiceRepository.updateSessionStatus(
       sessionId,
-      studentId,
+      userId,
       'in_progress',
       { started_at: true }
     );
@@ -111,8 +111,8 @@ export class PracticeService {
     };
   }
 
-  async submitAnswer(data: SubmitAnswer, studentId: string): Promise<{ isCorrect: boolean }> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(data.session_id, studentId);
+  async submitAnswer(data: SubmitAnswer, userId: string): Promise<{ isCorrect: boolean }> {
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(data.session_id, userId);
     
     if (!sessionData) {
       throw new NotFoundException('Practice session not found');
@@ -130,16 +130,16 @@ export class PracticeService {
     );
 
     // Check if session should be completed
-    const updatedSessionData = await this.practiceRepository.getSessionWithQuestions(data.session_id, studentId);
+    const updatedSessionData = await this.practiceRepository.getSessionWithQuestions(data.session_id, userId);
     if (updatedSessionData && updatedSessionData.session.answered_questions >= updatedSessionData.session.total_questions) {
-      await this.completeSession(data.session_id, studentId);
+      await this.completeSession(data.session_id, userId);
     }
 
     return result;
   }
 
-  async pauseSession(sessionId: string, studentId: string): Promise<PracticeSession> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, studentId);
+  async pauseSession(sessionId: string, userId: string): Promise<PracticeSession> {
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, userId);
     
     if (!sessionData) {
       throw new NotFoundException('Practice session not found');
@@ -151,13 +151,13 @@ export class PracticeService {
 
     return await this.practiceRepository.updateSessionStatus(
       sessionId,
-      studentId,
+      userId,
       'paused'
     );
   }
 
-  async resumeSession(sessionId: string, studentId: string): Promise<PracticeSessionResponse> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, studentId);
+  async resumeSession(sessionId: string, userId: string): Promise<PracticeSessionResponse> {
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, userId);
     
     if (!sessionData) {
       throw new NotFoundException('Practice session not found');
@@ -169,7 +169,7 @@ export class PracticeService {
 
     const updatedSession = await this.practiceRepository.updateSessionStatus(
       sessionId,
-      studentId,
+      userId,
       'in_progress'
     );
 
@@ -179,17 +179,17 @@ export class PracticeService {
     };
   }
 
-  async completeSession(sessionId: string, studentId: string): Promise<PracticeSession> {
+  async completeSession(sessionId: string, userId: string): Promise<PracticeSession> {
     return await this.practiceRepository.updateSessionStatus(
       sessionId,
-      studentId,
+      userId,
       'completed',
       { completed_at: true }
     );
   }
 
-  async getSession(sessionId: string, studentId: string): Promise<PracticeSessionResponse> {
-    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, studentId);
+  async getSession(sessionId: string, userId: string): Promise<PracticeSessionResponse> {
+    const sessionData = await this.practiceRepository.getSessionWithQuestions(sessionId, userId);
 
     if (!sessionData) {
       throw new NotFoundException('Practice session not found');
@@ -202,25 +202,25 @@ export class PracticeService {
   }
 
   async getSessionHistory(
-    studentId: string,
+    userId: string,
     status?: PracticeSessionStatus,
     limit = 20,
     offset = 0
   ): Promise<PracticeSession[]> {
     return await this.practiceRepository.getSessionHistory(
-      studentId,
+      userId,
       status,
       limit,
       offset
     );
   }
 
-  async getStatistics(studentId: string): Promise<any> {
-    const basicStats = await this.practiceRepository.getBasicStatistics(studentId);
-    const recentSessions = await this.getSessionHistory(studentId, undefined, 10, 0);
+  async getStatistics(userId: string): Promise<any> {
+    const basicStats = await this.practiceRepository.getBasicStatistics(userId);
+    const recentSessions = await this.getSessionHistory(userId, undefined, 10, 0);
 
     return {
-      student_id: studentId,
+      user_id: userId,
       total_sessions: parseInt(basicStats.total_sessions || 0),
       completed_sessions: parseInt(basicStats.completed_sessions || 0),
       average_score: parseFloat(basicStats.average_score || 0),

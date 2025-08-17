@@ -48,7 +48,7 @@ export const CreatePracticeSessionSchema = z.object({
 
 export const PracticeSessionSchema = z.object({
   id: z.string().uuid(),
-  student_id: z.string().uuid(),
+  user_id: z.string().uuid(),
   status: PracticeSessionStatusSchema,
   strategy: PracticeStrategySchema,
   knowledge_point_ids: z.array(z.string()),
@@ -122,7 +122,7 @@ export const PracticeSessionResponseSchema = z.object({
 });
 
 export const PracticeStatisticsSchema = z.object({
-  student_id: z.string().uuid(),
+  user_id: z.string().uuid(),
   total_sessions: z.number().int(),
   completed_sessions: z.number().int(),
   total_questions_answered: z.number().int(),
@@ -160,7 +160,7 @@ export const PracticeStatisticsSchema = z.object({
 });
 
 export const PracticeHistoryQuerySchema = z.object({
-  student_id: z.string().uuid().optional(),
+  user_id: z.string().uuid().optional(),
   status: PracticeSessionStatusSchema.optional(),
   from_date: z.string().datetime().optional(),
   to_date: z.string().datetime().optional(),
