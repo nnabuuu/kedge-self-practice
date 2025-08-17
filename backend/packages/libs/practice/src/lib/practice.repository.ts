@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PersistentService } from '@kedge/persistent';
 import { sql } from 'slonik';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 import {
   PracticeSession,
   PracticeQuestion,
@@ -42,93 +43,121 @@ export class PracticeRepository {
     }>
   ): Promise<{ session: PracticeSession; questions: PracticeQuestion[] }> {
     try {
-      const result = await this.persistentService.pgPool.transaction(async (connection) => {
-        // Debug logging for session creation
-        this.logger.log(`Creating session with data:`, {
-          sessionId,
-          studentId,
-          strategy: sessionData.strategy,
-          knowledge_point_ids: sessionData.knowledge_point_ids,
-          total_questions: sessionData.total_questions,
-          time_limit_minutes: sessionData.time_limit_minutes,
-          difficulty: sessionData.difficulty
+      // Debug logging for session creation
+      this.logger.log(`Creating session with data:`, {
+        sessionId,
+        studentId,
+        strategy: sessionData.strategy,
+        knowledge_point_ids: sessionData.knowledge_point_ids,
+        total_questions: sessionData.total_questions,
+        time_limit_minutes: sessionData.time_limit_minutes,
+        difficulty: sessionData.difficulty
+      });
+      
+      // Create the session first
+      this.logger.log('About to create session with SQL...');
+      
+      // Use a single SQL query with CASE for null handling
+      const knowledgePointIdsArray = `{${sessionData.knowledge_point_ids.map(id => `"${id}"`).join(',')}}`;
+      const timeLimitValue = sessionData.time_limit_minutes || null;
+      
+      
+      // Debug the parameters before query
+      this.logger.log('Session creation parameters:', {
+        sessionId: sessionId,
+        studentId: studentId,
+        status: 'created',
+        strategy: sessionData.strategy,
+        knowledge_point_ids: sessionData.knowledge_point_ids,
+        total_questions: sessionData.total_questions,
+        time_limit_minutes: sessionData.time_limit_minutes || null,
+        difficulty: sessionData.difficulty
+      });
+
+      // Use proper type-safe Slonik but with a minimal schema
+      const MinimalPracticeSessionSchema = z.object({
+        id: z.string(),
+        student_id: z.string(),
+        status: z.string(),
+        strategy: z.string(),
+        knowledge_point_ids: z.array(z.string()),
+        total_questions: z.number(),
+        time_limit_minutes: z.number().nullable(),
+        difficulty: z.string()
+      });
+
+      const sessionResult = await this.persistentService.pgPool.query(
+        sql.type(MinimalPracticeSessionSchema)`
+          INSERT INTO kedge_practice.practice_sessions (
+            id,
+            student_id,
+            status,
+            strategy,
+            knowledge_point_ids,
+            total_questions,
+            time_limit_minutes,
+            difficulty
+          ) VALUES (
+            ${sessionId},
+            ${studentId},
+            ${'created'},
+            ${sessionData.strategy},
+            ${sql.array(sessionData.knowledge_point_ids, 'text')},
+            ${sessionData.total_questions},
+            ${sessionData.time_limit_minutes || null},
+            ${sessionData.difficulty}
+          ) RETURNING *
+        `
+      );
+      
+      this.logger.log('Session created successfully, creating questions...');
+
+      // Create all questions
+      const questions = [];
+      for (const questionData of questionsData) {
+        // Debug logging for troubleshooting
+        this.logger.log(`Creating question with data:`, {
+          id: questionData.id,
+          session_id: sessionId,
+          quiz_id: questionData.quiz_id,
+          knowledge_point_id: questionData.knowledge_point_id
         });
         
-        // Create the session
-        const sessionResult = await connection.query(
-          sql.type(PracticeSessionSchema)`
-            INSERT INTO kedge_practice.practice_sessions (
+        // Use proper Slonik with correct parameter binding for questions
+        const questionResult = await this.persistentService.pgPool.query(
+          sql.type(PracticeQuestionSchema)`
+            INSERT INTO kedge_practice.practice_questions (
               id,
-              student_id,
-              status,
-              strategy,
-              knowledge_point_ids,
-              total_questions,
-              time_limit_minutes,
+              session_id,
+              quiz_id,
+              question_number,
+              question,
+              options,
+              correct_answer,
+              knowledge_point_id,
               difficulty,
-              created_at,
-              updated_at
+              attachments
             ) VALUES (
+              ${questionData.id},
               ${sessionId},
-              ${studentId},
-              'created',
-              ${sessionData.strategy},
-              ${sql.array(sessionData.knowledge_point_ids, 'text')},
-              ${sessionData.total_questions},
-              ${sessionData.time_limit_minutes || null},
-              ${sessionData.difficulty},
-              NOW(),
-              NOW()
+              ${questionData.quiz_id},
+              ${questionData.question_number},
+              ${questionData.question},
+              ${sql.array(questionData.options || [], 'text')},
+              ${questionData.correct_answer || null},
+              ${questionData.knowledge_point_id},
+              ${questionData.difficulty},
+              ${sql.array(questionData.attachments || [], 'text')}
             ) RETURNING *
           `
         );
+        questions.push(questionResult.rows[0]);
+      }
 
-        // Create all questions in batch
-        const questions = [];
-        for (const questionData of questionsData) {
-          // Debug logging for troubleshooting
-          this.logger.log(`Creating question with data:`, {
-            id: questionData.id,
-            session_id: sessionId,
-            quiz_id: questionData.quiz_id,
-            knowledge_point_id: questionData.knowledge_point_id
-          });
-          
-          const questionResult = await connection.query(
-            sql.type(PracticeQuestionSchema)`
-              INSERT INTO kedge_practice.practice_questions (
-                id,
-                session_id,
-                quiz_id,
-                question_number,
-                question,
-                options,
-                correct_answer,
-                knowledge_point_id,
-                difficulty,
-                attachments
-              ) VALUES (
-                ${questionData.id},
-                ${sessionId},
-                ${questionData.quiz_id},
-                ${questionData.question_number},
-                ${questionData.question},
-                ${sql.array(questionData.options || [], 'text')},
-                ${questionData.correct_answer || null},
-                ${questionData.knowledge_point_id},
-                ${questionData.difficulty},
-                ${sql.array(questionData.attachments || [], 'text')}
-              ) RETURNING *
-            `
-          );
-          questions.push(questionResult.rows[0]);
-        }
-
-        return {
-          session: sessionResult.rows[0],
-          questions
-        };
-      });
+      const result = {
+        session: sessionResult.rows[0],
+        questions
+      };
 
       return {
         session: this.mapSession(result.session),
@@ -444,7 +473,8 @@ export class PracticeRepository {
       answered_at: data.answered_at?.toISOString(),
       attachments: data.attachments || [],
       knowledge_point_id: data.knowledge_point_id,
-      difficulty: data.difficulty
+      difficulty: data.difficulty,
+      created_at: data.created_at
     };
   }
 }

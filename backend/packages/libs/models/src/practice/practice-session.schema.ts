@@ -57,14 +57,14 @@ export const PracticeSessionSchema = z.object({
   correct_answers: z.number().int().default(0),
   incorrect_answers: z.number().int().default(0),
   skipped_questions: z.number().int().default(0),
-  time_limit_minutes: z.number().int().optional(),
+  time_limit_minutes: z.number().int().nullable().optional(),
   time_spent_seconds: z.number().int().default(0),
   difficulty: z.string(),
   score: z.number().default(0),
-  started_at: z.string().datetime().optional(),
-  completed_at: z.string().datetime().optional(),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime()
+  started_at: z.date().nullable().optional(),
+  completed_at: z.date().nullable().optional(),
+  created_at: z.date(),
+  updated_at: z.date()
 });
 
 export const PracticeQuestionSchema = z.object({
@@ -73,15 +73,16 @@ export const PracticeQuestionSchema = z.object({
   quiz_id: z.string().uuid(),
   question_number: z.number().int(),
   question: z.string(),
-  options: z.array(z.string()),
-  correct_answer: z.string().optional(),
-  student_answer: z.string().optional(),
-  is_correct: z.boolean().optional(),
+  options: z.array(z.string()).nullable().optional(),
+  correct_answer: z.string().nullable().optional(),
+  student_answer: z.string().nullable().optional(),
+  is_correct: z.boolean().nullable().optional(),
   time_spent_seconds: z.number().int().default(0),
-  answered_at: z.string().datetime().optional(),
-  attachments: z.array(z.string()).optional(),
-  knowledge_point_id: z.string(),
-  difficulty: z.string()
+  answered_at: z.date().nullable().optional(),
+  attachments: z.array(z.string()).nullable().optional(),
+  knowledge_point_id: z.string().nullable().optional(),
+  difficulty: z.string(),
+  created_at: z.date()
 });
 
 // Action Schemas
