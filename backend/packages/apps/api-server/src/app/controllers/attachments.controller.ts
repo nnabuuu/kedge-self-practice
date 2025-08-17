@@ -19,6 +19,57 @@ import { JwtAuthGuard, JwtOrQueryGuard } from '@kedge/auth';
 export class AttachmentsController {
   constructor(private readonly storageService: EnhancedQuizStorageService) {}
 
+  @Get(':fileId')
+  @ApiOperation({ summary: 'Retrieve attachment by file ID (simplified format)' })
+  @ApiParam({ name: 'fileId', description: 'File ID with extension (e.g., uuid.png)' })
+  @ApiResponse({ status: 200, description: 'File retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'File not found' })
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getAttachment(
+    @Param('fileId') fileId: string,
+    @Res() res: Response,
+  ) {
+    try {
+      // Parse fileId to extract UUID and extension
+      const lastDotIndex = fileId.lastIndexOf('.');
+      if (lastDotIndex === -1) {
+        throw new HttpException('Invalid file ID format. Expected: uuid.extension', HttpStatus.BAD_REQUEST);
+      }
+      
+      const uuid = fileId.substring(0, lastDotIndex);
+      const extension = fileId.substring(lastDotIndex + 1);
+      
+      // Validate UUID format
+      const uuidRegex = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+      if (!uuidRegex.test(uuid)) {
+        throw new HttpException('Invalid UUID format', HttpStatus.BAD_REQUEST);
+      }
+      
+      // Get attachment metadata and file
+      const fileData = await this.storageService.getAttachmentByUuid(uuid, extension);
+      
+      // Determine content type from extension
+      const contentType = this.getContentType(fileId);
+      
+      res.set({
+        'Content-Type': contentType,
+        'Content-Length': fileData.buffer.length.toString(),
+        'Content-Disposition': `inline; filename="${fileId}"`,
+      });
+      
+      res.send(fileData.buffer);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        'Failed to retrieve attachment',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
   @Get('quiz/:year/:month/:filename')
   @ApiOperation({ summary: 'Retrieve quiz attachment by path (public access)' })
   @ApiParam({ name: 'year', description: 'Year folder' })

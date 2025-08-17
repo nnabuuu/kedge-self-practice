@@ -173,7 +173,7 @@ export class DocxController {
         
         savedImages.push({
           id: metadata.id,
-          url: `/v1/attachments/quiz/${metadata.relativePath}`,
+          url: `/v1/attachments/${metadata.storedName}`,
           filename: docxImage.filename,
           originalDocxId: docxImage.id,
           size: metadata.size,

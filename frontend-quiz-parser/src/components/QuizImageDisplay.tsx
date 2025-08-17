@@ -40,7 +40,17 @@ export const QuizImageDisplay: React.FC<QuizImageDisplayProps> = ({
       const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
       // Remove /v1 from base URL since our paths already include it
       const cleanBase = apiBase.replace(/\/v1$/, '').replace(/\/$/, '');
-      fullUrl = cleanBase + baseUrl;
+      
+      // Convert old format to new format if needed
+      // Old: /v1/attachments/quiz/2025/08/uuid.ext or /attachments/quiz/2025/08/uuid.ext
+      // New: /v1/attachments/uuid.ext
+      const attachmentMatch = baseUrl.match(/\/(?:v1\/)?attachments\/quiz\/\d{4}\/\d{2}\/([a-f0-9-]+\.\w+)$/);
+      if (attachmentMatch) {
+        // Extract just the filename (uuid.ext) and use new format
+        fullUrl = cleanBase + '/v1/attachments/' + attachmentMatch[1];
+      } else {
+        fullUrl = cleanBase + baseUrl;
+      }
     }
     
     // No authentication needed for public image access

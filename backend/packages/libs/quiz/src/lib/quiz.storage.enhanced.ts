@@ -132,6 +132,59 @@ export class EnhancedQuizStorageService {
   }
 
   /**
+   * Get attachment by UUID and extension (new simplified format)
+   */
+  async getAttachmentByUuid(uuid: string, extension: string): Promise<{ buffer: Buffer; metadata?: AttachmentMetadata }> {
+    // For now, we'll search for the file in the directory structure
+    // In production, this should query the attachments table for the file path
+    
+    try {
+      // Try common year/month combinations (this is temporary)
+      // In production, query the database for the exact path
+      const possiblePaths = [
+        `2025/08/${uuid}.${extension}`,
+        `2025/07/${uuid}.${extension}`,
+        `2024/12/${uuid}.${extension}`,
+        `2024/11/${uuid}.${extension}`,
+      ];
+      
+      for (const path of possiblePaths) {
+        try {
+          const fullPath = join(this.root, path);
+          const buffer = await fs.readFile(fullPath);
+          
+          // Get file stats for metadata
+          const stats = await fs.stat(fullPath);
+          
+          const metadata: AttachmentMetadata = {
+            id: uuid,
+            originalName: `${uuid}.${extension}`,
+            storedName: `${uuid}.${extension}`,
+            relativePath: path,
+            mimetype: this.getMimeType(`.${extension}`),
+            size: stats.size,
+            hash: '',
+            uploadedAt: stats.birthtime,
+          };
+          
+          return { buffer, metadata };
+        } catch (error) {
+          // File not found in this path, try next
+          continue;
+        }
+      }
+      
+      // If we get here, file wasn't found in any expected location
+      throw new BadRequestException(`Attachment not found: ${uuid}.${extension}`);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to retrieve attachment');
+    }
+  }
+
+  /**
    * Delete attachment
    */
   async deleteAttachment(relativePath: string): Promise<void> {

@@ -77,12 +77,13 @@ export default function QuizPractice({
           imageUrl = imageUrls[index];
         }
       } else {
-        // It's a UUID - construct the proper URL with year/month/uuid.png format
-        // The images are stored on the remote server with a specific path structure
+        // It's a UUID - use the new simplified format
         const remoteServerUrl = 'http://35.213.100.193:8718';
-        // For now, we'll assume 2025/08 as the path (this should ideally come from metadata)
-        // In production, this path info should be stored with the quiz
-        imageUrl = `${remoteServerUrl}/v1/attachments/quiz/2025/08/${imageRef}.png`;
+        
+        // The new format is: /v1/attachments/uuid.ext
+        // Default to png extension if not specified
+        const extension = 'png';
+        imageUrl = `${remoteServerUrl}/v1/attachments/${imageRef}.${extension}`;
       }
       
       if (imageUrl) {

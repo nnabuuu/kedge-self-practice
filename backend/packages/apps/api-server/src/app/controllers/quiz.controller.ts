@@ -203,10 +203,12 @@ export class QuizController {
         attachmentMetadata = await this.storageService.saveAttachments(attachmentFiles);
       }
       
-      // Build image URLs that can be accessed via the attachments endpoint
-      const imageUrls = attachmentMetadata.map(
-        meta => `/attachments/quiz/${meta.relativePath}`
-      );
+      // Build image URLs using the new simplified format
+      const imageUrls = attachmentMetadata.map(meta => {
+        // Extract filename from relativePath (e.g., "2025/08/uuid.ext" -> "uuid.ext")
+        const filename = meta.relativePath.split('/').pop() || meta.storedName;
+        return `/attachments/${filename}`;
+      });
       
       const quizItem = {
         type: validatedData.type,
@@ -230,13 +232,17 @@ export class QuizController {
         success: true,
         data: createdQuiz,
         knowledgePoint: validatedData.knowledgePoint,
-        attachments: attachmentMetadata.map(meta => ({
-          id: meta.id,
-          url: `/attachments/quiz/${meta.relativePath}`,
-          originalName: meta.originalName,
-          size: meta.size,
-          mimetype: meta.mimetype,
-        })),
+        attachments: attachmentMetadata.map(meta => {
+          // Extract filename from relativePath for new simplified format
+          const filename = meta.relativePath.split('/').pop() || meta.storedName;
+          return {
+            id: meta.id,
+            url: `/attachments/${filename}`,
+            originalName: meta.originalName,
+            size: meta.size,
+            mimetype: meta.mimetype,
+          };
+        }),
       };
     } catch (error) {
       if (error instanceof z.ZodError) {
