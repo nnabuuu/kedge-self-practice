@@ -33,7 +33,7 @@ export class StrategyService {
 
   constructor(private readonly db: PersistentService) {}
 
-  async getAvailableStrategies(studentId?: string): Promise<StrategyDefinition[]> {
+  async getAvailableStrategies(userId?: string): Promise<StrategyDefinition[]> {
     const strategies = await this.db.pgPool.any(sql.unsafe`
       SELECT 
         id,
@@ -52,10 +52,10 @@ export class StrategyService {
       ORDER BY code
     `);
 
-    if (studentId) {
+    if (userId) {
       const eligibleStrategies = [];
       for (const strategy of strategies) {
-        if (await this.isStrategyEligible(studentId, strategy)) {
+        if (await this.isStrategyEligible(userId, strategy)) {
           eligibleStrategies.push(strategy);
         }
       }
@@ -66,10 +66,10 @@ export class StrategyService {
   }
 
   async generateStrategySession(
-    studentId: string,
+    userId: string,
     request: GeneratePracticeRequest
   ): Promise<{ questions: QuizQuestion[]; metadata: any }> {
-    this.logger.log(`Generating strategy session for student ${studentId} with strategy ${request.strategyCode}`);
+    this.logger.log(`Generating strategy session for student ${userId} with strategy ${request.strategyCode}`);
 
     let questions: QuizQuestion[];
     let metadata: any;
@@ -79,10 +79,10 @@ export class StrategyService {
         ({ questions, metadata } = await this.generateQuickPractice(request));
         break;
       case PracticeStrategyCode.WEAKNESS_REINFORCEMENT:
-        ({ questions, metadata } = await this.generateWeaknessReinforcement(studentId, request));
+        ({ questions, metadata } = await this.generateWeaknessReinforcement(userId, request));
         break;
       case PracticeStrategyCode.MISTAKE_REINFORCEMENT:
-        ({ questions, metadata } = await this.generateMistakeReinforcement(studentId, request));
+        ({ questions, metadata } = await this.generateMistakeReinforcement(userId, request));
         break;
       default:
         throw new Error(`Unknown strategy code: ${request.strategyCode}`);
@@ -111,10 +111,10 @@ export class StrategyService {
   }
 
   private async generateWeaknessReinforcement(
-    studentId: string,
+    userId: string,
     request: GeneratePracticeRequest
   ): Promise<{ questions: QuizQuestion[]; metadata: any }> {
-    const weaknesses = await this.getStudentWeaknesses(studentId, request.knowledgePointIds);
+    const weaknesses = await this.getStudentWeaknesses(userId, request.knowledgePointIds);
     
     if (weaknesses.length === 0) {
       this.logger.log('No weaknesses found, falling back to quick practice');
@@ -156,10 +156,10 @@ export class StrategyService {
   }
 
   private async generateMistakeReinforcement(
-    studentId: string,
+    userId: string,
     request: GeneratePracticeRequest
   ): Promise<{ questions: QuizQuestion[]; metadata: any }> {
-    const mistakes = await this.getStudentMistakes(studentId, request.knowledgePointIds);
+    const mistakes = await this.getStudentMistakes(userId, request.knowledgePointIds);
     
     if (mistakes.length === 0) {
       this.logger.log('No mistakes found, falling back to quick practice');
@@ -197,13 +197,13 @@ export class StrategyService {
     return { questions, metadata };
   }
 
-  async getStrategyRecommendations(studentId: string): Promise<{
+  async getStrategyRecommendations(userId: string): Promise<{
     primaryRecommendation?: StrategyRecommendation;
     alternativeRecommendations: StrategyRecommendation[];
   }> {
     const recommendations: StrategyRecommendation[] = [];
 
-    const weaknesses = await this.getStudentWeaknesses(studentId);
+    const weaknesses = await this.getStudentWeaknesses(userId);
     if (weaknesses.length > 0) {
       recommendations.push({
         strategyCode: PracticeStrategyCode.WEAKNESS_REINFORCEMENT,
@@ -219,7 +219,7 @@ export class StrategyService {
       });
     }
 
-    const mistakes = await this.getStudentMistakes(studentId);
+    const mistakes = await this.getStudentMistakes(userId);
     if (mistakes.length >= 5) {
       recommendations.push({
         strategyCode: PracticeStrategyCode.MISTAKE_REINFORCEMENT,
@@ -247,7 +247,7 @@ export class StrategyService {
   }
 
   async getStrategyAnalytics(
-    studentId: string,
+    userId: string,
     strategyCode: string
   ): Promise<StrategyAnalytics> {
     const sessions = await this.db.pgPool.any(sql.unsafe`
@@ -260,7 +260,7 @@ export class StrategyService {
         time_spent,
         metadata
       FROM kedge_practice.practice_sessions
-      WHERE student_id = ${studentId}
+      WHERE user_id = ${userId}
         AND strategy_code = ${strategyCode}
       ORDER BY start_time DESC
     `);
@@ -284,14 +284,14 @@ export class StrategyService {
     let effectiveness: StrategyAnalytics['effectiveness'] = {};
 
     if (strategyCode === PracticeStrategyCode.WEAKNESS_REINFORCEMENT) {
-      const weaknesses = await this.getStudentWeaknesses(studentId);
+      const weaknesses = await this.getStudentWeaknesses(userId);
       effectiveness = {
         weakPointsImproved: weaknesses.filter(w => !w.isWeak).length,
         weakPointsRemaining: weaknesses.filter(w => w.isWeak).length,
         averageImprovementRate: improvement,
       };
     } else if (strategyCode === PracticeStrategyCode.MISTAKE_REINFORCEMENT) {
-      const mistakes = await this.getStudentMistakes(studentId);
+      const mistakes = await this.getStudentMistakes(userId);
       effectiveness = {
         mistakesCorrected: mistakes.filter(m => m.isCorrected).length,
         mistakesRemaining: mistakes.filter(m => !m.isCorrected).length,
@@ -311,7 +311,7 @@ export class StrategyService {
   }
 
   async recordMistake(
-    studentId: string,
+    userId: string,
     quizId: string,
     sessionId: string,
     incorrectAnswer: string,
@@ -320,7 +320,7 @@ export class StrategyService {
     await this.db.pgPool.query(sql.unsafe`
       INSERT INTO kedge_practice.student_mistakes (
         id,
-        student_id,
+        user_id,
         quiz_id,
         session_id,
         incorrect_answer,
@@ -334,7 +334,7 @@ export class StrategyService {
         updated_at
       ) VALUES (
         ${uuidv4()},
-        ${studentId},
+        ${userId},
         ${quizId},
         ${sessionId},
         ${incorrectAnswer},
@@ -347,7 +347,7 @@ export class StrategyService {
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
       )
-      ON CONFLICT (student_id, quiz_id) DO UPDATE
+      ON CONFLICT (user_id, quiz_id) DO UPDATE
       SET 
         mistake_count = kedge_practice.student_mistakes.mistake_count + 1,
         last_attempted = CURRENT_TIMESTAMP,
@@ -359,13 +359,13 @@ export class StrategyService {
   }
 
   async recordCorrection(
-    studentId: string,
+    userId: string,
     quizId: string
   ): Promise<void> {
     const mistake = await this.db.pgPool.maybeOne(sql.unsafe`
       SELECT correction_count
       FROM kedge_practice.student_mistakes
-      WHERE student_id = ${studentId}
+      WHERE user_id = ${userId}
         AND quiz_id = ${quizId}
     `);
 
@@ -381,55 +381,55 @@ export class StrategyService {
         is_corrected = ${isCorrected},
         next_review_date = ${isCorrected ? null : this.calculateNextReviewDate(newCorrectionCount)},
         updated_at = CURRENT_TIMESTAMP
-      WHERE student_id = ${studentId}
+      WHERE user_id = ${userId}
         AND quiz_id = ${quizId}
     `);
   }
 
   private async isStrategyEligible(
-    studentId: string,
+    userId: string,
     strategy: any
   ): Promise<boolean> {
     if (!strategy.requiredHistory) return true;
 
-    const practiceCount = await this.getStudentPracticeCount(studentId);
+    const practiceCount = await this.getStudentPracticeCount(userId);
     if (practiceCount < strategy.minimumPracticeCount) return false;
 
     if (strategy.code === PracticeStrategyCode.MISTAKE_REINFORCEMENT) {
-      const mistakeCount = await this.getStudentMistakeCount(studentId);
+      const mistakeCount = await this.getStudentMistakeCount(userId);
       return mistakeCount >= strategy.minimumMistakeCount;
     }
 
     return true;
   }
 
-  private async getStudentPracticeCount(studentId: string): Promise<number> {
+  private async getStudentPracticeCount(userId: string): Promise<number> {
     const result = await this.db.pgPool.maybeOne(sql.unsafe`
       SELECT COUNT(*) as count
       FROM kedge_practice.practice_sessions
-      WHERE student_id = ${studentId}
+      WHERE user_id = ${userId}
     `);
     return Number(result?.count || 0);
   }
 
-  private async getStudentMistakeCount(studentId: string): Promise<number> {
+  private async getStudentMistakeCount(userId: string): Promise<number> {
     const result = await this.db.pgPool.maybeOne(sql.unsafe`
       SELECT COUNT(*) as count
       FROM kedge_practice.student_mistakes
-      WHERE student_id = ${studentId}
+      WHERE user_id = ${userId}
         AND is_corrected = false
     `);
     return Number(result?.count || 0);
   }
 
   private async getStudentWeaknesses(
-    studentId: string,
+    userId: string,
     knowledgePointIds?: string[]
   ): Promise<StudentWeakness[]> {
     let query = sql.unsafe`
       SELECT 
         id,
-        student_id AS "studentId",
+        user_id AS "userId",
         knowledge_point_id AS "knowledgePointId",
         accuracy_rate AS "accuracyRate",
         practice_count AS "practiceCount",
@@ -439,7 +439,7 @@ export class StrategyService {
         created_at AS "createdAt",
         updated_at AS "updatedAt"
       FROM kedge_practice.student_weaknesses
-      WHERE student_id = ${studentId}
+      WHERE user_id = ${userId}
         AND accuracy_rate < ${this.weaknessThreshold}
     `;
 
@@ -453,7 +453,7 @@ export class StrategyService {
   }
 
   private async getStudentMistakes(
-    studentId: string,
+    userId: string,
     knowledgePointIds?: string[]
   ): Promise<StudentMistake[]> {
     let query: any;
@@ -462,7 +462,7 @@ export class StrategyService {
       query = sql.unsafe`
         SELECT 
           sm.id,
-          sm.student_id AS "studentId",
+          sm.user_id AS "userId",
           sm.quiz_id AS "quizId",
           sm.session_id AS "sessionId",
           sm.incorrect_answer AS "incorrectAnswer",
@@ -476,7 +476,7 @@ export class StrategyService {
           sm.updated_at AS "updatedAt"
         FROM kedge_practice.student_mistakes sm
         JOIN quizzes q ON sm.quiz_id = q.id
-        WHERE sm.student_id = ${studentId}
+        WHERE sm.user_id = ${userId}
           AND sm.is_corrected = false
           AND q.knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'uuid')})
       `;
@@ -484,7 +484,7 @@ export class StrategyService {
       query = sql.unsafe`
         SELECT 
           id,
-          student_id AS "studentId",
+          user_id AS "userId",
           quiz_id AS "quizId",
           session_id AS "sessionId",
           incorrect_answer AS "incorrectAnswer",
@@ -497,7 +497,7 @@ export class StrategyService {
           created_at AS "createdAt",
           updated_at AS "updatedAt"
         FROM kedge_practice.student_mistakes
-        WHERE student_id = ${studentId}
+        WHERE user_id = ${userId}
           AND is_corrected = false
       `;
     }

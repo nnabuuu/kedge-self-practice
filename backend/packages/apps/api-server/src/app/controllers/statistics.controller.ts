@@ -64,7 +64,7 @@ export class StatisticsController {
       
       const activeStudentResult = await this.persistentService.pgPool.query(
         sql.unsafe`
-          SELECT COUNT(DISTINCT student_id) as count
+          SELECT COUNT(DISTINCT user_id) as count
           FROM kedge_practice.practice_sessions
           WHERE created_at >= ${thirtyDaysAgo.toISOString()}
         `
@@ -114,7 +114,7 @@ export class StatisticsController {
       
       const activeResult = await this.persistentService.pgPool.query(
         sql.unsafe`
-          SELECT COUNT(DISTINCT student_id) as count
+          SELECT COUNT(DISTINCT user_id) as count
           FROM kedge_practice.practice_sessions
           WHERE created_at >= ${thirtyDaysAgo.toISOString()}
         `

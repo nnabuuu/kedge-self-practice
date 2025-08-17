@@ -209,20 +209,20 @@ export class PracticeController {
     return await this.practiceService.getStatistics(userId);
   }
 
-  @Get('statistics/:studentId')
-  @ApiOperation({ summary: 'Get practice statistics for a specific student (teacher/admin only)' })
+  @Get('statistics/:userId')
+  @ApiOperation({ summary: 'Get practice statistics for a specific user (teacher/admin only)' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
     description: 'Practice statistics'
   })
-  async getStudentStatistics(
+  async getUserStatistics(
     @Request() req: AuthenticatedRequest,
-    @Param('studentId') studentId: string
+    @Param('userId') userId: string
   ): Promise<any> {
     if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
-      throw new ForbiddenException('Only teachers and admins can view other students statistics');
+      throw new ForbiddenException('Only teachers and admins can view other users statistics');
     }
-    return await this.practiceService.getStatistics(studentId);
+    return await this.practiceService.getStatistics(userId);
   }
 
   @Get('strategies')

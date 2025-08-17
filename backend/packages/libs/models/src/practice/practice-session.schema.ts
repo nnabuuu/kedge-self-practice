@@ -205,7 +205,7 @@ export const GeneratePracticeRequestSchema = z.object({
 
 export const StudentWeaknessSchema = z.object({
   id: z.string().uuid(),
-  studentId: z.string().uuid(),
+  userId: z.string().uuid(),
   knowledgePointId: z.string().uuid(),
   accuracyRate: z.number().min(0).max(100),
   practiceCount: z.number().int().min(0),
@@ -218,7 +218,7 @@ export const StudentWeaknessSchema = z.object({
 
 export const StudentMistakeSchema = z.object({
   id: z.string().uuid(),
-  studentId: z.string().uuid(),
+  userId: z.string().uuid(),
   quizId: z.string().uuid(),
   sessionId: z.string().uuid(),
   incorrectAnswer: z.string(),
