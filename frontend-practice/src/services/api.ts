@@ -277,6 +277,13 @@ export const api = {
     delete: (id: string) => ApiService.deleteQuestion(id),
     search: (query: string, subjectId?: string) => ApiService.searchQuestions(query, subjectId)
   },
+  practice: {
+    createSession: backendApiMethods.practice.createSession,
+    startSession: backendApiMethods.practice.startSession,
+    getSession: backendApiMethods.practice.getSession,
+    submitAnswer: backendApiMethods.practice.submitAnswer,
+    completeSession: backendApiMethods.practice.completeSession
+  },
   ai: {
     analyzeQuestion: (question: string) => ApiService.analyzeQuestionWithAI(question)
   },
