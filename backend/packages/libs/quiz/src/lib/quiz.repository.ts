@@ -65,6 +65,7 @@ export class QuizRepository {
 
   async listQuizzes(): Promise<QuizItem[]> {
     try {
+      // Use type-safe query with proper schema
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
           SELECT id, type, question, options, answer, 
@@ -75,12 +76,10 @@ export class QuizRepository {
         `,
       );
       
-      // Return the quizzes without knowledge point data
-      // The knowledge point data will be populated by the service layer
-      return result.rows.map(row => ({
-        ...row,
-        knowledgePoint: null // Will be populated by service layer
-      }));
+      this.logger.log(`QuizRepository fetched ${result.rows.length} quizzes from database`);
+      
+      // Return the quizzes - knowledgePoint is already null in the schema
+      return result.rows;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error listing quizzes: ${errorMessage}`);

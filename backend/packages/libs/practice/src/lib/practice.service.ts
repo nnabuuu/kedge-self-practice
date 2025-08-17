@@ -62,7 +62,7 @@ export class PracticeService {
 
       return {
         id: uuidv4(),
-        quiz_id: quiz.id || uuidv4(),
+        quiz_id: quiz.id || uuidv4(), // Make sure quiz.id is a valid UUID
         question_number: index + 1,
         question: quiz.question,
         options: options || [],

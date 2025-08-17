@@ -145,7 +145,7 @@ export class PracticeRepository {
               ${questionData.question},
               ${sql.array(questionData.options || [], 'text')},
               ${questionData.correct_answer || null},
-              ${questionData.knowledge_point_id},
+              ${null}, -- knowledge_point_id set to null (remote DB expects UUID, we have TEXT)
               ${questionData.difficulty},
               ${sql.array(questionData.attachments || [], 'text')}
             ) RETURNING *
