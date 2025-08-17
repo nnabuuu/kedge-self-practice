@@ -34,7 +34,7 @@ export default function QuizPractice({
   const [answers, setAnswers] = useState<(string | string[] | null)[]>([]);
   const [questionStartTimes, setQuestionStartTimes] = useState<Date[]>([]);
   const [questionDurations, setQuestionDurations] = useState<number[]>([]);
-  const [sessionId] = useState(() => Date.now().toString());
+  const [localSessionId] = useState(() => Date.now().toString());
   const [startTime] = useState(() => new Date());
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [aiEvaluation, setAiEvaluation] = useState<AIEvaluation | null>(null);
@@ -474,7 +474,7 @@ export default function QuizPractice({
     }
     
     const session: PracticeSession = {
-      id: sessionId || Date.now().toString(),
+      id: sessionId || localSessionId,
       subjectId: subject.id,
       knowledgePoints: selectedKnowledgePoints,
       questions: questions,
