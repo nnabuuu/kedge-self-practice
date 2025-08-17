@@ -35,14 +35,22 @@ export function useApi<T>(
         setState({
           data: null,
           loading: false,
-          error: response.message || '请求失败'
+          error: response.error || response.message || '请求失败'
         });
       }
     } catch (error) {
+      let errorMessage = '网络错误';
+      if (error instanceof Error) {
+        if (error.message.includes('Network') || error.message.includes('fetch')) {
+          errorMessage = '无法连接到服务器，请检查后端服务是否运行';
+        } else {
+          errorMessage = error.message;
+        }
+      }
       setState({
         data: null,
         loading: false,
-        error: error instanceof Error ? error.message : '网络错误'
+        error: errorMessage
       });
     }
   }, dependencies);
@@ -108,14 +116,22 @@ export function useQuestionSearch(query: string, subjectId?: string) {
         setState({
           data: null,
           loading: false,
-          error: response.message || '搜索失败'
+          error: response.error || response.message || '搜索失败'
         });
       }
     } catch (error) {
+      let errorMessage = '搜索错误';
+      if (error instanceof Error) {
+        if (error.message.includes('Network') || error.message.includes('fetch')) {
+          errorMessage = '无法连接到服务器，请检查后端服务是否运行';
+        } else {
+          errorMessage = error.message;
+        }
+      }
       setState({
         data: null,
         loading: false,
-        error: error instanceof Error ? error.message : '搜索错误'
+        error: errorMessage
       });
     }
   }, [subjectId]);

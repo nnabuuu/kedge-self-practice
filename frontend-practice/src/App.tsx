@@ -3,6 +3,8 @@ import { Subject, PracticeSession, PracticeHistory } from './types/quiz';
 import { Teacher } from './types/teacher';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { authService } from './services/authService';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ConnectionError, useConnectionStatus } from './components/ConnectionError';
 import LoginPage from './components/LoginPage';
 import HomePage from './components/HomePage';
 import SubjectSelection from './components/SubjectSelection';
@@ -48,6 +50,9 @@ function App() {
   });
   const [currentSession, setCurrentSession] = useState<PracticeSession | null>(null);
   const [practiceHistory, setPracticeHistory] = useLocalStorage<PracticeHistory[]>('practice-history', []);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const { isOnline, backendStatus } = useConnectionStatus();
 
   // Check for existing authentication on app start
   useEffect(() => {
@@ -308,10 +313,43 @@ function App() {
     }
   };
 
+  // Handle API errors globally
+  const handleApiError = (error: string) => {
+    setApiError(error);
+    setRetryCount(prev => prev + 1);
+  };
+
+  const handleRetryConnection = () => {
+    setApiError(null);
+    setRetryCount(0);
+    // Force re-render of current screen
+    const temp = currentScreen;
+    setCurrentScreen('login');
+    setTimeout(() => setCurrentScreen(temp), 0);
+  };
+
+  // Show connection error if backend is offline
+  if (!isOnline || backendStatus === 'offline' || apiError) {
+    return (
+      <ErrorBoundary>
+        <div className="App min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <ConnectionError
+            error={apiError || (!isOnline ? '网络连接已断开' : '后端服务不可用')}
+            onRetry={handleRetryConnection}
+            retryCount={retryCount}
+            maxRetries={3}
+          />
+        </div>
+      </ErrorBoundary>
+    );
+  }
+
   return (
-    <div className="App">
-      {renderScreen()}
-    </div>
+    <ErrorBoundary>
+      <div className="App">
+        {renderScreen()}
+      </div>
+    </ErrorBoundary>
   );
 }
 
