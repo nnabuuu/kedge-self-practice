@@ -1,5 +1,22 @@
 import { z } from 'zod';
 
+// Date preprocessor to handle various date formats from database
+const dateSchema = z.preprocess((arg) => {
+  if (arg instanceof Date) return arg;
+  if (typeof arg === 'string') return new Date(arg);
+  if (typeof arg === 'number') return new Date(arg);
+  return arg;
+}, z.date());
+
+// Nullable date preprocessor
+const nullableDateSchema = z.preprocess((arg) => {
+  if (arg === null || arg === undefined) return null;
+  if (arg instanceof Date) return arg;
+  if (typeof arg === 'string') return new Date(arg);
+  if (typeof arg === 'number') return new Date(arg);
+  return arg;
+}, z.date().nullable());
+
 // Practice Strategy Enums
 export const PracticeStrategySchema = z.enum([
   'random',
@@ -61,10 +78,10 @@ export const PracticeSessionSchema = z.object({
   time_spent_seconds: z.number().int().default(0),
   difficulty: z.string(),
   score: z.number().default(0),
-  started_at: z.date().nullable().optional(),
-  completed_at: z.date().nullable().optional(),
-  created_at: z.date(),
-  updated_at: z.date()
+  started_at: nullableDateSchema.optional(),
+  completed_at: nullableDateSchema.optional(),
+  created_at: dateSchema,
+  updated_at: dateSchema
 });
 
 export const PracticeQuestionSchema = z.object({
@@ -78,11 +95,11 @@ export const PracticeQuestionSchema = z.object({
   student_answer: z.string().nullable().optional(),
   is_correct: z.boolean().nullable().optional(),
   time_spent_seconds: z.number().int().default(0),
-  answered_at: z.date().nullable().optional(),
+  answered_at: nullableDateSchema.optional(),
   attachments: z.array(z.string()).nullable().optional(),
   knowledge_point_id: z.string().nullable().optional(),
   difficulty: z.string(),
-  created_at: z.date()
+  created_at: dateSchema
 });
 
 // Action Schemas
@@ -185,8 +202,8 @@ export const StrategyDefinitionSchema = z.object({
   requiredHistory: z.boolean().default(false),
   minimumPracticeCount: z.number().int().min(0).default(0),
   minimumMistakeCount: z.number().int().min(0).default(0),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: dateSchema,
+  updatedAt: dateSchema,
 });
 
 export const GeneratePracticeRequestSchema = z.object({
@@ -209,11 +226,11 @@ export const StudentWeaknessSchema = z.object({
   knowledgePointId: z.string().uuid(),
   accuracyRate: z.number().min(0).max(100),
   practiceCount: z.number().int().min(0),
-  lastPracticed: z.date().optional(),
+  lastPracticed: nullableDateSchema.optional(),
   improvementTrend: z.number().optional(),
   isWeak: z.boolean().default(false),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: dateSchema,
+  updatedAt: dateSchema,
 });
 
 export const StudentMistakeSchema = z.object({
@@ -224,12 +241,12 @@ export const StudentMistakeSchema = z.object({
   incorrectAnswer: z.string(),
   correctAnswer: z.string(),
   mistakeCount: z.number().int().min(1).default(1),
-  lastAttempted: z.date(),
+  lastAttempted: dateSchema,
   isCorrected: z.boolean().default(false),
   correctionCount: z.number().int().min(0).default(0),
-  nextReviewDate: z.date().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  nextReviewDate: nullableDateSchema.optional(),
+  createdAt: dateSchema,
+  updatedAt: dateSchema,
 });
 
 export const StrategyRecommendationSchema = z.object({
@@ -243,7 +260,7 @@ export const StrategyAnalyticsSchema = z.object({
   strategyCode: z.string(),
   usage: z.object({
     totalSessions: z.number().int(),
-    lastUsed: z.date().optional(),
+    lastUsed: nullableDateSchema.optional(),
     averageScore: z.number().min(0).max(100),
     improvement: z.number(),
   }),

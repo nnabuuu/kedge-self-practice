@@ -451,10 +451,10 @@ export class PracticeRepository {
       time_spent_seconds: parseInt(data.time_spent_seconds || 0),
       difficulty: data.difficulty,
       score: parseFloat(data.score || 0),
-      started_at: data.started_at?.toISOString(),
-      completed_at: data.completed_at?.toISOString(),
-      created_at: data.created_at.toISOString(),
-      updated_at: data.updated_at.toISOString()
+      started_at: data.started_at,
+      completed_at: data.completed_at,
+      created_at: data.created_at,
+      updated_at: data.updated_at
     };
   }
 
@@ -470,7 +470,7 @@ export class PracticeRepository {
       student_answer: data.student_answer,
       is_correct: data.is_correct,
       time_spent_seconds: parseInt(data.time_spent_seconds || 0),
-      answered_at: data.answered_at?.toISOString(),
+      answered_at: data.answered_at,
       attachments: data.attachments || [],
       knowledge_point_id: data.knowledge_point_id,
       difficulty: data.difficulty,
