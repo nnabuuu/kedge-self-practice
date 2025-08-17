@@ -40,7 +40,6 @@ interface MulterFile {
 
 @ApiTags('quiz')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('v1/quiz')
 export class QuizController {
   constructor(
@@ -49,7 +48,7 @@ export class QuizController {
   ) {}
 
   @Post('submit')
-  @UseGuards(TeacherGuard)
+  @UseGuards(JwtAuthGuard, TeacherGuard)
   @ApiOperation({ summary: 'Submit a single quiz with optional knowledge point' })
   @ApiResponse({ status: 201, description: 'Quiz created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid quiz data' })
@@ -96,7 +95,7 @@ export class QuizController {
   }
 
   @Post('submit-multiple')
-  @UseGuards(TeacherGuard)
+  @UseGuards(JwtAuthGuard, TeacherGuard)
   @ApiOperation({ summary: 'Submit multiple quizzes at once' })
   @ApiResponse({ status: 201, description: 'Quizzes created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid quiz data' })
@@ -164,7 +163,7 @@ export class QuizController {
   }
 
   @Post('submit-with-images')
-  @UseGuards(TeacherGuard)
+  @UseGuards(JwtAuthGuard, TeacherGuard)
   @UseInterceptors(FilesInterceptor('images', 10))
   @ApiOperation({ summary: 'Submit a quiz with image attachments' })
   @ApiConsumes('multipart/form-data')
@@ -282,18 +281,25 @@ export class QuizController {
   @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)' })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page' })
   @ApiQuery({ name: 'difficulty', required: false, description: 'Filter by difficulty' })
+  @ApiQuery({ name: 'knowledge_point_id', required: false, description: 'Filter by knowledge point ID' })
   @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
   async listQuizzes(
     @Query('page') pageStr?: string,
     @Query('limit') limitStr?: string,
     @Query('difficulty') difficulty?: string,
+    @Query('knowledge_point_id') knowledgePointId?: string,
   ) {
     const page = pageStr ? parseInt(pageStr, 10) : 1;
     const limit = limitStr ? parseInt(limitStr, 10) : 10;
     const offset = (page - 1) * limit;
     
     // Get all quizzes for now (pagination can be added at repository level later)
-    const allQuizzes = await this.quizService.listQuizzes();
+    let allQuizzes = await this.quizService.listQuizzes();
+    
+    // Filter by knowledge point ID if provided
+    if (knowledgePointId) {
+      allQuizzes = allQuizzes.filter(quiz => quiz.knowledge_point_id === knowledgePointId);
+    }
     
     // Apply pagination in memory for now
     const paginatedQuizzes = allQuizzes.slice(offset, offset + limit);
@@ -309,7 +315,7 @@ export class QuizController {
   }
 
   @Delete(':id')
-  @UseGuards(TeacherGuard)
+  @UseGuards(JwtAuthGuard, TeacherGuard)
   @ApiOperation({ summary: 'Delete a quiz by ID' })
   @ApiResponse({ status: 200, description: 'Quiz deleted successfully' })
   @ApiResponse({ status: 404, description: 'Quiz not found' })
@@ -325,7 +331,7 @@ export class QuizController {
   }
 
   @Put(':id')
-  @UseGuards(TeacherGuard)
+  @UseGuards(JwtAuthGuard, TeacherGuard)
   @ApiOperation({ summary: 'Update a quiz by ID' })
   @ApiResponse({ status: 200, description: 'Quiz updated successfully' })
   @ApiResponse({ status: 404, description: 'Quiz not found' })
