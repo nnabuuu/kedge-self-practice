@@ -43,10 +43,21 @@ export class PracticeRepository {
   ): Promise<{ session: PracticeSession; questions: PracticeQuestion[] }> {
     try {
       const result = await this.persistentService.pgPool.transaction(async (connection) => {
+        // Debug logging for session creation
+        this.logger.log(`Creating session with data:`, {
+          sessionId,
+          studentId,
+          strategy: sessionData.strategy,
+          knowledge_point_ids: sessionData.knowledge_point_ids,
+          total_questions: sessionData.total_questions,
+          time_limit_minutes: sessionData.time_limit_minutes,
+          difficulty: sessionData.difficulty
+        });
+        
         // Create the session
         const sessionResult = await connection.query(
           sql.type(PracticeSessionSchema)`
-            INSERT INTO practice_sessions (
+            INSERT INTO kedge_practice.practice_sessions (
               id,
               student_id,
               status,
@@ -75,9 +86,17 @@ export class PracticeRepository {
         // Create all questions in batch
         const questions = [];
         for (const questionData of questionsData) {
+          // Debug logging for troubleshooting
+          this.logger.log(`Creating question with data:`, {
+            id: questionData.id,
+            session_id: sessionId,
+            quiz_id: questionData.quiz_id,
+            knowledge_point_id: questionData.knowledge_point_id
+          });
+          
           const questionResult = await connection.query(
             sql.type(PracticeQuestionSchema)`
-              INSERT INTO practice_questions (
+              INSERT INTO kedge_practice.practice_questions (
                 id,
                 session_id,
                 quiz_id,
@@ -126,7 +145,7 @@ export class PracticeRepository {
     try {
       const sessionResult = await this.persistentService.pgPool.query(
         sql.type(PracticeSessionSchema)`
-          SELECT * FROM practice_sessions
+          SELECT * FROM kedge_practice.practice_sessions
           WHERE id = ${sessionId}
           AND student_id = ${studentId}
         `
@@ -138,7 +157,7 @@ export class PracticeRepository {
 
       const questionsResult = await this.persistentService.pgPool.query(
         sql.type(PracticeQuestionSchema)`
-          SELECT * FROM practice_questions
+          SELECT * FROM kedge_practice.practice_questions
           WHERE session_id = ${sessionId}
           ORDER BY question_number
         `
@@ -170,7 +189,7 @@ export class PracticeRepository {
       if (additionalUpdates?.started_at && additionalUpdates?.completed_at) {
         result = await this.persistentService.pgPool.query(
           sql.type(PracticeSessionSchema)`
-            UPDATE practice_sessions
+            UPDATE kedge_practice.practice_sessions
             SET status = ${status},
                 started_at = NOW(),
                 completed_at = NOW(),
@@ -183,7 +202,7 @@ export class PracticeRepository {
       } else if (additionalUpdates?.started_at) {
         result = await this.persistentService.pgPool.query(
           sql.type(PracticeSessionSchema)`
-            UPDATE practice_sessions
+            UPDATE kedge_practice.practice_sessions
             SET status = ${status},
                 started_at = NOW(),
                 updated_at = NOW()
@@ -195,7 +214,7 @@ export class PracticeRepository {
       } else if (additionalUpdates?.completed_at) {
         result = await this.persistentService.pgPool.query(
           sql.type(PracticeSessionSchema)`
-            UPDATE practice_sessions
+            UPDATE kedge_practice.practice_sessions
             SET status = ${status},
                 completed_at = NOW(),
                 updated_at = NOW()
@@ -207,7 +226,7 @@ export class PracticeRepository {
       } else {
         result = await this.persistentService.pgPool.query(
           sql.type(PracticeSessionSchema)`
-            UPDATE practice_sessions
+            UPDATE kedge_practice.practice_sessions
             SET status = ${status},
                 updated_at = NOW()
             WHERE id = ${sessionId}
@@ -239,7 +258,7 @@ export class PracticeRepository {
       // Get the correct answer first
       const questionResult = await this.persistentService.pgPool.query(
         sql.type(PracticeQuestionSchema)`
-          SELECT correct_answer FROM practice_questions
+          SELECT correct_answer FROM kedge_practice.practice_questions
           WHERE id = ${questionId}
           AND session_id = ${sessionId}
         `
@@ -255,7 +274,7 @@ export class PracticeRepository {
       await this.persistentService.pgPool.transaction(async (connection) => {
         await connection.query(
           sql.type(PracticeQuestionSchema)`
-            UPDATE practice_questions
+            UPDATE kedge_practice.practice_questions
             SET student_answer = ${answer},
                 is_correct = ${isCorrect},
                 time_spent_seconds = ${timeSpentSeconds},
@@ -266,7 +285,7 @@ export class PracticeRepository {
 
         await connection.query(
           sql.type(PracticeSessionSchema)`
-            UPDATE practice_sessions
+            UPDATE kedge_practice.practice_sessions
             SET answered_questions = answered_questions + 1,
                 correct_answers = correct_answers + ${isCorrect ? 1 : 0},
                 incorrect_answers = incorrect_answers + ${isCorrect ? 0 : 1},
@@ -298,7 +317,7 @@ export class PracticeRepository {
       if (status) {
         result = await this.persistentService.pgPool.query(
           sql.type(PracticeSessionSchema)`
-            SELECT * FROM practice_sessions
+            SELECT * FROM kedge_practice.practice_sessions
             WHERE student_id = ${studentId}
             AND status = ${status}
             ORDER BY created_at DESC
@@ -309,7 +328,7 @@ export class PracticeRepository {
       } else {
         result = await this.persistentService.pgPool.query(
           sql.type(PracticeSessionSchema)`
-            SELECT * FROM practice_sessions
+            SELECT * FROM kedge_practice.practice_sessions
             WHERE student_id = ${studentId}
             ORDER BY created_at DESC
             LIMIT ${limit}
@@ -339,7 +358,7 @@ export class PracticeRepository {
       if (difficulty !== 'mixed') {
         result = await this.persistentService.pgPool.query(
           sql.type(QuizItemSchema)`
-            SELECT * FROM quizzes
+            SELECT * FROM kedge_practice.quizzes
             WHERE knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'text')})
             AND difficulty = ${difficulty}
             ORDER BY RANDOM()
@@ -349,7 +368,7 @@ export class PracticeRepository {
       } else {
         result = await this.persistentService.pgPool.query(
           sql.type(QuizItemSchema)`
-            SELECT * FROM quizzes
+            SELECT * FROM kedge_practice.quizzes
             WHERE knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'text')})
             ORDER BY RANDOM()
             LIMIT ${limit}
@@ -374,7 +393,7 @@ export class PracticeRepository {
             COUNT(*) as total_sessions,
             COUNT(*) FILTER (WHERE status = 'completed') as completed_sessions,
             AVG(score) as average_score
-          FROM practice_sessions
+          FROM kedge_practice.practice_sessions
           WHERE student_id = ${studentId}
         `
       );

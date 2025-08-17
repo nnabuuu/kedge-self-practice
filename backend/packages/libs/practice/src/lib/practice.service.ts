@@ -59,6 +59,7 @@ export class PracticeService {
         ? this.shuffleArray(quiz.options)
         : quiz.options;
 
+
       return {
         id: uuidv4(),
         quiz_id: quiz.id || uuidv4(),

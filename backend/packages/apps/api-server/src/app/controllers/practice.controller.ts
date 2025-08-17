@@ -78,7 +78,7 @@ export class PracticeController {
     @Body() createSessionDto: CreatePracticeSessionDto
   ): Promise<PracticeSessionResponseDto> {
     // Use anonymous student ID for practice sessions without authentication
-    const studentId = 'anonymous-student';
+    const studentId = '00000000-0000-0000-0000-000000000000';
     return await this.practiceService.createSession(studentId, createSessionDto);
   }
 
@@ -94,7 +94,7 @@ export class PracticeController {
     @Param('sessionId') sessionId: string
   ): Promise<PracticeSessionResponseDto> {
     // Use anonymous student ID for practice sessions without authentication
-    const studentId = 'anonymous-student';
+    const studentId = '00000000-0000-0000-0000-000000000000';
     return await this.practiceService.startSession(sessionId, studentId);
   }
 
@@ -109,7 +109,7 @@ export class PracticeController {
     @Body() submitAnswerDto: SubmitAnswerDto
   ): Promise<{ isCorrect: boolean }> {
     // Use anonymous student ID for practice sessions without authentication
-    const studentId = 'anonymous-student';
+    const studentId = '00000000-0000-0000-0000-000000000000';
     return await this.practiceService.submitAnswer(submitAnswerDto, studentId);
   }
 
@@ -157,7 +157,7 @@ export class PracticeController {
     @Body() completeSessionDto: CompleteSessionDto
   ): Promise<PracticeSessionDto> {
     // Use anonymous student ID for practice sessions without authentication
-    const studentId = 'anonymous-student';
+    const studentId = '00000000-0000-0000-0000-000000000000';
     return await this.practiceService.completeSession(completeSessionDto.session_id, studentId);
   }
 
@@ -172,7 +172,7 @@ export class PracticeController {
     @Param('sessionId') sessionId: string
   ): Promise<PracticeSessionResponseDto> {
     // Use anonymous student ID for practice sessions without authentication
-    const studentId = 'anonymous-student';
+    const studentId = '00000000-0000-0000-0000-000000000000';
     return await this.practiceService.getSession(sessionId, studentId);
   }
 
