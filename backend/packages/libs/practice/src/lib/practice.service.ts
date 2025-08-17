@@ -9,10 +9,14 @@ import {
   PracticeSessionStatus
 } from '@kedge/models';
 import { PracticeRepository } from './practice.repository';
+import { QuizService } from '@kedge/quiz';
 
 @Injectable()
 export class PracticeService {
-  constructor(private readonly practiceRepository: PracticeRepository) {}
+  constructor(
+    private readonly practiceRepository: PracticeRepository,
+    private readonly quizService: QuizService
+  ) {}
 
   async createSession(
     studentId: string,
@@ -21,12 +25,15 @@ export class PracticeService {
     const sessionId = uuidv4();
     
     // Fetch quizzes based on criteria
-    const quizzes = await this.practiceRepository.fetchQuizzes(
-      data.knowledge_point_ids,
-      data.question_count,
-      data.difficulty,
-      data.strategy
+    const allQuizzes = await this.quizService.listQuizzes();
+    
+    // Filter quizzes by knowledge point IDs
+    const filteredQuizzes = allQuizzes.filter(quiz => 
+      quiz.knowledge_point_id && data.knowledge_point_ids.includes(quiz.knowledge_point_id)
     );
+    
+    // Limit the number of questions
+    const quizzes = filteredQuizzes.slice(0, data.question_count);
 
     if (quizzes.length === 0) {
       throw new BadRequestException('No quizzes available for selected knowledge points');

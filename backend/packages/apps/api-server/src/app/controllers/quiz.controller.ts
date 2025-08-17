@@ -281,13 +281,13 @@ export class QuizController {
   @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)' })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page' })
   @ApiQuery({ name: 'difficulty', required: false, description: 'Filter by difficulty' })
-  @ApiQuery({ name: 'knowledge_point_id', required: false, description: 'Filter by knowledge point ID' })
+  @ApiQuery({ name: 'knowledge_point_id', required: false, description: 'Filter by knowledge point ID(s) - supports single ID or comma-separated multiple IDs' })
   @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
   async listQuizzes(
     @Query('page') pageStr?: string,
     @Query('limit') limitStr?: string,
     @Query('difficulty') difficulty?: string,
-    @Query('knowledge_point_id') knowledgePointId?: string,
+    @Query('knowledge_point_id') knowledgePointIds?: string,
   ) {
     const page = pageStr ? parseInt(pageStr, 10) : 1;
     const limit = limitStr ? parseInt(limitStr, 10) : 10;
@@ -296,9 +296,13 @@ export class QuizController {
     // Get all quizzes for now (pagination can be added at repository level later)
     let allQuizzes = await this.quizService.listQuizzes();
     
-    // Filter by knowledge point ID if provided
-    if (knowledgePointId) {
-      allQuizzes = allQuizzes.filter(quiz => quiz.knowledge_point_id === knowledgePointId);
+    // Filter by knowledge point ID(s) if provided
+    if (knowledgePointIds) {
+      // Support both single ID and comma-separated multiple IDs
+      const idsArray = knowledgePointIds.split(',').map(id => id.trim()).filter(id => id);
+      if (idsArray.length > 0) {
+        allQuizzes = allQuizzes.filter(quiz => quiz.knowledge_point_id && idsArray.includes(quiz.knowledge_point_id));
+      }
     }
     
     // Apply pagination in memory for now
