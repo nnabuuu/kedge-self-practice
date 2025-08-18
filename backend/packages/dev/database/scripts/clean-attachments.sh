@@ -28,33 +28,29 @@ if [ -f "$NX_WORKSPACE_ROOT/.envrc" ] && [ ! -f "/.dockerenv" ] && [ ! -d "/var/
     fi
 fi
 
-# Configuration - Auto-detect or use environment variables
-if [ -f "/.dockerenv" ] || [ -d "/var/quiz-storage" ]; then
-    # Likely on production/remote server
-    STORAGE_PATH="${QUIZ_STORAGE_PATH:-/var/quiz-storage}"
-    DB_HOST="${DB_HOST:-10.64.0.40}"
-    DB_PORT="${DB_PORT:-5432}"
-    DB_USER="${DB_USER:-arthur}"
-    DB_NAME="${DB_NAME:-arthur-test}"
-    DB_PASSWORD="${PGPASSWORD:-arthur}"
-    ENVIRONMENT="REMOTE"
-else
-    # Local development
-    # QUIZ_STORAGE_PATH should now be set from .envrc (./quiz-storage)
-    # If not set, fall back to /tmp/quiz-storage
-    STORAGE_PATH="${QUIZ_STORAGE_PATH:-/tmp/quiz-storage}"
-    
-    # If QUIZ_STORAGE_PATH is relative, make it absolute based on NX_WORKSPACE_ROOT
-    if [[ "$STORAGE_PATH" == ./* ]]; then
-        STORAGE_PATH="$NX_WORKSPACE_ROOT/${STORAGE_PATH#./}"
-    fi
-    
-    DB_HOST="${DB_HOST:-localhost}"
-    DB_PORT="${DB_PORT:-7543}"
-    DB_USER="${DB_USER:-postgres}"
-    DB_NAME="${DB_NAME:-kedge_db}"
-    DB_PASSWORD="${PGPASSWORD:-postgres}"
+# Configuration - Use environment variables if set, otherwise use defaults
+# The script respects whatever environment variables are already set
+
+# Storage path
+STORAGE_PATH="${QUIZ_STORAGE_PATH:-./quiz-storage}"
+
+# If QUIZ_STORAGE_PATH is relative, make it absolute based on NX_WORKSPACE_ROOT
+if [[ "$STORAGE_PATH" == ./* ]] || [[ "$STORAGE_PATH" == "../"* ]]; then
+    STORAGE_PATH="$NX_WORKSPACE_ROOT/${STORAGE_PATH#./}"
+fi
+
+# Database configuration - use environment variables if set
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-7543}"
+DB_USER="${DB_USER:-postgres}"
+DB_NAME="${DB_NAME:-kedge_db}"
+DB_PASSWORD="${PGPASSWORD:-postgres}"
+
+# Determine environment based on database host
+if [ "$DB_HOST" = "localhost" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
     ENVIRONMENT="LOCAL"
+else
+    ENVIRONMENT="REMOTE"
 fi
 
 # Override with command line argument if provided
