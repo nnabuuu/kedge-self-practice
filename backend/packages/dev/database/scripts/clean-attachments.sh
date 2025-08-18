@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # =================================================================
 # UNIFIED ATTACHMENT CLEANUP SCRIPT
@@ -8,6 +8,25 @@
 # =================================================================
 
 set -e
+
+# Get the backend root directory (4 levels up from this script)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+
+# Set NX_WORKSPACE_ROOT if not already set
+export NX_WORKSPACE_ROOT="${NX_WORKSPACE_ROOT:-$BACKEND_ROOT}"
+
+# Load environment variables from .envrc if it exists and we're in local environment
+if [ -f "$NX_WORKSPACE_ROOT/.envrc" ] && [ ! -f "/.dockerenv" ] && [ ! -d "/var/quiz-storage" ]; then
+    # Parse .envrc for specific environment variables without sourcing it
+    # (sourcing would fail due to direnv-specific functions)
+    if [ -z "${QUIZ_STORAGE_PATH:-}" ]; then
+        QUIZ_STORAGE_PATH=$(grep "^export QUIZ_STORAGE_PATH=" "$NX_WORKSPACE_ROOT/.envrc" | cut -d'"' -f2 | head -1)
+    fi
+    if [ -z "${NODE_DATABASE_URL:-}" ]; then
+        NODE_DATABASE_URL=$(grep "^export NODE_DATABASE_URL=" "$NX_WORKSPACE_ROOT/.envrc" | cut -d'"' -f2 | head -1)
+    fi
+fi
 
 # Configuration - Auto-detect or use environment variables
 if [ -f "/.dockerenv" ] || [ -d "/var/quiz-storage" ]; then
@@ -21,7 +40,15 @@ if [ -f "/.dockerenv" ] || [ -d "/var/quiz-storage" ]; then
     ENVIRONMENT="REMOTE"
 else
     # Local development
+    # QUIZ_STORAGE_PATH should now be set from .envrc (./quiz-storage)
+    # If not set, fall back to /tmp/quiz-storage
     STORAGE_PATH="${QUIZ_STORAGE_PATH:-/tmp/quiz-storage}"
+    
+    # If QUIZ_STORAGE_PATH is relative, make it absolute based on NX_WORKSPACE_ROOT
+    if [[ "$STORAGE_PATH" == ./* ]]; then
+        STORAGE_PATH="$NX_WORKSPACE_ROOT/${STORAGE_PATH#./}"
+    fi
+    
     DB_HOST="${DB_HOST:-localhost}"
     DB_PORT="${DB_PORT:-7543}"
     DB_USER="${DB_USER:-postgres}"
