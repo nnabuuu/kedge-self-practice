@@ -117,6 +117,52 @@ function App() {
 
   const handleEndPractice = (session: PracticeSession) => {
     setCurrentSession(session);
+    
+    // Automatically save to history when practice completes
+    if (selectedSubject) {
+      // Use backend statistics if available, otherwise calculate locally
+      const correctAnswers = session.correctAnswers !== undefined 
+        ? session.correctAnswers
+        : session.answers.filter(
+            (answer, index) => answer === session.questions[index]?.answer
+          ).length;
+      
+      const wrongAnswers = session.incorrectAnswers !== undefined
+        ? session.incorrectAnswers
+        : session.answers.filter(
+            (answer, index) => answer !== null && answer !== session.questions[index]?.answer
+          ).length;
+      
+      const totalQuestions = session.questions.length;
+      const completionRate = totalQuestions > 0 
+        ? Math.round((session.answers.filter(a => a !== null).length / totalQuestions) * 100) 
+        : 0;
+      
+      const duration = session.endTime && session.startTime 
+        ? Math.round((session.endTime.getTime() - session.startTime.getTime()) / (1000 * 60))
+        : 0;
+      
+      const historyEntry: PracticeHistory = {
+        id: session.id,
+        subjectId: selectedSubject.id,
+        subjectName: selectedSubject.name,
+        knowledgePoints: session.knowledgePoints,
+        questions: session.questions,
+        answers: session.answers,
+        questionDurations: session.questionDurations,
+        totalQuestions,
+        correctAnswers,
+        wrongAnswers,
+        completionRate,
+        date: session.endTime || new Date(),
+        duration
+      };
+      
+      // Add to history (newest first)
+      setPracticeHistory(prev => [historyEntry, ...prev]);
+      console.log('📝 [DEBUG] Practice saved to history:', historyEntry);
+    }
+    
     setCurrentScreen('quiz-results');
   };
 
@@ -140,14 +186,25 @@ function App() {
 
   const handleSaveToHistory = () => {
     if (currentSession && selectedSubject) {
-      // 计算练习统计
-      const correctAnswers = currentSession.answers.filter(
-        (answer, index) => answer === currentSession.questions[index]?.answer
-      ).length;
+      // Check if already saved (prevent duplicates)
+      const alreadySaved = practiceHistory.some(h => h.id === currentSession.id);
+      if (alreadySaved) {
+        console.log('📝 [DEBUG] Practice already in history, skipping save');
+        return;
+      }
       
-      const wrongAnswers = currentSession.answers.filter(
-        (answer, index) => answer !== null && answer !== currentSession.questions[index]?.answer
-      ).length;
+      // Use backend statistics if available, otherwise calculate locally
+      const correctAnswers = currentSession.correctAnswers !== undefined 
+        ? currentSession.correctAnswers
+        : currentSession.answers.filter(
+            (answer, index) => answer === currentSession.questions[index]?.answer
+          ).length;
+      
+      const wrongAnswers = currentSession.incorrectAnswers !== undefined
+        ? currentSession.incorrectAnswers
+        : currentSession.answers.filter(
+            (answer, index) => answer !== null && answer !== currentSession.questions[index]?.answer
+          ).length;
 
       const completionRate = Math.round((currentSession.answers.filter(a => a !== null).length / currentSession.questions.length) * 100);
       
@@ -162,6 +219,7 @@ function App() {
         knowledgePoints: currentSession.knowledgePoints,
         questions: currentSession.questions,
         answers: currentSession.answers,
+        questionDurations: currentSession.questionDurations,
         totalQuestions: currentSession.questions.length,
         correctAnswers,
         wrongAnswers,
@@ -172,6 +230,7 @@ function App() {
 
       // 添加到历史记录（最新的在前面）
       setPracticeHistory(prev => [historyEntry, ...prev]);
+      console.log('📝 [DEBUG] Practice saved to history from handleSaveToHistory:', historyEntry);
     }
   };
 
