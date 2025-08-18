@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Search, Eye, ChevronDown, ChevronUp, Tag, Layers, Book, FileText } from 'lucide-react';
-import { useQuestionSearch } from '../../hooks/useApi';
 
 interface KnowledgePoint {
   id: string;
@@ -11,6 +10,7 @@ interface KnowledgePoint {
   topic: string;
   description?: string;
   count?: number;
+  quiz_count?: number; // Add quiz count from backend
 }
 
 interface KnowledgePointManagementProps {
@@ -31,40 +31,31 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
     quizzes: 0
   });
 
-  // Get all quiz questions to calculate per-knowledge-point counts
-  const { data: allQuestions = [], loading: questionsLoading } = useQuestionSearch('*');
-
-  // Calculate quiz counts for each knowledge point
+  // Calculate quiz counts for each knowledge point (using count from backend)
   const getQuizCountForKnowledgePoint = (knowledgePointId: string): number => {
-    if (!allQuestions || !Array.isArray(allQuestions)) return 0;
-    return allQuestions.filter(q => q.relatedKnowledgePointId === knowledgePointId).length;
+    const kp = knowledgePoints.find(k => k.id === knowledgePointId);
+    return kp?.quiz_count || kp?.count || 0;
   };
 
   // Calculate quiz counts for volume level
   const getQuizCountForVolume = (volume: string): number => {
-    if (!allQuestions || !Array.isArray(allQuestions) || !knowledgePoints || !Array.isArray(knowledgePoints)) return 0;
-    return allQuestions.filter(q => {
-      const kp = knowledgePoints.find(kp => kp.id === q.relatedKnowledgePointId);
-      return kp?.volume === volume;
-    }).length;
+    return knowledgePoints
+      .filter(kp => kp.volume === volume)
+      .reduce((sum, kp) => sum + (kp.quiz_count || kp.count || 0), 0);
   };
 
   // Calculate quiz counts for unit level
   const getQuizCountForUnit = (volume: string, unit: string): number => {
-    if (!allQuestions || !Array.isArray(allQuestions) || !knowledgePoints || !Array.isArray(knowledgePoints)) return 0;
-    return allQuestions.filter(q => {
-      const kp = knowledgePoints.find(kp => kp.id === q.relatedKnowledgePointId);
-      return kp?.volume === volume && kp?.unit === unit;
-    }).length;
+    return knowledgePoints
+      .filter(kp => kp.volume === volume && kp.unit === unit)
+      .reduce((sum, kp) => sum + (kp.quiz_count || kp.count || 0), 0);
   };
 
   // Calculate quiz counts for lesson level
   const getQuizCountForLesson = (volume: string, unit: string, lesson: string): number => {
-    if (!allQuestions || !Array.isArray(allQuestions) || !knowledgePoints || !Array.isArray(knowledgePoints)) return 0;
-    return allQuestions.filter(q => {
-      const kp = knowledgePoints.find(kp => kp.id === q.relatedKnowledgePointId);
-      return kp?.volume === volume && kp?.unit === unit && kp?.lesson === lesson;
-    }).length;
+    return knowledgePoints
+      .filter(kp => kp.volume === volume && kp.unit === unit && kp.lesson === lesson)
+      .reduce((sum, kp) => sum + (kp.quiz_count || kp.count || 0), 0);
   };
 
   // Fetch knowledge points from backend
@@ -114,6 +105,19 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
       }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
+      // Calculate stats from knowledge points if API fails
+      if (knowledgePoints.length > 0) {
+        const uniqueVolumes = new Set(knowledgePoints.map(kp => kp.volume));
+        const uniqueUnits = new Set(knowledgePoints.map(kp => `${kp.volume}-${kp.unit}`));
+        const totalQuizzes = knowledgePoints.reduce((sum, kp) => sum + (kp.quiz_count || kp.count || 0), 0);
+        
+        setStats({
+          totalPoints: knowledgePoints.length,
+          volumes: uniqueVolumes.size,
+          units: uniqueUnits.size,
+          quizzes: totalQuizzes
+        });
+      }
     }
   };
 

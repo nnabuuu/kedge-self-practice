@@ -180,8 +180,9 @@ class AuthService {
         })
       });
       
-      // Try port 5174 first (common Vite dev server port when 5173 is taken)
-      const quizParserUrl = `http://localhost:5174/?${params.toString()}`;
+      // Use environment variable for quiz parser URL, fallback to localhost:5174
+      const baseUrl = import.meta.env.VITE_QUIZ_PARSER_URL || 'http://localhost:5174';
+      const quizParserUrl = `${baseUrl}/?${params.toString()}`;
       window.open(quizParserUrl, '_blank');
     }
   }

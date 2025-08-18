@@ -55,77 +55,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
   const [showEditModal, setShowEditModal] = useState(false);
   const [newTag, setNewTag] = useState('');
   const itemsPerPage = 10;
-
-  // Mock data for development - defined early so it can be used in fetchQuizzes
-  const mockQuizzes: Quiz[] = [
-    {
-      id: '1',
-      type: 'single-choice',
-      question: '中国古代的"三省六部制"中，负责草拟诏令的是哪个部门？',
-      options: ['中书省', '门下省', '尚书省', '吏部'],
-      answer: 0,
-      difficulty: 'medium',
-      knowledgePoint: {
-        topic: '三省六部制',
-        lesson: '第2课 从三省六部到内阁、军机处',
-        unit: '第一单元 中国古代政治制度',
-        volume: '中外历史纲要上'
-      },
-      createdAt: '2024-01-15',
-      tags: ['政治制度', '隋唐']
-    },
-    {
-      id: '2',
-      type: 'multiple-choice',
-      question: '下列哪些是宋代加强中央集权的措施？',
-      options: ['设立枢密院', '实行三司制度', '设立通判', '推行科举制'],
-      answer: [0, 1, 2],
-      difficulty: 'hard',
-      knowledgePoint: {
-        topic: '宋代中央集权',
-        lesson: '第3课 宋元明清的政治制度',
-        unit: '第一单元 中国古代政治制度',
-        volume: '中外历史纲要上'
-      },
-      createdAt: '2024-01-16',
-      tags: ['政治制度', '宋代']
-    },
-    {
-      id: '3',
-      type: 'fill-in-the-blank',
-      question: '秦朝建立的中央官制是______制，其中______负责军事。',
-      answer: ['三公九卿', '太尉'],
-      difficulty: 'easy',
-      knowledgePoint: {
-        topic: '秦朝政治制度',
-        lesson: '第1课 中国古代政治制度的形成与发展',
-        unit: '第一单元 中国古代政治制度',
-        volume: '中外历史纲要上'
-      },
-      createdAt: '2024-01-14',
-      tags: ['政治制度', '秦汉']
-    },
-    {
-      id: '4',
-      type: 'single-choice',
-      question: '下图展示了古代中国的行政区划演变。请问该图反映的是哪个朝代的制度？\n{{img:0}}',
-      options: ['秦朝', '汉朝', '唐朝', '元朝'],
-      answer: 2,
-      difficulty: 'medium',
-      images: ['https://via.placeholder.com/400x300/4F46E5/ffffff?text=唐朝行政区划图'],
-      knowledgePoint: {
-        topic: '行政区划',
-        lesson: '第4课 古代行政制度',
-        unit: '第一单元 中国古代政治制度',
-        volume: '中外历史纲要上'
-      },
-      createdAt: '2024-01-17',
-      tags: ['政治制度', '唐朝', '含图片']
-    }
-  ];
-
-  // Store whether we're using mock data
-  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  
   // Track if data has been initially loaded
   const [dataLoaded, setDataLoaded] = useState(false);
 
@@ -137,12 +67,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       return;
     }
     
-    // If using mock data, don't refetch when filters change
-    // The mock data deletions should persist until page refresh
-    if (isUsingMockData) {
-      console.log('Using mock data, skipping refetch');
-      return;
-    }
+    // Always refetch when filters change
     
     // For real backend data, refetch when filters change
     fetchQuizzes();
@@ -191,7 +116,6 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
           });
           console.log('Processed quizzes:', quizzesWithIds);
           setQuizzes(quizzesWithIds);
-          setIsUsingMockData(false);
           setTotalPages(Math.ceil((data.count || data.data.length) / itemsPerPage));
           
           // Extract available tags from the quizzes
@@ -203,34 +127,25 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
           });
           setAvailableTags(Array.from(allTags).sort());
         } else {
-          // No quizzes in database, use mock data
-          console.log('No quizzes found in database, using mock data');
-          setQuizzes([...mockQuizzes]); // Create a copy to avoid reference issues
-          setIsUsingMockData(true);
-          setTotalPages(Math.ceil(mockQuizzes.length / itemsPerPage));
-          
-          // Extract available tags from mock data
-          const allTags = new Set<string>();
-          mockQuizzes.forEach(quiz => {
-            if (quiz.tags && Array.isArray(quiz.tags)) {
-              quiz.tags.forEach(tag => allTags.add(tag));
-            }
-          });
-          setAvailableTags(Array.from(allTags).sort());
+          // No quizzes in database - show empty state
+          console.log('No quizzes found in database');
+          setQuizzes([]);
+          setTotalPages(0);
+          setAvailableTags([]);
         }
       } else {
-        // API call failed, use mock data
-        console.log('API call failed with status:', response.status, ', using mock data');
-        setQuizzes([...mockQuizzes]); // Create a copy to avoid reference issues
-        setIsUsingMockData(true);
-        setTotalPages(Math.ceil(mockQuizzes.length / itemsPerPage));
+        // API call failed - show empty state with error message
+        console.log('API call failed with status:', response.status);
+        setQuizzes([]);
+        setTotalPages(0);
+        setAvailableTags([]);
       }
     } catch (error) {
       console.error('Failed to fetch quizzes:', error);
-      // Use mock data for development
-      setQuizzes([...mockQuizzes]); // Create a copy to avoid reference issues
-      setIsUsingMockData(true);
-      setTotalPages(Math.ceil(mockQuizzes.length / itemsPerPage));
+      // Show empty state on error
+      setQuizzes([]);
+      setTotalPages(0);
+      setAvailableTags([]);
     } finally {
       setLoading(false);
       setDataLoaded(true);
@@ -407,15 +322,6 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       console.error('Batch delete error:', error);
       alert('批量删除操作失败，请检查网络连接并重试。');
       
-      // For demo purposes with mock data, still remove from local state
-      if (isUsingMockData) {
-        console.log('Using mock data, removing from local state anyway');
-        setQuizzes(prev => {
-          const filtered = prev.filter(q => !selectedQuizzes.has(q.id));
-          console.log(`Mock batch deleted ${selectedQuizzes.size} quizzes, remaining: ${filtered.length}`);
-          return filtered;
-        });
-      }
     }
     
     // Clear selection
@@ -879,13 +785,24 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                   <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   {quizzes.length === 0 ? (
                     <>
-                      <p className="text-gray-600 mb-4">暂无题目</p>
-                      <button
-                        onClick={handleNavigateToQuizParser}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
-                      >
-                        批量导入题目
-                      </button>
+                      <p className="text-gray-600 text-lg font-medium mb-2">题库为空</p>
+                      <p className="text-gray-500 text-sm mb-6">您还没有导入任何题目，请先导入题目开始使用</p>
+                      <div className="flex gap-4 justify-center">
+                        <button
+                          onClick={handleNavigateToQuizParser}
+                          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 flex items-center gap-2"
+                        >
+                          <Upload className="w-5 h-5" />
+                          批量导入题目
+                        </button>
+                        <button
+                          onClick={() => window.location.href = '/teacher/quiz-create'}
+                          className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300 flex items-center gap-2"
+                        >
+                          <Plus className="w-5 h-5" />
+                          手动创建题目
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <p className="text-gray-600">没有符合筛选条件的题目</p>
