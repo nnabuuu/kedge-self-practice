@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, CheckCircle2, XCircle, ArrowRight, RotateCcw, BookOpen, Brain, Sparkles, MessageSquare, Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
 import { Subject, QuizQuestion, PracticeSession, AIEvaluation } from '../types/quiz';
 import { usePracticeSession, useKnowledgePoints } from '../hooks/useApi';
+import { api } from '../services/api';
 
 interface QuizConfig {
   questionType: 'new' | 'with-wrong' | 'wrong-only';
