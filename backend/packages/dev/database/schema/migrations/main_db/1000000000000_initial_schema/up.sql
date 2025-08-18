@@ -122,7 +122,8 @@ CREATE TABLE IF NOT EXISTS kedge_practice.practice_answers (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   CONSTRAINT fk_session_id FOREIGN KEY (session_id) REFERENCES kedge_practice.practice_sessions(id) ON DELETE CASCADE,
-  CONSTRAINT fk_quiz_id FOREIGN KEY (quiz_id) REFERENCES kedge_practice.quizzes(id) ON DELETE CASCADE
+  CONSTRAINT fk_quiz_id FOREIGN KEY (quiz_id) REFERENCES kedge_practice.quizzes(id) ON DELETE CASCADE,
+  CONSTRAINT unique_session_quiz UNIQUE (session_id, quiz_id)
 );
 
 -- Practice strategies configuration
