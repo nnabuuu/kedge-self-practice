@@ -120,14 +120,14 @@ export class PracticeRepository {
           ) VALUES (
             ${sessionId},
             ${quizId},
-            ${userAnswer},
+            ${sql.json(userAnswer)},
             ${isCorrect},
             ${timeSpentSeconds},
             NOW()
           )
           ON CONFLICT (session_id, quiz_id) 
           DO UPDATE SET
-            user_answer = ${userAnswer},
+            user_answer = ${sql.json(userAnswer)},
             is_correct = ${isCorrect},
             time_spent_seconds = ${timeSpentSeconds},
             answered_at = NOW()
