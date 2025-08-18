@@ -74,7 +74,7 @@ export class PracticeService {
       throw new NotFoundException('Practice session not found');
     }
     
-    if (session.status !== 'created') {
+    if (session.status !== 'pending') {
       throw new BadRequestException(`Session cannot be started from status: ${session.status}`);
     }
 
@@ -149,7 +149,7 @@ export class PracticeService {
     return await this.practiceRepository.updateSessionStatus(
       sessionId,
       userId,
-      'paused'
+      'abandoned'
     );
   }
 
@@ -160,8 +160,8 @@ export class PracticeService {
       throw new NotFoundException('Practice session not found');
     }
     
-    if (session.status !== 'paused') {
-      throw new BadRequestException('Only paused sessions can be resumed');
+    if (session.status !== 'pending' && session.status !== 'abandoned') {
+      throw new BadRequestException('Only pending or abandoned sessions can be resumed');
     }
 
     const updatedSession = await this.practiceRepository.updateSessionStatus(

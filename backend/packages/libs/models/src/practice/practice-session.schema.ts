@@ -17,15 +17,13 @@ const nullableDateSchema = z.preprocess((arg) => {
   return arg;
 }, z.date().nullable());
 
-// Practice Strategy Enums
+// Practice Strategy Enums (must match database CHECK constraint)
 export const PracticeStrategySchema = z.enum([
   'random',
   'sequential',
-  'weakness_focused',
-  'review_incorrect',
-  'QUICK_PRACTICE',
-  'WEAKNESS_REINFORCEMENT',
-  'MISTAKE_REINFORCEMENT'
+  'adaptive',
+  'review',
+  'weakness'
 ]);
 
 export const PracticeStrategyCode = {
@@ -36,9 +34,8 @@ export const PracticeStrategyCode = {
 
 
 export const PracticeSessionStatusSchema = z.enum([
-  'created',
+  'pending',
   'in_progress',
-  'paused',
   'completed',
   'abandoned'
 ]);

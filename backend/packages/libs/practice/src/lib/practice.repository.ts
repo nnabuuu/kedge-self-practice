@@ -46,7 +46,7 @@ export class PracticeRepository {
           ) VALUES (
             ${sessionId},
             ${userId},
-            ${'created'},
+            ${'pending'},
             ${sessionData.strategy},
             ${sql.array(quizIds, 'uuid')},
             ${sessionData.total_questions},
