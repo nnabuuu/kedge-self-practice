@@ -600,11 +600,38 @@ export default function QuizPractice({
       try {
         console.log('🏁 [DEBUG] Completing practice session:', sessionId);
         await completeSession();
+        
+        // Fetch the completed session data from backend
+        const { data: sessionData } = await api.practice.getSession(sessionId);
+        
+        if (sessionData && sessionData.session) {
+          // Use backend session data with proper statistics
+          const backendSession = sessionData.session;
+          const session: PracticeSession = {
+            id: sessionId,
+            subjectId: subject.id,
+            knowledgePoints: selectedKnowledgePoints,
+            questions: sessionData.quizzes || questions,
+            answers: answers,
+            questionDurations: questionDurations,
+            startTime: startTime,
+            endTime: new Date(),
+            completed: true,
+            // Add backend statistics to the session
+            answeredQuestions: backendSession.answered_questions,
+            correctAnswers: backendSession.correct_answers,
+            incorrectAnswers: backendSession.incorrect_answers,
+            score: backendSession.score
+          };
+          onEndPractice(session);
+          return;
+        }
       } catch (error) {
         console.error('❌ [DEBUG] Failed to complete session:', error);
       }
     }
     
+    // Fallback to local session if API fails
     const session: PracticeSession = {
       id: sessionId || localSessionId,
       subjectId: subject.id,

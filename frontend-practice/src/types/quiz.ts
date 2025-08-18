@@ -44,6 +44,11 @@ export interface PracticeSession {
   startTime: Date;
   endTime?: Date;
   completed: boolean;
+  // Backend statistics (from database)
+  answeredQuestions?: number;
+  correctAnswers?: number;
+  incorrectAnswers?: number;
+  score?: number;
 }
 
 export interface PracticeHistory {

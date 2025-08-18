@@ -79,40 +79,51 @@ export default function QuizResults({
     );
   }
 
-  // 计算基础统计
+  // 计算基础统计 - 优先使用后端返回的统计数据
   const totalQuestions = session.questions.length;
-  const answeredQuestions = session.answers.filter(a => a !== null).length;
   
-  // 根据题目类型计算正确答案数
-  const correctAnswers = session.answers.filter(
-    (answer, index) => {
-      const question = session.questions[index];
-      if (question?.type === 'multiple-choice') {
-        return answer === question.answer;
-      } else if (question?.type === 'essay') {
-        // 问答题暂时按回答了就算正确（实际应该根据AI评分）
-        return answer !== null && answer.trim() !== '';
-      }
-      return false;
-    }
-  ).length;
+  // Use backend statistics if available, otherwise calculate locally
+  const answeredQuestions = session.answeredQuestions !== undefined 
+    ? session.answeredQuestions 
+    : session.answers.filter(a => a !== null).length;
   
-  const wrongAnswers = session.answers.filter(
-    (answer, index) => {
-      const question = session.questions[index];
-      if (question?.type === 'multiple-choice') {
-        return answer !== null && answer !== question.answer;
-      } else if (question?.type === 'essay') {
-        // 问答题的错误判断需要基于AI评分
-        return false; // 暂时不计算错误
-      }
-      return false;
-    }
-  ).length;
+  const correctAnswers = session.correctAnswers !== undefined
+    ? session.correctAnswers
+    : session.answers.filter(
+        (answer, index) => {
+          const question = session.questions[index];
+          if (question?.type === 'multiple-choice') {
+            return answer === question.answer;
+          } else if (question?.type === 'essay') {
+            // 问答题暂时按回答了就算正确（实际应该根据AI评分）
+            return answer !== null && answer.trim() !== '';
+          }
+          return false;
+        }
+      ).length;
+  
+  const wrongAnswers = session.incorrectAnswers !== undefined
+    ? session.incorrectAnswers
+    : session.answers.filter(
+        (answer, index) => {
+          const question = session.questions[index];
+          if (question?.type === 'multiple-choice') {
+            return answer !== null && answer !== question.answer;
+          } else if (question?.type === 'essay') {
+            // 问答题的错误判断需要基于AI评分
+            return false; // 暂时不计算错误
+          }
+          return false;
+        }
+      ).length;
   
   const unansweredQuestions = totalQuestions - answeredQuestions;
   
-  const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+  // Use backend score if available, otherwise calculate
+  const accuracy = session.score !== undefined 
+    ? Math.round(session.score)
+    : (totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0);
+  
   const completionRate = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
   
   const duration = session.endTime && session.startTime 
