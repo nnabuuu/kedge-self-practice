@@ -16,15 +16,30 @@ BACKEND_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 # Set NX_WORKSPACE_ROOT if not already set
 export NX_WORKSPACE_ROOT="${NX_WORKSPACE_ROOT:-$BACKEND_ROOT}"
 
-# Load environment variables from .envrc if it exists and we're in local environment
-if [ -f "$NX_WORKSPACE_ROOT/.envrc" ] && [ ! -f "/.dockerenv" ] && [ ! -d "/var/quiz-storage" ]; then
-    # Parse .envrc for specific environment variables without sourcing it
-    # (sourcing would fail due to direnv-specific functions)
+# Load environment variables from .env file (compiled by direnv from .envrc + .envrc.override)
+if [ -f "$NX_WORKSPACE_ROOT/.env" ]; then
+    # Parse .env for environment variables
     if [ -z "${QUIZ_STORAGE_PATH:-}" ]; then
-        QUIZ_STORAGE_PATH=$(grep "^export QUIZ_STORAGE_PATH=" "$NX_WORKSPACE_ROOT/.envrc" | cut -d'"' -f2 | head -1)
+        QUIZ_STORAGE_PATH=$(grep "^QUIZ_STORAGE_PATH=" "$NX_WORKSPACE_ROOT/.env" | cut -d'=' -f2- | head -1)
     fi
     if [ -z "${NODE_DATABASE_URL:-}" ]; then
-        NODE_DATABASE_URL=$(grep "^export NODE_DATABASE_URL=" "$NX_WORKSPACE_ROOT/.envrc" | cut -d'"' -f2 | head -1)
+        NODE_DATABASE_URL=$(grep "^NODE_DATABASE_URL=" "$NX_WORKSPACE_ROOT/.env" | cut -d'=' -f2- | head -1)
+    fi
+    # Also load other DB variables if present in .env
+    if [ -z "${DB_HOST:-}" ]; then
+        DB_HOST=$(grep "^DB_HOST=" "$NX_WORKSPACE_ROOT/.env" | cut -d'=' -f2- | head -1)
+    fi
+    if [ -z "${DB_PORT:-}" ]; then
+        DB_PORT=$(grep "^DB_PORT=" "$NX_WORKSPACE_ROOT/.env" | cut -d'=' -f2- | head -1)
+    fi
+    if [ -z "${DB_USER:-}" ]; then
+        DB_USER=$(grep "^DB_USER=" "$NX_WORKSPACE_ROOT/.env" | cut -d'=' -f2- | head -1)
+    fi
+    if [ -z "${DB_NAME:-}" ]; then
+        DB_NAME=$(grep "^DB_NAME=" "$NX_WORKSPACE_ROOT/.env" | cut -d'=' -f2- | head -1)
+    fi
+    if [ -z "${PGPASSWORD:-}" ]; then
+        PGPASSWORD=$(grep "^PGPASSWORD=" "$NX_WORKSPACE_ROOT/.env" | cut -d'=' -f2- | head -1)
     fi
 fi
 
@@ -39,12 +54,29 @@ if [[ "$STORAGE_PATH" == ./* ]] || [[ "$STORAGE_PATH" == "../"* ]]; then
     STORAGE_PATH="$NX_WORKSPACE_ROOT/${STORAGE_PATH#./}"
 fi
 
+# Parse NODE_DATABASE_URL if set and individual DB vars are not set
+if [ -n "${NODE_DATABASE_URL:-}" ] && [ -z "${DB_HOST:-}" ]; then
+    # Parse postgres://user:password@host:port/database format
+    # Remove postgres:// prefix
+    DB_URL="${NODE_DATABASE_URL#postgres://}"
+    DB_URL="${DB_URL#postgresql://}"
+    
+    # Extract user:password@host:port/database
+    if [[ "$DB_URL" =~ ^([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)$ ]]; then
+        DB_USER="${BASH_REMATCH[1]}"
+        DB_PASSWORD="${BASH_REMATCH[2]}"
+        DB_HOST="${BASH_REMATCH[3]}"
+        DB_PORT="${BASH_REMATCH[4]}"
+        DB_NAME="${BASH_REMATCH[5]}"
+    fi
+fi
+
 # Database configuration - use environment variables if set
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-7543}"
 DB_USER="${DB_USER:-postgres}"
 DB_NAME="${DB_NAME:-kedge_db}"
-DB_PASSWORD="${PGPASSWORD:-postgres}"
+DB_PASSWORD="${PGPASSWORD:-${DB_PASSWORD:-postgres}}"
 
 # Determine environment based on database host
 if [ "$DB_HOST" = "localhost" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
