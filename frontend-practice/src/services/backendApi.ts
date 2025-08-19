@@ -83,6 +83,26 @@ class BackendApiService {
     }
   }
 
+  // Helper function to normalize knowledge point ID
+  private normalizeKnowledgePointId(id: string | number): string {
+    // If it's already in the format "kp_XXX", return as is
+    if (typeof id === 'string' && id.startsWith('kp_')) {
+      return id;
+    }
+    // Otherwise, add the prefix
+    return `kp_${id}`;
+  }
+
+  // Helper function to extract numeric ID from knowledge point ID
+  private extractNumericKnowledgePointId(id: string): number {
+    // If it has the "kp_" prefix, remove it
+    if (id.startsWith('kp_')) {
+      return parseInt(id.substring(3));
+    }
+    // Otherwise, try to parse directly
+    return parseInt(id);
+  }
+
   // Convert backend quiz to frontend format
   private convertQuiz(backendQuiz: BackendQuiz): QuizQuestion {
     let type: QuizQuestion['type'] = 'single-choice';
@@ -139,7 +159,7 @@ class BackendApiService {
       options,
       answer,
       standardAnswer: type === 'essay' ? backendQuiz.correct_answer : undefined,
-      relatedKnowledgePointId: `kp_${backendQuiz.knowledge_point_id}`,
+      relatedKnowledgePointId: this.normalizeKnowledgePointId(backendQuiz.knowledge_point_id),
     };
   }
 
@@ -279,10 +299,8 @@ class BackendApiService {
 
   // Create a new quiz
   async createQuiz(quiz: Omit<QuizQuestion, 'id'>): Promise<ApiResponse<QuizQuestion>> {
-    // Extract numeric ID from format like "kp_305" -> 305
-    const kpIdStr = quiz.relatedKnowledgePointId.replace('kp_', '');
     const backendQuiz = {
-      knowledge_point_id: parseInt(kpIdStr),
+      knowledge_point_id: this.extractNumericKnowledgePointId(quiz.relatedKnowledgePointId),
       question_text: quiz.question,
       answer_options: quiz.options ? JSON.stringify(quiz.options) : null,
       correct_answer: quiz.type === 'multiple-choice' 
@@ -329,9 +347,7 @@ class BackendApiService {
                                  updates.type === 'essay' ? '问答题' : '单选题';
     }
     if (updates.relatedKnowledgePointId !== undefined) {
-      // Extract numeric ID from format like "kp_305" -> 305
-      const kpIdStr = updates.relatedKnowledgePointId.replace('kp_', '');
-      backendUpdates.knowledge_point_id = parseInt(kpIdStr);
+      backendUpdates.knowledge_point_id = this.extractNumericKnowledgePointId(updates.relatedKnowledgePointId);
     }
 
     const response = await this.makeRequest<BackendQuiz>(`/quiz/${id}`, {
