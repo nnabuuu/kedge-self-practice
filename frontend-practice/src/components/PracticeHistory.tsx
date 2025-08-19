@@ -64,6 +64,15 @@ export default function PracticeHistory({
     console.log('📊 [DEBUG] Session knowledge points:', session.knowledgePoints);
     console.log('📊 [DEBUG] Session questions:', session.questions?.length, 'questions');
     
+    // Log first few questions to see their structure
+    if (session.questions && session.questions.length > 0) {
+      console.log('📊 [DEBUG] Sample questions:', session.questions.slice(0, 3).map(q => ({
+        id: q.id,
+        relatedKnowledgePointId: q.relatedKnowledgePointId,
+        question: q.question.substring(0, 50) + '...'
+      })));
+    }
+    
     // 创建统计映射
     const statsMap = new Map<string, { correct: number; total: number }>();
     

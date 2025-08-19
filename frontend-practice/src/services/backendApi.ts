@@ -537,32 +537,71 @@ class BackendApiService {
       show_answer_immediately: config.show_answer_immediately || false
     };
 
-    const response = await this.makeRequest<{session: any, quizzes: any[]}>('/practice/sessions/create', {
+    const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>('/practice/sessions/create', {
       method: 'POST',
       body: JSON.stringify(sessionData)
     });
 
     console.log('📊 [DEBUG] Practice session creation response:', response);
+    
+    // Convert the quizzes to frontend format if they exist
+    if (response.success && response.data && response.data.quizzes) {
+      const convertedQuizzes = response.data.quizzes.map(quiz => this.convertQuiz(quiz));
+      return {
+        ...response,
+        data: {
+          ...response.data,
+          quizzes: convertedQuizzes
+        }
+      };
+    }
+    
     return response;
   }
 
   async startPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
     console.log('🎯 [DEBUG] Starting practice session:', sessionId);
     
-    const response = await this.makeRequest<{session: any, quizzes: any[]}>(`/practice/sessions/${sessionId}/start`, {
+    const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>(`/practice/sessions/${sessionId}/start`, {
       method: 'POST'
     });
 
     console.log('📊 [DEBUG] Practice session start response:', response);
+    
+    // Convert the quizzes to frontend format
+    if (response.success && response.data && response.data.quizzes) {
+      const convertedQuizzes = response.data.quizzes.map(quiz => this.convertQuiz(quiz));
+      return {
+        ...response,
+        data: {
+          ...response.data,
+          quizzes: convertedQuizzes
+        }
+      };
+    }
+    
     return response;
   }
 
   async getPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
     console.log('📖 [DEBUG] Getting practice session:', sessionId);
     
-    const response = await this.makeRequest<{session: any, quizzes: any[]}>(`/practice/sessions/${sessionId}`);
+    const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>(`/practice/sessions/${sessionId}`);
 
     console.log('📊 [DEBUG] Practice session get response:', response);
+    
+    // Convert the quizzes to frontend format
+    if (response.success && response.data && response.data.quizzes) {
+      const convertedQuizzes = response.data.quizzes.map(quiz => this.convertQuiz(quiz));
+      return {
+        ...response,
+        data: {
+          ...response.data,
+          quizzes: convertedQuizzes
+        }
+      };
+    }
+    
     return response;
   }
 
