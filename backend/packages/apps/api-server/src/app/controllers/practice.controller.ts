@@ -317,78 +317,88 @@ export class PracticeController {
   }
 
   @Get('analysis/weak-knowledge-points')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get weak knowledge points from recent practice sessions' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Weak knowledge points analysis',
   })
   async getWeakKnowledgePoints(
-    @Query('userId') userId?: string,
+    @Request() req: AuthenticatedRequest,
     @Query('limit') limit: string = '20'
   ): Promise<any> {
-    const targetUserId = userId || 'anonymous';
-    return await this.practiceService.analyzeWeakKnowledgePoints(targetUserId, parseInt(limit));
+    const userId = req.user.userId;
+    return await this.practiceService.analyzeWeakKnowledgePoints(userId, parseInt(limit));
   }
 
   @Get('analysis/wrong-questions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get wrong questions from recent practice sessions' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Wrong questions from recent sessions',
   })
   async getWrongQuestions(
-    @Query('userId') userId?: string,
+    @Request() req: AuthenticatedRequest,
     @Query('limit') limit: string = '5'
   ): Promise<any> {
-    const targetUserId = userId || 'anonymous';
-    return await this.practiceService.getRecentWrongQuestions(targetUserId, parseInt(limit));
+    const userId = req.user.userId;
+    return await this.practiceService.getRecentWrongQuestions(userId, parseInt(limit));
   }
 
   @Get('analysis/quick-practice-suggestion')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get suggested knowledge points for quick practice' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Suggested knowledge points based on last practice',
   })
   async getQuickPracticeSuggestion(
-    @Query('userId') userId?: string
+    @Request() req: AuthenticatedRequest
   ): Promise<any> {
-    const targetUserId = userId || 'anonymous';
-    return await this.practiceService.getLastPracticeKnowledgePoints(targetUserId);
+    const userId = req.user.userId;
+    return await this.practiceService.getLastPracticeKnowledgePoints(userId);
   }
 
   @Get('analysis/knowledge-stats')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get detailed statistics for knowledge points' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Knowledge point statistics',
   })
   async getKnowledgePointStats(
-    @Query('userId') userId?: string,
+    @Request() req: AuthenticatedRequest,
     @Query('subjectId') subjectId?: string,
     @Query('limit') limit: string = '20'
   ): Promise<any> {
-    const targetUserId = userId || 'anonymous';
+    const userId = req.user.userId;
     return await this.practiceService.getKnowledgePointStatistics(
-      targetUserId, 
+      userId, 
       subjectId,
       parseInt(limit)
     );
   }
 
   @Post('sessions/create-wrong-questions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a practice session with wrong questions from recent sessions' })
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Wrong questions practice session created successfully',
   })
   async createWrongQuestionsSession(
-    @Query('userId') userId?: string,
+    @Request() req: AuthenticatedRequest,
     @Query('sessionLimit') sessionLimit: string = '5'
   ): Promise<any> {
-    const targetUserId = userId || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user.userId;
     return await this.practiceService.createWrongQuestionsSession(
-      targetUserId, 
+      userId, 
       parseInt(sessionLimit)
     );
   }

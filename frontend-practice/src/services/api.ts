@@ -258,16 +258,26 @@ export class ApiService {
   // Create wrong questions practice session
   static async createWrongQuestionsSession(userId?: string, sessionLimit = 5): Promise<ApiResponse<any>> {
     try {
+      const token = localStorage.getItem('jwt_token');
+      
+      if (!token) {
+        return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
+      }
+      
       const params = new URLSearchParams();
-      if (userId) params.append('userId', userId);
       params.append('sessionLimit', sessionLimit.toString());
       
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/practice/sessions/create-wrong-questions?${params}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
+      
+      if (response.status === 401) {
+        return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

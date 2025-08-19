@@ -15,13 +15,29 @@ export function useWeakKnowledgePoints(userId?: string, limit = 20) {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Check if user is authenticated
+        const token = localStorage.getItem('jwt_token');
+        if (!token) {
+          setError('Authentication required');
+          setData(null);
+          setLoading(false);
+          return;
+        }
+        
         setLoading(true);
         const result = await practiceAnalysisApi.getWeakKnowledgePoints(userId, limit);
         setData(result);
         setError(null);
       } catch (err) {
-        setError((err as Error).message);
+        const errorMessage = (err as Error).message;
+        setError(errorMessage);
         setData(null);
+        
+        // If authentication error, could trigger redirect to login
+        if (errorMessage.includes('Authentication required')) {
+          // You could trigger a redirect here if needed
+          // window.location.href = '/login';
+        }
       } finally {
         setLoading(false);
       }
@@ -41,13 +57,29 @@ export function useWrongQuestions(userId?: string, limit = 5) {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Check if user is authenticated
+        const token = localStorage.getItem('jwt_token');
+        if (!token) {
+          setError('Authentication required');
+          setData(null);
+          setLoading(false);
+          return;
+        }
+        
         setLoading(true);
         const result = await practiceAnalysisApi.getWrongQuestions(userId, limit);
         setData(result);
         setError(null);
       } catch (err) {
-        setError((err as Error).message);
+        const errorMessage = (err as Error).message;
+        setError(errorMessage);
         setData(null);
+        
+        // If authentication error, could trigger redirect to login
+        if (errorMessage.includes('Authentication required')) {
+          // You could trigger a redirect here if needed
+          // window.location.href = '/login';
+        }
       } finally {
         setLoading(false);
       }
@@ -67,13 +99,29 @@ export function useQuickPracticeSuggestion(userId?: string) {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Check if user is authenticated
+        const token = localStorage.getItem('jwt_token');
+        if (!token) {
+          setError('Authentication required');
+          setData(null);
+          setLoading(false);
+          return;
+        }
+        
         setLoading(true);
         const result = await practiceAnalysisApi.getQuickPracticeSuggestion(userId);
         setData(result);
         setError(null);
       } catch (err) {
-        setError((err as Error).message);
+        const errorMessage = (err as Error).message;
+        setError(errorMessage);
         setData(null);
+        
+        // If authentication error, could trigger redirect to login
+        if (errorMessage.includes('Authentication required')) {
+          // You could trigger a redirect here if needed
+          // window.location.href = '/login';
+        }
       } finally {
         setLoading(false);
       }
@@ -93,13 +141,29 @@ export function useKnowledgePointStats(userId?: string, subjectId?: string, limi
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Check if user is authenticated
+        const token = localStorage.getItem('jwt_token');
+        if (!token) {
+          setError('Authentication required');
+          setData(null);
+          setLoading(false);
+          return;
+        }
+        
         setLoading(true);
         const result = await practiceAnalysisApi.getKnowledgePointStats(userId, subjectId, limit);
         setData(result);
         setError(null);
       } catch (err) {
-        setError((err as Error).message);
+        const errorMessage = (err as Error).message;
+        setError(errorMessage);
         setData(null);
+        
+        // If authentication error, could trigger redirect to login
+        if (errorMessage.includes('Authentication required')) {
+          // You could trigger a redirect here if needed
+          // window.location.href = '/login';
+        }
       } finally {
         setLoading(false);
       }

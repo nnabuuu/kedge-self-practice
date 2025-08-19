@@ -204,8 +204,22 @@ function App() {
   // Handler for wrong questions practice
   const handleWrongQuestionsPractice = async (questionIds: string[]) => {
     try {
+      // Check if user is logged in
+      const token = localStorage.getItem('jwt_token');
+      if (!token) {
+        alert('请先登录后再使用错题练习功能。');
+        setCurrentScreen('login');
+        return;
+      }
+      
       // Create a wrong questions practice session using the backend API
       const response = await api.practice.createWrongQuestionsSession(undefined, 5);
+      
+      if (!response.success && response.error?.includes('Authentication required')) {
+        alert('请先登录后再使用错题练习功能。');
+        setCurrentScreen('login');
+        return;
+      }
       
       if (response.success && response.data) {
         const { session, quizzes } = response.data;
@@ -234,7 +248,7 @@ function App() {
         setCurrentScreen('quiz-practice');
       } else {
         // If no wrong questions found or error occurred
-        alert(response.data?.message || '暂无错题记录。请先完成几次练习后再使用此功能。');
+        alert(response.data?.message || response.error || '暂无错题记录。请先完成几次练习后再使用此功能。');
       }
     } catch (error) {
       console.error('Failed to create wrong questions session:', error);
