@@ -301,7 +301,6 @@ function App() {
       
       // Add to history (newest first)
       setPracticeHistory(prev => [historyEntry, ...prev]);
-      console.log('📝 [DEBUG] Practice saved to history:', historyEntry);
     }
     
     setCurrentScreen('quiz-results');
@@ -330,7 +329,6 @@ function App() {
       // Check if already saved (prevent duplicates)
       const alreadySaved = practiceHistory.some(h => h.id === currentSession.id);
       if (alreadySaved) {
-        console.log('📝 [DEBUG] Practice already in history, skipping save');
         return;
       }
       
@@ -371,7 +369,6 @@ function App() {
 
       // 添加到历史记录（最新的在前面）
       setPracticeHistory(prev => [historyEntry, ...prev]);
-      console.log('📝 [DEBUG] Practice saved to history from handleSaveToHistory:', historyEntry);
     }
   };
 

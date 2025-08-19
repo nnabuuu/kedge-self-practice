@@ -202,7 +202,6 @@ class BackendApiService {
 
   // Get knowledge points by subject
   async getKnowledgePointsBySubject(subjectId: string): Promise<ApiResponse<KnowledgePoint[]>> {
-    console.log('🔍 [DEBUG] Getting knowledge points for subject:', subjectId);
     
     // Backend doesn't have subject filtering yet, so get all and filter client-side
     const response = await this.getAllKnowledgePoints();
@@ -213,7 +212,6 @@ class BackendApiService {
       const filteredKPs = response.data.filter(kp => 
         subjectId === 'history' || !subjectId // For now, all KPs are history
       );
-      console.log(`📚 [DEBUG] Found ${filteredKPs.length} knowledge points for ${subjectId}:`, filteredKPs.map(kp => `${kp.id}: ${kp.topic}`));
       return {
         success: true,
         data: filteredKPs
@@ -243,13 +241,11 @@ class BackendApiService {
 
   // Get quizzes by knowledge points - optimized to use single API call
   async getQuizzesByKnowledgePoints(knowledgePointIds: string[]): Promise<ApiResponse<QuizQuestion[]>> {
-    console.log('🔍 [DEBUG] Requesting quizzes for knowledge points:', knowledgePointIds);
     
     // Backend expects string IDs like "kp_305"
     const validIds = knowledgePointIds.filter(id => id && id.trim() !== '');
     
     if (validIds.length === 0) {
-      console.log('⚠️ [DEBUG] No valid knowledge point IDs provided');
       return {
         success: true,
         data: []
@@ -258,24 +254,20 @@ class BackendApiService {
 
     // Use single API call with comma-separated knowledge point IDs
     const idsParam = validIds.join(',');
-    console.log(`🌐 [DEBUG] Making optimized API request: /quiz?knowledge_point_id=${idsParam}`);
     
     const response = await this.makeRequest<{success: boolean, data: BackendQuiz[], count: number, total: number}>(
       `/quiz?knowledge_point_id=${idsParam}`
     );
     
-    console.log(`📊 [DEBUG] API response:`, response);
     
     if (response.success && response.data && response.data.data) {
       const quizzes = response.data.data.map(quiz => this.convertQuiz(quiz));
-      console.log(`✅ [DEBUG] Found ${quizzes.length} total quizzes for ${validIds.length} knowledge points`);
       return {
         success: true,
         data: quizzes
       };
     }
 
-    console.log(`❌ [DEBUG] No quizzes found for knowledge points: ${validIds.join(', ')}`);
     return {
       success: true,
       data: []
@@ -524,7 +516,6 @@ class BackendApiService {
     allow_review?: boolean;
     show_answer_immediately?: boolean;
   }): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
-    console.log('🔥 [DEBUG] Creating practice session with config:', config);
     
     const sessionData = {
       knowledge_point_ids: config.knowledge_point_ids,
@@ -542,7 +533,6 @@ class BackendApiService {
       body: JSON.stringify(sessionData)
     });
 
-    console.log('📊 [DEBUG] Practice session creation response:', response);
     
     // Convert the quizzes to frontend format if they exist
     if (response.success && response.data && response.data.quizzes) {
@@ -560,13 +550,11 @@ class BackendApiService {
   }
 
   async startPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
-    console.log('🎯 [DEBUG] Starting practice session:', sessionId);
     
     const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>(`/practice/sessions/${sessionId}/start`, {
       method: 'POST'
     });
 
-    console.log('📊 [DEBUG] Practice session start response:', response);
     
     // Convert the quizzes to frontend format
     if (response.success && response.data && response.data.quizzes) {
@@ -584,11 +572,9 @@ class BackendApiService {
   }
 
   async getPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
-    console.log('📖 [DEBUG] Getting practice session:', sessionId);
     
     const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>(`/practice/sessions/${sessionId}`);
 
-    console.log('📊 [DEBUG] Practice session get response:', response);
     
     // Convert the quizzes to frontend format
     if (response.success && response.data && response.data.quizzes) {
@@ -606,7 +592,6 @@ class BackendApiService {
   }
 
   async submitPracticeAnswer(sessionId: string, questionId: string, answer: string, timeSpent: number): Promise<ApiResponse<{isCorrect: boolean}>> {
-    console.log('✅ [DEBUG] Submitting answer for session:', sessionId, 'question:', questionId);
     
     const answerData = {
       session_id: sessionId,
@@ -620,19 +605,16 @@ class BackendApiService {
       body: JSON.stringify(answerData)
     });
 
-    console.log('📊 [DEBUG] Answer submission response:', response);
     return response;
   }
 
   async completePracticeSession(sessionId: string): Promise<ApiResponse<any>> {
-    console.log('🏁 [DEBUG] Completing practice session:', sessionId);
     
     const response = await this.makeRequest<any>('/practice/sessions/complete', {
       method: 'POST',
       body: JSON.stringify({ session_id: sessionId })
     });
 
-    console.log('📊 [DEBUG] Session completion response:', response);
     return response;
   }
 }

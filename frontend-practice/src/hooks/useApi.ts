@@ -354,17 +354,14 @@ export function usePracticeSession(config: {
     setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
-      console.log('🔥 [DEBUG] Creating practice session with config:', config);
       const response = await api.practice.createSession(config);
       
       if (response.success && response.data) {
-        console.log('✅ [DEBUG] Practice session created successfully:', response.data);
         
         // Start the session immediately after creation
         const startResponse = await api.practice.startSession(response.data.session.id);
         
         if (startResponse.success && startResponse.data) {
-          console.log('🎯 [DEBUG] Practice session started successfully:', startResponse.data);
           setState({
             session: startResponse.data.session,
             questions: startResponse.data.quizzes, // Backend returns 'quizzes', not 'questions'
@@ -379,7 +376,7 @@ export function usePracticeSession(config: {
         throw new Error(response.error || 'Failed to create practice session');
       }
     } catch (error) {
-      console.error('❌ [DEBUG] Practice session creation failed:', error);
+      console.error('Practice session creation failed:', error);
       let errorMessage = 'Practice session creation failed';
       if (error instanceof Error) {
         if (error.message.includes('Network') || error.message.includes('fetch')) {

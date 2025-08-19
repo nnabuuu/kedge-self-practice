@@ -284,10 +284,8 @@ export default function QuizPractice({
 
   useEffect(() => {
     if (sessionQuestions && sessionQuestions.length > 0) {
-      console.log('🔄 [DEBUG] Converting session questions to frontend format:', sessionQuestions);
       
       const convertedQuestions = sessionQuestions.map(convertSessionQuestion);
-      console.log('✅ [DEBUG] Converted questions:', convertedQuestions);
       
       setQuestions(convertedQuestions);
       setAnswers(new Array(convertedQuestions.length).fill(null));
@@ -338,10 +336,9 @@ export default function QuizPractice({
         const questionId = sessionQuestions[currentQuestionIndex].id;
         // Convert letter (A, B, C, D) to index (0, 1, 2, 3) for backend
         const optionIndex = answer.charCodeAt(0) - 'A'.charCodeAt(0);
-        console.log('📝 [DEBUG] Submitting single choice answer to session:', sessionId, questionId, `${optionIndex} (from ${answer})`, duration);
         await submitSessionAnswer(questionId, String(optionIndex), duration);
       } catch (error) {
-        console.error('❌ [DEBUG] Failed to submit single choice answer to session:', error);
+        console.error('Failed to submit answer:', error);
         // Continue with local handling even if API submission fails
       }
     }
@@ -539,16 +536,14 @@ export default function QuizPractice({
             // Multiple choice - convert letters to indices
             const indices = currentAnswer.map(letter => letter.charCodeAt(0) - 'A'.charCodeAt(0));
             answerString = indices.join(',');
-            console.log('📝 [DEBUG] Submitting multiple choice answer:', sessionId, questionId, `${answerString} (from ${currentAnswer.join(',')})`, duration);
           } else {
             // Essay or other text answer
             answerString = currentAnswer;
-            console.log('📝 [DEBUG] Submitting text answer:', sessionId, questionId, answerString, duration);
           }
           
           await submitSessionAnswer(questionId, answerString, duration);
         } catch (error) {
-          console.error('❌ [DEBUG] Failed to submit answer to session:', error);
+          console.error('Failed to submit answer:', error);
           // Continue with local handling even if API submission fails
         }
       }
@@ -599,7 +594,6 @@ export default function QuizPractice({
     // Complete the session via the API if we have an active session
     if (sessionId && completeSession) {
       try {
-        console.log('🏁 [DEBUG] Completing practice session:', sessionId);
         await completeSession();
         
         // Fetch the completed session data from backend
@@ -628,7 +622,7 @@ export default function QuizPractice({
           return;
         }
       } catch (error) {
-        console.error('❌ [DEBUG] Failed to complete session:', error);
+        console.error('Failed to complete session:', error);
       }
     }
     
