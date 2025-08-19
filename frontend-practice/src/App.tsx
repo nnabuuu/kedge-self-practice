@@ -66,9 +66,12 @@ function App() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const { isOnline, backendStatus } = useConnectionStatus();
+  const [isNavigatingHistory, setIsNavigatingHistory] = useState(false);
 
   // Check for existing authentication on app start
   useEffect(() => {
+    let targetScreen: Screen = 'login';
+    
     const existingUser = authService.getCurrentUser();
     if (existingUser && authService.isAuthenticated()) {
       setUserType(existingUser.role);
@@ -92,7 +95,8 @@ function App() {
       const savedScreen = sessionStorage.getItem('currentScreen');
       if (savedScreen && savedScreen !== 'login') {
         // Restore the previous screen if it exists
-        setCurrentScreen(savedScreen as Screen);
+        targetScreen = savedScreen as Screen;
+        setCurrentScreen(targetScreen);
         
         // Also restore subject if it was saved
         const savedSubject = sessionStorage.getItem('selectedSubject');
@@ -105,16 +109,19 @@ function App() {
         }
       } else {
         // Default behavior: students go to home, teachers get a choice
-        if (existingUser.role === 'student') {
-          setCurrentScreen('home');
-        } else if (existingUser.role === 'teacher') {
-          // For teachers, default to home so they can choose where to go
-          setCurrentScreen('home');
-        } else {
-          setCurrentScreen('home');
-        }
+        targetScreen = 'home';
+        setCurrentScreen('home');
       }
     }
+    
+    // Set initial browser history entry for the first page load
+    // This ensures we always have a valid state when going back
+    const initialState = {
+      screen: targetScreen,
+      subject: selectedSubject,
+      knowledgePoints: selectedKnowledgePoints || []
+    };
+    window.history.replaceState(initialState, '', `#${targetScreen}`);
   }, []);
 
   // Save current screen to session storage when it changes
@@ -130,6 +137,66 @@ function App() {
       localStorage.setItem('lastSelectedSubject', JSON.stringify(selectedSubject));
     }
   }, [selectedSubject]);
+
+  // Navigate to a screen and update browser history
+  const navigateToScreen = (screen: Screen, updateHistory = true) => {
+    if (screen === currentScreen) return;
+    
+    setCurrentScreen(screen);
+    
+    // Update browser history when not navigating via browser buttons
+    if (updateHistory && !isNavigatingHistory) {
+      const state = {
+        screen,
+        subject: selectedSubject,
+        knowledgePoints: selectedKnowledgePoints
+      };
+      const url = `#${screen}`;
+      window.history.pushState(state, '', url);
+    }
+  };
+
+  // Handle browser back/forward button navigation
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      setIsNavigatingHistory(true);
+      
+      if (event.state) {
+        // Restore state from history
+        setCurrentScreen(event.state.screen);
+        if (event.state.subject !== undefined) {
+          setSelectedSubject(event.state.subject);
+        }
+        if (event.state.knowledgePoints !== undefined) {
+          setSelectedKnowledgePoints(event.state.knowledgePoints);
+        }
+      } else {
+        // Handle initial page or when state is null
+        // This happens when we go back to the very first page load
+        const hash = window.location.hash.slice(1) as Screen;
+        if (hash && ['login', 'home', 'subject-selection', 'practice-menu', 'knowledge-selection', 
+                     'quiz-practice', 'quiz-results', 'knowledge-analysis', 'practice-history', 
+                     'teacher-dashboard'].includes(hash)) {
+          setCurrentScreen(hash);
+        } else if (authService.isAuthenticated()) {
+          // If authenticated but no hash, go to home
+          setCurrentScreen('home');
+        } else {
+          // Not authenticated and no hash, go to login
+          setCurrentScreen('login');
+        }
+      }
+      
+      setTimeout(() => setIsNavigatingHistory(false), 100);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+  
 
   const handleLogin = async (type: 'student' | 'teacher', userData: any) => {
     setUserType(type);
@@ -158,8 +225,8 @@ function App() {
       });
     }
     
-    // Auto-route teachers to teacher dashboard, students to home
-    setCurrentScreen(type === 'teacher' ? 'teacher-dashboard' : 'home');
+    // Both students and teachers go to home page after login
+    navigateToScreen('home');
   };
 
   const handleLogout = () => {
@@ -167,7 +234,7 @@ function App() {
     practiceAnalysisApi.clearCache(); // Clear cached practice data
     setUserType(null);
     setCurrentUser(null);
-    setCurrentScreen('login');
+    navigateToScreen('login');
     // Keep the selected subject even after logout (user preference)
     // setSelectedSubject(null);  // Commented out to preserve subject selection
     setCurrentSession(null);
@@ -179,38 +246,38 @@ function App() {
   const handleStartPractice = () => {
     // Always go to subject selection when starting from home page
     // This ensures users can choose or change their subject
-    setCurrentScreen('subject-selection');
+    navigateToScreen('subject-selection');
   };
 
   const handleTeacherLogin = () => {
     if (userType === 'teacher') {
       // Go to teacher dashboard with the last selected subject if available
-      setCurrentScreen('teacher-dashboard');
+      navigateToScreen('teacher-dashboard');
     }
   };
 
   const handleSelectSubject = (subject: Subject) => {
     setSelectedSubject(subject);
-    setCurrentScreen('practice-menu');
+    navigateToScreen('practice-menu');
   };
 
   const handleStartPracticeSession = () => {
     setSelectedKnowledgePoints([]);
-    setCurrentScreen('knowledge-selection');
+    navigateToScreen('knowledge-selection');
   };
 
   const handleViewHistory = () => {
-    setCurrentScreen('practice-history');
+    navigateToScreen('practice-history');
   };
 
   const handleViewKnowledgeAnalysis = () => {
-    setCurrentScreen('knowledge-analysis');
+    navigateToScreen('knowledge-analysis');
   };
 
   const handleStartQuiz = (knowledgePoints: string[], config: QuizConfig) => {
     setSelectedKnowledgePoints(knowledgePoints);
     setQuizConfig(config);
-    setCurrentScreen('quiz-practice');
+    navigateToScreen('quiz-practice');
   };
   
   // Handler for quick practice (5-10 min with last knowledge points)
@@ -222,7 +289,7 @@ function App() {
       shuffleQuestions: true,
       showExplanation: true
     });
-    setCurrentScreen('quiz-practice');
+    navigateToScreen('quiz-practice');
   };
   
   // Handler for weak points practice
@@ -234,7 +301,7 @@ function App() {
       shuffleQuestions: true,
       showExplanation: true
     });
-    setCurrentScreen('quiz-practice');
+    navigateToScreen('quiz-practice');
   };
   
   // Handler for wrong questions practice
@@ -244,7 +311,7 @@ function App() {
       const token = localStorage.getItem('jwt_token');
       if (!token) {
         alert('请先登录后再使用错题练习功能。');
-        setCurrentScreen('login');
+        navigateToScreen('login');
         return;
       }
       
@@ -253,7 +320,7 @@ function App() {
       
       if (!response.success && response.error?.includes('Authentication required')) {
         alert('请先登录后再使用错题练习功能。');
-        setCurrentScreen('login');
+        navigateToScreen('login');
         return;
       }
       
@@ -281,7 +348,7 @@ function App() {
           status: 'pending'
         });
         
-        setCurrentScreen('quiz-practice');
+        navigateToScreen('quiz-practice');
       } else {
         // If no wrong questions found or error occurred
         alert(response.data?.message || response.error || '暂无错题记录。请先完成几次练习后再使用此功能。');
@@ -339,21 +406,21 @@ function App() {
       setPracticeHistory(prev => [historyEntry, ...prev]);
     }
     
-    setCurrentScreen('quiz-results');
+    navigateToScreen('quiz-results');
   };
 
   const handleReturnToMenu = () => {
     setCurrentSession(null);
-    setCurrentScreen('practice-menu');
+    navigateToScreen('practice-menu');
   };
 
   const handleRetryQuiz = () => {
-    setCurrentScreen('quiz-practice');
+    navigateToScreen('quiz-practice');
   };
 
   const handleEnhancementRound = (knowledgePoints: string[]) => {
     setSelectedKnowledgePoints(knowledgePoints);
-    setCurrentScreen('knowledge-selection');
+    navigateToScreen('knowledge-selection');
   };
 
   const handleDeleteHistory = (historyId: string) => {
@@ -411,33 +478,33 @@ function App() {
   const handleBack = () => {
     switch (currentScreen) {
       case 'subject-selection':
-        setCurrentScreen('home');
+        navigateToScreen('home');
         break;
       case 'practice-menu':
-        setCurrentScreen('subject-selection');
+        navigateToScreen('subject-selection');
         break;
       case 'knowledge-selection':
-        setCurrentScreen('practice-menu');
+        navigateToScreen('practice-menu');
         break;
       case 'quiz-practice':
-        setCurrentScreen('knowledge-selection');
+        navigateToScreen('knowledge-selection');
         break;
       case 'quiz-results':
         // 保存到历史记录并返回菜单
         handleSaveToHistory();
-        setCurrentScreen('practice-menu');
+        navigateToScreen('practice-menu');
         break;
       case 'knowledge-analysis':
-        setCurrentScreen('practice-menu');
+        navigateToScreen('practice-menu');
         break;
       case 'practice-history':
-        setCurrentScreen('practice-menu');
+        navigateToScreen('practice-menu');
         break;
       case 'teacher-dashboard':
-        setCurrentScreen('home');
+        navigateToScreen('home');
         break;
       default:
-        setCurrentScreen('home');
+        navigateToScreen('home');
     }
   };
 
@@ -513,15 +580,15 @@ function App() {
             onEnhancementRound={handleEnhancementRound}
             onViewHistory={() => {
               handleSaveToHistory();
-              setCurrentScreen('practice-history');
+              navigateToScreen('practice-history');
             }}
             onViewKnowledgeAnalysis={() => {
               handleSaveToHistory();
-              setCurrentScreen('knowledge-analysis');
+              navigateToScreen('knowledge-analysis');
             }}
             onReturnHome={() => {
               handleSaveToHistory();
-              setCurrentScreen('home');
+              navigateToScreen('home');
             }}
           />
         ) : null;
@@ -575,8 +642,8 @@ function App() {
     setRetryCount(0);
     // Force re-render of current screen
     const temp = currentScreen;
-    setCurrentScreen('login');
-    setTimeout(() => setCurrentScreen(temp), 0);
+    navigateToScreen('login', false);
+    setTimeout(() => navigateToScreen(temp, false), 0);
   };
 
   // Show connection error if backend is offline
