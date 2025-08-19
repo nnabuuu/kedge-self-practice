@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { ArrowLeft, MessageSquare, Send, Bot, User, TrendingUp, Target, BookOpen, Brain, Sparkles, BarChart3, Zap, CheckCircle2, XCircle, Clock, Award } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { ArrowLeft, TrendingUp, Target, BookOpen, BarChart3, Zap, CheckCircle2, XCircle, Clock, Award } from 'lucide-react';
 import { Subject, PracticeHistory } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import { useKnowledgePointStats } from '../hooks/usePracticeAnalysis';
@@ -11,12 +11,6 @@ interface KnowledgeAnalysisProps {
   onEnhancementRound: (knowledgePoints: string[]) => void;
 }
 
-interface ChatMessage {
-  id: string;
-  type: 'user' | 'ai';
-  content: string;
-  timestamp: Date;
-}
 
 interface KnowledgePointStats {
   id: string;
@@ -39,16 +33,6 @@ export default function KnowledgeAnalysis({
   onBack, 
   onEnhancementRound 
 }: KnowledgeAnalysisProps) {
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      type: 'ai',
-      content: `你好！我是你的${subject.name}学习助手。我可以帮你分析学习情况，制定学习计划，解答学习中的疑问。有什么我可以帮助你的吗？`,
-      timestamp: new Date()
-    }
-  ]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
 
   // Use API hook to get knowledge points
   const { data: knowledgePoints = [], loading: knowledgePointsLoading } = useKnowledgePoints(subject.id);
@@ -103,72 +87,6 @@ export default function KnowledgeAnalysis({
   const overallAccuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
   const practiceCount = statsData?.sessions_analyzed || 0;
 
-  // 模拟AI回复
-  const generateAIResponse = (userMessage: string): string => {
-    const message = userMessage.toLowerCase();
-    
-    if (message.includes('薄弱') || message.includes('不会') || message.includes('错题')) {
-      if (weakKnowledgePoints.length > 0) {
-        const weakTopics = knowledgePointStats
-          .filter(stat => weakKnowledgePoints.includes(stat.id))
-          .slice(0, 3)
-          .map(stat => stat.topic);
-        return `根据你的练习数据分析，你在以下知识点还需要加强：${weakTopics.join('、')}。建议你重点复习这些内容，可以通过专项练习来提高掌握程度。`;
-      } else {
-        return '从你的练习数据来看，各个知识点掌握都不错！继续保持这种学习状态。';
-      }
-    }
-    
-    if (message.includes('学习计划') || message.includes('怎么学') || message.includes('建议')) {
-      return `基于你当前的学习情况（总体准确率${overallAccuracy}%），我建议：\n1. 继续保持定期练习的习惯\n2. 重点关注准确率较低的知识点\n3. 可以尝试错题重练来巩固薄弱环节\n4. 建议每周至少进行2-3次练习`;
-    }
-    
-    if (message.includes('进步') || message.includes('提高') || message.includes('成绩')) {
-      return `你已经完成了${practiceCount}次练习，总体准确率达到${overallAccuracy}%。${strongKnowledgePoints}个知识点掌握优秀！继续努力，相信你会取得更大进步。`;
-    }
-    
-    if (message.includes('时间') || message.includes('多久')) {
-      return '建议每次练习控制在15-30分钟，这样既能保持专注度，又不会产生疲劳感。可以根据自己的时间安排，每天或隔天进行一次练习。';
-    }
-    
-    // 默认回复
-    return '我理解你的问题。基于你的学习数据，我建议你可以多关注那些准确率较低的知识点，通过针对性练习来提高。如果有具体的学习问题，随时可以问我！';
-  };
-
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: inputMessage,
-      timestamp: new Date()
-    };
-
-    setChatMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
-    setIsTyping(true);
-
-    // 模拟AI思考时间
-    setTimeout(() => {
-      const aiResponse: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: generateAIResponse(inputMessage),
-        timestamp: new Date()
-      };
-      
-      setChatMessages(prev => [...prev, aiResponse]);
-      setIsTyping(false);
-    }, 1000 + Math.random() * 2000);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
 
   const getMasteryColor = (level: string) => {
     switch (level) {
@@ -241,9 +159,7 @@ export default function KnowledgeAnalysis({
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* 左侧：学习概览和知识点分析 */}
-            <div className="lg:col-span-2 space-y-8">
+          <div className="space-y-8">
               {/* 学习概览 */}
               <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center tracking-wide">
@@ -364,107 +280,6 @@ export default function KnowledgeAnalysis({
                   
                 </div>
               </div>
-            </div>
-
-            {/* 右侧：AI学习助手 */}
-            <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 flex flex-col h-fit lg:sticky lg:top-6">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center tracking-wide">
-                  <Brain className="w-6 h-6 text-purple-500 mr-2" />
-                  AI学习助手
-                </h2>
-                <p className="text-sm text-gray-600 mt-2 tracking-wide">
-                  基于你的学习数据提供个性化建议
-                </p>
-              </div>
-              
-              {/* 聊天消息区域 */}
-              <div className="flex-1 p-6 max-h-96 overflow-y-auto">
-                <div className="space-y-4">
-                  {chatMessages.map(message => (
-                    <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`flex items-start space-x-2 max-w-xs ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          message.type === 'user' 
-                            ? 'bg-blue-500' 
-                            : 'bg-gradient-to-br from-purple-500 to-indigo-600'
-                        }`}>
-                          {message.type === 'user' ? (
-                            <User className="w-4 h-4 text-white" />
-                          ) : (
-                            <Bot className="w-4 h-4 text-white" />
-                          )}
-                        </div>
-                        <div className={`p-3 rounded-2xl ${
-                          message.type === 'user'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-900'
-                        }`}>
-                          <p className="text-sm leading-relaxed whitespace-pre-line tracking-wide">{message.content}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="flex items-start space-x-2 max-w-xs">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                          <Bot className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="p-3 rounded-2xl bg-gray-100">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {/* 输入区域 */}
-              <div className="p-6 border-t border-gray-200">
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="问我任何学习相关的问题..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm tracking-wide"
-                    disabled={isTyping}
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isTyping}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                {/* 快速问题建议 */}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {[
-                    '我的薄弱点是什么？',
-                    '如何制定学习计划？',
-                    '学习建议'
-                  ].map(suggestion => (
-                    <button
-                      key={suggestion}
-                      onClick={() => setInputMessage(suggestion)}
-                      className="px-3 py-1 text-xs bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition-colors duration-300 tracking-wide"
-                      disabled={isTyping}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
