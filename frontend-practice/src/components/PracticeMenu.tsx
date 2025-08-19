@@ -376,7 +376,7 @@ export default function PracticeMenu({
                                 </li>
                                 <li className="flex items-start">
                                   <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
-                                  <span>找出错误率>40%的知识点</span>
+                                  <span>找出错误率{'>'} 40%的知识点</span>
                                 </li>
                                 <li className="flex items-start">
                                   <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
