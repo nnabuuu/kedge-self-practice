@@ -75,12 +75,9 @@ export default function HomePage({
           <div className="text-center mb-16">
             {/* Welcome Message */}
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+              <h2 className="text-2xl font-semibold text-gray-800">
                 欢迎回来，{currentUser?.name}！
               </h2>
-              <p className="text-gray-600">
-                {userType === 'teacher' ? '管理您的课程和学生练习' : '开始您的学习之旅'}
-              </p>
             </div>
 
             <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl mb-8 shadow-xl shadow-blue-500/25 transform hover:scale-105 transition-all duration-300">
@@ -105,7 +102,7 @@ export default function HomePage({
                 className="group inline-flex items-center px-12 py-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xl font-bold rounded-3xl hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 ease-out shadow-2xl shadow-blue-500/30 hover:shadow-3xl hover:shadow-blue-500/50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
               >
                 <Sparkles className="w-8 h-8 mr-4 group-hover:rotate-12 transition-transform duration-300" />
-                <span className="tracking-wide">开始学习练习</span>
+                <span className="tracking-wide">开始练习</span>
                 <ArrowRight className="w-8 h-8 ml-4 group-hover:translate-x-2 transition-transform duration-300" />
               </button>
             </div>

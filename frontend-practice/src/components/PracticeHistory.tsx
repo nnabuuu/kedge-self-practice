@@ -45,11 +45,14 @@ export default function PracticeHistory({
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
 
   // Use API hook to get knowledge points
-  const { data: knowledgePoints = [] } = useKnowledgePoints(subject.id);
+  const { data: knowledgePoints, loading: knowledgePointsLoading } = useKnowledgePoints(subject.id);
 
   const subjectHistory = history.filter(h => h.subjectId === subject.id);
 
   const getKnowledgePointById = (pointId: string) => {
+    if (!knowledgePoints || !Array.isArray(knowledgePoints)) {
+      return null;
+    }
     return knowledgePoints.find(kp => kp.id === pointId);
   };
 
@@ -255,6 +258,42 @@ export default function PracticeHistory({
     const remainingMinutes = minutes % 60;
     return `${hours}小时${remainingMinutes}分钟`;
   };
+
+  // Show loading state while knowledge points are being fetched
+  if (knowledgePointsLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50/80 via-blue-50/60 to-indigo-100/80 relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/8 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-400/8 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative z-10 p-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center mb-8">
+              <button
+                onClick={onBack}
+                className="group flex items-center text-gray-700 hover:text-gray-900 transition-all duration-300 ease-out bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-4 py-2 rounded-xl hover:bg-white/90 shadow-lg hover:shadow-xl border-2 border-transparent hover:border-gray-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
+                <span className="font-medium tracking-wide">返回</span>
+              </button>
+            </div>
+
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 tracking-wide">加载中...</h2>
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+              <p className="text-gray-600 mt-4 tracking-wide">
+                正在加载知识点数据...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (subjectHistory.length === 0) {
     return (

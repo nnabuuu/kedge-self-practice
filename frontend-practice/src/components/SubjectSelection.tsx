@@ -6,6 +6,7 @@ import { Subject } from '../types/quiz';
 interface SubjectSelectionProps {
   onSelectSubject: (subject: Subject) => void;
   onBack: () => void;
+  currentSubject?: Subject | null;
 }
 
 const iconMap = {
@@ -13,9 +14,24 @@ const iconMap = {
   Dna
 };
 
-export default function SubjectSelection({ onSelectSubject, onBack }: SubjectSelectionProps) {
+export default function SubjectSelection({ onSelectSubject, onBack, currentSubject }: SubjectSelectionProps) {
   // Use API hook to get subjects
   const { data: subjects = [], loading, error } = useSubjects();
+  
+  // Get the last selected subject from localStorage if no current subject
+  const lastSelectedSubject = React.useMemo(() => {
+    if (currentSubject) return currentSubject;
+    
+    const saved = localStorage.getItem('lastSelectedSubject');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }, [currentSubject]);
 
   // Show loading state
   if (loading) {
@@ -102,15 +118,29 @@ export default function SubjectSelection({ onSelectSubject, onBack }: SubjectSel
               const IconComponent = iconMap[subject.icon as keyof typeof iconMap];
               const isHistory = subject.id === 'history';
               const isBiology = subject.id === 'biology';
+              const isLastSelected = lastSelectedSubject?.id === subject.id;
               
               return (
                 <button
                   key={subject.id}
                   onClick={() => onSelectSubject(subject)}
-                  className="group bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-3xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 hover:-translate-y-2 transition-all duration-500 ease-out border border-white/20 text-left relative overflow-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                  className={`group bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-3xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 hover:-translate-y-2 transition-all duration-500 ease-out border text-left relative overflow-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none ${
+                    isLastSelected 
+                      ? 'border-blue-400 ring-2 ring-blue-200 ring-offset-2' 
+                      : 'border-white/20'
+                  }`}
                 >
                   {/* Card background gradient */}
                   <div className="absolute inset-0 bg-gradient-to-br from-transparent to-blue-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  
+                  {/* Recently Used Badge */}
+                  {isLastSelected && (
+                    <div className="absolute top-3 right-3 z-20">
+                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        最近使用
+                      </span>
+                    </div>
+                  )}
                   
                   <div className="relative z-10">
                     <div className={`w-20 h-20 ${subject.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-xl`}>

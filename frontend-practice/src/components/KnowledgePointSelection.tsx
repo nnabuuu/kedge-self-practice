@@ -339,6 +339,83 @@ export default function KnowledgePointSelection({
               </p>
             </div>
 
+            {/* Practice Mode Presets - New Design */}
+            <div className="mb-8">
+              <div className="flex flex-wrap gap-3 justify-center">
+                <button
+                  onClick={() => setQuizConfig({
+                    questionType: 'new',
+                    questionCount: 10,
+                    shuffleQuestions: true,
+                    showExplanation: true
+                  })}
+                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                    quizConfig.questionType === 'new' && quizConfig.questionCount === 10
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
+                      : 'bg-white/70 text-gray-700 hover:bg-white hover:shadow-md border border-gray-200'
+                  }`}
+                >
+                  <span className="mr-2">⚡</span>
+                  快速练习
+                  <span className="ml-2 text-sm opacity-80">10题</span>
+                </button>
+                
+                <button
+                  onClick={() => setQuizConfig({
+                    questionType: 'new',
+                    questionCount: 20,
+                    shuffleQuestions: true,
+                    showExplanation: true
+                  })}
+                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                    quizConfig.questionType === 'new' && quizConfig.questionCount === 20
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
+                      : 'bg-white/70 text-gray-700 hover:bg-white hover:shadow-md border border-gray-200'
+                  }`}
+                >
+                  <span className="mr-2">📚</span>
+                  标准练习
+                  <span className="ml-2 text-sm opacity-80">20题</span>
+                </button>
+                
+                <button
+                  onClick={() => setQuizConfig({
+                    questionType: 'new',
+                    questionCount: 'unlimited',
+                    shuffleQuestions: true,
+                    showExplanation: true
+                  })}
+                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                    quizConfig.questionType === 'new' && quizConfig.questionCount === 'unlimited'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
+                      : 'bg-white/70 text-gray-700 hover:bg-white hover:shadow-md border border-gray-200'
+                  }`}
+                >
+                  <span className="mr-2">♾️</span>
+                  完整练习
+                  <span className="ml-2 text-sm opacity-80">全部题目</span>
+                </button>
+                
+                <button
+                  onClick={() => setQuizConfig({
+                    questionType: 'wrong-only',
+                    questionCount: 'unlimited',
+                    shuffleQuestions: true,
+                    showExplanation: true
+                  })}
+                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                    quizConfig.questionType === 'wrong-only'
+                      ? 'bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg scale-105'
+                      : 'bg-white/70 text-gray-700 hover:bg-white hover:shadow-md border border-gray-200'
+                  }`}
+                >
+                  <span className="mr-2">🎯</span>
+                  错题复习
+                  <span className="ml-2 text-sm opacity-80">仅错题</span>
+                </button>
+              </div>
+            </div>
+
             {/* 配置选项 */}
             <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20 mb-6">
               <div className="grid md:grid-cols-2 gap-8">
@@ -462,37 +539,6 @@ export default function KnowledgePointSelection({
                       </div>
                     </label>
 
-                    {/* 快速配置预设 */}
-                    <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                      <div className="flex items-center mb-3">
-                        <Zap className="w-5 h-5 text-blue-600 mr-2" />
-                        <span className="font-medium text-blue-900 tracking-wide">快速配置</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => setQuizConfig({
-                            questionType: 'new',
-                            questionCount: 20,
-                            shuffleQuestions: true,
-                            showExplanation: true
-                          })}
-                          className="px-3 py-2 bg-white/80 text-blue-700 text-sm rounded-lg hover:bg-white transition-colors duration-300 border border-blue-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-                        >
-                          🎯 标准练习
-                        </button>
-                        <button
-                          onClick={() => setQuizConfig({
-                            questionType: 'wrong-only',
-                            questionCount: 'unlimited',
-                            shuffleQuestions: true,
-                            showExplanation: true
-                          })}
-                          className="px-3 py-2 bg-white/80 text-red-700 text-sm rounded-lg hover:bg-white transition-colors duration-300 border border-red-200 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none"
-                        >
-                          ❌ 错题强化
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>

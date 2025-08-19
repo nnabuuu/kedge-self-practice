@@ -40,7 +40,18 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userType, setUserType] = useState<'student' | 'teacher' | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  // Load saved subject from localStorage on init
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(() => {
+    const saved = localStorage.getItem('lastSelectedSubject');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [selectedKnowledgePoints, setSelectedKnowledgePoints] = useState<string[]>([]);
   const [quizConfig, setQuizConfig] = useState<QuizConfig>({
     questionType: 'new',
@@ -60,10 +71,49 @@ function App() {
     if (existingUser && authService.isAuthenticated()) {
       setUserType(existingUser.role);
       setCurrentUser(existingUser);
-      // Auto-route teachers to teacher dashboard, students to home
-      setCurrentScreen(existingUser.role === 'teacher' ? 'teacher-dashboard' : 'home');
+      
+      // Check if there's a saved screen preference (for page refresh)
+      const savedScreen = sessionStorage.getItem('currentScreen');
+      if (savedScreen && savedScreen !== 'login') {
+        // Restore the previous screen if it exists
+        setCurrentScreen(savedScreen as Screen);
+        
+        // Also restore subject if it was saved
+        const savedSubject = sessionStorage.getItem('selectedSubject');
+        if (savedSubject) {
+          try {
+            setSelectedSubject(JSON.parse(savedSubject));
+          } catch (e) {
+            console.error('Failed to restore subject:', e);
+          }
+        }
+      } else {
+        // Default behavior: students go to home, teachers get a choice
+        if (existingUser.role === 'student') {
+          setCurrentScreen('home');
+        } else if (existingUser.role === 'teacher') {
+          // For teachers, default to home so they can choose where to go
+          setCurrentScreen('home');
+        } else {
+          setCurrentScreen('home');
+        }
+      }
     }
   }, []);
+
+  // Save current screen to session storage when it changes
+  useEffect(() => {
+    if (currentScreen !== 'login') {
+      sessionStorage.setItem('currentScreen', currentScreen);
+    }
+  }, [currentScreen]);
+
+  // Save selected subject to localStorage whenever it changes (persists across sessions)
+  useEffect(() => {
+    if (selectedSubject) {
+      localStorage.setItem('lastSelectedSubject', JSON.stringify(selectedSubject));
+    }
+  }, [selectedSubject]);
 
   const handleLogin = (type: 'student' | 'teacher', userData: any) => {
     setUserType(type);
@@ -77,16 +127,27 @@ function App() {
     setUserType(null);
     setCurrentUser(null);
     setCurrentScreen('login');
-    setSelectedSubject(null);
+    // Keep the selected subject even after logout (user preference)
+    // setSelectedSubject(null);  // Commented out to preserve subject selection
     setCurrentSession(null);
+    // Clear session storage
+    sessionStorage.removeItem('currentScreen');
+    // Note: We keep lastSelectedSubject in localStorage
   };
 
   const handleStartPractice = () => {
-    setCurrentScreen('subject-selection');
+    // If we have a saved subject, go directly to practice menu
+    if (selectedSubject) {
+      setCurrentScreen('practice-menu');
+    } else {
+      // Otherwise, go to subject selection
+      setCurrentScreen('subject-selection');
+    }
   };
 
   const handleTeacherLogin = () => {
     if (userType === 'teacher') {
+      // Go to teacher dashboard with the last selected subject if available
       setCurrentScreen('teacher-dashboard');
     }
   };
@@ -290,6 +351,7 @@ function App() {
           <SubjectSelection 
             onSelectSubject={handleSelectSubject}
             onBack={handleBack}
+            currentSubject={selectedSubject}
           />
         );
       
@@ -361,6 +423,8 @@ function App() {
         return userType === 'teacher' && currentUser ? (
           <TeacherDashboard
             teacher={currentUser}
+            selectedSubject={selectedSubject}
+            onSelectSubject={setSelectedSubject}
             onBack={handleBack}
           />
         ) : null;

@@ -11,6 +11,8 @@ import QuizBankManagement from '../pages/teacher/QuizBankManagement';
 
 interface TeacherDashboardProps {
   teacher: Teacher;
+  selectedSubject?: Subject | null;
+  onSelectSubject?: (subject: Subject) => void;
   onBack: () => void;
 }
 
@@ -24,7 +26,7 @@ interface TeacherStats {
   monthlyPracticeSessions: number;
 }
 
-export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardProps) {
+export default function TeacherDashboard({ teacher, selectedSubject: propsSelectedSubject, onSelectSubject, onBack }: TeacherDashboardProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
   
   // Use API hooks to fetch data
@@ -32,7 +34,23 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
   const { data: knowledgePoints = [], loading: knowledgePointsLoading } = useKnowledgePoints();
   const { data: quizQuestions = [], loading: questionsLoading } = useQuestionSearch('');
   
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  // Use the selected subject from props, or maintain local state
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(propsSelectedSubject || null);
+  
+  // Update local state when props change
+  useEffect(() => {
+    if (propsSelectedSubject) {
+      setSelectedSubject(propsSelectedSubject);
+    }
+  }, [propsSelectedSubject]);
+  
+  // Handle subject selection
+  const handleSelectSubject = (subject: Subject) => {
+    setSelectedSubject(subject);
+    if (onSelectSubject) {
+      onSelectSubject(subject);
+    }
+  };
   const [statistics, setStatistics] = useState<TeacherStats>({
     totalStudents: 0,
     activeStudents: 0,
@@ -80,13 +98,13 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
           }
           
           if (subjectToSelect) {
-            setSelectedSubject(subjectToSelect);
+            handleSelectSubject(subjectToSelect);
           }
         } catch (error) {
           console.error('Failed to load subject preference:', error);
           // Fallback to first subject
           if (subjects.length > 0) {
-            setSelectedSubject(subjects[0]);
+            handleSelectSubject(subjects[0]);
           }
         }
       };
@@ -318,7 +336,12 @@ export default function TeacherDashboard({ teacher, onBack }: TeacherDashboardPr
             <div className="flex items-center space-x-4">
               <select
                 value={selectedSubject?.id || ''}
-                onChange={(e) => setSelectedSubject(subjects.find(s => s.id === e.target.value) || null)}
+                onChange={(e) => {
+                  const subject = subjects.find(s => s.id === e.target.value);
+                  if (subject) {
+                    handleSelectSubject(subject);
+                  }
+                }}
                 className="px-4 py-2 bg-white/70 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">选择学科</option>
