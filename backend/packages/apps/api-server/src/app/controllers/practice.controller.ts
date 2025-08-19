@@ -315,4 +315,64 @@ export class PracticeController {
     await this.strategyService.recordCorrection(userId, recordCorrectionDto.quiz_id);
     return { success: true };
   }
+
+  @Get('analysis/weak-knowledge-points')
+  @ApiOperation({ summary: 'Get weak knowledge points from recent practice sessions' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Weak knowledge points analysis',
+  })
+  async getWeakKnowledgePoints(
+    @Query('userId') userId?: string,
+    @Query('limit') limit: string = '20'
+  ): Promise<any> {
+    const targetUserId = userId || 'anonymous';
+    return await this.practiceService.analyzeWeakKnowledgePoints(targetUserId, parseInt(limit));
+  }
+
+  @Get('analysis/wrong-questions')
+  @ApiOperation({ summary: 'Get wrong questions from recent practice sessions' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Wrong questions from recent sessions',
+  })
+  async getWrongQuestions(
+    @Query('userId') userId?: string,
+    @Query('limit') limit: string = '5'
+  ): Promise<any> {
+    const targetUserId = userId || 'anonymous';
+    return await this.practiceService.getRecentWrongQuestions(targetUserId, parseInt(limit));
+  }
+
+  @Get('analysis/quick-practice-suggestion')
+  @ApiOperation({ summary: 'Get suggested knowledge points for quick practice' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Suggested knowledge points based on last practice',
+  })
+  async getQuickPracticeSuggestion(
+    @Query('userId') userId?: string
+  ): Promise<any> {
+    const targetUserId = userId || 'anonymous';
+    return await this.practiceService.getLastPracticeKnowledgePoints(targetUserId);
+  }
+
+  @Get('analysis/knowledge-stats')
+  @ApiOperation({ summary: 'Get detailed statistics for knowledge points' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Knowledge point statistics',
+  })
+  async getKnowledgePointStats(
+    @Query('userId') userId?: string,
+    @Query('subjectId') subjectId?: string,
+    @Query('limit') limit: string = '20'
+  ): Promise<any> {
+    const targetUserId = userId || 'anonymous';
+    return await this.practiceService.getKnowledgePointStatistics(
+      targetUserId, 
+      subjectId,
+      parseInt(limit)
+    );
+  }
 }

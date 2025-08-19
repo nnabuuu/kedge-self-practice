@@ -243,4 +243,197 @@ export class PracticeService {
     }
     return shuffled;
   }
+
+  // Analysis methods for smart practice features
+  async analyzeWeakKnowledgePoints(userId: string, sessionLimit = 20): Promise<any> {
+    // Get recent sessions
+    const recentSessions = await this.getSessionHistory(userId, 'completed', sessionLimit, 0);
+    
+    if (recentSessions.length === 0) {
+      return { weak_points: [], message: 'No practice history found' };
+    }
+
+    // Analyze answers to find knowledge points with high error rates
+    const knowledgeStats = new Map<string, { correct: number; total: number }>();
+    
+    for (const session of recentSessions) {
+      const answers = await this.practiceRepository.getAnswersForSession(session.id);
+      
+      for (const answer of answers) {
+        // Get the quiz to find its knowledge point
+        const quiz = await this.quizService.getQuizById(answer.quiz_id);
+        if (quiz && quiz.knowledge_point_id) {
+          const kpId = quiz.knowledge_point_id;
+          
+          if (!knowledgeStats.has(kpId)) {
+            knowledgeStats.set(kpId, { correct: 0, total: 0 });
+          }
+          
+          const stat = knowledgeStats.get(kpId)!;
+          stat.total++;
+          if (answer.is_correct) {
+            stat.correct++;
+          }
+        }
+      }
+    }
+    
+    // Find knowledge points with error rate > 40%
+    const weakPoints = [];
+    for (const [kpId, stat] of knowledgeStats.entries()) {
+      const errorRate = 1 - (stat.correct / stat.total);
+      if (errorRate > 0.4) {
+        weakPoints.push({
+          knowledge_point_id: kpId,
+          error_rate: Math.round(errorRate * 100),
+          total_questions: stat.total,
+          correct_answers: stat.correct
+        });
+      }
+    }
+    
+    // Sort by error rate (highest first)
+    weakPoints.sort((a, b) => b.error_rate - a.error_rate);
+    
+    return {
+      weak_points: weakPoints,
+      sessions_analyzed: recentSessions.length
+    };
+  }
+
+  async getRecentWrongQuestions(userId: string, sessionLimit = 5): Promise<any> {
+    const recentSessions = await this.getSessionHistory(userId, 'completed', sessionLimit, 0);
+    
+    if (recentSessions.length === 0) {
+      return { wrong_questions: [], message: 'No practice history found' };
+    }
+
+    const wrongQuestionIds = new Set<string>();
+    
+    for (const session of recentSessions) {
+      const answers = await this.practiceRepository.getAnswersForSession(session.id);
+      
+      for (const answer of answers) {
+        if (!answer.is_correct) {
+          wrongQuestionIds.add(answer.quiz_id);
+        }
+      }
+    }
+    
+    return {
+      wrong_question_ids: Array.from(wrongQuestionIds),
+      total_count: wrongQuestionIds.size,
+      sessions_analyzed: recentSessions.length
+    };
+  }
+
+  async getLastPracticeKnowledgePoints(userId: string): Promise<any> {
+    const lastSession = await this.practiceRepository.getLastCompletedSession(userId);
+    
+    if (!lastSession) {
+      return { knowledge_points: [], message: 'No completed sessions found' };
+    }
+
+    // Get unique knowledge points from the last session
+    const knowledgePointIds = new Set<string>();
+    
+    for (const quizId of lastSession.quiz_ids) {
+      const quiz = await this.quizService.getQuizById(quizId);
+      if (quiz && quiz.knowledge_point_id) {
+        knowledgePointIds.add(quiz.knowledge_point_id);
+      }
+    }
+    
+    return {
+      knowledge_point_ids: Array.from(knowledgePointIds),
+      session_id: lastSession.id,
+      session_date: lastSession.updated_at
+    };
+  }
+
+  async getKnowledgePointStatistics(
+    userId: string, 
+    subjectId?: string,
+    sessionLimit = 20
+  ): Promise<any> {
+    const recentSessions = await this.getSessionHistory(userId, 'completed', sessionLimit, 0);
+    
+    if (recentSessions.length === 0) {
+      return { statistics: [], message: 'No practice history found' };
+    }
+
+    const knowledgeStats = new Map<string, {
+      correct: number;
+      total: number;
+      wrong: number;
+      last_practiced?: Date;
+    }>();
+    
+    for (const session of recentSessions) {
+      const answers = await this.practiceRepository.getAnswersForSession(session.id);
+      
+      for (const answer of answers) {
+        const quiz = await this.quizService.getQuizById(answer.quiz_id);
+        
+        // Filter by subject if specified
+        if (quiz && quiz.knowledge_point_id) {
+          if (subjectId) {
+            // TODO: Check if knowledge point belongs to subject
+            // This would require joining with knowledge_points table
+          }
+          
+          const kpId = quiz.knowledge_point_id;
+          
+          if (!knowledgeStats.has(kpId)) {
+            knowledgeStats.set(kpId, { 
+              correct: 0, 
+              total: 0, 
+              wrong: 0 
+            });
+          }
+          
+          const stat = knowledgeStats.get(kpId)!;
+          stat.total++;
+          
+          if (answer.is_correct) {
+            stat.correct++;
+          } else {
+            stat.wrong++;
+          }
+          
+          stat.last_practiced = session.updated_at;
+        }
+      }
+    }
+    
+    // Convert to array and calculate metrics
+    const statistics = [];
+    for (const [kpId, stat] of knowledgeStats.entries()) {
+      const accuracy = stat.total > 0 
+        ? Math.round((stat.correct / stat.total) * 100) 
+        : 0;
+      
+      statistics.push({
+        knowledge_point_id: kpId,
+        total_questions: stat.total,
+        correct_answers: stat.correct,
+        wrong_answers: stat.wrong,
+        accuracy,
+        last_practiced: stat.last_practiced,
+        mastery_level: 
+          accuracy >= 90 ? 'excellent' :
+          accuracy >= 75 ? 'good' :
+          accuracy >= 60 ? 'needs-improvement' :
+          'poor'
+      });
+    }
+    
+    // Sort by wrong answers (most errors first)
+    statistics.sort((a, b) => b.wrong_answers - a.wrong_answers);
+    
+    return {
+      statistics,
+      sessions_analyzed: recentSessions.length
+    };
+  }
 }

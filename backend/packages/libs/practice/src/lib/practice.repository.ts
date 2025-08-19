@@ -323,4 +323,49 @@ export class PracticeRepository {
       throw error;
     }
   }
+
+  async getAnswersForSession(sessionId: string): Promise<any[]> {
+    try {
+      const result = await this.persistentService.pgPool.query(sql.unsafe`
+        SELECT 
+          id,
+          session_id,
+          quiz_id,
+          user_answer,
+          is_correct,
+          time_spent_seconds,
+          created_at
+        FROM kedge_practice.practice_answers
+        WHERE session_id = ${sessionId}
+        ORDER BY created_at ASC
+      `);
+
+      return result.rows;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error getting answers for session: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  async getLastCompletedSession(userId: string): Promise<PracticeSession | null> {
+    try {
+      const result = await this.persistentService.pgPool.query(
+        sql.type(PracticeSessionSchema)`
+          SELECT *
+          FROM kedge_practice.practice_sessions
+          WHERE user_id = ${userId}
+            AND status = 'completed'
+          ORDER BY updated_at DESC
+          LIMIT 1
+        `
+      );
+
+      return result.rows[0] || null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error getting last completed session: ${errorMessage}`);
+      throw error;
+    }
+  }
 }
