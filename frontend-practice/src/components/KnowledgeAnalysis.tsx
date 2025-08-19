@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { ArrowLeft, TrendingUp, Target, BookOpen, BarChart3, Zap, CheckCircle2, XCircle, Clock, Award } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ArrowLeft, TrendingUp, Target, BookOpen, BarChart3, Zap, CheckCircle2, XCircle, Clock, Award, Info, ChevronDown, ChevronUp, AlertCircle, TrendingDown, Minus, Play, HelpCircle } from 'lucide-react';
 import { Subject, PracticeHistory } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import { useKnowledgePointStats } from '../hooks/usePracticeAnalysis';
@@ -33,6 +33,9 @@ export default function KnowledgeAnalysis({
   onBack, 
   onEnhancementRound 
 }: KnowledgeAnalysisProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<'overview' | 'details' | null>('overview');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'weak' | 'strong'>('weak');
 
   // Use API hook to get knowledge points
   const { data: knowledgePoints = [], loading: knowledgePointsLoading } = useKnowledgePoints(subject.id);
@@ -86,6 +89,32 @@ export default function KnowledgeAnalysis({
   const totalCorrect = knowledgePointStats.reduce((sum, stat) => sum + stat.correctAnswers, 0);
   const overallAccuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
   const practiceCount = statsData?.sessions_analyzed || 0;
+
+  // Filter knowledge points based on selection
+  const filteredStats = useMemo(() => {
+    switch (selectedFilter) {
+      case 'weak':
+        return knowledgePointStats.filter(stat => 
+          stat.masteryLevel === 'poor' || stat.masteryLevel === 'needs-improvement'
+        );
+      case 'strong':
+        return knowledgePointStats.filter(stat => 
+          stat.masteryLevel === 'excellent' || stat.masteryLevel === 'good'
+        );
+      default:
+        return knowledgePointStats;
+    }
+  }, [knowledgePointStats, selectedFilter]);
+
+  // Get performance trend (mock data for now)
+  const getTrend = () => {
+    // In real implementation, compare with previous period
+    if (overallAccuracy >= 75) return 'up';
+    if (overallAccuracy >= 50) return 'stable';
+    return 'down';
+  };
+
+  const trend = getTrend();
 
 
   const getMasteryColor = (level: string) => {
@@ -159,126 +188,260 @@ export default function KnowledgeAnalysis({
             </p>
           </div>
 
-          <div className="space-y-8">
-              {/* 学习概览 */}
-              <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center tracking-wide">
-                  <TrendingUp className="w-6 h-6 text-blue-500 mr-2" />
-                  学习概览
-                </h2>
+          <div className="space-y-6">
+              {/* Key Performance Indicator - Most Prominent */}
+              <div className={`bg-gradient-to-br ${
+                overallAccuracy >= 75 ? 'from-green-50 to-emerald-50 border-green-200' :
+                overallAccuracy >= 50 ? 'from-yellow-50 to-amber-50 border-yellow-200' :
+                'from-red-50 to-orange-50 border-red-200'
+              } backdrop-blur-sm rounded-2xl shadow-lg p-6 border-2`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-6 pl-2">
+                    <div className={`w-20 h-20 rounded-2xl flex items-center justify-center ${
+                      overallAccuracy >= 75 ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
+                      overallAccuracy >= 50 ? 'bg-gradient-to-br from-yellow-500 to-amber-600' :
+                      'bg-gradient-to-br from-red-500 to-orange-600'
+                    } shadow-lg`}>
+                      <span className="text-3xl font-bold text-white">{overallAccuracy}%</span>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-1">总体准确率</h2>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">基于最近 {practiceCount} 次练习</span>
+                        {trend === 'up' && (
+                          <div className="flex items-center text-green-600">
+                            <TrendingUp className="w-4 h-4 mr-1" />
+                            <span className="text-xs font-medium">进步中</span>
+                          </div>
+                        )}
+                        {trend === 'down' && (
+                          <div className="flex items-center text-red-600">
+                            <TrendingDown className="w-4 h-4 mr-1" />
+                            <span className="text-xs font-medium">需要加强</span>
+                          </div>
+                        )}
+                        {trend === 'stable' && (
+                          <div className="flex items-center text-gray-600">
+                            <Minus className="w-4 h-4 mr-1" />
+                            <span className="text-xs font-medium">保持稳定</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2">
+                    {weakKnowledgePoints.length > 0 && (
+                      <button
+                        onClick={() => onEnhancementRound(weakKnowledgePoints)}
+                        className="flex items-center px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 shadow-lg"
+                      >
+                        <Zap className="w-4 h-4 mr-2" />
+                        <span className="font-medium">强化薄弱点</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onEnhancementRound(knowledgePointStats.map(s => s.id))}
+                      className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg"
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      <span className="font-medium">开始练习</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="mt-4">
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        overallAccuracy >= 75 ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
+                        overallAccuracy >= 50 ? 'bg-gradient-to-r from-yellow-500 to-amber-600' :
+                        'bg-gradient-to-r from-red-500 to-orange-600'
+                      }`}
+                      style={{ width: `${overallAccuracy}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Stats - Secondary Information */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <Target className="w-5 h-5 text-blue-500" />
+                    <span className="text-2xl font-bold text-gray-900">{totalQuestions}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">练习题目</div>
+                </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-blue-500/25">
-                      <BarChart3 className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 mb-1">{overallAccuracy}%</div>
-                    <div className="text-sm text-gray-600 font-medium tracking-wide">总体准确率</div>
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <Award className="w-5 h-5 text-purple-500" />
+                    <span className="text-2xl font-bold text-gray-900">{strongKnowledgePoints}</span>
                   </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-green-500/25">
-                      <Target className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 mb-1">{totalQuestions}</div>
-                    <div className="text-sm text-gray-600 font-medium tracking-wide">练习题目</div>
+                  <div className="text-sm text-gray-600">优秀知识点</div>
+                </div>
+                
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <AlertCircle className="w-5 h-5 text-orange-500" />
+                    <span className="text-2xl font-bold text-gray-900">{weakKnowledgePoints.length}</span>
                   </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-500/25">
-                      <Award className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 mb-1">{strongKnowledgePoints}</div>
-                    <div className="text-sm text-gray-600 font-medium tracking-wide">优秀知识点</div>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-orange-500/25">
-                      <Clock className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 mb-1">{practiceCount}</div>
-                    <div className="text-sm text-gray-600 font-medium tracking-wide">练习次数</div>
-                  </div>
+                  <div className="text-sm text-gray-600">待加强点</div>
                 </div>
               </div>
 
               {/* 知识点详细分析 */}
               <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20">
                 <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900 flex items-center tracking-wide">
-                      <BookOpen className="w-6 h-6 text-blue-500 mr-2" />
-                      知识点掌握情况
-                    </h2>
-                    <p className="text-sm text-gray-600 mt-1 ml-8">
-                      最近20次练习中的薄弱知识点
-                    </p>
-                  </div>
-                  {weakKnowledgePoints.length > 0 && (
+                  <div className="flex items-center space-x-4">
                     <button
-                      onClick={() => onEnhancementRound(weakKnowledgePoints)}
-                      className="flex items-center px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 shadow-lg focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-none"
+                      onClick={() => setExpandedSection(expandedSection === 'details' ? null : 'details')}
+                      className="flex items-center text-gray-900 hover:text-gray-700 transition-colors"
                     >
-                      <Zap className="w-4 h-4 mr-2" />
-                      <span className="font-medium tracking-wide">强化薄弱点</span>
+                      <BookOpen className="w-6 h-6 text-blue-500 mr-2" />
+                      <h2 className="text-xl font-bold tracking-wide">知识点详情</h2>
+                      {expandedSection === 'details' ? (
+                        <ChevronUp className="w-5 h-5 ml-2" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 ml-2" />
+                      )}
                     </button>
-                  )}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setSelectedFilter('weak')}
+                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                          selectedFilter === 'weak' 
+                            ? 'bg-orange-500 text-white' 
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        薄弱 ({weakKnowledgePoints.length})
+                      </button>
+                      <button
+                        onClick={() => setSelectedFilter('strong')}
+                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                          selectedFilter === 'strong' 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        掌握 ({strongKnowledgePoints})
+                      </button>
+                      <button
+                        onClick={() => setSelectedFilter('all')}
+                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                          selectedFilter === 'all' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        全部 ({knowledgePointStats.length})
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="space-y-4">
-                  {knowledgePointStats.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle2 className="w-8 h-8 text-green-600" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">太棒了！</h3>
-                      <p className="text-gray-600">最近20次练习中没有错题，继续保持！</p>
-                    </div>
-                  ) : (
-                    knowledgePointStats.map(stat => (
-                    <div key={stat.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-300">
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900 mb-1 tracking-wide">{stat.topic}</div>
-                        <div className="text-sm text-gray-600">
-                          {stat.volume} • {stat.unit} • {stat.lesson} • {stat.section}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {stat.totalQuestions > 0 ? (
-                            <>
-                              练习 {stat.totalQuestions} 题，正确 {stat.correctAnswers} 题
-                              {stat.lastPracticed && (
-                                <span className="ml-2">• 最后练习：{
-                                  stat.lastPracticed instanceof Date 
-                                    ? stat.lastPracticed.toLocaleDateString() 
-                                    : new Date(stat.lastPracticed).toLocaleDateString()
-                                }</span>
-                              )}
-                            </>
-                          ) : (
-                            '尚未练习'
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-gray-900">{stat.accuracy}%</div>
-                          <div className={`text-xs px-2 py-1 rounded-full font-medium ${getMasteryColor(stat.masteryLevel)}`}>
-                            {getMasteryText(stat.masteryLevel)}
-                          </div>
-                        </div>
-                        {stat.totalQuestions > 0 && (
-                          <div className="flex items-center space-x-1">
-                            <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            <span className="text-sm font-medium text-green-600">{stat.correctAnswers}</span>
-                            <XCircle className="w-4 h-4 text-red-500 ml-2" />
-                            <span className="text-sm font-medium text-red-600">{stat.totalQuestions - stat.correctAnswers}</span>
-                          </div>
+                {expandedSection === 'details' && (
+                  <div className="space-y-4">
+                    {filteredStats.length === 0 ? (
+                      <div className="text-center py-12">
+                        {selectedFilter === 'weak' ? (
+                          <>
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <CheckCircle2 className="w-8 h-8 text-green-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">太棒了！</h3>
+                            <p className="text-gray-600">没有薄弱知识点，继续保持！</p>
+                          </>
+                        ) : selectedFilter === 'strong' ? (
+                          <>
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <BookOpen className="w-8 h-8 text-gray-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">继续努力</h3>
+                            <p className="text-gray-600">暂时还没有完全掌握的知识点</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <BookOpen className="w-8 h-8 text-gray-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">开始练习</h3>
+                            <p className="text-gray-600">还没有练习记录</p>
+                          </>
                         )}
                       </div>
-                    </div>
-                  )))}
-                  
-                </div>
+                    ) : (
+                      filteredStats.map(stat => (
+                        <div key={stat.id} className={`p-5 rounded-xl border-2 transition-all duration-300 ${
+                          stat.masteryLevel === 'poor' ? 'border-red-200 bg-red-50/50' :
+                          stat.masteryLevel === 'needs-improvement' ? 'border-yellow-200 bg-yellow-50/50' :
+                          stat.masteryLevel === 'good' ? 'border-blue-200 bg-blue-50/50' :
+                          'border-green-200 bg-green-50/50'
+                        } hover:shadow-md`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 pl-1">
+                                  <div className="font-semibold text-gray-900 text-lg mb-1">{stat.topic}</div>
+                                  <div className="text-sm text-gray-600">
+                                    {stat.volume} • {stat.unit} • {stat.lesson} • {stat.section}
+                                  </div>
+                                  <div className="mt-3 flex items-center space-x-4 text-sm">
+                                    <div className="flex items-center">
+                                      <Target className="w-4 h-4 text-gray-400 mr-1" />
+                                      <span className="text-gray-600">{stat.totalQuestions} 题</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                      <CheckCircle2 className="w-4 h-4 text-green-500 mr-1" />
+                                      <span className="text-green-600 font-medium">{stat.correctAnswers} 正确</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                      <XCircle className="w-4 h-4 text-red-500 mr-1" />
+                                      <span className="text-red-600 font-medium">{stat.totalQuestions - stat.correctAnswers} 错误</span>
+                                    </div>
+                                    {stat.lastPracticed && (
+                                      <div className="flex items-center">
+                                        <Clock className="w-4 h-4 text-gray-400 mr-1" />
+                                        <span className="text-gray-600">
+                                          {stat.lastPracticed instanceof Date 
+                                            ? stat.lastPracticed.toLocaleDateString() 
+                                            : new Date(stat.lastPracticed).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="ml-6 text-center">
+                                  <div className={`inline-flex flex-col items-center p-3 rounded-xl ${
+                                    stat.masteryLevel === 'poor' ? 'bg-red-100' :
+                                    stat.masteryLevel === 'needs-improvement' ? 'bg-yellow-100' :
+                                    stat.masteryLevel === 'good' ? 'bg-blue-100' :
+                                    'bg-green-100'
+                                  }`}>
+                                    <div className="text-xs text-gray-500 font-medium mb-1">正确率</div>
+                                    <div className={`text-3xl font-bold ${
+                                      stat.masteryLevel === 'poor' ? 'text-red-600' :
+                                      stat.masteryLevel === 'needs-improvement' ? 'text-yellow-600' :
+                                      stat.masteryLevel === 'good' ? 'text-blue-600' :
+                                      'text-green-600'
+                                    }`}>{stat.accuracy}%</div>
+                                    <div className={`text-xs px-2 py-1 rounded-full font-medium mt-2 ${getMasteryColor(stat.masteryLevel)}`}>
+                                      {getMasteryText(stat.masteryLevel)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
           </div>
         </div>

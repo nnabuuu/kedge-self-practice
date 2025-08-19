@@ -86,11 +86,13 @@ class AuthService {
       // Extract role from JWT token payload
       try {
         const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        
         const userWithRole = {
           ...response.data.user,
-          role: tokenPayload.role,
-          email: response.data.user.account_id || response.data.user.email || credentials.email,
-          name: response.data.user.name || 'User'
+          role: tokenPayload.role || response.data.user.role,
+          email: response.data.user.account_id || response.data.user.email || tokenPayload.email || credentials.email,
+          name: response.data.user.name || tokenPayload.name || tokenPayload.userName || 'User',
+          id: response.data.user.id || tokenPayload.sub || tokenPayload.userId
         };
         localStorage.setItem('user_data', JSON.stringify(userWithRole));
         
@@ -98,7 +100,13 @@ class AuthService {
         response.data.user = userWithRole;
       } catch (error) {
         console.error('Failed to decode JWT token:', error);
-        localStorage.setItem('user_data', JSON.stringify(response.data.user));
+        // Still try to use what we have from the response
+        const fallbackUser = {
+          ...response.data.user,
+          name: response.data.user.name || credentials.email.split('@')[0] || 'User'
+        };
+        localStorage.setItem('user_data', JSON.stringify(fallbackUser));
+        response.data.user = fallbackUser;
       }
     }
 
@@ -129,6 +137,53 @@ class AuthService {
     }
 
     return response;
+  }
+
+  async getUserProfile(): Promise<ApiResponse<any>> {
+    const token = this.getToken();
+    if (!token) {
+      return {
+        success: false,
+        error: 'No authentication token found'
+      };
+    }
+
+    try {
+      const response = await fetch(`${this.apiUrl}/auth/profile`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Update stored user data with fresh profile
+      if (data.success && data.data) {
+        const currentUser = this.getCurrentUser();
+        const updatedUser = {
+          ...currentUser,
+          ...data.data,
+          name: data.data.name || data.data.username || currentUser?.email?.split('@')[0] || 'User'
+        };
+        localStorage.setItem('user_data', JSON.stringify(updatedUser));
+        
+        return {
+          success: true,
+          data: updatedUser
+        };
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch profile'
+      };
+    }
   }
 
   logout(): void {

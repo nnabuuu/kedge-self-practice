@@ -43,8 +43,31 @@ export interface KnowledgeStatsResponse {
 
 class PracticeAnalysisApi {
   private baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
+  private cache: Map<string, { data: any; timestamp: number }> = new Map();
+  private cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
+
+  private getCacheKey(method: string, ...args: any[]): string {
+    return `${method}:${JSON.stringify(args)}`;
+  }
+
+  private getFromCache<T>(key: string): T | null {
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+      return cached.data as T;
+    }
+    this.cache.delete(key);
+    return null;
+  }
+
+  private setCache(key: string, data: any): void {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
 
   async getWeakKnowledgePoints(userId?: string, limit = 20): Promise<WeakKnowledgePointsResponse> {
+    const cacheKey = this.getCacheKey('weakKnowledgePoints', userId, limit);
+    const cached = this.getFromCache<WeakKnowledgePointsResponse>(cacheKey);
+    if (cached) return cached;
+
     const token = localStorage.getItem('jwt_token');
     
     if (!token) {
@@ -70,10 +93,16 @@ class PracticeAnalysisApi {
       throw new Error(`Failed to fetch weak knowledge points: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    this.setCache(cacheKey, data);
+    return data;
   }
 
   async getWrongQuestions(userId?: string, limit = 5): Promise<WrongQuestionsResponse> {
+    const cacheKey = this.getCacheKey('wrongQuestions', userId, limit);
+    const cached = this.getFromCache<WrongQuestionsResponse>(cacheKey);
+    if (cached) return cached;
+
     const token = localStorage.getItem('jwt_token');
     
     if (!token) {
@@ -99,10 +128,16 @@ class PracticeAnalysisApi {
       throw new Error(`Failed to fetch wrong questions: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    this.setCache(cacheKey, data);
+    return data;
   }
 
   async getQuickPracticeSuggestion(userId?: string): Promise<QuickPracticeSuggestionResponse> {
+    const cacheKey = this.getCacheKey('quickPracticeSuggestion', userId);
+    const cached = this.getFromCache<QuickPracticeSuggestionResponse>(cacheKey);
+    if (cached) return cached;
+
     const token = localStorage.getItem('jwt_token');
     
     if (!token) {
@@ -125,7 +160,9 @@ class PracticeAnalysisApi {
       throw new Error(`Failed to fetch quick practice suggestion: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    this.setCache(cacheKey, data);
+    return data;
   }
 
   async getKnowledgePointStats(
@@ -133,6 +170,10 @@ class PracticeAnalysisApi {
     subjectId?: string, 
     limit = 20
   ): Promise<KnowledgeStatsResponse> {
+    const cacheKey = this.getCacheKey('knowledgePointStats', userId, subjectId, limit);
+    const cached = this.getFromCache<KnowledgeStatsResponse>(cacheKey);
+    if (cached) return cached;
+
     const token = localStorage.getItem('jwt_token');
     
     if (!token) {
@@ -159,7 +200,14 @@ class PracticeAnalysisApi {
       throw new Error(`Failed to fetch knowledge point stats: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    this.setCache(cacheKey, data);
+    return data;
+  }
+
+  // Clear cache method for logout or data refresh
+  clearCache(): void {
+    this.cache.clear();
   }
 }
 

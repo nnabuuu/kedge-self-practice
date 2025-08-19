@@ -98,6 +98,33 @@ export class AuthController {
     };
   }
 
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@Req() req: any) {
+    const userId = req.user.sub;
+    const userRole = req.user.role;
+    
+    // Fetch user from database
+    const user = await this.authRepository.findUserById(userId);
+    
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    
+    // Return user profile data
+    return {
+      success: true,
+      data: {
+        id: user.id,
+        name: user.name || user.account_id?.split('@')[0] || 'User',
+        email: user.account_id,
+        role: user.role || userRole,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+      }
+    };
+  }
+
   @Get('preferences')
   @UseGuards(JwtAuthGuard)
   async getPreferences(@Req() req: any) {

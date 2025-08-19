@@ -59,6 +59,31 @@ export class AuthRepository {
     }
   }
 
+  async findUserById(userId: string): Promise<UserWithCredentials | null> {
+    try {
+      const result = await this.persistentService.pgPool.query(
+        sql.type(UserWithCredentialsSchema)`
+          SELECT id,
+                 name,
+                 account_id,
+                 password_hash,
+                 salt,
+                 role,
+                 created_at,
+                 updated_at
+          FROM kedge_practice.users
+          WHERE id = ${userId}
+        `,
+      );
+
+      return result.rows[0] ?? null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error finding user by ID: ${errorMessage}`);
+      throw new Error('Failed to find user');
+    }
+  }
+
   async findUserByAccountId(accountId: string): Promise<UserWithCredentials | null> {
     try {
       const result = await this.persistentService.pgPool.query(

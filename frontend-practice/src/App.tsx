@@ -4,6 +4,7 @@ import { Teacher } from './types/teacher';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { authService } from './services/authService';
 import { api } from './services/api';
+import { practiceAnalysisApi } from './services/practiceAnalysisApi';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ConnectionError, useConnectionStatus } from './components/ConnectionError';
 import LoginPage from './components/LoginPage';
@@ -73,6 +74,20 @@ function App() {
       setUserType(existingUser.role);
       setCurrentUser(existingUser);
       
+      // Fetch fresh profile data
+      authService.getUserProfile().then(response => {
+        if (response.success && response.data) {
+          setCurrentUser(response.data);
+        }
+      });
+      
+      // Preload practice analysis data for students
+      if (existingUser.role === 'student') {
+        practiceAnalysisApi.getWeakKnowledgePoints().catch(() => {});
+        practiceAnalysisApi.getWrongQuestions().catch(() => {});
+        practiceAnalysisApi.getQuickPracticeSuggestion().catch(() => {});
+      }
+      
       // Check if there's a saved screen preference (for page refresh)
       const savedScreen = sessionStorage.getItem('currentScreen');
       if (savedScreen && savedScreen !== 'login') {
@@ -116,15 +131,40 @@ function App() {
     }
   }, [selectedSubject]);
 
-  const handleLogin = (type: 'student' | 'teacher', userData: any) => {
+  const handleLogin = async (type: 'student' | 'teacher', userData: any) => {
     setUserType(type);
     setCurrentUser(userData);
+    
+    // Fetch fresh user profile data after login
+    authService.getUserProfile().then(response => {
+      if (response.success && response.data) {
+        setCurrentUser(response.data);
+      }
+    }).catch(error => {
+      console.error('Failed to fetch user profile:', error);
+    });
+    
+    // Preload practice analysis data for students (async, don't wait)
+    if (type === 'student') {
+      // Fire and forget - these will be cached for when user enters practice menu
+      practiceAnalysisApi.getWeakKnowledgePoints().catch(() => {
+        // Silently fail - data will be fetched when needed
+      });
+      practiceAnalysisApi.getWrongQuestions().catch(() => {
+        // Silently fail - data will be fetched when needed
+      });
+      practiceAnalysisApi.getQuickPracticeSuggestion().catch(() => {
+        // Silently fail - data will be fetched when needed
+      });
+    }
+    
     // Auto-route teachers to teacher dashboard, students to home
     setCurrentScreen(type === 'teacher' ? 'teacher-dashboard' : 'home');
   };
 
   const handleLogout = () => {
     authService.logout();
+    practiceAnalysisApi.clearCache(); // Clear cached practice data
     setUserType(null);
     setCurrentUser(null);
     setCurrentScreen('login');
@@ -137,13 +177,9 @@ function App() {
   };
 
   const handleStartPractice = () => {
-    // If we have a saved subject, go directly to practice menu
-    if (selectedSubject) {
-      setCurrentScreen('practice-menu');
-    } else {
-      // Otherwise, go to subject selection
-      setCurrentScreen('subject-selection');
-    }
+    // Always go to subject selection when starting from home page
+    // This ensures users can choose or change their subject
+    setCurrentScreen('subject-selection');
   };
 
   const handleTeacherLogin = () => {
