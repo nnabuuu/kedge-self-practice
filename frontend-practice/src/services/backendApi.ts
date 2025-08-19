@@ -139,7 +139,7 @@ class BackendApiService {
       options,
       answer,
       standardAnswer: type === 'essay' ? backendQuiz.correct_answer : undefined,
-      relatedKnowledgePointId: String(backendQuiz.knowledge_point_id),
+      relatedKnowledgePointId: `kp_${backendQuiz.knowledge_point_id}`,
     };
   }
 
@@ -279,8 +279,10 @@ class BackendApiService {
 
   // Create a new quiz
   async createQuiz(quiz: Omit<QuizQuestion, 'id'>): Promise<ApiResponse<QuizQuestion>> {
+    // Extract numeric ID from format like "kp_305" -> 305
+    const kpIdStr = quiz.relatedKnowledgePointId.replace('kp_', '');
     const backendQuiz = {
-      knowledge_point_id: parseInt(quiz.relatedKnowledgePointId),
+      knowledge_point_id: parseInt(kpIdStr),
       question_text: quiz.question,
       answer_options: quiz.options ? JSON.stringify(quiz.options) : null,
       correct_answer: quiz.type === 'multiple-choice' 
@@ -327,7 +329,9 @@ class BackendApiService {
                                  updates.type === 'essay' ? '问答题' : '单选题';
     }
     if (updates.relatedKnowledgePointId !== undefined) {
-      backendUpdates.knowledge_point_id = parseInt(updates.relatedKnowledgePointId);
+      // Extract numeric ID from format like "kp_305" -> 305
+      const kpIdStr = updates.relatedKnowledgePointId.replace('kp_', '');
+      backendUpdates.knowledge_point_id = parseInt(kpIdStr);
     }
 
     const response = await this.makeRequest<BackendQuiz>(`/quiz/${id}`, {

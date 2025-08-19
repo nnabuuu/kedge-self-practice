@@ -59,6 +59,11 @@ export default function PracticeHistory({
   const calculateKnowledgePointStats = (session: PracticeHistoryType): GroupedStats => {
     const stats: GroupedStats = {};
     
+    // Debug logging
+    console.log('📊 [DEBUG] Calculating knowledge point stats for session:', session.id);
+    console.log('📊 [DEBUG] Session knowledge points:', session.knowledgePoints);
+    console.log('📊 [DEBUG] Session questions:', session.questions?.length, 'questions');
+    
     // 创建统计映射
     const statsMap = new Map<string, { correct: number; total: number }>();
     
@@ -70,6 +75,8 @@ export default function PracticeHistory({
     // 根据题目和答案计算统计
     session.questions?.forEach((question, index) => {
       const kpId = question.relatedKnowledgePointId;
+      console.log(`📊 [DEBUG] Question ${index} KP ID:`, kpId, 'In session KPs?', session.knowledgePoints.includes(kpId));
+      
       if (session.knowledgePoints.includes(kpId)) {
         const stat = statsMap.get(kpId);
         if (stat) {
@@ -81,10 +88,22 @@ export default function PracticeHistory({
       }
     });
 
+    // Debug: Show stats map
+    console.log('📊 [DEBUG] Stats map after processing questions:');
+    statsMap.forEach((stat, kpId) => {
+      console.log(`  KP ${kpId}: ${stat.correct}/${stat.total}`);
+    });
+    
     // 构建分组结构
     session.knowledgePoints.forEach(kpId => {
       const kp = getKnowledgePointById(kpId);
       const stat = statsMap.get(kpId);
+      
+      console.log(`📊 [DEBUG] Building structure for KP ${kpId}:`, {
+        kp: kp ? `${kp.topic} (${kp.volume} > ${kp.unit} > ${kp.lesson})` : 'NOT FOUND',
+        stat: stat ? `${stat.correct}/${stat.total}` : 'NO STAT',
+        willInclude: kp && stat && stat.total > 0
+      });
       
       if (kp && stat && stat.total > 0) {
         if (!stats[kp.volume]) {
