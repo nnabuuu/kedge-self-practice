@@ -1,10 +1,14 @@
-import React from 'react';
-import { ArrowLeft, Play, History, BookOpen, Brain, Zap, Timer, BarChart3, Clock, Target, TrendingUp, Sparkles } from 'lucide-react';
-import { Subject } from '../types/quiz';
+import React, { useMemo, useState } from 'react';
+import { ArrowLeft, Play, History, BookOpen, Brain, Zap, Timer, BarChart3, Clock, Target, TrendingUp, Sparkles, AlertCircle, Info } from 'lucide-react';
+import { Subject, PracticeHistory } from '../types/quiz';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 interface PracticeMenuProps {
   subject: Subject;
   onStartPractice: () => void;
+  onQuickPractice?: (knowledgePoints: string[], questionCount: number) => void;
+  onWeakPointsPractice?: (knowledgePoints: string[]) => void;
+  onWrongQuestionsPractice?: (questionIds: string[]) => void;
   onViewHistory: () => void;
   onViewKnowledgeAnalysis: () => void;
   onBack: () => void;
@@ -12,18 +16,109 @@ interface PracticeMenuProps {
 
 export default function PracticeMenu({ 
   subject, 
-  onStartPractice, 
+  onStartPractice,
+  onQuickPractice,
+  onWeakPointsPractice,
+  onWrongQuestionsPractice,
   onViewHistory, 
   onViewKnowledgeAnalysis,
   onBack 
 }: PracticeMenuProps) {
   
-  // 快速练习处理函数 - 直接开始练习，跳过配置
-  const handleQuickPractice = (type: 'quick' | 'weak-points' | 'wrong-only') => {
-    // TODO: 根据类型设置预设配置，直接跳转到练习
-    // 这里暂时调用原有的开始练习函数
-    // 实际应该传递预设的配置参数
-    onStartPractice();
+  // Get practice history to analyze for smart shortcuts
+  const [practiceHistory] = useLocalStorage<PracticeHistory[]>('practice-history', []);
+  
+  // State for showing tooltips
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  
+  // Analyze last 5 practice sessions for this subject
+  const recentSessions = useMemo(() => {
+    return practiceHistory
+      .filter(h => h.subjectId === subject.id)
+      .slice(0, 5);
+  }, [practiceHistory, subject.id]);
+  
+  // Get last used knowledge points
+  const lastKnowledgePoints = useMemo(() => {
+    if (recentSessions.length > 0) {
+      return recentSessions[0].knowledgePoints;
+    }
+    return [];
+  }, [recentSessions]);
+  
+  // Calculate weak knowledge points (>40% error rate in last 5 sessions)
+  const weakKnowledgePoints = useMemo(() => {
+    const kpStats = new Map<string, { correct: number; total: number }>();
+    
+    recentSessions.forEach(session => {
+      session.questions?.forEach((question, index) => {
+        const kpId = question.relatedKnowledgePointId;
+        if (!kpStats.has(kpId)) {
+          kpStats.set(kpId, { correct: 0, total: 0 });
+        }
+        const stat = kpStats.get(kpId)!;
+        stat.total++;
+        if (session.answers[index] === question.answer) {
+          stat.correct++;
+        }
+      });
+    });
+    
+    // Filter knowledge points with >40% error rate
+    const weakPoints: string[] = [];
+    kpStats.forEach((stat, kpId) => {
+      const errorRate = 1 - (stat.correct / stat.total);
+      if (errorRate > 0.4) {
+        weakPoints.push(kpId);
+      }
+    });
+    
+    return weakPoints;
+  }, [recentSessions]);
+  
+  // Get wrong question IDs from last 5 sessions
+  const recentWrongQuestions = useMemo(() => {
+    const wrongQuestionIds = new Set<string>();
+    
+    recentSessions.forEach(session => {
+      session.questions?.forEach((question, index) => {
+        if (session.answers[index] !== question.answer) {
+          wrongQuestionIds.add(question.id);
+        }
+      });
+    });
+    
+    return Array.from(wrongQuestionIds);
+  }, [recentSessions]);
+  
+  // Quick practice handler - 5-10 min practice with last knowledge points
+  const handleQuickPractice = () => {
+    if (lastKnowledgePoints.length > 0) {
+      // Use last knowledge points, limit to 5-10 questions for quick practice
+      onQuickPractice?.(lastKnowledgePoints, 8);
+    } else {
+      // No history, fall back to regular practice
+      onStartPractice();
+    }
+  };
+  
+  // Weak points practice handler
+  const handleWeakPointsPractice = () => {
+    if (weakKnowledgePoints.length > 0) {
+      onWeakPointsPractice?.(weakKnowledgePoints);
+    } else {
+      // No weak points identified, show message or fall back
+      alert('暂无薄弱知识点。请先完成几次练习后再使用此功能。');
+    }
+  };
+  
+  // Wrong questions practice handler
+  const handleWrongQuestionsPractice = () => {
+    if (recentWrongQuestions.length > 0) {
+      onWrongQuestionsPractice?.(recentWrongQuestions);
+    } else {
+      alert('暂无错题记录。请先完成几次练习后再使用此功能。');
+    }
   };
 
   return (
@@ -146,64 +241,250 @@ export default function PracticeMenu({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 快速练习 */}
                   <button
-                    onClick={() => handleQuickPractice('quick')}
-                    className="group bg-gradient-to-br from-blue-50 to-blue-50 hover:bg-blue-100 rounded-xl p-4 border border-blue-200 hover:border-blue-300 transition-all duration-300 ease-out transform hover:scale-105 shadow-md hover:shadow-lg text-left focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                    onClick={handleQuickPractice}
+                    disabled={lastKnowledgePoints.length === 0}
+                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left focus:ring-2 focus:ring-offset-2 focus:outline-none ${
+                      lastKnowledgePoints.length === 0
+                        ? 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed'
+                        : 'bg-gradient-to-br from-blue-50 to-blue-50 hover:bg-blue-100 border-blue-200 hover:border-blue-300 hover:scale-105 focus:ring-blue-500'
+                    }`}
                   >
                     <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
+                        lastKnowledgePoints.length === 0
+                          ? 'bg-gray-400'
+                          : 'bg-gradient-to-br from-blue-500 to-blue-600 group-hover:scale-110'
+                      }`}>
                         <Timer className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300 leading-tight tracking-wide">
+                        <h4 className={`font-bold transition-colors duration-300 leading-tight tracking-wide ${
+                          lastKnowledgePoints.length === 0
+                            ? 'text-gray-500'
+                            : 'text-gray-900 group-hover:text-blue-600'
+                        }`}>
                           快速练习
                         </h4>
                         <p className="text-sm text-gray-600 font-medium">5-10分钟</p>
                       </div>
+                      {/* Info button */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onMouseEnter={() => setActiveTooltip('quick')}
+                          onMouseLeave={() => setActiveTooltip(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveTooltip(activeTooltip === 'quick' ? null : 'quick');
+                          }}
+                          className="p-1 hover:bg-blue-100 rounded-full transition-colors"
+                        >
+                          <Info className="w-4 h-4 text-blue-500" />
+                        </button>
+                        {activeTooltip === 'quick' && (
+                          <div className="absolute right-0 top-8 z-50 w-64 p-3 bg-white rounded-lg shadow-xl border border-gray-200 animate-fade-in">
+                            <div className="absolute -top-2 right-3 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                            <div className="text-sm text-gray-700">
+                              <div className="font-semibold mb-2 text-blue-600 flex items-center">
+                                <Timer className="w-4 h-4 mr-1" />
+                                智能推荐逻辑
+                              </div>
+                              <ul className="space-y-1.5 text-xs">
+                                <li className="flex items-start">
+                                  <span className="text-blue-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>使用您上次练习的知识点</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="text-blue-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>自动选择8道题目</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="text-blue-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>适合快速复习巩固</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="text-blue-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>预计用时5-10分钟</span>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-700 leading-relaxed tracking-wide">
-                      智能推荐知识点，快速开始练习
+                    <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
+                      {lastKnowledgePoints.length > 0 
+                        ? `继续上次的 ${lastKnowledgePoints.length} 个知识点练习`
+                        : '请先完成一次自定义练习'}
                     </p>
                   </button>
 
                   {/* 薄弱点强化 */}
                   <button
-                    onClick={() => handleQuickPractice('weak-points')}
-                    className="group bg-gradient-to-br from-purple-50 to-purple-50 hover:bg-purple-100 rounded-xl p-4 border border-purple-200 hover:border-purple-300 transition-all duration-300 ease-out transform hover:scale-105 shadow-md hover:shadow-lg text-left focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none"
+                    onClick={handleWeakPointsPractice}
+                    disabled={weakKnowledgePoints.length === 0}
+                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left focus:ring-2 focus:ring-offset-2 focus:outline-none ${
+                      weakKnowledgePoints.length === 0
+                        ? 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed'
+                        : 'bg-gradient-to-br from-purple-50 to-purple-50 hover:bg-purple-100 border-purple-200 hover:border-purple-300 hover:scale-105 focus:ring-purple-500'
+                    }`}
                   >
                     <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
+                        weakKnowledgePoints.length === 0
+                          ? 'bg-gray-400'
+                          : 'bg-gradient-to-br from-purple-500 to-purple-600 group-hover:scale-110'
+                      }`}>
                         <Target className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold text-gray-900 group-hover:text-purple-600 transition-colors duration-300 leading-tight tracking-wide">
+                        <h4 className={`font-bold transition-colors duration-300 leading-tight tracking-wide ${
+                          weakKnowledgePoints.length === 0
+                            ? 'text-gray-500'
+                            : 'text-gray-900 group-hover:text-purple-600'
+                        }`}>
                           薄弱点强化
                         </h4>
                         <p className="text-sm text-gray-600 font-medium">10-15分钟</p>
                       </div>
+                      {/* Info button */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onMouseEnter={() => setActiveTooltip('weak')}
+                          onMouseLeave={() => setActiveTooltip(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveTooltip(activeTooltip === 'weak' ? null : 'weak');
+                          }}
+                          className="p-1 hover:bg-purple-100 rounded-full transition-colors"
+                        >
+                          <Info className="w-4 h-4 text-purple-500" />
+                        </button>
+                        {activeTooltip === 'weak' && (
+                          <div className="absolute right-0 top-8 z-50 w-64 p-3 bg-white rounded-lg shadow-xl border border-gray-200 animate-fade-in">
+                            <div className="absolute -top-2 right-3 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                            <div className="text-sm text-gray-700">
+                              <div className="font-semibold mb-2 text-purple-600 flex items-center">
+                                <Target className="w-4 h-4 mr-1" />
+                                分析逻辑
+                              </div>
+                              <ul className="space-y-1.5 text-xs">
+                                <li className="flex items-start">
+                                  <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>分析最近5次练习数据</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>找出错误率>40%的知识点</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>针对性强化薄弱环节</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>帮助突破学习瓶颈</span>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-700 leading-relaxed tracking-wide">
-                      针对薄弱知识点进行强化练习
+                    <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
+                      {weakKnowledgePoints.length > 0 
+                        ? `发现 ${weakKnowledgePoints.length} 个需要强化的知识点`
+                        : '需要更多练习数据分析'}
                     </p>
+                    {weakKnowledgePoints.length > 0 && (
+                      <div className="mt-2 text-xs text-purple-600 font-medium">
+                        错误率 &gt;40%
+                      </div>
+                    )}
                   </button>
 
                   {/* 错题强化 */}
                   <button
-                    onClick={() => handleQuickPractice('wrong-only')}
-                    className="group bg-gradient-to-br from-orange-50 to-orange-50 hover:bg-orange-100 rounded-xl p-4 border border-orange-200 hover:border-orange-300 transition-all duration-300 ease-out transform hover:scale-105 shadow-md hover:shadow-lg text-left focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-none"
+                    onClick={handleWrongQuestionsPractice}
+                    disabled={recentWrongQuestions.length === 0}
+                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left focus:ring-2 focus:ring-offset-2 focus:outline-none ${
+                      recentWrongQuestions.length === 0
+                        ? 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed'
+                        : 'bg-gradient-to-br from-orange-50 to-orange-50 hover:bg-orange-100 border-orange-200 hover:border-orange-300 hover:scale-105 focus:ring-orange-500'
+                    }`}
                   >
                     <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
+                        recentWrongQuestions.length === 0
+                          ? 'bg-gray-400'
+                          : 'bg-gradient-to-br from-orange-500 to-red-600 group-hover:scale-110'
+                      }`}>
                         <Brain className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold text-gray-900 group-hover:text-orange-600 transition-colors duration-300 leading-tight tracking-wide">
+                        <h4 className={`font-bold transition-colors duration-300 leading-tight tracking-wide ${
+                          recentWrongQuestions.length === 0
+                            ? 'text-gray-500'
+                            : 'text-gray-900 group-hover:text-orange-600'
+                        }`}>
                           错题强化
                         </h4>
-                        <p className="text-sm text-gray-600 font-medium">根据错题数量</p>
+                        <p className="text-sm text-gray-600 font-medium">
+                          {recentWrongQuestions.length > 0 
+                            ? `${recentWrongQuestions.length} 道错题`
+                            : '暂无错题'}
+                        </p>
+                      </div>
+                      {/* Info button */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onMouseEnter={() => setActiveTooltip('wrong')}
+                          onMouseLeave={() => setActiveTooltip(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveTooltip(activeTooltip === 'wrong' ? null : 'wrong');
+                          }}
+                          className="p-1 hover:bg-orange-100 rounded-full transition-colors"
+                        >
+                          <Info className="w-4 h-4 text-orange-500" />
+                        </button>
+                        {activeTooltip === 'wrong' && (
+                          <div className="absolute right-0 top-8 z-50 w-64 p-3 bg-white rounded-lg shadow-xl border border-gray-200 animate-fade-in">
+                            <div className="absolute -top-2 right-3 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                            <div className="text-sm text-gray-700">
+                              <div className="font-semibold mb-2 text-orange-600 flex items-center">
+                                <Brain className="w-4 h-4 mr-1" />
+                                复习策略
+                              </div>
+                              <ul className="space-y-1.5 text-xs">
+                                <li className="flex items-start">
+                                  <span className="text-orange-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>收集最近5次练习的错题</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="text-orange-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>去重后重新练习</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="text-orange-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>加深对错题的理解</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="text-orange-400 mr-1.5 mt-0.5">✓</span>
+                                  <span>避免重复犯错</span>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <p className="text-sm text-gray-700 leading-relaxed tracking-wide">
-                      重新练习之前的错题
+                    <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
+                      {recentWrongQuestions.length > 0 
+                        ? `最近5次练习中的错题`
+                        : '继续努力，保持优秀！'}
                     </p>
                   </button>
                 </div>

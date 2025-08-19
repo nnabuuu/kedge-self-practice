@@ -175,6 +175,37 @@ function App() {
     setQuizConfig(config);
     setCurrentScreen('quiz-practice');
   };
+  
+  // Handler for quick practice (5-10 min with last knowledge points)
+  const handleQuickPractice = (knowledgePoints: string[], questionCount: number) => {
+    setSelectedKnowledgePoints(knowledgePoints);
+    setQuizConfig({
+      questionType: 'new',
+      questionCount: questionCount,
+      shuffleQuestions: true,
+      showExplanation: true
+    });
+    setCurrentScreen('quiz-practice');
+  };
+  
+  // Handler for weak points practice
+  const handleWeakPointsPractice = (knowledgePoints: string[]) => {
+    setSelectedKnowledgePoints(knowledgePoints);
+    setQuizConfig({
+      questionType: 'new',
+      questionCount: 15, // Medium length for reinforcement
+      shuffleQuestions: true,
+      showExplanation: true
+    });
+    setCurrentScreen('quiz-practice');
+  };
+  
+  // Handler for wrong questions practice
+  const handleWrongQuestionsPractice = (questionIds: string[]) => {
+    // TODO: This needs a different approach - we need to load specific questions by ID
+    // For now, we'll alert the user that this feature is coming soon
+    alert('错题复习功能即将上线，敬请期待！');
+  };
 
   const handleEndPractice = (session: PracticeSession) => {
     setCurrentSession(session);
@@ -360,6 +391,9 @@ function App() {
           <PracticeMenu
             subject={selectedSubject}
             onStartPractice={handleStartPracticeSession}
+            onQuickPractice={handleQuickPractice}
+            onWeakPointsPractice={handleWeakPointsPractice}
+            onWrongQuestionsPractice={handleWrongQuestionsPractice}
             onViewHistory={handleViewHistory}
             onViewKnowledgeAnalysis={handleViewKnowledgeAnalysis}
             onBack={handleBack}
