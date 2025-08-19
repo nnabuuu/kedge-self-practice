@@ -375,4 +375,21 @@ export class PracticeController {
       parseInt(limit)
     );
   }
+
+  @Post('sessions/create-wrong-questions')
+  @ApiOperation({ summary: 'Create a practice session with wrong questions from recent sessions' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Wrong questions practice session created successfully',
+  })
+  async createWrongQuestionsSession(
+    @Query('userId') userId?: string,
+    @Query('sessionLimit') sessionLimit: string = '5'
+  ): Promise<any> {
+    const targetUserId = userId || '00000000-0000-0000-0000-000000000000';
+    return await this.practiceService.createWrongQuestionsSession(
+      targetUserId, 
+      parseInt(sessionLimit)
+    );
+  }
 }

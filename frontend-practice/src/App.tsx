@@ -3,6 +3,7 @@ import { Subject, PracticeSession, PracticeHistory } from './types/quiz';
 import { Teacher } from './types/teacher';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { authService } from './services/authService';
+import { api } from './services/api';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ConnectionError, useConnectionStatus } from './components/ConnectionError';
 import LoginPage from './components/LoginPage';
@@ -201,10 +202,44 @@ function App() {
   };
   
   // Handler for wrong questions practice
-  const handleWrongQuestionsPractice = (questionIds: string[]) => {
-    // TODO: This needs a different approach - we need to load specific questions by ID
-    // For now, we'll alert the user that this feature is coming soon
-    alert('错题复习功能即将上线，敬请期待！');
+  const handleWrongQuestionsPractice = async (questionIds: string[]) => {
+    try {
+      // Create a wrong questions practice session using the backend API
+      const response = await api.practice.createWrongQuestionsSession(undefined, 5);
+      
+      if (response.success && response.data) {
+        const { session, quizzes } = response.data;
+        
+        // Set the current session with the wrong questions
+        setCurrentSession({
+          id: session.id,
+          questions: quizzes,
+          answers: [],
+          startTime: new Date(),
+          config: {
+            questionTypes: ['single-choice', 'multiple-choice', 'true-false', 'fill-blank'],
+            questionCount: quizzes.length,
+            timeLimit: undefined, // No time limit for review
+            shuffleQuestions: false,
+            strategy: 'review'
+          },
+          answeredQuestions: 0,
+          totalQuestions: quizzes.length,
+          correctAnswers: 0,
+          incorrectAnswers: 0,
+          score: 0,
+          status: 'pending'
+        });
+        
+        setCurrentScreen('quiz-practice');
+      } else {
+        // If no wrong questions found or error occurred
+        alert(response.data?.message || '暂无错题记录。请先完成几次练习后再使用此功能。');
+      }
+    } catch (error) {
+      console.error('Failed to create wrong questions session:', error);
+      alert('创建错题练习失败，请稍后重试。');
+    }
   };
 
   const handleEndPractice = (session: PracticeSession) => {

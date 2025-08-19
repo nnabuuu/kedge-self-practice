@@ -322,6 +322,37 @@ export class QuizController {
     };
   }
 
+  @Get('by-ids')
+  @ApiOperation({ summary: 'Get multiple quizzes by their IDs' })
+  @ApiQuery({ name: 'ids', required: true, description: 'Comma-separated list of quiz IDs', example: 'id1,id2,id3' })
+  @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
+  async getQuizzesByIds(@Query('ids') idsString: string) {
+    if (!idsString) {
+      return {
+        success: true,
+        data: []
+      };
+    }
+
+    // Parse comma-separated IDs
+    const ids = idsString.split(',').map(id => id.trim()).filter(id => id);
+    
+    if (ids.length === 0) {
+      return {
+        success: true,
+        data: []
+      };
+    }
+
+    const quizzes = await this.quizService.getQuizzesByIds(ids);
+    
+    return {
+      success: true,
+      total: quizzes.length,
+      data: quizzes
+    };
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard, TeacherGuard)
   @ApiOperation({ summary: 'Delete a quiz by ID' })

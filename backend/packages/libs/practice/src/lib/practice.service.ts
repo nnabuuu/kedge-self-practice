@@ -351,6 +351,46 @@ export class PracticeService {
     };
   }
 
+  async createWrongQuestionsSession(
+    userId: string,
+    sessionLimit = 5
+  ): Promise<PracticeSessionResponse> {
+    // Get wrong question IDs from recent sessions
+    const wrongQuestionsData = await this.getRecentWrongQuestions(userId, sessionLimit);
+    
+    if (wrongQuestionsData.wrong_question_ids.length === 0) {
+      throw new BadRequestException('No wrong questions found in recent practice sessions');
+    }
+    
+    const sessionId = uuidv4();
+    const quizIds = wrongQuestionsData.wrong_question_ids;
+    
+    // Fetch the actual quiz items
+    const quizzes = await this.quizService.getQuizzesByIds(quizIds);
+    
+    if (quizzes.length === 0) {
+      throw new BadRequestException('Could not load wrong questions');
+    }
+    
+    // Create session with wrong question IDs
+    const session = await this.practiceRepository.createSession(
+      sessionId,
+      userId,
+      quizIds,
+      {
+        strategy: 'review', // Using 'review' strategy for wrong questions
+        total_questions: quizzes.length,
+        time_limit_minutes: undefined, // No time limit for review
+      }
+    );
+    
+    return {
+      session,
+      quizzes,
+      answers: []
+    };
+  }
+
   async getKnowledgePointStatistics(
     userId: string, 
     subjectId?: string,

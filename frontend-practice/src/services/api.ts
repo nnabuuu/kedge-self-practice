@@ -223,30 +223,66 @@ export class ApiService {
     }
   }
 
-  // Batch get questions
+  // Batch get questions - now using backend endpoint
   static async getBatchQuestions(questionIds: string[]): Promise<ApiResponse<QuizQuestion[]>> {
     try {
-      // Backend doesn't have batch endpoint, fetch individually
-      const questions: QuizQuestion[] = [];
-      const errors: string[] = [];
-      
-      for (const id of questionIds) {
-        const response = await backendApiMethods.questions.getById(id);
-        if (response.success && response.data) {
-          questions.push(response.data);
-        } else {
-          errors.push(`Failed to fetch question ${id}`);
-        }
+      if (questionIds.length === 0) {
+        return createApiResponse([], true);
       }
       
-      if (errors.length > 0) {
-        console.warn('Some questions failed to load:', errors);
+      // Use the new backend endpoint for batch fetching
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/quiz/by-ids?ids=${questionIds.join(',')}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
-      return createApiResponse(questions, questions.length > 0);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        return createApiResponse(result.data, true);
+      }
+      
+      return createApiResponse([], false, undefined, 'Failed to fetch questions');
     } catch (error) {
       console.error('Failed to batch fetch questions:', error);
       return createApiResponse([], false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
+
+  // Create wrong questions practice session
+  static async createWrongQuestionsSession(userId?: string, sessionLimit = 5): Promise<ApiResponse<any>> {
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.append('userId', userId);
+      params.append('sessionLimit', sessionLimit.toString());
+      
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/practice/sessions/create-wrong-questions?${params}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.session && result.quizzes) {
+        return createApiResponse(result, true);
+      }
+      
+      return createApiResponse(null, false, undefined, result.message || 'Failed to create wrong questions session');
+    } catch (error) {
+      console.error('Failed to create wrong questions session:', error);
+      return createApiResponse(null, false, undefined, error instanceof Error ? error.message : 'Network error');
     }
   }
 
@@ -282,7 +318,8 @@ export const api = {
     startSession: backendApiMethods.practice.startSession,
     getSession: backendApiMethods.practice.getSession,
     submitAnswer: backendApiMethods.practice.submitAnswer,
-    completeSession: backendApiMethods.practice.completeSession
+    completeSession: backendApiMethods.practice.completeSession,
+    createWrongQuestionsSession: (userId?: string, sessionLimit?: number) => ApiService.createWrongQuestionsSession(userId, sessionLimit)
   },
   ai: {
     analyzeQuestion: (question: string) => ApiService.analyzeQuestionWithAI(question)
