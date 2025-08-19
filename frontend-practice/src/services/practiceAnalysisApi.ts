@@ -1,5 +1,3 @@
-import { API_BASE_URL } from '../config/api';
-
 export interface WeakKnowledgePoint {
   knowledge_point_id: string;
   error_rate: number;
@@ -44,7 +42,7 @@ export interface KnowledgeStatsResponse {
 }
 
 class PracticeAnalysisApi {
-  private baseUrl = API_BASE_URL;
+  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
 
   async getWeakKnowledgePoints(userId?: string, limit = 20): Promise<WeakKnowledgePointsResponse> {
     const params = new URLSearchParams();
