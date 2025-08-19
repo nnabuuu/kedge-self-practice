@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, CheckCircle2, XCircle, RotateCcw, Share2, Download, ChevronRight, ChevronDown, Award, Zap, Brain, Star, Sparkles, Gift, MessageSquare, Loader2 } from 'lucide-react';
+import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, CheckCircle2, XCircle, RotateCcw, Share2, Download, ChevronRight, ChevronDown, Award, Zap, Brain, Star, Sparkles, Gift, MessageSquare, Loader2, Home, History, BarChart3, Users } from 'lucide-react';
 import { Subject, PracticeSession, QuizQuestion } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import TimeAnalysisChart from './TimeAnalysisChart';
@@ -10,6 +10,9 @@ interface QuizResultsProps {
   onReturnToMenu: () => void;
   onRetryQuiz: () => void;
   onEnhancementRound: (knowledgePoints: string[]) => void;
+  onViewHistory?: () => void;
+  onViewKnowledgeAnalysis?: () => void;
+  onReturnHome?: () => void;
 }
 
 interface KnowledgePointAnalysis {
@@ -53,7 +56,10 @@ export default function QuizResults({
   session, 
   onReturnToMenu, 
   onRetryQuiz, 
-  onEnhancementRound 
+  onEnhancementRound,
+  onViewHistory,
+  onViewKnowledgeAnalysis,
+  onReturnHome
 }: QuizResultsProps) {
   const [expandedVolumes, setExpandedVolumes] = useState<Set<string>>(new Set());
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
@@ -607,30 +613,74 @@ export default function QuizResults({
           </div>
 
           {/* Action Buttons - 清晰的下一步行动 */}
-          <div className="flex flex-wrap justify-center gap-4 mb-12">
-            <button
-              onClick={onRetryQuiz}
-              className="group flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out shadow-xl shadow-blue-500/25 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-            >
-              <RotateCcw className="w-6 h-6 mr-3 group-hover:rotate-180 transition-transform duration-300" />
-              <div>
-                <div className="font-bold tracking-wide">重新练习</div>
-                <div className="text-xs opacity-90">巩固学习效果</div>
-              </div>
-            </button>
-
-            {weakKnowledgePoints.length > 0 && (
+          <div className="space-y-6 mb-12">
+            {/* Primary Actions - 主要练习操作 */}
+            <div className="flex flex-wrap justify-center gap-4">
               <button
-                onClick={() => onEnhancementRound(weakKnowledgePoints)}
-                className="group flex items-center px-8 py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-2xl hover:from-orange-700 hover:to-red-700 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out shadow-xl shadow-orange-500/25 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-none"
+                onClick={onRetryQuiz}
+                className="group flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out shadow-xl shadow-blue-500/25 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
               >
-                <Zap className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform duration-300" />
+                <RotateCcw className="w-6 h-6 mr-3 group-hover:rotate-180 transition-transform duration-300" />
                 <div>
-                  <div className="font-bold tracking-wide">薄弱点强化</div>
-                  <div className="text-xs opacity-90">{weakKnowledgePoints.length} 个知识点</div>
+                  <div className="font-bold tracking-wide">重新练习</div>
+                  <div className="text-xs opacity-90">巩固学习效果</div>
                 </div>
               </button>
-            )}
+
+              {weakKnowledgePoints.length > 0 && (
+                <button
+                  onClick={() => onEnhancementRound(weakKnowledgePoints)}
+                  className="group flex items-center px-8 py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-2xl hover:from-orange-700 hover:to-red-700 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out shadow-xl shadow-orange-500/25 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <Zap className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform duration-300" />
+                  <div>
+                    <div className="font-bold tracking-wide">薄弱点强化</div>
+                    <div className="text-xs opacity-90">{weakKnowledgePoints.length} 个知识点</div>
+                  </div>
+                </button>
+              )}
+            </div>
+
+            {/* Secondary Navigation - 查看分析和历史 */}
+            <div className="flex flex-wrap justify-center gap-4">
+              {onViewKnowledgeAnalysis && (
+                <button
+                  onClick={onViewKnowledgeAnalysis}
+                  className="group flex items-center px-6 py-3 bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 rounded-xl hover:from-purple-200 hover:to-indigo-200 transform hover:scale-105 transition-all duration-300 ease-out shadow-lg border border-purple-200 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <BarChart3 className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                  <span className="font-medium tracking-wide">查看知识点分析</span>
+                </button>
+              )}
+
+              {onViewHistory && (
+                <button
+                  onClick={onViewHistory}
+                  className="group flex items-center px-6 py-3 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-xl hover:from-green-200 hover:to-emerald-200 transform hover:scale-105 transition-all duration-300 ease-out shadow-lg border border-green-200 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <History className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-300" />
+                  <span className="font-medium tracking-wide">查看练习历史</span>
+                </button>
+              )}
+
+              <button
+                onClick={onReturnToMenu}
+                className="group flex items-center px-6 py-3 bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700 rounded-xl hover:from-gray-200 hover:to-slate-200 transform hover:scale-105 transition-all duration-300 ease-out shadow-lg border border-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none"
+              >
+                <BookOpen className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                <span className="font-medium tracking-wide">返回练习菜单</span>
+              </button>
+
+              {onReturnHome && (
+                <button
+                  onClick={onReturnHome}
+                  className="group flex items-center px-6 py-3 bg-gradient-to-r from-blue-100 to-sky-100 text-blue-700 rounded-xl hover:from-blue-200 hover:to-sky-200 transform hover:scale-105 transition-all duration-300 ease-out shadow-lg border border-blue-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <Home className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                  <span className="font-medium tracking-wide">返回首页</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Tabs */}
@@ -1012,6 +1062,63 @@ export default function QuizResults({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Quick Actions - 快速操作建议 */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center tracking-wide">
+              <Sparkles className="w-5 h-5 text-blue-500 mr-2" />
+              接下来您可以
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <button
+                onClick={onRetryQuiz}
+                className="group flex flex-col items-center p-4 bg-white rounded-xl hover:bg-blue-50 transition-all duration-300 border border-gray-200 hover:border-blue-300 hover:shadow-lg"
+              >
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-200 transition-colors">
+                  <RotateCcw className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="font-medium text-gray-900 group-hover:text-blue-600">重新练习</span>
+                <span className="text-xs text-gray-500 mt-1">巩固本次内容</span>
+              </button>
+
+              {onViewKnowledgeAnalysis && (
+                <button
+                  onClick={onViewKnowledgeAnalysis}
+                  className="group flex flex-col items-center p-4 bg-white rounded-xl hover:bg-purple-50 transition-all duration-300 border border-gray-200 hover:border-purple-300 hover:shadow-lg"
+                >
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors">
+                    <BarChart3 className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <span className="font-medium text-gray-900 group-hover:text-purple-600">知识点分析</span>
+                  <span className="text-xs text-gray-500 mt-1">查看整体掌握</span>
+                </button>
+              )}
+
+              {onViewHistory && (
+                <button
+                  onClick={onViewHistory}
+                  className="group flex flex-col items-center p-4 bg-white rounded-xl hover:bg-green-50 transition-all duration-300 border border-gray-200 hover:border-green-300 hover:shadow-lg"
+                >
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-green-200 transition-colors">
+                    <History className="w-6 h-6 text-green-600" />
+                  </div>
+                  <span className="font-medium text-gray-900 group-hover:text-green-600">练习历史</span>
+                  <span className="text-xs text-gray-500 mt-1">回顾学习进度</span>
+                </button>
+              )}
+
+              <button
+                onClick={onReturnToMenu}
+                className="group flex flex-col items-center p-4 bg-white rounded-xl hover:bg-orange-50 transition-all duration-300 border border-gray-200 hover:border-orange-300 hover:shadow-lg"
+              >
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-orange-200 transition-colors">
+                  <BookOpen className="w-6 h-6 text-orange-600" />
+                </div>
+                <span className="font-medium text-gray-900 group-hover:text-orange-600">新的练习</span>
+                <span className="text-xs text-gray-500 mt-1">选择其他内容</span>
+              </button>
             </div>
           </div>
         </div>

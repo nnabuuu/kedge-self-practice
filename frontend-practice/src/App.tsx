@@ -478,6 +478,18 @@ function App() {
             onReturnToMenu={handleReturnToMenu}
             onRetryQuiz={handleRetryQuiz}
             onEnhancementRound={handleEnhancementRound}
+            onViewHistory={() => {
+              handleSaveToHistory();
+              setCurrentScreen('practice-history');
+            }}
+            onViewKnowledgeAnalysis={() => {
+              handleSaveToHistory();
+              setCurrentScreen('knowledge-analysis');
+            }}
+            onReturnHome={() => {
+              handleSaveToHistory();
+              setCurrentScreen('home');
+            }}
           />
         ) : null;
       
