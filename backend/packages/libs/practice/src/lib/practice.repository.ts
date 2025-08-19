@@ -81,23 +81,6 @@ export class PracticeRepository {
     }
   }
 
-  async getAnswersForSession(sessionId: string): Promise<PracticeAnswer[]> {
-    try {
-      const result = await this.persistentService.pgPool.query(
-        sql.type(PracticeAnswerSchema)`
-          SELECT * FROM kedge_practice.practice_answers
-          WHERE session_id = ${sessionId}
-          ORDER BY answered_at
-        `
-      );
-
-      return [...result.rows];
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Error getting answers: ${errorMessage}`);
-      throw error;
-    }
-  }
 
   async submitAnswer(
     sessionId: string,
@@ -324,7 +307,7 @@ export class PracticeRepository {
     }
   }
 
-  async getAnswersForSession(sessionId: string): Promise<any[]> {
+  async getAnswersForSession(sessionId: string): Promise<readonly any[]> {
     try {
       const result = await this.persistentService.pgPool.query(sql.unsafe`
         SELECT 

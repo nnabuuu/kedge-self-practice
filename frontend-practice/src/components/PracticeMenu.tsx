@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Play, History, BookOpen, Brain, Zap, Timer, BarChart3, Clock, Target, TrendingUp, Sparkles, AlertCircle, Info } from 'lucide-react';
 import { Subject, PracticeHistory } from '../types/quiz';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useWeakKnowledgePoints, useWrongQuestions, useQuickPracticeSuggestion } from '../hooks/usePracticeAnalysis';
 
 interface PracticeMenuProps {
   subject: Subject;
@@ -25,71 +26,18 @@ export default function PracticeMenu({
   onBack 
 }: PracticeMenuProps) {
   
-  // Get practice history to analyze for smart shortcuts
-  const [practiceHistory] = useLocalStorage<PracticeHistory[]>('practice-history', []);
-  
   // State for showing tooltips
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   
-  // Analyze last 5 practice sessions for this subject
-  const recentSessions = useMemo(() => {
-    return practiceHistory
-      .filter(h => h.subjectId === subject.id)
-      .slice(0, 5);
-  }, [practiceHistory, subject.id]);
+  // Use backend APIs for analysis
+  const { data: weakData } = useWeakKnowledgePoints(undefined, 20);
+  const { data: wrongData } = useWrongQuestions(undefined, 5);
+  const { data: quickData } = useQuickPracticeSuggestion();
   
-  // Get last used knowledge points
-  const lastKnowledgePoints = useMemo(() => {
-    if (recentSessions.length > 0) {
-      return recentSessions[0].knowledgePoints;
-    }
-    return [];
-  }, [recentSessions]);
-  
-  // Calculate weak knowledge points (>40% error rate in last 5 sessions)
-  const weakKnowledgePoints = useMemo(() => {
-    const kpStats = new Map<string, { correct: number; total: number }>();
-    
-    recentSessions.forEach(session => {
-      session.questions?.forEach((question, index) => {
-        const kpId = question.relatedKnowledgePointId;
-        if (!kpStats.has(kpId)) {
-          kpStats.set(kpId, { correct: 0, total: 0 });
-        }
-        const stat = kpStats.get(kpId)!;
-        stat.total++;
-        if (session.answers[index] === question.answer) {
-          stat.correct++;
-        }
-      });
-    });
-    
-    // Filter knowledge points with >40% error rate
-    const weakPoints: string[] = [];
-    kpStats.forEach((stat, kpId) => {
-      const errorRate = 1 - (stat.correct / stat.total);
-      if (errorRate > 0.4) {
-        weakPoints.push(kpId);
-      }
-    });
-    
-    return weakPoints;
-  }, [recentSessions]);
-  
-  // Get wrong question IDs from last 5 sessions
-  const recentWrongQuestions = useMemo(() => {
-    const wrongQuestionIds = new Set<string>();
-    
-    recentSessions.forEach(session => {
-      session.questions?.forEach((question, index) => {
-        if (session.answers[index] !== question.answer) {
-          wrongQuestionIds.add(question.id);
-        }
-      });
-    });
-    
-    return Array.from(wrongQuestionIds);
-  }, [recentSessions]);
+  // Extract data from API responses
+  const lastKnowledgePoints = quickData?.knowledge_point_ids || [];
+  const weakKnowledgePoints = weakData?.weak_points?.map(wp => wp.knowledge_point_id) || [];
+  const recentWrongQuestions = wrongData?.wrong_question_ids || [];
   
   // Quick practice handler - 5-10 min practice with last knowledge points
   const handleQuickPractice = () => {

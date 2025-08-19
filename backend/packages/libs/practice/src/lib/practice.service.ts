@@ -92,7 +92,7 @@ export class PracticeService {
     return {
       session: updatedSession,
       quizzes,
-      answers
+      answers: [...answers] as any
     };
   }
 
@@ -177,7 +177,7 @@ export class PracticeService {
     return {
       session: updatedSession,
       quizzes,
-      answers
+      answers: [...answers] as any
     };
   }
 
@@ -204,7 +204,7 @@ export class PracticeService {
     return {
       session,
       quizzes,
-      answers
+      answers: [...answers] as any
     };
   }
 

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ArrowLeft, MessageSquare, Send, Bot, User, TrendingUp, Target, BookOpen, Brain, Sparkles, BarChart3, Zap, CheckCircle2, XCircle, Clock, Award } from 'lucide-react';
 import { Subject, PracticeHistory } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
+import { useKnowledgePointStats } from '../hooks/usePracticeAnalysis';
 
 interface KnowledgeAnalysisProps {
   subject: Subject;
@@ -51,102 +52,40 @@ export default function KnowledgeAnalysis({
 
   // Use API hook to get knowledge points
   const { data: knowledgePoints = [], loading: knowledgePointsLoading } = useKnowledgePoints(subject.id);
+  
+  // Use backend API for knowledge point statistics
+  const { data: statsData, loading: statsLoading } = useKnowledgePointStats(undefined, subject.id, 20);
 
-  // 获取当前学科的练习历史
-  const subjectHistory = history.filter(h => h.subjectId === subject.id);
-
-  // 计算知识点统计 - 只分析最近20次练习中的错题
-  const calculateKnowledgePointStats = (): KnowledgePointStats[] => {
-    // Check if knowledgePoints is null or undefined
-    if (!knowledgePoints || knowledgePoints.length === 0) {
+  // Convert backend stats to frontend format
+  const knowledgePointStats = useMemo<KnowledgePointStats[]>(() => {
+    if (!statsData?.statistics || !knowledgePoints || knowledgePoints.length === 0) {
       return [];
     }
 
-    const statsMap = new Map<string, {
-      totalQuestions: number;
-      correctAnswers: number;
-      wrongAnswers: number;
-      lastPracticed?: Date;
-    }>();
-
-    // 只分析最近20次练习
-    const recentSessions = subjectHistory.slice(0, 20);
-
-    // 统计练习数据
-    recentSessions.forEach(session => {
-      session.questions?.forEach((question, index) => {
-        const kpId = question.relatedKnowledgePointId;
+    // Only show knowledge points with wrong answers
+    return statsData.statistics
+      .filter(stat => stat.wrong_answers > 0)
+      .map(stat => {
+        const kp = knowledgePoints.find(k => k.id === stat.knowledge_point_id);
+        if (!kp) return null;
         
-        // 只跟踪练习过的知识点
-        if (!statsMap.has(kpId)) {
-          statsMap.set(kpId, {
-            totalQuestions: 0,
-            correctAnswers: 0,
-            wrongAnswers: 0
-          });
-        }
-        
-        const stat = statsMap.get(kpId)!;
-        stat.totalQuestions++;
-        
-        if (session.answers && session.answers[index] === question.answer) {
-          stat.correctAnswers++;
-        } else if (session.answers && session.answers[index] !== null) {
-          stat.wrongAnswers++;
-        }
-        
-        const sessionDate = session.date instanceof Date ? session.date : new Date(session.date);
-        if (!stat.lastPracticed || sessionDate > stat.lastPracticed) {
-          stat.lastPracticed = sessionDate;
-        }
-      });
-    });
-
-    // 只返回有错题的知识点
-    const results: KnowledgePointStats[] = [];
-    
-    statsMap.forEach((stat, kpId) => {
-      // 只包含有错题的知识点
-      if (stat.wrongAnswers > 0) {
-        const kp = knowledgePoints.find(k => k.id === kpId);
-        if (kp) {
-          const accuracy = stat.totalQuestions > 0 
-            ? Math.round((stat.correctAnswers / stat.totalQuestions) * 100) 
-            : 0;
-          
-          let masteryLevel: 'excellent' | 'good' | 'needs-improvement' | 'poor';
-          if (accuracy >= 90) masteryLevel = 'excellent';
-          else if (accuracy >= 75) masteryLevel = 'good';
-          else if (accuracy >= 60) masteryLevel = 'needs-improvement';
-          else masteryLevel = 'poor';
-
-          results.push({
-            id: kp.id,
-            volume: kp.volume,
-            unit: kp.unit,
-            lesson: kp.lesson,
-            section: kp.section,
-            topic: kp.topic,
-            totalQuestions: stat.totalQuestions,
-            correctAnswers: stat.correctAnswers,
-            wrongAnswers: stat.wrongAnswers,
-            accuracy,
-            lastPracticed: stat.lastPracticed,
-            masteryLevel
-          });
-        }
-      }
-    });
-    
-    // 按错误率排序（错误率高的在前）
-    return results.sort((a, b) => {
-      const errorRateA = (a.wrongAnswers || 0) / a.totalQuestions;
-      const errorRateB = (b.wrongAnswers || 0) / b.totalQuestions;
-      return errorRateB - errorRateA;
-    });
-  };
-
-  const knowledgePointStats = calculateKnowledgePointStats();
+        return {
+          id: kp.id,
+          volume: kp.volume,
+          unit: kp.unit,
+          lesson: kp.lesson,
+          section: kp.section,
+          topic: kp.topic,
+          totalQuestions: stat.total_questions,
+          correctAnswers: stat.correct_answers,
+          wrongAnswers: stat.wrong_answers,
+          accuracy: stat.accuracy,
+          lastPracticed: stat.last_practiced ? new Date(stat.last_practiced) : undefined,
+          masteryLevel: stat.mastery_level
+        };
+      })
+      .filter((stat): stat is KnowledgePointStats => stat !== null);
+  }, [statsData, knowledgePoints]);
 
   // 获取薄弱知识点
   const weakKnowledgePoints = knowledgePointStats
@@ -162,7 +101,7 @@ export default function KnowledgeAnalysis({
   const totalQuestions = knowledgePointStats.reduce((sum, stat) => sum + stat.totalQuestions, 0);
   const totalCorrect = knowledgePointStats.reduce((sum, stat) => sum + stat.correctAnswers, 0);
   const overallAccuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-  const practiceCount = subjectHistory.length;
+  const practiceCount = statsData?.sessions_analyzed || 0;
 
   // 模拟AI回复
   const generateAIResponse = (userMessage: string): string => {
@@ -252,7 +191,7 @@ export default function KnowledgeAnalysis({
   };
 
   // Show loading state
-  if (knowledgePointsLoading) {
+  if (knowledgePointsLoading || statsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50/80 via-blue-50/60 to-indigo-100/80 relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
