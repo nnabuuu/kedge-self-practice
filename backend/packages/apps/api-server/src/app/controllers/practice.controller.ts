@@ -68,6 +68,8 @@ export class PracticeController {
   ) {}
 
   @Post('sessions/create')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new practice session' })
   @ApiResponse({ 
     status: HttpStatus.CREATED, 
@@ -75,14 +77,17 @@ export class PracticeController {
     type: PracticeSessionResponseDto 
   })
   async createSession(
+    @Request() req: AuthenticatedRequest,
     @Body() createSessionDto: CreatePracticeSessionDto
   ): Promise<PracticeSessionResponseDto> {
-    // Use anonymous user ID for practice sessions without authentication
-    const userId = '00000000-0000-0000-0000-000000000000';
+    // Use the actual authenticated user's ID
+    const userId = req.user.userId;
     return await this.practiceService.createSession(userId, createSessionDto);
   }
 
   @Post('sessions/:sessionId/start')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Start a practice session' })
   @ApiResponse({ 
@@ -91,14 +96,17 @@ export class PracticeController {
     type: PracticeSessionResponseDto 
   })
   async startSession(
+    @Request() req: AuthenticatedRequest,
     @Param('sessionId') sessionId: string
   ): Promise<PracticeSessionResponseDto> {
-    // Use anonymous user ID for practice sessions without authentication
-    const userId = '00000000-0000-0000-0000-000000000000';
+    // Use the actual authenticated user's ID
+    const userId = req.user.userId;
     return await this.practiceService.startSession(sessionId, userId);
   }
 
   @Post('sessions/submit-answer')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit an answer to a practice question' })
   @ApiResponse({ 
@@ -106,10 +114,11 @@ export class PracticeController {
     description: 'Answer submitted successfully'
   })
   async submitAnswer(
+    @Request() req: AuthenticatedRequest,
     @Body() submitAnswerDto: SubmitAnswerDto
   ): Promise<{ isCorrect: boolean }> {
-    // Use anonymous user ID for practice sessions without authentication
-    const userId = '00000000-0000-0000-0000-000000000000';
+    // Use the actual authenticated user's ID
+    const userId = req.user.userId;
     return await this.practiceService.submitAnswer(submitAnswerDto, userId);
   }
 
@@ -146,6 +155,8 @@ export class PracticeController {
   }
 
   @Post('sessions/complete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Complete a practice session' })
   @ApiResponse({ 
@@ -154,14 +165,17 @@ export class PracticeController {
     type: PracticeSessionDto 
   })
   async completeSession(
+    @Request() req: AuthenticatedRequest,
     @Body() completeSessionDto: CompleteSessionDto
   ): Promise<PracticeSessionDto> {
-    // Use anonymous user ID for practice sessions without authentication
-    const userId = '00000000-0000-0000-0000-000000000000';
+    // Use the actual authenticated user's ID
+    const userId = req.user.userId;
     return await this.practiceService.completeSession(completeSessionDto.session_id, userId);
   }
 
   @Get('sessions/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get practice session details with all questions' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
@@ -169,10 +183,11 @@ export class PracticeController {
     type: PracticeSessionResponseDto 
   })
   async getSession(
+    @Request() req: AuthenticatedRequest,
     @Param('sessionId') sessionId: string
   ): Promise<PracticeSessionResponseDto> {
-    // Use anonymous user ID for practice sessions without authentication
-    const userId = '00000000-0000-0000-0000-000000000000';
+    // Use the actual authenticated user's ID
+    const userId = req.user.userId;
     return await this.practiceService.getSession(sessionId, userId);
   }
 

@@ -39,6 +39,9 @@ export default function PracticeMenu({
   const weakKnowledgePoints = weakData?.weak_points?.map(wp => wp.knowledge_point_id) || [];
   const recentWrongQuestions = wrongData?.wrong_question_ids || [];
   
+  // Check if user has any practice history
+  const hasNoHistory = quickData?.message === 'No completed sessions found';
+  
   // Quick practice handler - 5-10 min practice with last knowledge points
   const handleQuickPractice = () => {
     if (lastKnowledgePoints.length > 0) {
@@ -118,6 +121,21 @@ export default function PracticeMenu({
             <div></div>
           </div>
 
+          {/* Notice banner for new users */}
+          {hasNoHistory && (
+            <div className="max-w-5xl mx-auto mb-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-blue-900 mb-1">欢迎开始学习之旅！</h4>
+                  <p className="text-sm text-blue-700">
+                    完成您的第一次练习后，系统将为您解锁智能推荐功能，包括快速练习、薄弱点强化和错题复习等个性化学习选项。
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 统一的练习方式选择区域 */}
           <div className="space-y-8 max-w-5xl mx-auto">
             
@@ -188,14 +206,20 @@ export default function PracticeMenu({
                 <h3 className="text-lg font-medium text-gray-500 mb-4 text-center leading-tight tracking-wide">快速开始选项</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 快速练习 */}
-                  <button
-                    onClick={handleQuickPractice}
-                    disabled={lastKnowledgePoints.length === 0}
-                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left focus:ring-2 focus:ring-offset-2 focus:outline-none ${
+                  <div
+                    onClick={lastKnowledgePoints.length > 0 ? handleQuickPractice : undefined}
+                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left ${
                       lastKnowledgePoints.length === 0
-                        ? 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed'
-                        : 'bg-gradient-to-br from-blue-50 to-blue-50 hover:bg-blue-100 border-blue-200 hover:border-blue-300 hover:scale-105 focus:ring-blue-500'
+                        ? 'bg-gray-50 border-gray-200 opacity-60'
+                        : 'bg-gradient-to-br from-blue-50 to-blue-50 hover:bg-blue-100 border-blue-200 hover:border-blue-300 hover:scale-105 cursor-pointer'
                     }`}
+                    role="button"
+                    tabIndex={lastKnowledgePoints.length === 0 ? -1 : 0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && lastKnowledgePoints.length > 0) {
+                        handleQuickPractice();
+                      }
+                    }}
                   >
                     <div className="flex items-center mb-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
@@ -259,19 +283,27 @@ export default function PracticeMenu({
                     <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
                       {lastKnowledgePoints.length > 0 
                         ? `继续上次的 ${lastKnowledgePoints.length} 个知识点练习`
-                        : '请先完成一次自定义练习'}
+                        : hasNoHistory 
+                          ? '请先完成一次完整的练习以解锁此功能'
+                          : '正在加载练习记录...'}
                     </p>
-                  </button>
+                  </div>
 
                   {/* 薄弱点强化 */}
-                  <button
-                    onClick={handleWeakPointsPractice}
-                    disabled={weakKnowledgePoints.length === 0}
-                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left focus:ring-2 focus:ring-offset-2 focus:outline-none ${
+                  <div
+                    onClick={weakKnowledgePoints.length > 0 ? handleWeakPointsPractice : undefined}
+                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left ${
                       weakKnowledgePoints.length === 0
-                        ? 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed'
-                        : 'bg-gradient-to-br from-purple-50 to-purple-50 hover:bg-purple-100 border-purple-200 hover:border-purple-300 hover:scale-105 focus:ring-purple-500'
+                        ? 'bg-gray-50 border-gray-200 opacity-60'
+                        : 'bg-gradient-to-br from-purple-50 to-purple-50 hover:bg-purple-100 border-purple-200 hover:border-purple-300 hover:scale-105 cursor-pointer'
                     }`}
+                    role="button"
+                    tabIndex={weakKnowledgePoints.length === 0 ? -1 : 0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && weakKnowledgePoints.length > 0) {
+                        handleWeakPointsPractice();
+                      }
+                    }}
                   >
                     <div className="flex items-center mb-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
@@ -342,17 +374,23 @@ export default function PracticeMenu({
                         错误率 &gt;40%
                       </div>
                     )}
-                  </button>
+                  </div>
 
                   {/* 错题强化 */}
-                  <button
-                    onClick={handleWrongQuestionsPractice}
-                    disabled={recentWrongQuestions.length === 0}
-                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left focus:ring-2 focus:ring-offset-2 focus:outline-none ${
+                  <div
+                    onClick={recentWrongQuestions.length > 0 ? handleWrongQuestionsPractice : undefined}
+                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left ${
                       recentWrongQuestions.length === 0
-                        ? 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed'
-                        : 'bg-gradient-to-br from-orange-50 to-orange-50 hover:bg-orange-100 border-orange-200 hover:border-orange-300 hover:scale-105 focus:ring-orange-500'
+                        ? 'bg-gray-50 border-gray-200 opacity-60'
+                        : 'bg-gradient-to-br from-orange-50 to-orange-50 hover:bg-orange-100 border-orange-200 hover:border-orange-300 hover:scale-105 cursor-pointer'
                     }`}
+                    role="button"
+                    tabIndex={recentWrongQuestions.length === 0 ? -1 : 0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && recentWrongQuestions.length > 0) {
+                        handleWrongQuestionsPractice();
+                      }
+                    }}
                   >
                     <div className="flex items-center mb-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
@@ -422,7 +460,7 @@ export default function PracticeMenu({
                         ? `最近5次练习中的错题`
                         : '继续努力，保持优秀！'}
                     </p>
-                  </button>
+                  </div>
                 </div>
               </div>
             </div>
