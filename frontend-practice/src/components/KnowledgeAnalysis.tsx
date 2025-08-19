@@ -26,6 +26,7 @@ interface KnowledgePointStats {
   topic: string;
   totalQuestions: number;
   correctAnswers: number;
+  wrongAnswers?: number;
   accuracy: number;
   lastPracticed?: Date;
   masteryLevel: 'excellent' | 'good' | 'needs-improvement' | 'poor';
@@ -54,7 +55,7 @@ export default function KnowledgeAnalysis({
   // 获取当前学科的练习历史
   const subjectHistory = history.filter(h => h.subjectId === subject.id);
 
-  // 计算知识点统计
+  // 计算知识点统计 - 只分析最近20次练习中的错题
   const calculateKnowledgePointStats = (): KnowledgePointStats[] => {
     // Check if knowledgePoints is null or undefined
     if (!knowledgePoints || knowledgePoints.length === 0) {
@@ -64,59 +65,84 @@ export default function KnowledgeAnalysis({
     const statsMap = new Map<string, {
       totalQuestions: number;
       correctAnswers: number;
+      wrongAnswers: number;
       lastPracticed?: Date;
     }>();
 
-    // 初始化所有知识点
-    knowledgePoints.forEach(kp => {
-      statsMap.set(kp.id, {
-        totalQuestions: 0,
-        correctAnswers: 0
-      });
-    });
+    // 只分析最近20次练习
+    const recentSessions = subjectHistory.slice(0, 20);
 
     // 统计练习数据
-    subjectHistory.forEach(session => {
+    recentSessions.forEach(session => {
       session.questions?.forEach((question, index) => {
         const kpId = question.relatedKnowledgePointId;
-        const stat = statsMap.get(kpId);
-        if (stat) {
-          stat.totalQuestions++;
-          if (session.answers && session.answers[index] === question.answer) {
-            stat.correctAnswers++;
-          }
-          const sessionDate = session.date instanceof Date ? session.date : new Date(session.date);
-          if (!stat.lastPracticed || sessionDate > stat.lastPracticed) {
-            stat.lastPracticed = sessionDate;
-          }
+        
+        // 只跟踪练习过的知识点
+        if (!statsMap.has(kpId)) {
+          statsMap.set(kpId, {
+            totalQuestions: 0,
+            correctAnswers: 0,
+            wrongAnswers: 0
+          });
+        }
+        
+        const stat = statsMap.get(kpId)!;
+        stat.totalQuestions++;
+        
+        if (session.answers && session.answers[index] === question.answer) {
+          stat.correctAnswers++;
+        } else if (session.answers && session.answers[index] !== null) {
+          stat.wrongAnswers++;
+        }
+        
+        const sessionDate = session.date instanceof Date ? session.date : new Date(session.date);
+        if (!stat.lastPracticed || sessionDate > stat.lastPracticed) {
+          stat.lastPracticed = sessionDate;
         }
       });
     });
 
-    // 转换为统计对象
-    return knowledgePoints.map(kp => {
-      const stat = statsMap.get(kp.id) || { totalQuestions: 0, correctAnswers: 0 };
-      const accuracy = stat.totalQuestions > 0 ? Math.round((stat.correctAnswers / stat.totalQuestions) * 100) : 0;
-      
-      let masteryLevel: 'excellent' | 'good' | 'needs-improvement' | 'poor';
-      if (accuracy >= 90) masteryLevel = 'excellent';
-      else if (accuracy >= 75) masteryLevel = 'good';
-      else if (accuracy >= 60) masteryLevel = 'needs-improvement';
-      else masteryLevel = 'poor';
+    // 只返回有错题的知识点
+    const results: KnowledgePointStats[] = [];
+    
+    statsMap.forEach((stat, kpId) => {
+      // 只包含有错题的知识点
+      if (stat.wrongAnswers > 0) {
+        const kp = knowledgePoints.find(k => k.id === kpId);
+        if (kp) {
+          const accuracy = stat.totalQuestions > 0 
+            ? Math.round((stat.correctAnswers / stat.totalQuestions) * 100) 
+            : 0;
+          
+          let masteryLevel: 'excellent' | 'good' | 'needs-improvement' | 'poor';
+          if (accuracy >= 90) masteryLevel = 'excellent';
+          else if (accuracy >= 75) masteryLevel = 'good';
+          else if (accuracy >= 60) masteryLevel = 'needs-improvement';
+          else masteryLevel = 'poor';
 
-      return {
-        id: kp.id,
-        volume: kp.volume,
-        unit: kp.unit,
-        lesson: kp.lesson,
-        section: kp.section,
-        topic: kp.topic,
-        totalQuestions: stat.totalQuestions,
-        correctAnswers: stat.correctAnswers,
-        accuracy,
-        lastPracticed: stat.lastPracticed,
-        masteryLevel
-      };
+          results.push({
+            id: kp.id,
+            volume: kp.volume,
+            unit: kp.unit,
+            lesson: kp.lesson,
+            section: kp.section,
+            topic: kp.topic,
+            totalQuestions: stat.totalQuestions,
+            correctAnswers: stat.correctAnswers,
+            wrongAnswers: stat.wrongAnswers,
+            accuracy,
+            lastPracticed: stat.lastPracticed,
+            masteryLevel
+          });
+        }
+      }
+    });
+    
+    // 按错误率排序（错误率高的在前）
+    return results.sort((a, b) => {
+      const errorRateA = (a.wrongAnswers || 0) / a.totalQuestions;
+      const errorRateB = (b.wrongAnswers || 0) / b.totalQuestions;
+      return errorRateB - errorRateA;
     });
   };
 
@@ -324,10 +350,15 @@ export default function KnowledgeAnalysis({
               {/* 知识点详细分析 */}
               <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900 flex items-center tracking-wide">
-                    <BookOpen className="w-6 h-6 text-blue-500 mr-2" />
-                    知识点掌握情况
-                  </h2>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 flex items-center tracking-wide">
+                      <BookOpen className="w-6 h-6 text-blue-500 mr-2" />
+                      知识点掌握情况
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1 ml-8">
+                      最近20次练习中的薄弱知识点
+                    </p>
+                  </div>
                   {weakKnowledgePoints.length > 0 && (
                     <button
                       onClick={() => onEnhancementRound(weakKnowledgePoints)}
@@ -340,7 +371,16 @@ export default function KnowledgeAnalysis({
                 </div>
                 
                 <div className="space-y-4">
-                  {knowledgePointStats.map(stat => (
+                  {knowledgePointStats.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 className="w-8 h-8 text-green-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">太棒了！</h3>
+                      <p className="text-gray-600">最近20次练习中没有错题，继续保持！</p>
+                    </div>
+                  ) : (
+                    knowledgePointStats.map(stat => (
                     <div key={stat.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-300">
                       <div className="flex-1">
                         <div className="font-medium text-gray-900 mb-1 tracking-wide">{stat.topic}</div>
@@ -381,15 +421,8 @@ export default function KnowledgeAnalysis({
                         )}
                       </div>
                     </div>
-                  ))}
+                  )))}
                   
-                  {knowledgePointStats.length === 0 && (
-                    <div className="text-center py-8">
-                      <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2 tracking-wide">暂无练习数据</h3>
-                      <p className="text-gray-600 tracking-wide">开始练习后，这里将显示详细的知识点分析</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
