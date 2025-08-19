@@ -292,7 +292,7 @@ export default function PracticeMenu({
                               <ul className="space-y-1.5 text-xs">
                                 <li className="flex items-start">
                                   <span className="text-blue-400 mr-1.5 mt-0.5">✓</span>
-                                  <span>使用您上次练习的知识点</span>
+                                  <span>使用上次练习的知识点</span>
                                 </li>
                                 <li className="flex items-start">
                                   <span className="text-blue-400 mr-1.5 mt-0.5">✓</span>
@@ -300,11 +300,7 @@ export default function PracticeMenu({
                                 </li>
                                 <li className="flex items-start">
                                   <span className="text-blue-400 mr-1.5 mt-0.5">✓</span>
-                                  <span>适合快速复习巩固</span>
-                                </li>
-                                <li className="flex items-start">
-                                  <span className="text-blue-400 mr-1.5 mt-0.5">✓</span>
-                                  <span>预计用时5-10分钟</span>
+                                  <span>5-10分钟快速巩固</span>
                                 </li>
                               </ul>
                             </div>
@@ -372,7 +368,7 @@ export default function PracticeMenu({
                               <ul className="space-y-1.5 text-xs">
                                 <li className="flex items-start">
                                   <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
-                                  <span>分析最近5次练习数据</span>
+                                  <span>分析最近5次练习</span>
                                 </li>
                                 <li className="flex items-start">
                                   <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
@@ -380,11 +376,7 @@ export default function PracticeMenu({
                                 </li>
                                 <li className="flex items-start">
                                   <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
-                                  <span>针对性强化薄弱环节</span>
-                                </li>
-                                <li className="flex items-start">
-                                  <span className="text-purple-400 mr-1.5 mt-0.5">✓</span>
-                                  <span>帮助突破学习瓶颈</span>
+                                  <span>针对薄弱点强化训练</span>
                                 </li>
                               </ul>
                             </div>
@@ -461,15 +453,11 @@ export default function PracticeMenu({
                               <ul className="space-y-1.5 text-xs">
                                 <li className="flex items-start">
                                   <span className="text-orange-400 mr-1.5 mt-0.5">✓</span>
-                                  <span>收集最近5次练习的错题</span>
+                                  <span>收集最近5次的错题</span>
                                 </li>
                                 <li className="flex items-start">
                                   <span className="text-orange-400 mr-1.5 mt-0.5">✓</span>
                                   <span>去重后重新练习</span>
-                                </li>
-                                <li className="flex items-start">
-                                  <span className="text-orange-400 mr-1.5 mt-0.5">✓</span>
-                                  <span>加深对错题的理解</span>
                                 </li>
                                 <li className="flex items-start">
                                   <span className="text-orange-400 mr-1.5 mt-0.5">✓</span>

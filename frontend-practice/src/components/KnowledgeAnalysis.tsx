@@ -85,8 +85,9 @@ export default function KnowledgeAnalysis({
           if (session.answers && session.answers[index] === question.answer) {
             stat.correctAnswers++;
           }
-          if (!stat.lastPracticed || session.date > stat.lastPracticed) {
-            stat.lastPracticed = session.date;
+          const sessionDate = session.date instanceof Date ? session.date : new Date(session.date);
+          if (!stat.lastPracticed || sessionDate > stat.lastPracticed) {
+            stat.lastPracticed = sessionDate;
           }
         }
       });
@@ -351,7 +352,11 @@ export default function KnowledgeAnalysis({
                             <>
                               练习 {stat.totalQuestions} 题，正确 {stat.correctAnswers} 题
                               {stat.lastPracticed && (
-                                <span className="ml-2">• 最后练习：{stat.lastPracticed.toLocaleDateString()}</span>
+                                <span className="ml-2">• 最后练习：{
+                                  stat.lastPracticed instanceof Date 
+                                    ? stat.lastPracticed.toLocaleDateString() 
+                                    : new Date(stat.lastPracticed).toLocaleDateString()
+                                }</span>
                               )}
                             </>
                           ) : (
