@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, CheckCircle2, XCircle, RotateCcw, Share2, Download, ChevronRight, ChevronDown, Award, Zap, Brain, Star, Sparkles, Gift, MessageSquare, Loader2 } from 'lucide-react';
 import { Subject, PracticeSession, QuizQuestion } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
+import TimeAnalysisChart from './TimeAnalysisChart';
 
 interface QuizResultsProps {
   subject: Subject;
@@ -788,7 +789,7 @@ export default function QuizResults({
                     详细分析报告
                   </h3>
                   
-                  {/* 题目用时分析 */}
+                  {/* 题目用时分析 - 使用可视化图表组件 */}
                   {session.questionDurations && session.questionDurations.length > 0 && (
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
                       <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center tracking-wide">
@@ -796,129 +797,12 @@ export default function QuizResults({
                         答题用时分析
                       </h4>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-blue-50 rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-blue-600 mb-1">
-                            {timingAnalysis.averageTime}秒
-                          </div>
-                          <div className="text-sm text-blue-700">平均用时</div>
-                        </div>
-                        <div className="bg-green-50 rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-green-600 mb-1">
-                            {Math.min(...session.questionDurations.filter(d => d > 0))}秒
-                          </div>
-                          <div className="text-sm text-green-700">最快用时</div>
-                        </div>
-                        <div className="bg-red-50 rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-red-600 mb-1">
-                            {Math.max(...session.questionDurations)}秒
-                          </div>
-                          <div className="text-sm text-red-700">最慢用时</div>
-                        </div>
-                      </div>
-                      
-                      {/* 题目用时详情 */}
-                      <div className="space-y-3">
-                        <h5 className="font-semibold text-gray-800 mb-3">各题用时详情</h5>
-                        {session.questions.map((question, index) => {
-                          const duration = session.questionDurations?.[index] || 0;
-                          const isSlow = timingAnalysis.slowQuestions.includes(index);
-                          const isCorrect = session.answers[index] === question.answer;
-                          
-                          return (
-                            <div
-                              key={index}
-                              className={`flex items-center justify-between p-4 rounded-lg border transition-all duration-300 ${
-                                isSlow 
-                                  ? 'border-orange-300 bg-orange-50 shadow-md' 
-                                  : 'border-gray-200 bg-white hover:shadow-sm'
-                              }`}
-                            >
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-3 mb-2">
-                                  <span className="text-sm font-medium text-gray-600">
-                                    第 {index + 1} 题
-                                  </span>
-                                  {question.type === 'single-choice' && (
-                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                      单选题
-                                    </span>
-                                  )}
-                                  {question.type === 'multiple-choice' && (
-                                    <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-                                      多选题
-                                    </span>
-                                  )}
-                                  {question.type === 'essay' && (
-                                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                      问答题
-                                    </span>
-                                  )}
-                                  {hasMultipleChoiceQuestions && (
-                                    <span className={`px-2 py-1 text-xs rounded-full ${
-                                      isCorrect 
-                                        ? 'bg-green-100 text-green-800' 
-                                        : 'bg-red-100 text-red-800'
-                                    }`}>
-                                      {isCorrect ? '正确' : '错误'}
-                                    </span>
-                                  )}
-                                  {isSlow && (
-                                    <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full font-medium">
-                                      ⚠️ 用时较长
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-sm text-gray-700 line-clamp-2">
-                                  {question.question}
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-4 ml-4">
-                                <div className="text-right">
-                                  <div className={`text-lg font-bold ${
-                                    isSlow ? 'text-orange-600' : 'text-gray-900'
-                                  }`}>
-                                    {duration}秒
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {duration > timingAnalysis.averageTime ? '超过平均' : '低于平均'}
-                                  </div>
-                                </div>
-                                <div className="w-16">
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div 
-                                      className={`h-2 rounded-full transition-all duration-1000 ${
-                                        isSlow ? 'bg-orange-500' : 'bg-blue-500'
-                                      }`}
-                                      style={{ 
-                                        width: `${Math.min(100, (duration / Math.max(...session.questionDurations)) * 100)}%` 
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      
-                      {timingAnalysis.slowQuestions.length > 0 && (
-                        <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                          <div className="flex items-center mb-2">
-                            <Clock className="w-5 h-5 text-orange-600 mr-2" />
-                            <span className="font-semibold text-orange-800">用时分析建议</span>
-                          </div>
-                          <p className="text-orange-700 text-sm">
-                            发现 {timingAnalysis.slowQuestions.length} 道题目用时较长，建议：
-                          </p>
-                          <ul className="text-orange-700 text-sm mt-2 space-y-1">
-                            <li>• 加强对相关知识点的理解和记忆</li>
-                            <li>• 多做类似题型的练习，提高解题速度</li>
-                            <li>• 学会快速排除明显错误的选项</li>
-                            <li>• 合理分配答题时间，避免在单题上花费过多时间</li>
-                          </ul>
-                        </div>
-                      )}
+                      <TimeAnalysisChart
+                        questions={session.questions}
+                        answers={session.answers}
+                        questionDurations={session.questionDurations}
+                        averageTime={timingAnalysis.averageTime}
+                      />
                     </div>
                   )}
                   
