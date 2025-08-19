@@ -36,13 +36,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       const validatedPayload = result.data;
 
       // 创建用户对象并验证
+      // Map 'sub' to 'userId' for consistency with controller expectations
       const user = {
+        userId: validatedPayload.sub,  // Map sub to userId
         role: validatedPayload.role,
         sub: validatedPayload.sub,
       };
 
-      // 确保返回的用户对象符合 JwtUser 类型
-      return m.auth('jwt_payload').parse(user);
+      // Return the user object with userId for controller use
+      return user as any;
     } catch (error) {
       this.logger.error(`JWT validation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw new UnauthorizedException('Token validation failed');
