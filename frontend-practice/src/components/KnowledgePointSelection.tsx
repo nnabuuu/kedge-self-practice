@@ -56,7 +56,7 @@ export default function KnowledgePointSelection({
     questionCount: 20,
     shuffleQuestions: true,
     showExplanation: true,
-    quizTypes: ['single-choice', 'multiple-choice'] // Default to single and multiple choice
+    quizTypes: ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective', 'other'] // Default to all quiz types
   });
 
   // 使用API Hook获取知识点数据
