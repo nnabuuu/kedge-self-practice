@@ -3,6 +3,7 @@ import { ArrowLeft, Play, Minus, ChevronRight, ChevronDown, RotateCcw, Settings,
 import { Subject } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { Slider } from '@/components/ui/slider';
 
 interface KnowledgePointSelectionProps {
   subject: Subject;
@@ -519,7 +520,7 @@ export default function KnowledgePointSelection({
                     {/* 题型选择 */}
                     <div className="border rounded-xl p-3">
                       <div className="font-medium text-gray-900 mb-2">可包括以下题型</div>
-                      <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                         {[
                           { value: 'single-choice', label: '单选题', icon: '☑️' },
                           { value: 'multiple-choice', label: '多选题', icon: '✅' },
@@ -527,7 +528,7 @@ export default function KnowledgePointSelection({
                           { value: 'subjective', label: '主观题', icon: '✍️' },
                           { value: 'other', label: '其他题型', icon: '❓' }
                         ].map(type => (
-                          <label key={type.value} className="flex items-center space-x-2 cursor-pointer hover:bg-blue-50/50 p-2 rounded-lg transition-all duration-200">
+                          <label key={type.value} className="flex items-center space-x-1.5 cursor-pointer hover:bg-blue-50/50 py-1 px-2 rounded-lg transition-all duration-200">
                             <input
                               type="checkbox"
                               checked={quizConfig.quizTypes?.includes(type.value as any) ?? false}
@@ -545,15 +546,76 @@ export default function KnowledgePointSelection({
                                   }));
                                 }
                               }}
-                              className="w-4 h-4 text-blue-600 rounded"
+                              className="w-4 h-4 text-blue-600 rounded flex-shrink-0"
                             />
-                            <span className="text-lg">{type.icon}</span>
-                            <span className="text-gray-700">{type.label}</span>
+                            <span className="text-sm">{type.icon}</span>
+                            <span className="text-gray-700 text-sm">{type.label}</span>
                           </label>
                         ))}
                       </div>
                       {(!quizConfig.quizTypes || quizConfig.quizTypes.length === 0) && (
-                        <p className="text-red-500 text-sm mt-2">请至少选择一种题型</p>
+                        <p className="text-red-500 text-xs mt-1.5">请至少选择一种题型</p>
+                      )}
+                    </div>
+
+                    {/* Time Limit Slider */}
+                    <div className="border rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center">
+                          <Clock className="w-5 h-5 text-blue-600 mr-2" />
+                          <div className="font-medium text-gray-900">时间限制</div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={!!quizConfig.timeLimit}
+                            onChange={(e) => setQuizConfig(prev => ({
+                              ...prev,
+                              timeLimit: e.target.checked ? 30 : undefined
+                            }))}
+                            className="w-4 h-4 text-blue-600 rounded"
+                          />
+                          <span className="text-sm text-gray-600">
+                            {quizConfig.timeLimit ? `${quizConfig.timeLimit} 分钟` : '无限制'}
+                          </span>
+                        </div>
+                      </div>
+                      {quizConfig.timeLimit && (
+                        <div className="space-y-2">
+                          <Slider
+                            value={[quizConfig.timeLimit]}
+                            onValueChange={(value) => setQuizConfig(prev => ({
+                              ...prev,
+                              timeLimit: value[0]
+                            }))}
+                            min={5}
+                            max={120}
+                            step={5}
+                            className="w-full"
+                          />
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>5分钟</span>
+                            <span className="font-medium text-blue-600">{quizConfig.timeLimit}分钟</span>
+                            <span>120分钟</span>
+                          </div>
+                          <div className="text-center">
+                            <div className="inline-flex space-x-2 mt-2">
+                              {[15, 30, 45, 60].map(minutes => (
+                                <button
+                                  key={minutes}
+                                  onClick={() => setQuizConfig(prev => ({ ...prev, timeLimit: minutes }))}
+                                  className={`px-3 py-1 text-xs rounded-lg transition-all duration-200 ${
+                                    quizConfig.timeLimit === minutes
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {minutes}分钟
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
 
