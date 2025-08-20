@@ -24,7 +24,7 @@ export const ConnectionError: React.FC<ConnectionErrorProps> = ({
   const checkConnection = async () => {
     setConnectionStatus('checking');
     try {
-      // Use /v1/health endpoint
+      // Use /health endpoint (v1 is already in VITE_API_BASE_URL)
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/health`, {
         method: 'GET'
       });
@@ -158,11 +158,11 @@ export const useConnectionStatus = () => {
     // Check backend status
     const checkBackend = async () => {
       try {
-        // Use /v1/health endpoint with a timeout
+        // Use /health endpoint with a timeout (v1 is already in VITE_API_BASE_URL)
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1/health`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/health`, {
           signal: controller.signal
         });
         

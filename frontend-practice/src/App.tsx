@@ -721,7 +721,7 @@ function App() {
     
     // Check if backend is actually available
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1/health`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/health`);
       if (response.ok) {
         // Backend is available, reload the page to reset all states
         window.location.reload();
