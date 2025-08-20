@@ -6,6 +6,7 @@ import { useWeakKnowledgePoints, useWrongQuestions, useQuickPracticeSuggestion }
 
 interface PracticeMenuProps {
   subject: Subject;
+  currentUser?: any; // User data with preferences
   onStartPractice: () => void;
   onQuickPractice?: (knowledgePoints: string[], questionCount: number) => void;
   onWeakPointsPractice?: (knowledgePoints: string[]) => void;
@@ -17,6 +18,7 @@ interface PracticeMenuProps {
 
 export default function PracticeMenu({ 
   subject, 
+  currentUser,
   onStartPractice,
   onQuickPractice,
   onWeakPointsPractice,
@@ -39,14 +41,23 @@ export default function PracticeMenu({
   const weakKnowledgePoints = weakData?.weak_points?.map(wp => wp.knowledge_point_id) || [];
   const recentWrongQuestions = wrongData?.wrong_question_ids || [];
   
-  // Check if user has any practice history
-  const hasNoHistory = quickData?.message === 'No completed sessions found';
+  // Check if user has any practice history using preferences
+  const practiceStats = currentUser?.preferences?.practiceStats;
+  const hasNoHistory = !practiceStats?.lastPracticeDate && quickData?.message === 'No completed sessions found';
+  
+  // Check if quick practice should be enabled based on preferences
+  const canQuickPractice = practiceStats?.lastKnowledgePoints?.length > 0 || lastKnowledgePoints.length > 0;
   
   // Quick practice handler - 5-10 min practice with last knowledge points
   const handleQuickPractice = () => {
-    if (lastKnowledgePoints.length > 0) {
+    // Try to use knowledge points from API first, then from preferences
+    const knowledgePointsToUse = lastKnowledgePoints.length > 0 
+      ? lastKnowledgePoints 
+      : (practiceStats?.lastKnowledgePoints || []);
+    
+    if (knowledgePointsToUse.length > 0) {
       // Use last knowledge points, limit to 5-10 questions for quick practice
-      onQuickPractice?.(lastKnowledgePoints, 8);
+      onQuickPractice?.(knowledgePointsToUse, 8);
     } else {
       // No history, fall back to regular practice
       onStartPractice();

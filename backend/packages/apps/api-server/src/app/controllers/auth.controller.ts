@@ -111,7 +111,10 @@ export class AuthController {
       throw new NotFoundException('User not found');
     }
     
-    // Return user profile data
+    // Get user preferences
+    const preferences = await this.authRepository.getUserPreferences(userId);
+    
+    // Return user profile data with preferences
     return {
       success: true,
       data: {
@@ -119,6 +122,7 @@ export class AuthController {
         name: user.name || user.account_id?.split('@')[0] || 'User',
         email: user.account_id,
         role: user.role || userRole,
+        preferences: preferences || {},
         created_at: user.created_at,
         updated_at: user.updated_at,
       }

@@ -81,6 +81,22 @@ function App() {
       authService.getUserProfile().then(response => {
         if (response.success && response.data) {
           setCurrentUser(response.data);
+          
+          // Restore last accessed subject from preferences if not already set
+          if (!selectedSubject && response.data.preferences?.lastAccessedSubject) {
+            const lastSubject = response.data.preferences.lastAccessedSubject;
+            // Only restore if it was accessed recently (within last 7 days)
+            const lastAccessDate = new Date(lastSubject.timestamp);
+            const daysSinceAccess = (Date.now() - lastAccessDate.getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSinceAccess < 7) {
+              setSelectedSubject({
+                id: lastSubject.id,
+                name: lastSubject.name,
+                icon: '📚', // Default icon, will be updated when subject selection is shown
+                color: 'blue' // Default color
+              });
+            }
+          }
         }
       });
       
@@ -259,6 +275,17 @@ function App() {
   const handleSelectSubject = (subject: Subject) => {
     setSelectedSubject(subject);
     navigateToScreen('practice-menu');
+    
+    // Update user preference for last accessed subject
+    if (authService.isAuthenticated()) {
+      authService.updatePreference('lastAccessedSubject', {
+        id: subject.id,
+        name: subject.name,
+        timestamp: new Date().toISOString()
+      }).catch(error => {
+        console.error('Failed to update subject preference:', error);
+      });
+    }
   };
 
   const handleStartPracticeSession = () => {
@@ -404,6 +431,19 @@ function App() {
       
       // Add to history (newest first)
       setPracticeHistory(prev => [historyEntry, ...prev]);
+      
+      // Update user preferences with practice statistics
+      if (authService.isAuthenticated()) {
+        authService.updatePreference('practiceStats', {
+          lastPracticeDate: new Date().toISOString(),
+          lastSubjectId: selectedSubject.id,
+          lastKnowledgePoints: session.knowledgePoints,
+          totalSessions: (practiceHistory.length + 1),
+          recentAccuracy: Math.round((correctAnswers / totalQuestions) * 100)
+        }).catch(error => {
+          console.error('Failed to update practice stats:', error);
+        });
+      }
     }
     
     navigateToScreen('quiz-results');
@@ -539,6 +579,7 @@ function App() {
         return selectedSubject ? (
           <PracticeMenu
             subject={selectedSubject}
+            currentUser={currentUser}
             onStartPractice={handleStartPracticeSession}
             onQuickPractice={handleQuickPractice}
             onWeakPointsPractice={handleWeakPointsPractice}

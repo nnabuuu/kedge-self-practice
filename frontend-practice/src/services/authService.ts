@@ -160,13 +160,14 @@ class AuthService {
 
       const data = await response.json();
       
-      // Update stored user data with fresh profile
+      // Update stored user data with fresh profile including preferences
       if (data.success && data.data) {
         const currentUser = this.getCurrentUser();
         const updatedUser = {
           ...currentUser,
           ...data.data,
-          name: data.data.name || data.data.username || currentUser?.email?.split('@')[0] || 'User'
+          name: data.data.name || data.data.username || currentUser?.email?.split('@')[0] || 'User',
+          preferences: data.data.preferences || {}
         };
         localStorage.setItem('user_data', JSON.stringify(updatedUser));
         
@@ -184,6 +185,20 @@ class AuthService {
         error: error instanceof Error ? error.message : 'Failed to fetch profile'
       };
     }
+  }
+
+  async updatePreferences(preferences: Record<string, any>): Promise<ApiResponse<any>> {
+    return this.makeRequest('/auth/preferences', {
+      method: 'PUT',
+      body: JSON.stringify({ preferences })
+    });
+  }
+
+  async updatePreference(key: string, value: any): Promise<ApiResponse<any>> {
+    return this.makeRequest(`/auth/preferences/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value })
+    });
   }
 
   logout(): void {
