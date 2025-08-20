@@ -51,6 +51,11 @@ export default function QuizPractice({
 
   // Function to parse and render question text with images
   const renderQuestionWithImages = (questionText: string, imageUrls?: string[]) => {
+    // Handle undefined or null questionText
+    if (!questionText) {
+      return '';
+    }
+    
     // Pattern to match {{image:uuid}} or {{img:N}} placeholders
     const imagePattern = /\{\{(?:image|img):([a-f0-9-]+|\d+)\}\}/g;
     
@@ -310,6 +315,25 @@ export default function QuizPractice({
   const isSingleChoice = currentQuestion?.type === 'single-choice';
   const isMultipleChoice = currentQuestion?.type === 'multiple-choice';
   const isEssay = currentQuestion?.type === 'essay';
+  
+  // Safety check for undefined currentQuestion
+  if (!currentQuestion && questions.length > 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50/80 via-blue-50/60 to-indigo-100/80 relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/8 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-400/8 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="relative z-10 p-6 flex items-center justify-center min-h-screen">
+          <div className="text-center bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-3xl p-12 shadow-lg border border-white/20">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2 tracking-wide">加载题目中...</h2>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 计算当前题目用时
   const calculateQuestionDuration = () => {
