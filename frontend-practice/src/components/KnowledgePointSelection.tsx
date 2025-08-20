@@ -313,7 +313,12 @@ export default function KnowledgePointSelection({
               {/* 强化的开始测验按钮 - 强触发器 */}
               <button
                 onClick={handleStartQuiz}
-                className="group flex items-center px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-lg font-bold rounded-2xl hover:from-green-700 hover:to-emerald-700 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out shadow-xl shadow-green-500/25 hover:shadow-2xl hover:shadow-green-500/40 relative overflow-hidden focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none"
+                disabled={!quizConfig.quizTypes || quizConfig.quizTypes.length === 0}
+                className={`group flex items-center px-8 py-4 text-lg font-bold rounded-2xl transform transition-all duration-300 ease-out relative overflow-hidden focus:ring-2 focus:ring-offset-2 focus:outline-none ${
+                  quizConfig.quizTypes && quizConfig.quizTypes.length > 0
+                    ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 hover:scale-105 hover:-translate-y-1 shadow-xl shadow-green-500/25 hover:shadow-2xl hover:shadow-green-500/40 focus:ring-green-500'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                 <div className="relative z-10 flex items-center">
@@ -513,7 +518,7 @@ export default function KnowledgePointSelection({
                   <div className="space-y-3">
                     {/* 题型选择 */}
                     <div className="border rounded-xl p-3">
-                      <div className="font-medium text-gray-900 mb-2">选择题型</div>
+                      <div className="font-medium text-gray-900 mb-2">可包括以下题型</div>
                       <div className="space-y-2">
                         {[
                           { value: 'single-choice', label: '单选题', icon: '☑️' },
@@ -546,6 +551,9 @@ export default function KnowledgePointSelection({
                           </label>
                         ))}
                       </div>
+                      {(!quizConfig.quizTypes || quizConfig.quizTypes.length === 0) && (
+                        <p className="text-red-500 text-sm mt-2">请至少选择一种题型</p>
+                      )}
                     </div>
 
                     <label className="group flex items-center space-x-3 p-3 border rounded-xl cursor-pointer hover:bg-blue-50/50 transition-all duration-300 hover:border-blue-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none">
