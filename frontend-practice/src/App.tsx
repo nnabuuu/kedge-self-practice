@@ -290,10 +290,29 @@ function App() {
 
   const handleSelectSubject = (subject: Subject) => {
     setSelectedSubject(subject);
-    navigateToScreen('practice-menu');
     
-    // Update user preference for last accessed subject
+    // Only navigate to practice menu if we're on subject selection page
+    // If already on practice menu, just update the subject
+    if (currentScreen === 'subject-selection') {
+      navigateToScreen('practice-menu');
+    }
+    
+    // Clear practice analysis cache when switching subjects to get fresh data
+    practiceAnalysisApi.clearCache();
+    
+    // Reload practice analysis data for the new subject
     if (authService.isAuthenticated()) {
+      practiceAnalysisApi.preloadAllData().then(results => {
+        console.log('Practice analysis data reloaded for new subject:', {
+          hasWeakPoints: !!results.weakPoints,
+          hasWrongQuestions: !!results.wrongQuestions,
+          hasQuickSuggestion: !!results.quickSuggestion
+        });
+      }).catch(error => {
+        console.error('Failed to reload practice analysis:', error);
+      });
+      
+      // Update user preference for last accessed subject
       authService.updatePreference('lastAccessedSubject', {
         id: subject.id,
         name: subject.name,
@@ -603,6 +622,7 @@ function App() {
             onViewHistory={handleViewHistory}
             onViewKnowledgeAnalysis={handleViewKnowledgeAnalysis}
             onBack={handleBack}
+            onSelectSubject={handleSelectSubject}
           />
         ) : null;
       

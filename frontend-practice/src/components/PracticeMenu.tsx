@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { ArrowLeft, Play, History, BookOpen, Brain, Zap, Timer, BarChart3, Clock, Target, TrendingUp, Sparkles, AlertCircle, Info } from 'lucide-react';
+import { ArrowLeft, Play, History, BookOpen, Brain, Zap, Timer, BarChart3, Clock, Target, TrendingUp, Sparkles, AlertCircle, Info, ChevronDown, Check } from 'lucide-react';
 import { Subject, PracticeHistory } from '../types/quiz';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useWeakKnowledgePoints, useWrongQuestions, useQuickPracticeSuggestion } from '../hooks/usePracticeAnalysis';
 import { practiceAnalysisApi } from '../services/practiceAnalysisApi';
+import { subjects } from '../data/subjects';
 
 interface PracticeMenuProps {
   subject: Subject;
@@ -15,6 +16,7 @@ interface PracticeMenuProps {
   onViewHistory: () => void;
   onViewKnowledgeAnalysis: () => void;
   onBack: () => void;
+  onSelectSubject?: (subject: Subject) => void;
 }
 
 export default function PracticeMenu({ 
@@ -26,7 +28,8 @@ export default function PracticeMenu({
   onWrongQuestionsPractice,
   onViewHistory, 
   onViewKnowledgeAnalysis,
-  onBack 
+  onBack,
+  onSelectSubject
 }: PracticeMenuProps) {
   
   // State for showing tooltips
@@ -34,6 +37,7 @@ export default function PracticeMenu({
   const [lastKnowledgePoints, setLastKnowledgePoints] = useState<string[]>([]);
   const [weakKnowledgePoints, setWeakKnowledgePoints] = useState<string[]>([]);
   const [recentWrongQuestions, setRecentWrongQuestions] = useState<string[]>([]);
+  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
   
   // First try to use cached data, then fallback to API hooks
   useEffect(() => {
@@ -52,6 +56,21 @@ export default function PracticeMenu({
       setRecentWrongQuestions(cachedWrongData.wrong_question_ids);
     }
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.subject-dropdown-container')) {
+        setShowSubjectDropdown(false);
+      }
+    };
+
+    if (showSubjectDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showSubjectDropdown]);
   
   // Use backend APIs as fallback if cache is empty
   const { data: weakData } = useWeakKnowledgePoints(undefined, 20);
@@ -158,24 +177,61 @@ export default function PracticeMenu({
               </button>
             </div>
 
-            {/* 中间：当前学科信息 */}
+            {/* 中间：当前学科信息（可点击切换） */}
             <div className="flex justify-center">
-              <div className="relative">
+              <div className="relative subject-dropdown-container">
                 {/* 延伸背景 */}
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 rounded-xl shadow-lg transform scale-x-110 origin-center"></div>
                 
-                {/* 内容区域 */}
-                <div className="relative bg-gradient-to-r from-blue-600/90 to-indigo-600/90 backdrop-blur-sm rounded-xl px-6 py-3 shadow-lg">
+                {/* 内容区域 - 现在可点击 */}
+                <button
+                  onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
+                  className="relative bg-gradient-to-r from-blue-600/90 to-indigo-600/90 backdrop-blur-sm rounded-xl px-6 py-3 shadow-lg hover:from-blue-700/90 hover:to-indigo-700/90 transition-all duration-300 group"
+                >
                   <div className="flex items-center">
                     <div className={`w-8 h-8 ${subject.color} rounded-lg mr-3 flex items-center justify-center shadow-md`}>
                       <BookOpen className="w-4 h-4 text-white" />
                     </div>
-                    <div>
+                    <div className="text-left">
                       <div className="text-sm text-blue-100 font-medium leading-tight">当前选择学科</div>
                       <div className="text-xl font-bold text-white leading-tight tracking-wide">{subject.name}</div>
                     </div>
+                    <ChevronDown className={`w-5 h-5 text-white ml-3 transition-transform duration-300 ${showSubjectDropdown ? 'rotate-180' : ''}`} />
                   </div>
-                </div>
+                </button>
+                
+                {/* 学科选择下拉菜单 */}
+                {showSubjectDropdown && (
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50 animate-fade-in">
+                    <div className="p-2">
+                      <div className="text-xs font-medium text-gray-500 px-3 py-2 uppercase tracking-wider">切换学科</div>
+                      {subjects.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => {
+                            if (onSelectSubject) {
+                              onSelectSubject(s);
+                              setShowSubjectDropdown(false);
+                            }
+                          }}
+                          className={`w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                            s.id === subject.id 
+                              ? 'bg-blue-50 text-blue-600' 
+                              : 'hover:bg-gray-50 text-gray-700 hover:text-gray-900'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 ${s.color} rounded-lg mr-3 flex items-center justify-center`}>
+                            <span className="text-white text-sm">{s.icon}</span>
+                          </div>
+                          <span className="font-medium flex-1 text-left">{s.name}</span>
+                          {s.id === subject.id && (
+                            <Check className="w-4 h-4 text-blue-600" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
