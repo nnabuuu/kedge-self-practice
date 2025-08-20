@@ -31,7 +31,7 @@ export class PracticeRepository {
     }
   ): Promise<PracticeSession> {
     try {
-      this.logger.log(`Creating session ${sessionId} with ${quizIds.length} quizzes`);
+      this.logger.log(`Creating session ${sessionId} with ${quizIds.length} quizzes. Quiz IDs: ${quizIds.join(', ')}`);
       
       const result = await this.persistentService.pgPool.query(
         sql.type(PracticeSessionSchema)`
