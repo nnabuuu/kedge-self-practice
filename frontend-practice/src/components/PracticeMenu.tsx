@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { ArrowLeft, Play, History, BookOpen, Brain, Zap, Timer, BarChart3, Clock, Target, TrendingUp, Sparkles, AlertCircle, Info } from 'lucide-react';
 import { Subject, PracticeHistory } from '../types/quiz';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useWeakKnowledgePoints, useWrongQuestions, useQuickPracticeSuggestion } from '../hooks/usePracticeAnalysis';
+import { practiceAnalysisApi } from '../services/practiceAnalysisApi';
 
 interface PracticeMenuProps {
   subject: Subject;
@@ -30,30 +31,80 @@ export default function PracticeMenu({
   
   // State for showing tooltips
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [lastKnowledgePoints, setLastKnowledgePoints] = useState<string[]>([]);
+  const [weakKnowledgePoints, setWeakKnowledgePoints] = useState<string[]>([]);
+  const [recentWrongQuestions, setRecentWrongQuestions] = useState<string[]>([]);
   
-  // Use backend APIs for analysis
+  // First try to use cached data, then fallback to API hooks
+  useEffect(() => {
+    // Try to get cached data first (loaded during login)
+    const cachedQuickData = practiceAnalysisApi.getCachedQuickSuggestion();
+    const cachedWeakData = practiceAnalysisApi.getCachedWeakPoints(20);
+    const cachedWrongData = practiceAnalysisApi.getCachedWrongQuestions(5);
+    
+    if (cachedQuickData?.knowledge_point_ids) {
+      setLastKnowledgePoints(cachedQuickData.knowledge_point_ids);
+    }
+    if (cachedWeakData?.weak_points) {
+      setWeakKnowledgePoints(cachedWeakData.weak_points.map(wp => wp.knowledge_point_id));
+    }
+    if (cachedWrongData?.wrong_question_ids) {
+      setRecentWrongQuestions(cachedWrongData.wrong_question_ids);
+    }
+  }, []);
+  
+  // Use backend APIs as fallback if cache is empty
   const { data: weakData } = useWeakKnowledgePoints(undefined, 20);
   const { data: wrongData } = useWrongQuestions(undefined, 5);
   const { data: quickData } = useQuickPracticeSuggestion();
   
-  // Extract data from API responses
-  const lastKnowledgePoints = quickData?.knowledge_point_ids || [];
-  const weakKnowledgePoints = weakData?.weak_points?.map(wp => wp.knowledge_point_id) || [];
-  const recentWrongQuestions = wrongData?.wrong_question_ids || [];
+  // Update state when fresh API data arrives (but cached data takes priority)
+  useEffect(() => {
+    if (quickData?.knowledge_point_ids && lastKnowledgePoints.length === 0) {
+      setLastKnowledgePoints(quickData.knowledge_point_ids);
+    }
+  }, [quickData]);
+  
+  useEffect(() => {
+    if (weakData?.weak_points && weakKnowledgePoints.length === 0) {
+      setWeakKnowledgePoints(weakData.weak_points.map(wp => wp.knowledge_point_id));
+    }
+  }, [weakData]);
+  
+  useEffect(() => {
+    if (wrongData?.wrong_question_ids && recentWrongQuestions.length === 0) {
+      setRecentWrongQuestions(wrongData.wrong_question_ids);
+    }
+  }, [wrongData]);
   
   // Check if user has any practice history using preferences
   const practiceStats = currentUser?.preferences?.practiceStats;
+  const cachedQuickPractice = currentUser?.preferences?.cachedQuickPractice;
   const hasNoHistory = !practiceStats?.lastPracticeDate && quickData?.message === 'No completed sessions found';
   
-  // Check if quick practice should be enabled based on preferences
-  const canQuickPractice = practiceStats?.lastKnowledgePoints?.length > 0 || lastKnowledgePoints.length > 0;
+  // Check if quick practice should be enabled based on multiple sources:
+  // 1. Cached data from login preload
+  // 2. User preferences (practiceStats)
+  // 3. Cached quick practice data
+  const canQuickPractice = lastKnowledgePoints.length > 0 || 
+                          practiceStats?.lastKnowledgePoints?.length > 0 || 
+                          cachedQuickPractice?.knowledgePoints?.length > 0;
   
   // Quick practice handler - 5-10 min practice with last knowledge points
   const handleQuickPractice = () => {
-    // Try to use knowledge points from API first, then from preferences
-    const knowledgePointsToUse = lastKnowledgePoints.length > 0 
-      ? lastKnowledgePoints 
-      : (practiceStats?.lastKnowledgePoints || []);
+    // Try to use knowledge points from multiple sources in priority order:
+    // 1. Cached data from login preload
+    // 2. User preferences (practiceStats)
+    // 3. Cached quick practice data from preferences
+    let knowledgePointsToUse = lastKnowledgePoints;
+    
+    if (knowledgePointsToUse.length === 0) {
+      knowledgePointsToUse = practiceStats?.lastKnowledgePoints || [];
+    }
+    
+    if (knowledgePointsToUse.length === 0) {
+      knowledgePointsToUse = cachedQuickPractice?.knowledgePoints || [];
+    }
     
     if (knowledgePointsToUse.length > 0) {
       // Use last knowledge points, limit to 5-10 questions for quick practice
@@ -218,23 +269,23 @@ export default function PracticeMenu({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 快速练习 */}
                   <div
-                    onClick={lastKnowledgePoints.length > 0 ? handleQuickPractice : undefined}
+                    onClick={canQuickPractice ? handleQuickPractice : undefined}
                     className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left ${
-                      lastKnowledgePoints.length === 0
+                      !canQuickPractice
                         ? 'bg-gray-50 border-gray-200 opacity-60'
                         : 'bg-gradient-to-br from-blue-50 to-blue-50 hover:bg-blue-100 border-blue-200 hover:border-blue-300 hover:scale-105 cursor-pointer'
                     }`}
                     role="button"
-                    tabIndex={lastKnowledgePoints.length === 0 ? -1 : 0}
+                    tabIndex={!canQuickPractice ? -1 : 0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && lastKnowledgePoints.length > 0) {
+                      if (e.key === 'Enter' && canQuickPractice) {
                         handleQuickPractice();
                       }
                     }}
                   >
                     <div className="flex items-center mb-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
-                        lastKnowledgePoints.length === 0
+                        !canQuickPractice
                           ? 'bg-gray-400'
                           : 'bg-gradient-to-br from-blue-500 to-blue-600 group-hover:scale-110'
                       }`}>
@@ -242,7 +293,7 @@ export default function PracticeMenu({
                       </div>
                       <div className="flex-1">
                         <h4 className={`font-bold transition-colors duration-300 leading-tight tracking-wide ${
-                          lastKnowledgePoints.length === 0
+                          !canQuickPractice
                             ? 'text-gray-500'
                             : 'text-gray-900 group-hover:text-blue-600'
                         }`}>

@@ -100,11 +100,17 @@ function App() {
         }
       });
       
-      // Preload practice analysis data for students
+      // Preload ALL practice analysis data for students
       if (existingUser.role === 'student') {
-        practiceAnalysisApi.getWeakKnowledgePoints().catch(() => {});
-        practiceAnalysisApi.getWrongQuestions().catch(() => {});
-        practiceAnalysisApi.getQuickPracticeSuggestion().catch(() => {});
+        practiceAnalysisApi.preloadAllData().then(results => {
+          console.log('Practice analysis data preloaded on app start:', {
+            hasWeakPoints: !!results.weakPoints,
+            hasWrongQuestions: !!results.wrongQuestions,
+            hasQuickSuggestion: !!results.quickSuggestion
+          });
+        }).catch(error => {
+          console.error('Failed to preload practice analysis on start:', error);
+        });
       }
       
       // Check if there's a saved screen preference (for page refresh)
@@ -227,17 +233,27 @@ function App() {
       console.error('Failed to fetch user profile:', error);
     });
     
-    // Preload practice analysis data for students (async, don't wait)
+    // Preload ALL practice analysis data for students during login
     if (type === 'student') {
-      // Fire and forget - these will be cached for when user enters practice menu
-      practiceAnalysisApi.getWeakKnowledgePoints().catch(() => {
-        // Silently fail - data will be fetched when needed
-      });
-      practiceAnalysisApi.getWrongQuestions().catch(() => {
-        // Silently fail - data will be fetched when needed
-      });
-      practiceAnalysisApi.getQuickPracticeSuggestion().catch(() => {
-        // Silently fail - data will be fetched when needed
+      // Load all data in parallel and cache it
+      practiceAnalysisApi.preloadAllData().then(results => {
+        console.log('Practice analysis data preloaded:', {
+          hasWeakPoints: !!results.weakPoints,
+          hasWrongQuestions: !!results.wrongQuestions,
+          hasQuickSuggestion: !!results.quickSuggestion
+        });
+        
+        // If we have quick suggestion data, also update user preferences
+        if (results.quickSuggestion?.knowledge_point_ids?.length > 0) {
+          authService.updatePreference('cachedQuickPractice', {
+            knowledgePoints: results.quickSuggestion.knowledge_point_ids,
+            timestamp: new Date().toISOString()
+          }).catch(() => {
+            // Silently fail - not critical
+          });
+        }
+      }).catch(error => {
+        console.error('Failed to preload practice analysis:', error);
       });
     }
     

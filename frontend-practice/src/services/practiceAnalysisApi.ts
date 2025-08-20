@@ -209,6 +209,48 @@ class PracticeAnalysisApi {
   clearCache(): void {
     this.cache.clear();
   }
+
+  // Preload all practice analysis data (called after login)
+  async preloadAllData() {
+    const promises = [
+      this.getWeakKnowledgePoints().catch(err => {
+        console.log('Failed to preload weak knowledge points:', err);
+        return null;
+      }),
+      this.getWrongQuestions().catch(err => {
+        console.log('Failed to preload wrong questions:', err);
+        return null;
+      }),
+      this.getQuickPracticeSuggestion().catch(err => {
+        console.log('Failed to preload quick practice suggestion:', err);
+        return null;
+      })
+    ];
+
+    const results = await Promise.allSettled(promises);
+    
+    return {
+      weakPoints: results[0].status === 'fulfilled' ? results[0].value : null,
+      wrongQuestions: results[1].status === 'fulfilled' ? results[1].value : null,
+      quickSuggestion: results[2].status === 'fulfilled' ? results[2].value : null
+    };
+  }
+
+  // Get cached data immediately without API call
+  getCachedQuickSuggestion() {
+    const cacheKey = this.getCacheKey('quickPracticeSuggestion', undefined);
+    return this.getFromCache<QuickPracticeSuggestionResponse>(cacheKey);
+  }
+
+  getCachedWeakPoints(limit = 20) {
+    const cacheKey = this.getCacheKey('weakKnowledgePoints', undefined, limit);
+    return this.getFromCache<WeakKnowledgePointsResponse>(cacheKey);
+  }
+
+  getCachedWrongQuestions(limit = 5) {
+    const cacheKey = this.getCacheKey('wrongQuestions', undefined, limit);
+    return this.getFromCache<WrongQuestionsResponse>(cacheKey);
+  }
 }
 
 export const practiceAnalysisApi = new PracticeAnalysisApi();
