@@ -34,7 +34,7 @@ export default function KnowledgeAnalysis({
   onEnhancementRound 
 }: KnowledgeAnalysisProps) {
   const [showTooltip, setShowTooltip] = useState(false);
-  const [expandedSection, setExpandedSection] = useState<'overview' | 'details' | null>('overview');
+  const [expandedSection, setExpandedSection] = useState<'overview' | 'details' | null>('details');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'weak' | 'strong'>('weak');
 
   // Use API hook to get knowledge points
