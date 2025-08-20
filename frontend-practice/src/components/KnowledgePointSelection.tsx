@@ -524,7 +524,8 @@ export default function KnowledgePointSelection({
                           { value: 'single-choice', label: '单选题', icon: '☑️' },
                           { value: 'multiple-choice', label: '多选题', icon: '✅' },
                           { value: 'fill-in-the-blank', label: '填空题', icon: '📝' },
-                          { value: 'subjective', label: '主观题', icon: '✍️' }
+                          { value: 'subjective', label: '主观题', icon: '✍️' },
+                          { value: 'other', label: '其他题型', icon: '❓' }
                         ].map(type => (
                           <label key={type.value} className="flex items-center space-x-2 cursor-pointer hover:bg-blue-50/50 p-2 rounded-lg transition-all duration-200">
                             <input

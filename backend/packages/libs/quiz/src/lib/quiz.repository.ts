@@ -192,7 +192,7 @@ export class QuizRepository {
     quizTypes?: string[]
   ): Promise<QuizItem[]> {
     try {
-      this.logger.log(`Fetching random quizzes for knowledge points: ${knowledgePointIds.join(', ')}, limit: ${limit}`);
+      this.logger.log(`Fetching random quizzes for knowledge points: ${knowledgePointIds.join(', ')}, limit: ${limit}, quiz types: ${quizTypes?.join(', ') || 'all'}`);
       
       let result;
       
@@ -230,21 +230,30 @@ export class QuizRepository {
         );
       } else {
         // If no knowledge points specified, just get random quizzes (optionally filtered by type)
-        const whereClause = quizTypes && quizTypes.length > 0
-          ? sql.fragment`WHERE type = ANY(${sql.array(quizTypes, 'text')})`
-          : sql.fragment``;
-        
-        result = await this.persistentService.pgPool.query(
-          sql.type(QuizItemSchema)`
-            SELECT id, type, question, options, answer, 
-                   original_paragraph as "originalParagraph", 
-                   images, tags, knowledge_point_id
-            FROM kedge_practice.quizzes
-            ${whereClause}
-            ORDER BY RANDOM()
-            LIMIT ${limit}
-          `,
-        );
+        if (quizTypes && quizTypes.length > 0) {
+          result = await this.persistentService.pgPool.query(
+            sql.type(QuizItemSchema)`
+              SELECT id, type, question, options, answer, 
+                     original_paragraph as "originalParagraph", 
+                     images, tags, knowledge_point_id
+              FROM kedge_practice.quizzes
+              WHERE type = ANY(${sql.array(quizTypes, 'text')})
+              ORDER BY RANDOM()
+              LIMIT ${limit}
+            `,
+          );
+        } else {
+          result = await this.persistentService.pgPool.query(
+            sql.type(QuizItemSchema)`
+              SELECT id, type, question, options, answer, 
+                     original_paragraph as "originalParagraph", 
+                     images, tags, knowledge_point_id
+              FROM kedge_practice.quizzes
+              ORDER BY RANDOM()
+              LIMIT ${limit}
+            `,
+          );
+        }
       }
       
       this.logger.log(`Found ${result.rows.length} quizzes`);

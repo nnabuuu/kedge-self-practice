@@ -34,11 +34,17 @@ export class PracticeService {
     
     // If no quizzes found, throw error
     if (quizzes.length === 0) {
-      throw new BadRequestException(
-        data.knowledge_point_ids && data.knowledge_point_ids.length > 0
-          ? `No quizzes available for knowledge points: ${data.knowledge_point_ids.join(', ')}`
-          : 'No quizzes available in the database'
-      );
+      let errorMessage = 'No quizzes available';
+      
+      if (data.knowledge_point_ids && data.knowledge_point_ids.length > 0) {
+        errorMessage += ` for knowledge points: ${data.knowledge_point_ids.join(', ')}`;
+      }
+      
+      if (data.quiz_types && data.quiz_types.length > 0) {
+        errorMessage += ` with quiz types: ${data.quiz_types.join(', ')}`;
+      }
+      
+      throw new BadRequestException(errorMessage);
     }
 
     // Shuffle quizzes if requested
