@@ -324,6 +324,7 @@ export function usePracticeSession(config: {
   shuffle_options?: boolean;
   allow_review?: boolean;
   show_answer_immediately?: boolean;
+  quiz_types?: string[];
 } | null) {
   const [state, setState] = useState<{
     session: any | null;

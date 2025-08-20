@@ -515,6 +515,7 @@ class BackendApiService {
     shuffle_options?: boolean;
     allow_review?: boolean;
     show_answer_immediately?: boolean;
+    quiz_types?: string[];
   }): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
     
     const sessionData = {
@@ -525,7 +526,8 @@ class BackendApiService {
       shuffle_questions: config.shuffle_questions !== false,
       shuffle_options: config.shuffle_options !== false,
       allow_review: config.allow_review !== false,
-      show_answer_immediately: config.show_answer_immediately || false
+      show_answer_immediately: config.show_answer_immediately || false,
+      quiz_types: config.quiz_types
     };
 
     const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>('/practice/sessions/create', {

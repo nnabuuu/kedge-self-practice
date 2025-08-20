@@ -17,7 +17,7 @@ export interface KnowledgePoint {
 
 export interface QuizQuestion {
   id: string;
-  type: 'single-choice' | 'multiple-choice' | 'essay';
+  type: 'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective' | 'other';
   question: string;
   options?: {
     A: string;

@@ -4,7 +4,7 @@ import { Subject, PracticeHistory } from '../types/quiz';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useWeakKnowledgePoints, useWrongQuestions, useQuickPracticeSuggestion } from '../hooks/usePracticeAnalysis';
 import { practiceAnalysisApi } from '../services/practiceAnalysisApi';
-import { subjects } from '../data/subjects';
+import { useSubjects } from '../hooks/useApi';
 
 interface PracticeMenuProps {
   subject: Subject;
@@ -38,6 +38,9 @@ export default function PracticeMenu({
   const [weakKnowledgePoints, setWeakKnowledgePoints] = useState<string[]>([]);
   const [recentWrongQuestions, setRecentWrongQuestions] = useState<string[]>([]);
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+  
+  // Get subjects from API
+  const { data: subjects = [] } = useSubjects();
   
   // First try to use cached data, then fallback to API hooks
   useEffect(() => {

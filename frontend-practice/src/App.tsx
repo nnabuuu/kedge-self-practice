@@ -24,6 +24,7 @@ interface QuizConfig {
   timeLimit?: number;
   shuffleQuestions: boolean;
   showExplanation: boolean;
+  quizTypes?: ('single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective' | 'other')[];
 }
 
 type Screen = 
@@ -714,13 +715,26 @@ function App() {
     setRetryCount(prev => prev + 1);
   };
 
-  const handleRetryConnection = () => {
+  const handleRetryConnection = async () => {
     setApiError(null);
     setRetryCount(0);
-    // Force re-render of current screen
-    const temp = currentScreen;
-    navigateToScreen('login', false);
-    setTimeout(() => navigateToScreen(temp, false), 0);
+    
+    // Check if backend is actually available
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1/health`);
+      if (response.ok) {
+        // Backend is available, reload the page to reset all states
+        window.location.reload();
+      } else {
+        // Backend still not available
+        setApiError('后端服务仍不可用');
+        setRetryCount(prev => prev + 1);
+      }
+    } catch (error) {
+      // Network error or backend not running
+      setApiError('无法连接到后端服务');
+      setRetryCount(prev => prev + 1);
+    }
   };
 
   // Show connection error if backend is offline

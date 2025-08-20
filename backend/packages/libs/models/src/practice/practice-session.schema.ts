@@ -49,7 +49,8 @@ export const CreatePracticeSessionSchema = z.object({
   shuffle_questions: z.boolean().default(true),
   shuffle_options: z.boolean().default(true),
   allow_review: z.boolean().default(true),
-  show_answer_immediately: z.boolean().default(false)
+  show_answer_immediately: z.boolean().default(false),
+  quiz_types: z.array(z.enum(['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective', 'other'])).optional()
 });
 
 export const PracticeSessionSchema = z.object({

@@ -188,7 +188,8 @@ export class QuizRepository {
 
   async getRandomQuizzesByKnowledgePoints(
     knowledgePointIds: string[], 
-    limit: number
+    limit: number,
+    quizTypes?: string[]
   ): Promise<QuizItem[]> {
     try {
       this.logger.log(`Fetching random quizzes for knowledge points: ${knowledgePointIds.join(', ')}, limit: ${limit}`);
@@ -206,26 +207,40 @@ export class QuizRepository {
         const countResult = await this.persistentService.pgPool.query(countQuery);
         this.logger.log(`Total quiz count: ${JSON.stringify(countResult.rows)}`);
         
-        // If knowledge points are specified, filter by them
+        // Build WHERE clause based on filters
+        const whereConditions = [
+          sql.fragment`knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'text')})`
+        ];
+        
+        if (quizTypes && quizTypes.length > 0) {
+          whereConditions.push(sql.fragment`type = ANY(${sql.array(quizTypes, 'text')})`);
+        }
+        
+        // If knowledge points are specified, filter by them and optionally by quiz types
         result = await this.persistentService.pgPool.query(
           sql.type(QuizItemSchema)`
             SELECT id, type, question, options, answer, 
                    original_paragraph as "originalParagraph", 
                    images, tags, knowledge_point_id
             FROM kedge_practice.quizzes
-            WHERE knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'text')})
+            WHERE ${sql.join(whereConditions, sql.fragment` AND `)}
             ORDER BY RANDOM()
             LIMIT ${limit}
           `,
         );
       } else {
-        // If no knowledge points specified, just get random quizzes
+        // If no knowledge points specified, just get random quizzes (optionally filtered by type)
+        const whereClause = quizTypes && quizTypes.length > 0
+          ? sql.fragment`WHERE type = ANY(${sql.array(quizTypes, 'text')})`
+          : sql.fragment``;
+        
         result = await this.persistentService.pgPool.query(
           sql.type(QuizItemSchema)`
             SELECT id, type, question, options, answer, 
                    original_paragraph as "originalParagraph", 
                    images, tags, knowledge_point_id
             FROM kedge_practice.quizzes
+            ${whereClause}
             ORDER BY RANDOM()
             LIMIT ${limit}
           `,

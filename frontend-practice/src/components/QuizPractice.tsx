@@ -10,6 +10,7 @@ interface QuizConfig {
   timeLimit?: number;
   shuffleQuestions: boolean;
   showExplanation: boolean;
+  quizTypes?: ('single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective' | 'other')[];
 }
 
 interface QuizPracticeProps {
@@ -154,10 +155,11 @@ export default function QuizPractice({
       shuffle_questions: config.shuffleQuestions,
       shuffle_options: true,
       allow_review: true,
-      show_answer_immediately: config.showExplanation
+      show_answer_immediately: config.showExplanation,
+      quiz_types: config.quizTypes
     } : null,
     [selectedKnowledgePoints, config.questionCount, config.timeLimit, 
-     config.shuffleQuestions, config.showExplanation]
+     config.shuffleQuestions, config.showExplanation, config.quizTypes]
   );
 
   const { 

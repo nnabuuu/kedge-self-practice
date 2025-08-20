@@ -37,10 +37,14 @@ export const ConnectionError: React.FC<ConnectionErrorProps> = ({
   const handleRetry = async () => {
     setIsRetrying(true);
     await checkConnection();
-    setTimeout(() => {
+    
+    // Wait a bit for the status to update
+    setTimeout(async () => {
+      // Check again after a short delay
+      await checkConnection();
       setIsRetrying(false);
       onRetry();
-    }, 1000);
+    }, 500);
   };
 
   const getErrorMessage = () => {
@@ -154,8 +158,15 @@ export const useConnectionStatus = () => {
     // Check backend status
     const checkBackend = async () => {
       try {
-        // Use /v1/health endpoint
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/health`);
+        // Use /v1/health endpoint with a timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1/health`, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
         setBackendStatus(response.ok ? 'online' : 'offline');
       } catch {
         setBackendStatus('offline');
@@ -163,14 +174,23 @@ export const useConnectionStatus = () => {
     };
 
     checkBackend();
-    const interval = setInterval(checkBackend, 30000); // Check every 30 seconds
+    // Check more frequently when offline, less frequently when online
+    let interval: NodeJS.Timeout;
+    
+    const startPolling = () => {
+      interval = setInterval(() => {
+        checkBackend();
+      }, backendStatus === 'offline' ? 5000 : 30000); // 5s when offline, 30s when online
+    };
+    
+    startPolling();
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       clearInterval(interval);
     };
-  }, []);
+  }, [backendStatus]);
 
   return { isOnline, backendStatus };
 };

@@ -17,6 +17,7 @@ interface QuizConfig {
   timeLimit?: number;
   shuffleQuestions: boolean;
   showExplanation: boolean;
+  quizTypes?: ('single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective' | 'other')[];
 }
 
 interface GroupedKnowledgePoints {
@@ -53,7 +54,8 @@ export default function KnowledgePointSelection({
     questionType: 'new',
     questionCount: 20,
     shuffleQuestions: true,
-    showExplanation: true
+    showExplanation: true,
+    quizTypes: ['single-choice', 'multiple-choice'] // Default to single and multiple choice
   });
 
   // 使用API Hook获取知识点数据
@@ -509,6 +511,43 @@ export default function KnowledgePointSelection({
                     <h3 className="text-lg font-bold text-gray-900 tracking-wide">其他选项</h3>
                   </div>
                   <div className="space-y-3">
+                    {/* 题型选择 */}
+                    <div className="border rounded-xl p-3">
+                      <div className="font-medium text-gray-900 mb-2">选择题型</div>
+                      <div className="space-y-2">
+                        {[
+                          { value: 'single-choice', label: '单选题', icon: '☑️' },
+                          { value: 'multiple-choice', label: '多选题', icon: '✅' },
+                          { value: 'fill-in-the-blank', label: '填空题', icon: '📝' },
+                          { value: 'subjective', label: '主观题', icon: '✍️' }
+                        ].map(type => (
+                          <label key={type.value} className="flex items-center space-x-2 cursor-pointer hover:bg-blue-50/50 p-2 rounded-lg transition-all duration-200">
+                            <input
+                              type="checkbox"
+                              checked={quizConfig.quizTypes?.includes(type.value as any) ?? false}
+                              onChange={(e) => {
+                                const currentTypes = quizConfig.quizTypes || [];
+                                if (e.target.checked) {
+                                  setQuizConfig(prev => ({
+                                    ...prev,
+                                    quizTypes: [...currentTypes, type.value as any]
+                                  }));
+                                } else {
+                                  setQuizConfig(prev => ({
+                                    ...prev,
+                                    quizTypes: currentTypes.filter(t => t !== type.value)
+                                  }));
+                                }
+                              }}
+                              className="w-4 h-4 text-blue-600 rounded"
+                            />
+                            <span className="text-lg">{type.icon}</span>
+                            <span className="text-gray-700">{type.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
                     <label className="group flex items-center space-x-3 p-3 border rounded-xl cursor-pointer hover:bg-blue-50/50 transition-all duration-300 hover:border-blue-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none">
                       <input
                         type="checkbox"

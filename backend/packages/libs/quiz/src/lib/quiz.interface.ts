@@ -18,7 +18,8 @@ export abstract class QuizService {
 
   abstract getRandomQuizzesByKnowledgePoints(
     knowledgePointIds: string[], 
-    limit: number
+    limit: number,
+    quizTypes?: string[]
   ): Promise<QuizItem[]>;
 
   abstract getQuizById(id: string): Promise<QuizItem | null>;

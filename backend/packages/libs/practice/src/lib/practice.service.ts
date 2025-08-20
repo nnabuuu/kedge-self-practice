@@ -28,7 +28,8 @@ export class PracticeService {
     // Fetch random quizzes based on criteria - let the database do the work
     const quizzes = await this.quizService.getRandomQuizzesByKnowledgePoints(
       data.knowledge_point_ids || [],
-      data.question_count
+      data.question_count,
+      data.quiz_types
     );
     
     // If no quizzes found, throw error
