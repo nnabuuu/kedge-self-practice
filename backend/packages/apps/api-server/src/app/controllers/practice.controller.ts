@@ -399,6 +399,21 @@ export class PracticeController {
     );
   }
 
+  @Get('quick-options-availability')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check availability of quick practice options' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Quick practice options availability',
+  })
+  async getQuickOptionsAvailability(
+    @Request() req: AuthenticatedRequest
+  ): Promise<any> {
+    const userId = req.user.userId;
+    return await this.practiceService.checkQuickOptionsAvailability(userId);
+  }
+
   @Post('sessions/create-wrong-questions')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

@@ -37,9 +37,25 @@ export default function PracticeMenu({
   // State for showing tooltips
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+  const [quickOptionsAvailability, setQuickOptionsAvailability] = useState<{
+    quick_practice?: { available: boolean; message: string };
+    weak_points?: { available: boolean; message: string };
+    wrong_questions?: { available: boolean; message: string };
+  }>({});
   
   // Get subjects from API
   const { data: subjects = [] } = useSubjects();
+
+  // Fetch quick options availability on mount
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      const response = await api.practice.getQuickOptionsAvailability();
+      if (response.success && response.data) {
+        setQuickOptionsAvailability(response.data);
+      }
+    };
+    fetchAvailability();
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -56,12 +72,10 @@ export default function PracticeMenu({
     }
   }, [showSubjectDropdown]);
   
-  // Check if user has any practice history using preferences
-  const practiceStats = currentUser?.preferences?.practiceStats;
-  const hasNoHistory = !practiceStats?.lastPracticeDate;
-  
-  // Quick practice is enabled if user has practice history
-  const canQuickPractice = !hasNoHistory;
+  // Get availability states
+  const canQuickPractice = quickOptionsAvailability.quick_practice?.available || false;
+  const canWeakPointsPractice = quickOptionsAvailability.weak_points?.available || false;
+  const canWrongQuestionsPractice = quickOptionsAvailability.wrong_questions?.available || false;
   
   // Quick practice handler - 5-10 min practice with last knowledge points
   const handleQuickPractice = async () => {
@@ -202,20 +216,6 @@ export default function PracticeMenu({
             <div></div>
           </div>
 
-          {/* Notice banner for new users */}
-          {hasNoHistory && (
-            <div className="max-w-5xl mx-auto mb-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start">
-                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-                <div className="flex-1">
-                  <h4 className="font-semibold text-blue-900 mb-1">欢迎开始学习之旅！</h4>
-                  <p className="text-sm text-blue-700">
-                    完成您的第一次练习后，系统将为您解锁智能推荐功能，包括快速练习、薄弱点强化和错题复习等个性化学习选项。
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* 统一的练习方式选择区域 */}
           <div className="space-y-8 max-w-5xl mx-auto">
@@ -362,30 +362,40 @@ export default function PracticeMenu({
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
-                      {hasNoHistory 
-                        ? '请先完成一次完整的练习以解锁此功能'
-                        : '继续上次的知识点练习'}
+                      {quickOptionsAvailability.quick_practice?.message || '继续上次的知识点练习'}
                     </p>
                   </div>
 
                   {/* 薄弱点强化 */}
                   <div
-                    onClick={handleWeakPointsPractice}
-                    className="group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left bg-gradient-to-br from-purple-50 to-purple-50 hover:bg-purple-100 border-purple-200 hover:border-purple-300 hover:scale-105 cursor-pointer"
+                    onClick={canWeakPointsPractice ? handleWeakPointsPractice : undefined}
+                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left ${
+                      !canWeakPointsPractice
+                        ? 'bg-gray-50 border-gray-200 opacity-60'
+                        : 'bg-gradient-to-br from-purple-50 to-purple-50 hover:bg-purple-100 border-purple-200 hover:border-purple-300 hover:scale-105 cursor-pointer'
+                    }`}
                     role="button"
-                    tabIndex={0}
+                    tabIndex={!canWeakPointsPractice ? -1 : 0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === 'Enter' && canWeakPointsPractice) {
                         handleWeakPointsPractice();
                       }
                     }}
                   >
                     <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 bg-gradient-to-br from-purple-500 to-purple-600 group-hover:scale-110">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
+                        !canWeakPointsPractice
+                          ? 'bg-gray-400'
+                          : 'bg-gradient-to-br from-purple-500 to-purple-600 group-hover:scale-110'
+                      }`}>
                         <Target className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold transition-colors duration-300 leading-tight tracking-wide text-gray-900 group-hover:text-purple-600">
+                        <h4 className={`font-bold transition-colors duration-300 leading-tight tracking-wide ${
+                          !canWeakPointsPractice
+                            ? 'text-gray-500'
+                            : 'text-gray-900 group-hover:text-purple-600'
+                        }`}>
                           薄弱点强化
                         </h4>
                         <p className="text-sm text-gray-600 font-medium">10-15分钟</p>
@@ -432,7 +442,7 @@ export default function PracticeMenu({
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
-                      {'针对您的薄弱知识点进行强化练习'}
+                      {quickOptionsAvailability.weak_points?.message || '针对您的薄弱知识点进行强化练习'}
                     </p>
                     <div className="mt-2 text-xs text-purple-600 font-medium">
                       错误率 &gt;40%
@@ -441,22 +451,34 @@ export default function PracticeMenu({
 
                   {/* 错题强化 */}
                   <div
-                    onClick={handleWrongQuestionsPractice}
-                    className="group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left bg-gradient-to-br from-orange-50 to-orange-50 hover:bg-orange-100 border-orange-200 hover:border-orange-300 hover:scale-105 cursor-pointer"
+                    onClick={canWrongQuestionsPractice ? handleWrongQuestionsPractice : undefined}
+                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left ${
+                      !canWrongQuestionsPractice
+                        ? 'bg-gray-50 border-gray-200 opacity-60'
+                        : 'bg-gradient-to-br from-orange-50 to-orange-50 hover:bg-orange-100 border-orange-200 hover:border-orange-300 hover:scale-105 cursor-pointer'
+                    }`}
                     role="button"
-                    tabIndex={0}
+                    tabIndex={!canWrongQuestionsPractice ? -1 : 0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === 'Enter' && canWrongQuestionsPractice) {
                         handleWrongQuestionsPractice();
                       }
                     }}
                   >
                     <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 bg-gradient-to-br from-orange-500 to-red-600 group-hover:scale-110">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
+                        !canWrongQuestionsPractice
+                          ? 'bg-gray-400'
+                          : 'bg-gradient-to-br from-orange-500 to-red-600 group-hover:scale-110'
+                      }`}>
                         <Brain className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold transition-colors duration-300 leading-tight tracking-wide text-gray-900 group-hover:text-orange-600">
+                        <h4 className={`font-bold transition-colors duration-300 leading-tight tracking-wide ${
+                          !canWrongQuestionsPractice
+                            ? 'text-gray-500'
+                            : 'text-gray-900 group-hover:text-orange-600'
+                        }`}>
                           错题强化
                         </h4>
                         <p className="text-sm text-gray-600 font-medium">
@@ -505,7 +527,7 @@ export default function PracticeMenu({
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
-                      {'复习最近练习中的错题'}
+                      {quickOptionsAvailability.wrong_questions?.message || '复习最近练习中的错题'}
                     </p>
                   </div>
                 </div>

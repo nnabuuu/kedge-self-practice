@@ -535,6 +535,45 @@ export class PracticeService {
     }
   }
 
+  async checkQuickOptionsAvailability(userId: string): Promise<any> {
+    try {
+      // Check for quick practice (needs previous session)
+      const lastSession = await this.practiceRepository.getLastCompletedSession(userId);
+      const canQuickPractice = !!lastSession;
+      
+      // Check for weak points (needs practice history with errors)
+      const weakPoints = await this.analyzeWeakKnowledgePoints(userId, 1);
+      const canWeakPointsPractice = weakPoints?.weak_points && weakPoints.weak_points.length > 0;
+      
+      // Check for wrong questions (needs recent wrong answers)
+      const wrongQuestions = await this.getRecentWrongQuestions(userId, 1);
+      const canWrongQuestionsPractice = wrongQuestions?.wrong_question_ids && wrongQuestions.wrong_question_ids.length > 0;
+      
+      return {
+        quick_practice: {
+          available: canQuickPractice,
+          message: canQuickPractice ? '继续上次的知识点练习' : '请先完成一次完整的练习以解锁此功能'
+        },
+        weak_points: {
+          available: canWeakPointsPractice,
+          message: canWeakPointsPractice ? '针对您的薄弱知识点进行强化练习' : '暂无薄弱知识点，继续保持！'
+        },
+        wrong_questions: {
+          available: canWrongQuestionsPractice,
+          message: canWrongQuestionsPractice ? '复习最近练习中的错题' : '暂无错题记录，继续努力！'
+        }
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error checking quick options availability: ${errorMessage}`);
+      return {
+        quick_practice: { available: false, message: '无法获取状态' },
+        weak_points: { available: false, message: '无法获取状态' },
+        wrong_questions: { available: false, message: '无法获取状态' }
+      };
+    }
+  }
+
   async createWeakPointsSession(userId: string, limit: number = 20): Promise<any> {
     try {
       // Get weak knowledge points

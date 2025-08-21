@@ -255,6 +255,37 @@ export class ApiService {
     }
   }
 
+  // Check quick options availability
+  static async getQuickOptionsAvailability(): Promise<ApiResponse<any>> {
+    try {
+      const token = localStorage.getItem('jwt_token');
+      
+      if (!token) {
+        return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
+      }
+      
+      const url = `${API_BASE_URL}/v1/practice/quick-options-availability`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return createApiResponse(null, false, undefined, errorData.message || 'Failed to get availability status');
+      }
+
+      const data = await response.json();
+      return createApiResponse(data, true);
+    } catch (error) {
+      console.error('Error getting quick options availability:', error);
+      return createApiResponse(null, false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
+
   // Create quick practice session
   static async createQuickPracticeSession(questionLimit = 10): Promise<ApiResponse<any>> {
     try {
@@ -399,7 +430,8 @@ export const api = {
     completeSession: backendApiMethods.practice.completeSession,
     createWrongQuestionsSession: (userId?: string, sessionLimit?: number) => ApiService.createWrongQuestionsSession(userId, sessionLimit),
     createQuickPracticeSession: (questionLimit?: number) => ApiService.createQuickPracticeSession(questionLimit),
-    createWeakPointsSession: (limit?: number) => ApiService.createWeakPointsSession(limit)
+    createWeakPointsSession: (limit?: number) => ApiService.createWeakPointsSession(limit),
+    getQuickOptionsAvailability: () => ApiService.getQuickOptionsAvailability()
   },
   ai: {
     analyzeQuestion: (question: string) => ApiService.analyzeQuestionWithAI(question)
