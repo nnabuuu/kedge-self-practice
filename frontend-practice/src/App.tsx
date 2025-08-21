@@ -68,6 +68,7 @@ function App() {
   const [retryCount, setRetryCount] = useState(0);
   const { isOnline, backendStatus } = useConnectionStatus();
   const [isNavigatingHistory, setIsNavigatingHistory] = useState(false);
+  const [practiceSessionId, setPracticeSessionId] = useState<string | undefined>(undefined);
 
   // Check for existing authentication on app start
   useEffect(() => {
@@ -340,6 +341,7 @@ function App() {
   const handleStartQuiz = (knowledgePoints: string[], config: QuizConfig) => {
     setSelectedKnowledgePoints(knowledgePoints);
     setQuizConfig(config);
+    setPracticeSessionId(undefined); // Clear any previous session ID
     navigateToScreen('quiz-practice');
   };
   
@@ -446,6 +448,7 @@ function App() {
 
   const handleEndPractice = (session: PracticeSession) => {
     setCurrentSession(session);
+    setPracticeSessionId(undefined); // Clear the session ID after practice ends
     
     // Automatically save to history when practice completes
     if (selectedSubject) {
@@ -667,6 +670,7 @@ function App() {
             subject={selectedSubject}
             selectedKnowledgePoints={selectedKnowledgePoints}
             config={quizConfig}
+            practiceSessionId={practiceSessionId}
             onEndPractice={handleEndPractice}
             onBack={handleBack}
           />

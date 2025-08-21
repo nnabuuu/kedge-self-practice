@@ -17,6 +17,7 @@ interface QuizPracticeProps {
   subject: Subject;
   selectedKnowledgePoints: string[];
   config: QuizConfig;
+  practiceSessionId?: string;
   onEndPractice: (session: PracticeSession) => void;
   onBack: () => void;
 }
@@ -25,6 +26,7 @@ export default function QuizPractice({
   subject, 
   selectedKnowledgePoints, 
   config,
+  practiceSessionId,
   onEndPractice, 
   onBack 
 }: QuizPracticeProps) {
@@ -42,6 +44,8 @@ export default function QuizPractice({
   const [aiEvaluation, setAiEvaluation] = useState<AIEvaluation | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [showStandardAnswer, setShowStandardAnswer] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(practiceSessionId);
   
   // 语音输入相关状态
   const [isListening, setIsListening] = useState(false);
@@ -151,8 +155,9 @@ export default function QuizPractice({
 
   // 使用Practice Session Hook获取题目数据
   // Memoize config to prevent infinite re-renders
+  // Only use this when not using a pre-existing session
   const practiceConfig = useMemo(() => 
-    selectedKnowledgePoints.length > 0 ? {
+    !practiceSessionId && selectedKnowledgePoints.length > 0 ? {
       knowledge_point_ids: selectedKnowledgePoints,
       question_count: typeof config.questionCount === 'number' ? config.questionCount : 20,
       time_limit_minutes: config.timeLimit,
@@ -163,7 +168,7 @@ export default function QuizPractice({
       show_answer_immediately: config.showExplanation,
       quiz_types: config.quizTypes
     } : null,
-    [selectedKnowledgePoints, config.questionCount, config.timeLimit, 
+    [practiceSessionId, selectedKnowledgePoints, config.questionCount, config.timeLimit, 
      config.shuffleQuestions, config.showExplanation, config.quizTypes]
   );
 
@@ -177,6 +182,61 @@ export default function QuizPractice({
     completeSession
   } = usePracticeSession(practiceConfig);
   const { data: knowledgePointsData } = useKnowledgePoints(subject.id);
+
+  // Fetch session data when practiceSessionId is provided
+  useEffect(() => {
+    if (practiceSessionId) {
+      const fetchSession = async () => {
+        setSessionLoading(true);
+        try {
+          const response = await api.practice.getSession(practiceSessionId);
+          if (response.success && response.data) {
+            // Check if session needs to be started
+            if (response.data.session.status === 'pending') {
+              // Start the session
+              const startResponse = await api.practice.startSession(practiceSessionId);
+              if (startResponse.success && startResponse.data) {
+                // Use the started session data
+                const convertedQuestions = startResponse.data.quizzes.map((q: any) => convertSessionQuestion(q));
+                setQuestions(convertedQuestions);
+                setCurrentSessionId(practiceSessionId);
+                
+                // Initialize answers array
+                const initialAnswers = new Array(convertedQuestions.length).fill(null);
+                setAnswers(initialAnswers);
+                setQuestionStartTimes(new Array(convertedQuestions.length).fill(null));
+                setQuestionDurations(new Array(convertedQuestions.length).fill(0));
+              }
+            } else {
+              // Session already started, use the fetched data
+              const convertedQuestions = response.data.quizzes.map((q: any) => convertSessionQuestion(q));
+              setQuestions(convertedQuestions);
+              setCurrentSessionId(practiceSessionId);
+              
+              // Initialize answers array based on existing answers if any
+              const initialAnswers = new Array(convertedQuestions.length).fill(null);
+              if (response.data.answers) {
+                response.data.answers.forEach((answer: any) => {
+                  const quizIndex = response.data.quizzes.findIndex((q: any) => q.id === answer.quiz_id);
+                  if (quizIndex !== -1) {
+                    initialAnswers[quizIndex] = answer.user_answer;
+                  }
+                });
+              }
+              setAnswers(initialAnswers);
+              setQuestionStartTimes(new Array(convertedQuestions.length).fill(null));
+              setQuestionDurations(new Array(convertedQuestions.length).fill(0));
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching session:', error);
+        } finally {
+          setSessionLoading(false);
+        }
+      };
+      fetchSession();
+    }
+  }, [practiceSessionId]);
 
   useEffect(() => {
     // 检查浏览器是否支持语音识别
@@ -290,7 +350,8 @@ export default function QuizPractice({
   };
 
   useEffect(() => {
-    if (sessionQuestions && sessionQuestions.length > 0) {
+    // Only use sessionQuestions if not using a pre-existing session
+    if (!practiceSessionId && sessionQuestions && sessionQuestions.length > 0) {
       
       const convertedQuestions = sessionQuestions.map(convertSessionQuestion);
       
@@ -299,7 +360,7 @@ export default function QuizPractice({
       setQuestionStartTimes(new Array(convertedQuestions.length).fill(null));
       setQuestionDurations(new Array(convertedQuestions.length).fill(0));
     }
-  }, [sessionQuestions]);
+  }, [practiceSessionId, sessionQuestions]);
 
   // 记录当前题目开始时间
   useEffect(() => {
@@ -680,7 +741,7 @@ export default function QuizPractice({
   };
 
   // 加载状态
-  if (questionsLoading) {
+  if (questionsLoading || sessionLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50/80 via-blue-50/60 to-indigo-100/80 relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">

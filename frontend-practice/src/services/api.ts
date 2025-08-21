@@ -2,6 +2,9 @@
 import { Subject, KnowledgePoint, QuizQuestion } from '../types/quiz';
 import { backendApi, api as backendApiMethods } from './backendApi';
 
+// API base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
+
 // API response interface
 interface ApiResponse<T> {
   success: boolean;
