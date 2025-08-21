@@ -1,9 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { ArrowLeft, Play, History, BookOpen, Brain, Zap, Timer, BarChart3, Clock, Target, TrendingUp, Sparkles, AlertCircle, Info, ChevronDown, Check } from 'lucide-react';
 import { Subject, PracticeHistory } from '../types/quiz';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { useWeakKnowledgePoints, useWrongQuestions, useQuickPracticeSuggestion } from '../hooks/usePracticeAnalysis';
-import { practiceAnalysisApi } from '../services/practiceAnalysisApi';
 import { useSubjects } from '../hooks/useApi';
 import { api } from '../services/api';
 
@@ -39,31 +36,10 @@ export default function PracticeMenu({
   
   // State for showing tooltips
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [lastKnowledgePoints, setLastKnowledgePoints] = useState<string[]>([]);
-  const [weakKnowledgePoints, setWeakKnowledgePoints] = useState<string[]>([]);
-  const [recentWrongQuestions, setRecentWrongQuestions] = useState<string[]>([]);
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
   
   // Get subjects from API
   const { data: subjects = [] } = useSubjects();
-  
-  // First try to use cached data, then fallback to API hooks
-  useEffect(() => {
-    // Try to get cached data first (loaded during login)
-    const cachedQuickData = practiceAnalysisApi.getCachedQuickSuggestion();
-    const cachedWeakData = practiceAnalysisApi.getCachedWeakPoints(20);
-    const cachedWrongData = practiceAnalysisApi.getCachedWrongQuestions(5);
-    
-    if (cachedQuickData?.knowledge_point_ids) {
-      setLastKnowledgePoints(cachedQuickData.knowledge_point_ids);
-    }
-    if (cachedWeakData?.weak_points) {
-      setWeakKnowledgePoints(cachedWeakData.weak_points.map(wp => wp.knowledge_point_id));
-    }
-    if (cachedWrongData?.wrong_question_ids) {
-      setRecentWrongQuestions(cachedWrongData.wrong_question_ids);
-    }
-  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -80,42 +56,12 @@ export default function PracticeMenu({
     }
   }, [showSubjectDropdown]);
   
-  // Use backend APIs as fallback if cache is empty
-  const { data: weakData } = useWeakKnowledgePoints(undefined, 20);
-  const { data: wrongData } = useWrongQuestions(undefined, 5);
-  const { data: quickData } = useQuickPracticeSuggestion();
-  
-  // Update state when fresh API data arrives (but cached data takes priority)
-  useEffect(() => {
-    if (quickData?.knowledge_point_ids && lastKnowledgePoints.length === 0) {
-      setLastKnowledgePoints(quickData.knowledge_point_ids);
-    }
-  }, [quickData]);
-  
-  useEffect(() => {
-    if (weakData?.weak_points && weakKnowledgePoints.length === 0) {
-      setWeakKnowledgePoints(weakData.weak_points.map(wp => wp.knowledge_point_id));
-    }
-  }, [weakData]);
-  
-  useEffect(() => {
-    if (wrongData?.wrong_question_ids && recentWrongQuestions.length === 0) {
-      setRecentWrongQuestions(wrongData.wrong_question_ids);
-    }
-  }, [wrongData]);
-  
   // Check if user has any practice history using preferences
   const practiceStats = currentUser?.preferences?.practiceStats;
-  const cachedQuickPractice = currentUser?.preferences?.cachedQuickPractice;
-  const hasNoHistory = !practiceStats?.lastPracticeDate && quickData?.message === 'No completed sessions found';
+  const hasNoHistory = !practiceStats?.lastPracticeDate;
   
-  // Check if quick practice should be enabled based on multiple sources:
-  // 1. Cached data from login preload
-  // 2. User preferences (practiceStats)
-  // 3. Cached quick practice data
-  const canQuickPractice = lastKnowledgePoints.length > 0 || 
-                          practiceStats?.lastKnowledgePoints?.length > 0 || 
-                          cachedQuickPractice?.knowledgePoints?.length > 0;
+  // Quick practice is enabled if user has practice history
+  const canQuickPractice = !hasNoHistory;
   
   // Quick practice handler - 5-10 min practice with last knowledge points
   const handleQuickPractice = async () => {
@@ -164,13 +110,10 @@ export default function PracticeMenu({
     }
   };
   
-  // Wrong questions practice handler
+  // Wrong questions practice handler - delegates to parent component
   const handleWrongQuestionsPractice = () => {
-    if (recentWrongQuestions.length > 0) {
-      onWrongQuestionsPractice?.(recentWrongQuestions);
-    } else {
-      alert('暂无错题记录。请先完成几次练习后再使用此功能。');
-    }
+    // The parent component (App.tsx) already handles this with the backend API
+    onWrongQuestionsPractice?.([]);
   };
 
   return (
@@ -419,44 +362,30 @@ export default function PracticeMenu({
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
-                      {lastKnowledgePoints.length > 0 
-                        ? `继续上次的 ${lastKnowledgePoints.length} 个知识点练习`
-                        : hasNoHistory 
-                          ? '请先完成一次完整的练习以解锁此功能'
-                          : '正在加载练习记录...'}
+                      {hasNoHistory 
+                        ? '请先完成一次完整的练习以解锁此功能'
+                        : '继续上次的知识点练习'}
                     </p>
                   </div>
 
                   {/* 薄弱点强化 */}
                   <div
-                    onClick={weakKnowledgePoints.length > 0 ? handleWeakPointsPractice : undefined}
-                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left ${
-                      weakKnowledgePoints.length === 0
-                        ? 'bg-gray-50 border-gray-200 opacity-60'
-                        : 'bg-gradient-to-br from-purple-50 to-purple-50 hover:bg-purple-100 border-purple-200 hover:border-purple-300 hover:scale-105 cursor-pointer'
-                    }`}
+                    onClick={handleWeakPointsPractice}
+                    className="group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left bg-gradient-to-br from-purple-50 to-purple-50 hover:bg-purple-100 border-purple-200 hover:border-purple-300 hover:scale-105 cursor-pointer"
                     role="button"
-                    tabIndex={weakKnowledgePoints.length === 0 ? -1 : 0}
+                    tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && weakKnowledgePoints.length > 0) {
+                      if (e.key === 'Enter') {
                         handleWeakPointsPractice();
                       }
                     }}
                   >
                     <div className="flex items-center mb-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
-                        weakKnowledgePoints.length === 0
-                          ? 'bg-gray-400'
-                          : 'bg-gradient-to-br from-purple-500 to-purple-600 group-hover:scale-110'
-                      }`}>
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 bg-gradient-to-br from-purple-500 to-purple-600 group-hover:scale-110">
                         <Target className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h4 className={`font-bold transition-colors duration-300 leading-tight tracking-wide ${
-                          weakKnowledgePoints.length === 0
-                            ? 'text-gray-500'
-                            : 'text-gray-900 group-hover:text-purple-600'
-                        }`}>
+                        <h4 className="font-bold transition-colors duration-300 leading-tight tracking-wide text-gray-900 group-hover:text-purple-600">
                           薄弱点强化
                         </h4>
                         <p className="text-sm text-gray-600 font-medium">10-15分钟</p>
@@ -503,53 +432,35 @@ export default function PracticeMenu({
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
-                      {weakKnowledgePoints.length > 0 
-                        ? `发现 ${weakKnowledgePoints.length} 个需要强化的知识点`
-                        : '需要更多练习数据分析'}
+                      {'针对您的薄弱知识点进行强化练习'}
                     </p>
-                    {weakKnowledgePoints.length > 0 && (
-                      <div className="mt-2 text-xs text-purple-600 font-medium">
-                        错误率 &gt;40%
-                      </div>
-                    )}
+                    <div className="mt-2 text-xs text-purple-600 font-medium">
+                      错误率 &gt;40%
+                    </div>
                   </div>
 
                   {/* 错题强化 */}
                   <div
-                    onClick={recentWrongQuestions.length > 0 ? handleWrongQuestionsPractice : undefined}
-                    className={`group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left ${
-                      recentWrongQuestions.length === 0
-                        ? 'bg-gray-50 border-gray-200 opacity-60'
-                        : 'bg-gradient-to-br from-orange-50 to-orange-50 hover:bg-orange-100 border-orange-200 hover:border-orange-300 hover:scale-105 cursor-pointer'
-                    }`}
+                    onClick={handleWrongQuestionsPractice}
+                    className="group rounded-xl p-4 border transition-all duration-300 ease-out transform shadow-md hover:shadow-lg text-left bg-gradient-to-br from-orange-50 to-orange-50 hover:bg-orange-100 border-orange-200 hover:border-orange-300 hover:scale-105 cursor-pointer"
                     role="button"
-                    tabIndex={recentWrongQuestions.length === 0 ? -1 : 0}
+                    tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && recentWrongQuestions.length > 0) {
+                      if (e.key === 'Enter') {
                         handleWrongQuestionsPractice();
                       }
                     }}
                   >
                     <div className="flex items-center mb-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 ${
-                        recentWrongQuestions.length === 0
-                          ? 'bg-gray-400'
-                          : 'bg-gradient-to-br from-orange-500 to-red-600 group-hover:scale-110'
-                      }`}>
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-transform duration-300 bg-gradient-to-br from-orange-500 to-red-600 group-hover:scale-110">
                         <Brain className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h4 className={`font-bold transition-colors duration-300 leading-tight tracking-wide ${
-                          recentWrongQuestions.length === 0
-                            ? 'text-gray-500'
-                            : 'text-gray-900 group-hover:text-orange-600'
-                        }`}>
+                        <h4 className="font-bold transition-colors duration-300 leading-tight tracking-wide text-gray-900 group-hover:text-orange-600">
                           错题强化
                         </h4>
                         <p className="text-sm text-gray-600 font-medium">
-                          {recentWrongQuestions.length > 0 
-                            ? `${recentWrongQuestions.length} 道错题`
-                            : '暂无错题'}
+                          {'复习错题'}
                         </p>
                       </div>
                       {/* Info button */}
@@ -594,9 +505,7 @@ export default function PracticeMenu({
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 leading-relaxed tracking-wide">
-                      {recentWrongQuestions.length > 0 
-                        ? `最近5次练习中的错题`
-                        : '继续努力，保持优秀！'}
+                      {'复习最近练习中的错题'}
                     </p>
                   </div>
                 </div>
