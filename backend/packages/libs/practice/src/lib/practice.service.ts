@@ -545,7 +545,7 @@ export class PracticeService {
       }
 
       // Get knowledge point IDs
-      const knowledgePointIds = weakPoints.weak_points.map(wp => wp.knowledge_point_id);
+      const knowledgePointIds = weakPoints.weak_points.map((wp: any) => wp.knowledge_point_id);
       
       // Fetch quizzes for these knowledge points
       const quizResult = await this.persistentService.pgPool.query(sql.unsafe`
@@ -571,7 +571,7 @@ export class PracticeService {
         {
           strategy: 'weak-points',
           total_questions: quizIds.length,
-          time_limit_minutes: null
+          time_limit_minutes: undefined
         }
       );
 
