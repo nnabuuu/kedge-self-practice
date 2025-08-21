@@ -2,9 +2,6 @@
 import { Subject, KnowledgePoint, QuizQuestion } from '../types/quiz';
 import { backendApi, api as backendApiMethods } from './backendApi';
 
-// API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
-
 // API response interface
 interface ApiResponse<T> {
   success: boolean;
@@ -267,7 +264,8 @@ export class ApiService {
         return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
       }
       
-      const url = `${API_BASE_URL}/v1/practice/quick-options-availability`;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
+      const url = `${apiBaseUrl}/v1/practice/quick-options-availability`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -301,7 +299,8 @@ export class ApiService {
       const params = new URLSearchParams();
       params.append('questionLimit', questionLimit.toString());
       
-      const url = `${API_BASE_URL}/v1/practice/sessions/create-quick-practice?${params}`;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
+      const url = `${apiBaseUrl}/v1/practice/sessions/create-quick-practice?${params}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -335,7 +334,8 @@ export class ApiService {
       const params = new URLSearchParams();
       params.append('limit', limit.toString());
       
-      const url = `${API_BASE_URL}/v1/practice/sessions/create-weak-points?${params}`;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
+      const url = `${apiBaseUrl}/v1/practice/sessions/create-weak-points?${params}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
