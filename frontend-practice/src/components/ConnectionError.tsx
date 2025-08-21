@@ -24,8 +24,11 @@ export const ConnectionError: React.FC<ConnectionErrorProps> = ({
   const checkConnection = async () => {
     setConnectionStatus('checking');
     try {
-      // Use /health endpoint (v1 is already in VITE_API_BASE_URL)
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/health`, {
+      // Properly construct API URL with /v1 suffix
+      const apiUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const response = await fetch(`${apiUrl}/health`, {
         method: 'GET'
       });
       setConnectionStatus(response.ok ? 'online' : 'offline');
@@ -91,7 +94,7 @@ export const ConnectionError: React.FC<ConnectionErrorProps> = ({
           <ul className="text-xs text-yellow-700 mt-2 space-y-1">
             <li>• 检查数据库是否已启动 (PostgreSQL on port 7543)</li>
             <li>• 检查 API 服务是否运行 (nx run api-server:serve)</li>
-            <li>• 确认服务地址: {import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}</li>
+            <li>• 确认服务地址: {import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}</li>
           </ul>
         </div>
       )}
@@ -158,11 +161,14 @@ export const useConnectionStatus = () => {
     // Check backend status
     const checkBackend = async () => {
       try {
-        // Use /health endpoint with a timeout (v1 is already in VITE_API_BASE_URL)
+        // Use /health endpoint with a timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/health`, {
+        const apiUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+          ? import.meta.env.VITE_API_BASE_URL
+          : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+        const response = await fetch(`${apiUrl}/health`, {
           signal: controller.signal
         });
         
