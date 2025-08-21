@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
+import { sql } from 'slonik';
 import {
   CreatePracticeSession,
   PracticeSession,
@@ -11,12 +12,16 @@ import {
 } from '@kedge/models';
 import { PracticeRepository } from './practice.repository';
 import { QuizService } from '@kedge/quiz';
+import { PersistentService } from '@kedge/persistent';
 
 @Injectable()
 export class PracticeService {
+  private readonly logger = new Logger(PracticeService.name);
+  
   constructor(
     private readonly practiceRepository: PracticeRepository,
-    private readonly quizService: QuizService
+    private readonly quizService: QuizService,
+    private readonly persistentService: PersistentService
   ) {}
 
   async createSession(
@@ -482,5 +487,108 @@ export class PracticeService {
       statistics,
       sessions_analyzed: recentSessions.length
     };
+  }
+
+  async createQuickPracticeSession(userId: string, questionLimit: number = 10): Promise<any> {
+    try {
+      // Get last completed session to find knowledge points
+      const lastSession = await this.practiceRepository.getLastCompletedSession(userId);
+      
+      if (!lastSession) {
+        throw new Error('No previous practice session found');
+      }
+
+      // Get quizzes from last session's knowledge points
+      const quizIds = lastSession.quiz_ids;
+      if (!quizIds || quizIds.length === 0) {
+        throw new Error('No quizzes found from last session');
+      }
+
+      // Create a quick practice session with limited questions
+      const sessionId = uuidv4();
+      const limitedQuizIds = quizIds.slice(0, questionLimit);
+      
+      const session = await this.practiceRepository.createSession(
+        sessionId,
+        userId,
+        limitedQuizIds,
+        {
+          strategy: 'quick-practice',
+          total_questions: limitedQuizIds.length,
+          time_limit_minutes: 10
+        }
+      );
+
+      return {
+        success: true,
+        session_id: sessionId,
+        question_count: limitedQuizIds.length,
+        message: 'Quick practice session created successfully'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error creating quick practice session: ${errorMessage}`);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
+
+  async createWeakPointsSession(userId: string, limit: number = 20): Promise<any> {
+    try {
+      // Get weak knowledge points
+      const weakPoints = await this.analyzeWeakKnowledgePoints(userId, limit);
+      
+      if (!weakPoints?.weak_points || weakPoints.weak_points.length === 0) {
+        throw new Error('No weak knowledge points identified');
+      }
+
+      // Get knowledge point IDs
+      const knowledgePointIds = weakPoints.weak_points.map(wp => wp.knowledge_point_id);
+      
+      // Fetch quizzes for these knowledge points
+      const quizResult = await this.persistentService.pgPool.query(sql.unsafe`
+        SELECT DISTINCT q.id
+        FROM kedge_practice.quizzes q
+        WHERE q.knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'uuid')})
+        AND q.is_deleted = false
+        ORDER BY RANDOM()
+        LIMIT ${limit}
+      `);
+
+      if (quizResult.rowCount === 0) {
+        throw new Error('No quizzes found for weak knowledge points');
+      }
+
+      const quizIds = quizResult.rows.map(row => row.id);
+      const sessionId = uuidv4();
+      
+      const session = await this.practiceRepository.createSession(
+        sessionId,
+        userId,
+        quizIds,
+        {
+          strategy: 'weak-points',
+          total_questions: quizIds.length,
+          time_limit_minutes: null
+        }
+      );
+
+      return {
+        success: true,
+        session_id: sessionId,
+        question_count: quizIds.length,
+        weak_points_targeted: knowledgePointIds.length,
+        message: 'Weak points practice session created successfully'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error creating weak points session: ${errorMessage}`);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
   }
 }

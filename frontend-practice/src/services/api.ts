@@ -255,6 +255,74 @@ export class ApiService {
     }
   }
 
+  // Create quick practice session
+  static async createQuickPracticeSession(questionLimit = 10): Promise<ApiResponse<any>> {
+    try {
+      const token = localStorage.getItem('jwt_token');
+      
+      if (!token) {
+        return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
+      }
+      
+      const params = new URLSearchParams();
+      params.append('questionLimit', questionLimit.toString());
+      
+      const url = `${API_BASE_URL}/v1/practice/sessions/create-quick-practice?${params}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return createApiResponse(null, false, undefined, errorData.message || 'Failed to create quick practice session');
+      }
+
+      const data = await response.json();
+      return createApiResponse(data, true);
+    } catch (error) {
+      console.error('Error creating quick practice session:', error);
+      return createApiResponse(null, false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
+
+  // Create weak points practice session
+  static async createWeakPointsSession(limit = 20): Promise<ApiResponse<any>> {
+    try {
+      const token = localStorage.getItem('jwt_token');
+      
+      if (!token) {
+        return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
+      }
+      
+      const params = new URLSearchParams();
+      params.append('limit', limit.toString());
+      
+      const url = `${API_BASE_URL}/v1/practice/sessions/create-weak-points?${params}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return createApiResponse(null, false, undefined, errorData.message || 'Failed to create weak points session');
+      }
+
+      const data = await response.json();
+      return createApiResponse(data, true);
+    } catch (error) {
+      console.error('Error creating weak points session:', error);
+      return createApiResponse(null, false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
+
   // Create wrong questions practice session
   static async createWrongQuestionsSession(userId?: string, sessionLimit = 5): Promise<ApiResponse<any>> {
     try {
@@ -329,7 +397,9 @@ export const api = {
     getSession: backendApiMethods.practice.getSession,
     submitAnswer: backendApiMethods.practice.submitAnswer,
     completeSession: backendApiMethods.practice.completeSession,
-    createWrongQuestionsSession: (userId?: string, sessionLimit?: number) => ApiService.createWrongQuestionsSession(userId, sessionLimit)
+    createWrongQuestionsSession: (userId?: string, sessionLimit?: number) => ApiService.createWrongQuestionsSession(userId, sessionLimit),
+    createQuickPracticeSession: (questionLimit?: number) => ApiService.createQuickPracticeSession(questionLimit),
+    createWeakPointsSession: (limit?: number) => ApiService.createWeakPointsSession(limit)
   },
   ai: {
     analyzeQuestion: (question: string) => ApiService.analyzeQuestionWithAI(question)

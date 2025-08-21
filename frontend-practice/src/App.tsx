@@ -367,6 +367,28 @@ function App() {
     navigateToScreen('quiz-practice');
   };
   
+  // Handler for session-based quick practice
+  const handleQuickPracticeSession = async (sessionId: string) => {
+    try {
+      setPracticeSessionId(sessionId);
+      navigateToScreen('quiz-practice');
+    } catch (error) {
+      console.error('Failed to start quick practice session:', error);
+      alert('启动快速练习失败，请重试。');
+    }
+  };
+  
+  // Handler for session-based weak points practice
+  const handleWeakPointsSession = async (sessionId: string) => {
+    try {
+      setPracticeSessionId(sessionId);
+      navigateToScreen('quiz-practice');
+    } catch (error) {
+      console.error('Failed to start weak points session:', error);
+      alert('启动薄弱知识点练习失败，请重试。');
+    }
+  };
+  
   // Handler for wrong questions practice
   const handleWrongQuestionsPractice = async (questionIds: string[]) => {
     try {
@@ -620,6 +642,8 @@ function App() {
             onQuickPractice={handleQuickPractice}
             onWeakPointsPractice={handleWeakPointsPractice}
             onWrongQuestionsPractice={handleWrongQuestionsPractice}
+            onQuickPracticeSession={handleQuickPracticeSession}
+            onWeakPointsSession={handleWeakPointsSession}
             onViewHistory={handleViewHistory}
             onViewKnowledgeAnalysis={handleViewKnowledgeAnalysis}
             onBack={handleBack}

@@ -5,6 +5,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useWeakKnowledgePoints, useWrongQuestions, useQuickPracticeSuggestion } from '../hooks/usePracticeAnalysis';
 import { practiceAnalysisApi } from '../services/practiceAnalysisApi';
 import { useSubjects } from '../hooks/useApi';
+import { api } from '../services/api';
 
 interface PracticeMenuProps {
   subject: Subject;
@@ -13,6 +14,8 @@ interface PracticeMenuProps {
   onQuickPractice?: (knowledgePoints: string[], questionCount: number) => void;
   onWeakPointsPractice?: (knowledgePoints: string[]) => void;
   onWrongQuestionsPractice?: (questionIds: string[]) => void;
+  onQuickPracticeSession?: (sessionId: string) => void;
+  onWeakPointsSession?: (sessionId: string) => void;
   onViewHistory: () => void;
   onViewKnowledgeAnalysis: () => void;
   onBack: () => void;
@@ -26,6 +29,8 @@ export default function PracticeMenu({
   onQuickPractice,
   onWeakPointsPractice,
   onWrongQuestionsPractice,
+  onQuickPracticeSession,
+  onWeakPointsSession,
   onViewHistory, 
   onViewKnowledgeAnalysis,
   onBack,
@@ -113,37 +118,49 @@ export default function PracticeMenu({
                           cachedQuickPractice?.knowledgePoints?.length > 0;
   
   // Quick practice handler - 5-10 min practice with last knowledge points
-  const handleQuickPractice = () => {
-    // Try to use knowledge points from multiple sources in priority order:
-    // 1. Cached data from login preload
-    // 2. User preferences (practiceStats)
-    // 3. Cached quick practice data from preferences
-    let knowledgePointsToUse = lastKnowledgePoints;
-    
-    if (knowledgePointsToUse.length === 0) {
-      knowledgePointsToUse = practiceStats?.lastKnowledgePoints || [];
-    }
-    
-    if (knowledgePointsToUse.length === 0) {
-      knowledgePointsToUse = cachedQuickPractice?.knowledgePoints || [];
-    }
-    
-    if (knowledgePointsToUse.length > 0) {
-      // Use last knowledge points, limit to 5-10 questions for quick practice
-      onQuickPractice?.(knowledgePointsToUse, 8);
-    } else {
-      // No history, fall back to regular practice
-      onStartPractice();
+  const handleQuickPractice = async () => {
+    try {
+      // Call backend API to create quick practice session
+      const response = await api.practice.createQuickPracticeSession(8);
+      
+      if (response.success && response.data?.session_id) {
+        // Navigate to practice with the created session
+        onQuickPracticeSession?.(response.data.session_id);
+      } else {
+        // Fallback error handling
+        if (response.error?.includes('No previous practice session')) {
+          alert('暂无练习记录。请先完成一次练习后再使用快速练习功能。');
+          onStartPractice();
+        } else {
+          alert(response.error || '创建快速练习失败，请重试。');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create quick practice session:', error);
+      alert('创建快速练习失败，请重试。');
     }
   };
   
   // Weak points practice handler
-  const handleWeakPointsPractice = () => {
-    if (weakKnowledgePoints.length > 0) {
-      onWeakPointsPractice?.(weakKnowledgePoints);
-    } else {
-      // No weak points identified, show message or fall back
-      alert('暂无薄弱知识点。请先完成几次练习后再使用此功能。');
+  const handleWeakPointsPractice = async () => {
+    try {
+      // Call backend API to create weak points practice session
+      const response = await api.practice.createWeakPointsSession(20);
+      
+      if (response.success && response.data?.session_id) {
+        // Navigate to practice with the created session
+        onWeakPointsSession?.(response.data.session_id);
+      } else {
+        // Fallback error handling
+        if (response.error?.includes('No weak knowledge points')) {
+          alert('暂无薄弱知识点。请先完成几次练习后再使用此功能。');
+        } else {
+          alert(response.error || '创建薄弱知识点练习失败，请重试。');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create weak points session:', error);
+      alert('创建薄弱知识点练习失败，请重试。');
     }
   };
   

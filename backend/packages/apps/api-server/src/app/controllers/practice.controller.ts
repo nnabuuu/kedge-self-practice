@@ -417,4 +417,42 @@ export class PracticeController {
       parseInt(sessionLimit)
     );
   }
+
+  @Post('sessions/create-quick-practice')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a quick practice session based on last practice' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Quick practice session created successfully',
+  })
+  async createQuickPracticeSession(
+    @Request() req: AuthenticatedRequest,
+    @Query('questionLimit') questionLimit: string = '10'
+  ): Promise<any> {
+    const userId = req.user.userId;
+    return await this.practiceService.createQuickPracticeSession(
+      userId, 
+      parseInt(questionLimit)
+    );
+  }
+
+  @Post('sessions/create-weak-points')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a practice session targeting weak knowledge points' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Weak points practice session created successfully',
+  })
+  async createWeakPointsSession(
+    @Request() req: AuthenticatedRequest,
+    @Query('limit') limit: string = '20'
+  ): Promise<any> {
+    const userId = req.user.userId;
+    return await this.practiceService.createWeakPointsSession(
+      userId, 
+      parseInt(limit)
+    );
+  }
 }
