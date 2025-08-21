@@ -2,7 +2,10 @@
 import { Subject, KnowledgePoint, QuizQuestion, PracticeSession } from '../types/quiz';
 import { authService } from './authService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
+// Direct connection to backend - add /v1 if not already present
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+  ? import.meta.env.VITE_API_BASE_URL
+  : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
 
 // API Response interfaces
 interface ApiResponse<T = any> {

@@ -231,7 +231,10 @@ export class ApiService {
       }
       
       // Use the new backend endpoint for batch fetching
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/quiz/by-ids?ids=${questionIds.join(',')}`, {
+      const apiUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const response = await fetch(`${apiUrl}/quiz/by-ids?ids=${questionIds.join(',')}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -264,8 +267,10 @@ export class ApiService {
         return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
       }
       
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
-      const url = `${apiBaseUrl}/v1/practice/quick-options-availability`;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const url = `${apiBaseUrl}/practice/quick-options-availability`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -299,8 +304,10 @@ export class ApiService {
       const params = new URLSearchParams();
       params.append('questionLimit', questionLimit.toString());
       
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
-      const url = `${apiBaseUrl}/v1/practice/sessions/create-quick-practice?${params}`;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const url = `${apiBaseUrl}/practice/sessions/create-quick-practice?${params}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -334,8 +341,10 @@ export class ApiService {
       const params = new URLSearchParams();
       params.append('limit', limit.toString());
       
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
-      const url = `${apiBaseUrl}/v1/practice/sessions/create-weak-points?${params}`;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const url = `${apiBaseUrl}/practice/sessions/create-weak-points?${params}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -369,7 +378,10 @@ export class ApiService {
       const params = new URLSearchParams();
       params.append('sessionLimit', sessionLimit.toString());
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/practice/sessions/create-wrong-questions?${params}`, {
+      const apiUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const response = await fetch(`${apiUrl}/practice/sessions/create-wrong-questions?${params}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

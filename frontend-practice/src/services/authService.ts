@@ -30,7 +30,10 @@ interface RegisterRequest {
   role: 'student' | 'teacher';
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
+// Direct connection to backend - add /v1 if not already present
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+  ? import.meta.env.VITE_API_BASE_URL
+  : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
 
 class AuthService {
   private getAuthHeaders(): HeadersInit {

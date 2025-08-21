@@ -29,7 +29,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {});
   const logger = new Logger('bootstrap');
 
-  app.enableCors();
+  app.enableCors({
+    origin: true, // Allow all origins
+    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Accept, Authorization',
+  });
   app.use(express.text());
   app.use(json({ limit: clientJsonPayloadLimit }));
   app.use(urlencoded({ limit: clientJsonPayloadLimit, extended: true }));
