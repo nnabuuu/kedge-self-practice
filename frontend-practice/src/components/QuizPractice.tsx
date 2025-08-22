@@ -293,6 +293,17 @@ export default function QuizPractice({
   // Convert session questions to frontend format
   const convertSessionQuestion = (sessionQuestion: any): QuizQuestion => {
     console.log('Converting session question:', sessionQuestion);
+    
+    // Use the type field directly from backend
+    let type: QuizQuestion['type'] = 'single-choice';
+    if (sessionQuestion.type === 'multiple-choice') {
+      type = 'multiple-choice';
+    } else if (sessionQuestion.type === 'essay') {
+      type = 'essay';
+    } else {
+      type = 'single-choice';
+    }
+    
     // Parse options if they exist
     let options: QuizQuestion['options'] | undefined;
     if (sessionQuestion.options && Array.isArray(sessionQuestion.options)) {
@@ -306,43 +317,21 @@ export default function QuizPractice({
       });
     }
 
-    // Determine quiz type and answer format
-    let type: QuizQuestion['type'] = 'single-choice';
+    // Parse answer - convert indices to letters for choices
     let answer: string | string[] | undefined;
-    
-    // Backend returns answer as array of indices for choices, or string for essay
-    if (sessionQuestion.answer !== undefined) {
-      if (Array.isArray(sessionQuestion.answer)) {
-        const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
-        if (sessionQuestion.answer.length === 1) {
-          // Single choice - convert index to letter
-          type = 'single-choice';
-          const index = sessionQuestion.answer[0];
-          answer = keys[index] || String(index);
-        } else {
-          // Multiple choice - convert indices to letters
-          type = 'multiple-choice';
-          answer = sessionQuestion.answer.map((idx: number) => keys[idx] || String(idx));
-        }
-      } else if (typeof sessionQuestion.answer === 'string') {
-        // Essay or fill-in-the-blank
-        type = options ? 'single-choice' : 'essay';
-        answer = sessionQuestion.answer;
+    if (Array.isArray(sessionQuestion.answer)) {
+      const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
+      if (sessionQuestion.answer.length === 1) {
+        // Single choice - convert index to letter
+        const index = sessionQuestion.answer[0];
+        answer = keys[index] || String(index);
+      } else {
+        // Multiple choice - convert indices to letters
+        answer = sessionQuestion.answer.map((idx: number) => keys[idx] || String(idx));
       }
-    } else if (sessionQuestion.correct_answer) {
-      // Fallback to correct_answer field if answer is not present
-      if (Array.isArray(sessionQuestion.correct_answer)) {
-        type = 'multiple-choice';
-        answer = sessionQuestion.correct_answer;
-      } else if (typeof sessionQuestion.correct_answer === 'string') {
-        if (options) {
-          type = 'single-choice';
-          answer = sessionQuestion.correct_answer;
-        } else {
-          type = 'essay';
-          answer = sessionQuestion.correct_answer;
-        }
-      }
+    } else {
+      // Essay or other text answer
+      answer = sessionQuestion.answer;
     }
 
     return {
@@ -352,7 +341,7 @@ export default function QuizPractice({
       options,
       answer,
       images: sessionQuestion.images || [],
-      standardAnswer: type === 'essay' ? sessionQuestion.correct_answer : undefined,
+      standardAnswer: type === 'essay' ? sessionQuestion.answer : undefined,
       relatedKnowledgePointId: sessionQuestion.knowledge_point_id,
     };
   };
