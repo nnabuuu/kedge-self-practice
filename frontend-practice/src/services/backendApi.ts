@@ -510,6 +510,7 @@ class BackendApiService {
 
   // Practice Session Methods
   async createPracticeSession(config: {
+    subject_id?: string;
     knowledge_point_ids: string[];
     question_count?: number;
     time_limit_minutes?: number;
@@ -522,6 +523,7 @@ class BackendApiService {
   }): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
     
     const sessionData = {
+      subject_id: config.subject_id,
       knowledge_point_ids: config.knowledge_point_ids,
       question_count: config.question_count || 20,
       time_limit_minutes: config.time_limit_minutes,

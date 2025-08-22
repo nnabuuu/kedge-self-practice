@@ -316,6 +316,7 @@ export function useBatchOperation<T>() {
 
 // Practice Session Hook
 export function usePracticeSession(config: {
+  subject_id?: string;
   knowledge_point_ids: string[];
   question_count?: number;
   time_limit_minutes?: number;

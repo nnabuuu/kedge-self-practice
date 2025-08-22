@@ -162,6 +162,55 @@ function App() {
     }
   }, [selectedSubject]);
 
+  // Fetch subject information when we have a practiceSessionId but no selectedSubject
+  useEffect(() => {
+    if (practiceSessionId && !selectedSubject && currentScreen === 'quiz-practice') {
+      // Fetch session data to get subject_id
+      api.practice.getSession(practiceSessionId).then(response => {
+        if (response.success && response.data?.session?.subject_id) {
+          // Fetch all subjects and find the matching one
+          api.subjects.getAll().then(subjectsResponse => {
+            if (subjectsResponse.success && subjectsResponse.data) {
+              const matchingSubject = subjectsResponse.data.find(
+                s => s.id === response.data.session.subject_id
+              );
+              if (matchingSubject) {
+                setSelectedSubject(matchingSubject);
+              } else {
+                // If no matching subject found, set a default one
+                // This ensures QuizPractice component renders
+                setSelectedSubject({
+                  id: response.data.session.subject_id || 'unknown',
+                  name: '练习',
+                  icon: '📚',
+                  color: 'blue'
+                });
+              }
+            }
+          });
+        } else if (!response.data?.session?.subject_id) {
+          // If session doesn't have subject_id, try to infer from knowledge points
+          // or set a default subject to allow component to render
+          setSelectedSubject({
+            id: 'default',
+            name: '练习',
+            icon: '📚',
+            color: 'blue'
+          });
+        }
+      }).catch(error => {
+        console.error('Failed to fetch session for subject:', error);
+        // Set a default subject to prevent blank page
+        setSelectedSubject({
+          id: 'default',
+          name: '练习',
+          icon: '📚',
+          color: 'blue'
+        });
+      });
+    }
+  }, [practiceSessionId, selectedSubject, currentScreen]);
+
   // Navigate to a screen and update browser history
   const navigateToScreen = (screen: Screen, updateHistory = true) => {
     if (screen === currentScreen) return;

@@ -158,6 +158,7 @@ export default function QuizPractice({
   // Only use this when not using a pre-existing session
   const practiceConfig = useMemo(() => 
     !practiceSessionId && selectedKnowledgePoints.length > 0 ? {
+      subject_id: subject.id,
       knowledge_point_ids: selectedKnowledgePoints,
       question_count: typeof config.questionCount === 'number' ? config.questionCount : 20,
       time_limit_minutes: config.timeLimit,
@@ -169,7 +170,7 @@ export default function QuizPractice({
       quiz_types: config.quizTypes
     } : null,
     [practiceSessionId, selectedKnowledgePoints, config.questionCount, config.timeLimit, 
-     config.shuffleQuestions, config.showExplanation, config.quizTypes]
+     config.shuffleQuestions, config.showExplanation, config.quizTypes, subject.id]
   );
 
   const { 
