@@ -42,9 +42,14 @@ export interface KnowledgeStatsResponse {
 }
 
 class PracticeAnalysisApi {
-  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
+  private baseUrl: string;
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
+
+  constructor() {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
+    this.baseUrl = baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`;
+  }
 
   private getCacheKey(method: string, ...args: any[]): string {
     return `${method}:${JSON.stringify(args)}`;

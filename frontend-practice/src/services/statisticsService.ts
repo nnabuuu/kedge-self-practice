@@ -24,7 +24,8 @@ class StatisticsService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
+    this.baseUrl = baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`;
   }
 
   private async fetchWithAuth(endpoint: string, options: RequestInit = {}) {
