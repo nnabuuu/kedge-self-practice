@@ -66,6 +66,7 @@ export class PracticeService {
       userId,
       quizIds,
       {
+        subject_id: data.subject_id,
         strategy: data.strategy,
         total_questions: finalQuizzes.length,
         time_limit_minutes: data.time_limit_minutes,

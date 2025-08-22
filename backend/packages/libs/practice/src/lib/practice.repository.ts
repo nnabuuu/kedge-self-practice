@@ -25,6 +25,7 @@ export class PracticeRepository {
     userId: string,
     quizIds: string[],
     sessionData: {
+      subject_id?: string;
       strategy: string;
       total_questions: number;
       time_limit_minutes?: number;
@@ -38,6 +39,7 @@ export class PracticeRepository {
           INSERT INTO kedge_practice.practice_sessions (
             id,
             user_id,
+            subject_id,
             status,
             strategy,
             quiz_ids,
@@ -46,6 +48,7 @@ export class PracticeRepository {
           ) VALUES (
             ${sessionId},
             ${userId},
+            ${sessionData.subject_id || null},
             ${'pending'},
             ${sessionData.strategy},
             ${sql.array(quizIds, 'uuid')},
