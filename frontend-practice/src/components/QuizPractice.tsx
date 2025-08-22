@@ -156,6 +156,7 @@ export default function QuizPractice({
   // 使用Practice Session Hook获取题目数据
   // Memoize config to prevent infinite re-renders
   // Only use this when not using a pre-existing session
+  console.log('Creating practice config:', { practiceSessionId, selectedKnowledgePoints });
   const practiceConfig = useMemo(() => 
     !practiceSessionId && selectedKnowledgePoints.length > 0 ? {
       subject_id: subject.id,
@@ -186,11 +187,14 @@ export default function QuizPractice({
 
   // Fetch session data when practiceSessionId is provided
   useEffect(() => {
+    console.log('practiceSessionId effect triggered:', practiceSessionId);
     if (practiceSessionId) {
       const fetchSession = async () => {
+        console.log('Fetching session for ID:', practiceSessionId);
         setSessionLoading(true);
         try {
           const response = await api.practice.getSession(practiceSessionId);
+          console.log('API response:', response);
           if (response.success && response.data) {
             // Check if session needs to be started
             if (response.data.session.status === 'pending') {
@@ -380,7 +384,10 @@ export default function QuizPractice({
     questionsLength: questions.length,
     currentQuestion,
     questionsLoadingState: questionsLoading,
-    sessionLoadingState: sessionLoading
+    sessionLoadingState: sessionLoading,
+    practiceSessionId,
+    sessionQuestions,
+    questions
   });
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const isSingleChoice = currentQuestion?.type === 'single-choice';
