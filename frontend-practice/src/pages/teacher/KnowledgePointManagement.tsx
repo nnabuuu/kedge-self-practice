@@ -17,6 +17,12 @@ interface KnowledgePointManagementProps {
   onBack?: () => void;
 }
 
+// Helper function to ensure API URL has /v1 suffix
+const getApiUrl = () => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
+  return baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`;
+};
+
 export default function KnowledgePointManagement({ onBack }: KnowledgePointManagementProps) {
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +74,7 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
     try {
       setLoading(true);
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/knowledge-points/all`, {
+      const response = await fetch(`${getApiUrl()}/knowledge-points/all`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -88,7 +94,7 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/knowledge-points/stats`, {
+      const response = await fetch(`${getApiUrl()}/knowledge-points/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -182,7 +188,7 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
     setExpandedItems(newExpanded);
   };
 
-  if (loading || questionsLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
