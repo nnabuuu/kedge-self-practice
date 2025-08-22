@@ -100,16 +100,6 @@ export class PracticeService {
 
     // Fetch the actual quiz items from the quiz service
     const quizzes = await this.quizService.getQuizzesByIds(updatedSession.quiz_ids);
-    
-    // Debug logging to check what data we're getting
-    if (quizzes && quizzes.length > 0) {
-      console.log('[PracticeService.startSession] First quiz from service:', JSON.stringify(quizzes[0], null, 2));
-      console.log('[PracticeService.startSession] Total quizzes fetched:', quizzes.length);
-      console.log('[PracticeService.startSession] Quiz IDs requested:', updatedSession.quiz_ids);
-    } else {
-      console.log('[PracticeService.startSession] No quizzes returned from quiz service');
-    }
-    
     const answers = await this.practiceRepository.getAnswersForSession(sessionId);
 
     return {

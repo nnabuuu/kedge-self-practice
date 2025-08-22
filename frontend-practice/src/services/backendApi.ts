@@ -107,62 +107,51 @@ class BackendApiService {
   }
 
   // Convert backend quiz to frontend format
-  private convertQuiz(backendQuiz: BackendQuiz): QuizQuestion {
-    let type: QuizQuestion['type'] = 'single-choice';
-    let options: QuizQuestion['options'] | undefined;
-    let answer: string | string[] | undefined;
-    
+  private convertQuiz(backendQuiz: any): QuizQuestion {
     // Determine quiz type
-    if (backendQuiz.quiz_type === 'multiple-choice' || backendQuiz.quiz_type === '多选题') {
+    let type: QuizQuestion['type'] = 'single-choice';
+    if (backendQuiz.type === 'multiple-choice') {
       type = 'multiple-choice';
-    } else if (backendQuiz.quiz_type === 'essay' || backendQuiz.quiz_type === '问答题') {
+    } else if (backendQuiz.type === 'essay') {
       type = 'essay';
-    } else {
-      type = 'single-choice';
     }
 
-    // Parse answer options if available
-    if (backendQuiz.answer_options) {
-      if (typeof backendQuiz.answer_options === 'string') {
-        try {
-          const parsed = JSON.parse(backendQuiz.answer_options);
-          if (parsed && typeof parsed === 'object') {
-            options = parsed;
-          }
-        } catch {
-          // If JSON parsing fails, treat as plain text options
-          console.warn('Failed to parse answer_options:', backendQuiz.answer_options);
+    // Parse answer options - convert array to object with A, B, C, D keys
+    let options: QuizQuestion['options'] | undefined;
+    if (Array.isArray(backendQuiz.options)) {
+      options = {};
+      const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
+      backendQuiz.options.forEach((option: string, index: number) => {
+        if (index < keys.length && options) {
+          options[keys[index]] = option;
         }
-      } else if (typeof backendQuiz.answer_options === 'object') {
-        options = backendQuiz.answer_options;
-      }
+      });
     }
 
-    // Parse correct answer
-    if (backendQuiz.correct_answer) {
-      if (type === 'multiple-choice') {
-        // Try to parse as JSON array for multiple choice
-        try {
-          answer = JSON.parse(backendQuiz.correct_answer);
-        } catch {
-          // If not JSON, split by comma or treat as single answer
-          answer = backendQuiz.correct_answer.includes(',') 
-            ? backendQuiz.correct_answer.split(',').map(a => a.trim())
-            : [backendQuiz.correct_answer];
-        }
+    // Parse correct answer - convert indices to letters for choices
+    let answer: string | string[] | undefined;
+    if (Array.isArray(backendQuiz.answer)) {
+      const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
+      if (backendQuiz.answer.length === 1) {
+        // Single choice
+        answer = keys[backendQuiz.answer[0]] || String(backendQuiz.answer[0]);
       } else {
-        answer = backendQuiz.correct_answer;
+        // Multiple choice
+        answer = backendQuiz.answer.map((idx: number) => keys[idx] || String(idx));
       }
+    } else {
+      answer = backendQuiz.answer;
     }
 
     return {
       id: String(backendQuiz.id),
       type,
-      question: backendQuiz.question_text,
+      question: backendQuiz.question,
       options,
       answer,
-      standardAnswer: type === 'essay' ? backendQuiz.correct_answer : undefined,
-      relatedKnowledgePointId: this.normalizeKnowledgePointId(backendQuiz.knowledge_point_id),
+      standardAnswer: type === 'essay' ? backendQuiz.answer : undefined,
+      relatedKnowledgePointId: backendQuiz.knowledge_point_id,
+      images: backendQuiz.images || []
     };
   }
 
