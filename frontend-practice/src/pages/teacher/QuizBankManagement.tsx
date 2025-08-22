@@ -34,6 +34,12 @@ interface QuizBankManagementProps {
   onBack?: () => void;
 }
 
+// Helper function to ensure API URL has /v1 suffix
+const getApiUrl = () => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
+  return baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`;
+};
+
 export default function QuizBankManagement({ onBack }: QuizBankManagementProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +98,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       params.append('limit', itemsPerPage.toString());
       
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/quiz?${params}`,
+        `${getApiUrl()}/quiz?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -158,7 +164,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       const token = localStorage.getItem('jwt_token');
       
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/knowledge-points/all`,
+        `${getApiUrl()}/knowledge-points/all`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -272,7 +278,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       const deletePromises = quizIdsToDelete.map(async (quizId) => {
         try {
           const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/quiz/${quizId}`,
+            `${getApiUrl()}/quiz/${quizId}`,
             {
               method: 'DELETE',
               headers: {
@@ -348,7 +354,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
     try {
       const token = localStorage.getItem('jwt_token');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/quiz/${quizId}`,
+        `${getApiUrl()}/quiz/${quizId}`,
         {
           method: 'DELETE',
           headers: {
@@ -418,7 +424,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
     try {
       const token = localStorage.getItem('jwt_token');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/quiz/${updatedQuiz.id}`,
+        `${getApiUrl()}/quiz/${updatedQuiz.id}`,
         {
           method: 'PUT',
           headers: {
@@ -537,7 +543,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                 imageUrl = imageRef;
               } else if (imageRef.includes('/')) {
                 // Already has path structure (e.g., "2025/08/uuid.png")
-                imageUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/attachments/quiz/${imageRef}`;
+                imageUrl = `${getApiUrl()}/attachments/quiz/${imageRef}`;
               } else {
                 // Just a UUID, try to construct path with current year/month
                 // This is a guess - in production, the full path should be stored with the quiz
@@ -549,7 +555,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                 const hasExtension = /\.\w+$/.test(imageRef);
                 const filename = hasExtension ? imageRef : `${imageRef}.png`; // Default to .png if no extension
                 
-                imageUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1'}/attachments/quiz/${year}/${month}/${filename}`;
+                imageUrl = `${getApiUrl()}/attachments/quiz/${year}/${month}/${filename}`;
               }
             }
             
