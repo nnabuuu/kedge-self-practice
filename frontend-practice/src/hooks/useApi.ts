@@ -364,6 +364,7 @@ export function usePracticeSession(config: {
         const startResponse = await api.practice.startSession(response.data.session.id);
         
         if (startResponse.success && startResponse.data) {
+          console.log('Start session response:', startResponse.data);
           setState({
             session: startResponse.data.session,
             questions: startResponse.data.quizzes, // Backend returns 'quizzes', not 'questions'

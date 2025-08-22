@@ -292,6 +292,7 @@ export default function QuizPractice({
 
   // Convert session questions to frontend format
   const convertSessionQuestion = (sessionQuestion: any): QuizQuestion => {
+    console.log('Converting session question:', sessionQuestion);
     // Parse options if they exist
     let options: QuizQuestion['options'] | undefined;
     if (sessionQuestion.options && Array.isArray(sessionQuestion.options)) {
