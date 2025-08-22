@@ -186,7 +186,7 @@ export const useConnectionStatus = () => {
     const startPolling = () => {
       interval = setInterval(() => {
         checkBackend();
-      }, backendStatus === 'offline' ? 5000 : 30000); // 5s when offline, 30s when online
+      }, backendStatus === 'offline' ? 5000 : 300000); // 5s when offline, 5 minutes when online
     };
     
     startPolling();
