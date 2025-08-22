@@ -210,7 +210,9 @@ export default function QuizPractice({
               }
             } else {
               // Session already started, use the fetched data
+              console.log('Session data fetched:', response.data);
               const convertedQuestions = response.data.quizzes.map((q: any) => convertSessionQuestion(q));
+              console.log('Converted questions:', convertedQuestions);
               setQuestions(convertedQuestions);
               setCurrentSessionId(practiceSessionId);
               
@@ -373,6 +375,13 @@ export default function QuizPractice({
   }, [currentQuestionIndex, questions.length]);
 
   const currentQuestion = questions[currentQuestionIndex];
+  console.log('Current question data:', {
+    currentQuestionIndex,
+    questionsLength: questions.length,
+    currentQuestion,
+    questionsLoadingState: questionsLoading,
+    sessionLoadingState: sessionLoading
+  });
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const isSingleChoice = currentQuestion?.type === 'single-choice';
   const isMultipleChoice = currentQuestion?.type === 'multiple-choice';
