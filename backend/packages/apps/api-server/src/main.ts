@@ -31,9 +31,6 @@ async function bootstrap() {
 
   app.enableCors({
     origin: true, // Allow all origins
-    credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, Authorization',
   });
   app.use(express.text());
   app.use(json({ limit: clientJsonPayloadLimit }));
