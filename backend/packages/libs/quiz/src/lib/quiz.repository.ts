@@ -271,6 +271,8 @@ export class QuizRepository {
         return [];
       }
 
+      this.logger.log(`[QuizRepository.getQuizzesByIds] Fetching quizzes for IDs: ${ids.join(', ')}`);
+
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
           SELECT id, type, question, options, answer, 
@@ -281,9 +283,21 @@ export class QuizRepository {
         `,
       );
       
+      // Debug log the raw result
+      if (result.rows && result.rows.length > 0) {
+        this.logger.log(`[QuizRepository.getQuizzesByIds] Fetched ${result.rows.length} quizzes from database`);
+        this.logger.log(`[QuizRepository.getQuizzesByIds] First quiz raw data: ${JSON.stringify(result.rows[0], null, 2)}`);
+      } else {
+        this.logger.warn(`[QuizRepository.getQuizzesByIds] No quizzes found for the given IDs`);
+      }
+      
       // Return quizzes in the same order as the input IDs
       const quizMap = new Map(result.rows.map(quiz => [quiz.id, quiz]));
-      return ids.map(id => quizMap.get(id)).filter(Boolean) as QuizItem[];
+      const orderedQuizzes = ids.map(id => quizMap.get(id)).filter(Boolean) as QuizItem[];
+      
+      this.logger.log(`[QuizRepository.getQuizzesByIds] Returning ${orderedQuizzes.length} ordered quizzes`);
+      
+      return orderedQuizzes;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error getting quizzes by ids: ${errorMessage}`);

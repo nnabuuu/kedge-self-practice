@@ -82,7 +82,18 @@ export class DefaultQuizService implements QuizService {
     if (ids.length === 0) {
       return [];
     }
-    return this.repository.getQuizzesByIds(ids);
+    
+    console.log(`[QuizService.getQuizzesByIds] Fetching ${ids.length} quizzes`);
+    const quizzes = await this.repository.getQuizzesByIds(ids);
+    
+    if (quizzes && quizzes.length > 0) {
+      console.log(`[QuizService.getQuizzesByIds] Returned ${quizzes.length} quizzes from repository`);
+      console.log(`[QuizService.getQuizzesByIds] First quiz data:`, JSON.stringify(quizzes[0], null, 2));
+    } else {
+      console.log(`[QuizService.getQuizzesByIds] No quizzes returned from repository`);
+    }
+    
+    return quizzes;
   }
 }
 
