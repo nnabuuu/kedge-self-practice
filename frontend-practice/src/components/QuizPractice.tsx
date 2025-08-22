@@ -201,27 +201,28 @@ export default function QuizPractice({
               // Start the session
               const startResponse = await api.practice.startSession(practiceSessionId);
               if (startResponse.success && startResponse.data) {
-                // Use the started session data
-                const convertedQuestions = startResponse.data.quizzes.map((q: any) => convertSessionQuestion(q));
-                setQuestions(convertedQuestions);
+                // Use the started session data - quizzes are already converted by backend API service
+                console.log('Start response quizzes:', startResponse.data.quizzes);
+                console.log('First quiz from start response:', startResponse.data.quizzes[0]);
+                // Don't convert again - already converted by backend API service
+                setQuestions(startResponse.data.quizzes);
                 setCurrentSessionId(practiceSessionId);
                 
                 // Initialize answers array
-                const initialAnswers = new Array(convertedQuestions.length).fill(null);
+                const initialAnswers = new Array(startResponse.data.quizzes.length).fill(null);
                 setAnswers(initialAnswers);
-                setQuestionStartTimes(new Array(convertedQuestions.length).fill(null));
-                setQuestionDurations(new Array(convertedQuestions.length).fill(0));
+                setQuestionStartTimes(new Array(startResponse.data.quizzes.length).fill(null));
+                setQuestionDurations(new Array(startResponse.data.quizzes.length).fill(0));
               }
             } else {
-              // Session already started, use the fetched data
+              // Session already started, use the fetched data - already converted by backend API service
               console.log('Session data fetched:', response.data);
-              const convertedQuestions = response.data.quizzes.map((q: any) => convertSessionQuestion(q));
-              console.log('Converted questions:', convertedQuestions);
-              setQuestions(convertedQuestions);
+              console.log('Quizzes from session:', response.data.quizzes);
+              setQuestions(response.data.quizzes);
               setCurrentSessionId(practiceSessionId);
               
               // Initialize answers array based on existing answers if any
-              const initialAnswers = new Array(convertedQuestions.length).fill(null);
+              const initialAnswers = new Array(response.data.quizzes.length).fill(null);
               if (response.data.answers) {
                 response.data.answers.forEach((answer: any) => {
                   const quizIndex = response.data.quizzes.findIndex((q: any) => q.id === answer.quiz_id);
@@ -231,8 +232,8 @@ export default function QuizPractice({
                 });
               }
               setAnswers(initialAnswers);
-              setQuestionStartTimes(new Array(convertedQuestions.length).fill(null));
-              setQuestionDurations(new Array(convertedQuestions.length).fill(0));
+              setQuestionStartTimes(new Array(response.data.quizzes.length).fill(null));
+              setQuestionDurations(new Array(response.data.quizzes.length).fill(0));
             }
           }
         } catch (error) {
@@ -290,72 +291,15 @@ export default function QuizPractice({
     }
   }, []);
 
-  // Convert session questions to frontend format
-  const convertSessionQuestion = (sessionQuestion: any): QuizQuestion => {
-    console.log('Converting session question:', sessionQuestion);
-    
-    // Use the type field directly from backend
-    let type: QuizQuestion['type'] = 'single-choice';
-    if (sessionQuestion.type === 'multiple-choice') {
-      type = 'multiple-choice';
-    } else if (sessionQuestion.type === 'essay') {
-      type = 'essay';
-    } else {
-      type = 'single-choice';
-    }
-    
-    // Parse options if they exist
-    let options: QuizQuestion['options'] | undefined;
-    if (sessionQuestion.options && Array.isArray(sessionQuestion.options)) {
-      // Convert array to object with A, B, C, D keys
-      options = {};
-      const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
-      sessionQuestion.options.forEach((option: string, index: number) => {
-        if (index < keys.length && options) {
-          options[keys[index]] = option;
-        }
-      });
-    }
-
-    // Parse answer - convert indices to letters for choices
-    let answer: string | string[] | undefined;
-    if (Array.isArray(sessionQuestion.answer)) {
-      const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
-      if (sessionQuestion.answer.length === 1) {
-        // Single choice - convert index to letter
-        const index = sessionQuestion.answer[0];
-        answer = keys[index] || String(index);
-      } else {
-        // Multiple choice - convert indices to letters
-        answer = sessionQuestion.answer.map((idx: number) => keys[idx] || String(idx));
-      }
-    } else {
-      // Essay or other text answer
-      answer = sessionQuestion.answer;
-    }
-
-    return {
-      id: sessionQuestion.quiz_id || sessionQuestion.id,
-      type,
-      question: sessionQuestion.question,
-      options,
-      answer,
-      images: sessionQuestion.images || [],
-      standardAnswer: type === 'essay' ? sessionQuestion.answer : undefined,
-      relatedKnowledgePointId: sessionQuestion.knowledge_point_id,
-    };
-  };
 
   useEffect(() => {
     // Only use sessionQuestions if not using a pre-existing session
     if (!practiceSessionId && sessionQuestions && sessionQuestions.length > 0) {
-      
-      const convertedQuestions = sessionQuestions.map(convertSessionQuestion);
-      
-      setQuestions(convertedQuestions);
-      setAnswers(new Array(convertedQuestions.length).fill(null));
-      setQuestionStartTimes(new Array(convertedQuestions.length).fill(null));
-      setQuestionDurations(new Array(convertedQuestions.length).fill(0));
+      // Questions are already converted by backend API service
+      setQuestions(sessionQuestions);
+      setAnswers(new Array(sessionQuestions.length).fill(null));
+      setQuestionStartTimes(new Array(sessionQuestions.length).fill(null));
+      setQuestionDurations(new Array(sessionQuestions.length).fill(0));
     }
   }, [practiceSessionId, sessionQuestions]);
 
@@ -379,6 +323,19 @@ export default function QuizPractice({
     sessionQuestions,
     questions
   });
+  
+  // Debug: Check what we have for current question
+  if (currentQuestion) {
+    console.log('Current question details:', {
+      type: currentQuestion.type,
+      hasOptions: !!currentQuestion.options,
+      optionsKeys: currentQuestion.options ? Object.keys(currentQuestion.options) : [],
+      optionsValues: currentQuestion.options,
+      question: currentQuestion.question,
+      answer: currentQuestion.answer
+    });
+  }
+  
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const isSingleChoice = currentQuestion?.type === 'single-choice';
   const isMultipleChoice = currentQuestion?.type === 'multiple-choice';
