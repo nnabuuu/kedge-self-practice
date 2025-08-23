@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Search, Filter, Upload, Eye, Edit, Trash2, Plus, Calendar, Tag, Target, ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
+import { FileText, Search, Filter, Upload, Eye, Edit, Trash2, Plus, Calendar, Tag, Target, ChevronLeft, ChevronRight, ExternalLink, X, Sparkles, Shuffle } from 'lucide-react';
 import { authService } from '../../services/authService';
 
 interface Quiz {
@@ -20,6 +20,7 @@ interface Quiz {
   createdAt?: string;
   updatedAt?: string;
   tags?: string[];
+  images?: string[];
 }
 
 interface KnowledgePoint {
@@ -60,6 +61,12 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [newTag, setNewTag] = useState('');
+  const [showPolishModal, setShowPolishModal] = useState(false);
+  const [showTypeModal, setShowTypeModal] = useState(false);
+  const [polishingQuiz, setPolishingQuiz] = useState<Quiz | null>(null);
+  const [typeChangingQuiz, setTypeChangingQuiz] = useState<Quiz | null>(null);
+  const [polishedContent, setPolishedContent] = useState('');
+  const [isPolishing, setIsPolishing] = useState(false);
   const itemsPerPage = 10;
   
   // Track if data has been initially loaded
@@ -470,6 +477,105 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       // Clear the input
       setNewTag('');
     }
+  };
+
+  // Handle polish quiz
+  const handlePolishQuiz = (quiz: Quiz) => {
+    setPolishingQuiz(quiz);
+    setPolishedContent(quiz.question);
+    setShowPolishModal(true);
+  };
+
+  const handleConfirmPolish = async () => {
+    if (!polishingQuiz || !polishedContent.trim()) return;
+    
+    setIsPolishing(true);
+    try {
+      // Call GPT API to polish the question
+      const apiUrl = getApiUrl();
+      const token = authService.getToken();
+      
+      const response = await fetch(`${apiUrl}/gpt/polish-question`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          question: polishedContent,
+          type: polishingQuiz.type,
+          options: polishingQuiz.options
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPolishedContent(data.polishedQuestion || polishedContent);
+      } else {
+        // If API fails, just use the edited content
+        console.error('Failed to polish question via API');
+      }
+    } catch (error) {
+      console.error('Error polishing question:', error);
+    } finally {
+      setIsPolishing(false);
+    }
+  };
+
+  const handleSavePolishedQuiz = async () => {
+    if (!polishingQuiz) return;
+    
+    const updatedQuiz = {
+      ...polishingQuiz,
+      question: polishedContent
+    };
+    
+    await handleSaveQuiz(updatedQuiz);
+    setShowPolishModal(false);
+    setPolishingQuiz(null);
+    setPolishedContent('');
+  };
+
+  // Handle change quiz type
+  const handleChangeQuizType = (quiz: Quiz) => {
+    setTypeChangingQuiz(quiz);
+    setShowTypeModal(true);
+  };
+
+  const handleConfirmTypeChange = async (newType: Quiz['type']) => {
+    if (!typeChangingQuiz) return;
+    
+    // Transform the quiz based on new type
+    let updatedQuiz: Quiz = {
+      ...typeChangingQuiz,
+      type: newType
+    };
+    
+    // Adjust the quiz structure based on new type
+    if (newType === 'subjective' || newType === 'fill-in-the-blank') {
+      // Remove options for non-choice questions
+      delete updatedQuiz.options;
+      // Convert answer to string if it was an array
+      if (Array.isArray(updatedQuiz.answer)) {
+        updatedQuiz.answer = '';
+      }
+    } else if (newType === 'single-choice' || newType === 'multiple-choice') {
+      // Ensure options exist for choice questions
+      if (!updatedQuiz.options || updatedQuiz.options.length === 0) {
+        updatedQuiz.options = ['选项A', '选项B', '选项C', '选项D'];
+        updatedQuiz.answer = newType === 'single-choice' ? 0 : [0];
+      }
+      // Adjust answer format
+      if (newType === 'single-choice' && Array.isArray(updatedQuiz.answer)) {
+        updatedQuiz.answer = updatedQuiz.answer[0] || 0;
+      } else if (newType === 'multiple-choice' && !Array.isArray(updatedQuiz.answer)) {
+        updatedQuiz.answer = [typeof updatedQuiz.answer === 'number' ? updatedQuiz.answer : 0];
+      }
+    }
+    
+    await handleSaveQuiz(updatedQuiz);
+    setShowTypeModal(false);
+    setTypeChangingQuiz(null);
   };
 
   const getQuizTypeLabel = (type: string) => {
@@ -931,6 +1037,20 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                             title="编辑题目"
                           >
                             <Edit className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handlePolishQuiz(quiz)}
+                            className="p-2 text-gray-400 hover:text-purple-600 transition-colors duration-300"
+                            title="润色题目"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleChangeQuizType(quiz)}
+                            className="p-2 text-gray-400 hover:text-orange-600 transition-colors duration-300"
+                            title="调整题型"
+                          >
+                            <Shuffle className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleDeleteQuiz(quiz.id)}
@@ -1505,6 +1625,168 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 保存修改
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Polish Modal */}
+      {showPolishModal && polishingQuiz && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">润色题目</h2>
+                <button
+                  onClick={() => {
+                    setShowPolishModal(false);
+                    setPolishingQuiz(null);
+                    setPolishedContent('');
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">原始题目</label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-700">
+                  {polishingQuiz.question}
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  润色后的题目
+                  {isPolishing && <span className="ml-2 text-blue-600">（AI正在润色中...）</span>}
+                </label>
+                <textarea
+                  value={polishedContent}
+                  onChange={(e) => setPolishedContent(e.target.value)}
+                  rows={6}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="编辑或等待AI润色..."
+                />
+              </div>
+              
+              {polishingQuiz.options && polishingQuiz.options.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">选项</label>
+                  <div className="space-y-2">
+                    {polishingQuiz.options.map((option, index) => (
+                      <div key={index} className="flex items-center text-sm text-gray-600">
+                        <span className="font-medium mr-2">{String.fromCharCode(65 + index)}.</span>
+                        <span>{option}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={handleConfirmPolish}
+                disabled={isPolishing}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                {isPolishing ? 'AI润色中...' : 'AI润色'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowPolishModal(false);
+                  setPolishingQuiz(null);
+                  setPolishedContent('');
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSavePolishedQuiz}
+                disabled={!polishedContent.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+              >
+                保存润色结果
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Type Change Modal */}
+      {showTypeModal && typeChangingQuiz && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">调整题型</h2>
+                <button
+                  onClick={() => {
+                    setShowTypeModal(false);
+                    setTypeChangingQuiz(null);
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">当前题型</label>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getQuizTypeColor(typeChangingQuiz.type)}`}>
+                    {getQuizTypeLabel(typeChangingQuiz.type)}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">选择新题型</label>
+                <div className="space-y-2">
+                  {(['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'] as const).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => handleConfirmTypeChange(type)}
+                      disabled={type === typeChangingQuiz.type}
+                      className={`w-full p-3 rounded-lg border transition-all ${
+                        type === typeChangingQuiz.type
+                          ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                          : 'bg-white border-gray-300 hover:border-blue-500 hover:bg-blue-50 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{getQuizTypeLabel(type)}</span>
+                        <Shuffle className="w-4 h-4" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>注意：</strong>调整题型可能会改变题目的选项和答案格式。
+                </p>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowTypeModal(false);
+                  setTypeChangingQuiz(null);
+                }}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                取消
               </button>
             </div>
           </div>
