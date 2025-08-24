@@ -235,16 +235,9 @@ export default function KnowledgePointSelection({
           
           setSelectedPoints(new Set(suggestedIds));
           setSmartSuggestions(suggestionMap);
-          setShowSmartSuggestionInfo(true);
-          
-          // Auto-hide the info after 30 seconds (increased from 10)
-          // setTimeout(() => setShowSmartSuggestionInfo(false), 30000);
+          setShowSmartSuggestionInfo(false); // Default to collapsed
           
           console.log('Smart suggestions applied:', data.suggestions);
-          console.log('Show panel:', true, 'Map size:', suggestionMap.size);
-          
-          // Also show an alert for testing
-          alert(`智能推荐成功！\n已选择 ${suggestedIds.length} 个知识点\n\n推荐理由：\n${data.suggestions.slice(0, 3).map((s: any) => `• ${s.topic}: ${s.reason}`).join('\n')}`);
         } else {
           // Fallback to simple logic if no suggestions
           fallbackSmartRecommendation();
@@ -842,18 +835,33 @@ export default function KnowledgePointSelection({
             </div>
           </div>
 
-          {/* Smart Suggestion Info Panel */}
+          {/* Smart Suggestion Toggle Button - Show when suggestions exist but panel is collapsed */}
+          {!showSmartSuggestionInfo && smartSuggestions.size > 0 && (
+            <div className="mb-4 flex justify-center">
+              <button
+                onClick={() => setShowSmartSuggestionInfo(true)}
+                className="group flex items-center px-4 py-2 bg-gradient-to-r from-purple-100 to-indigo-100 hover:from-purple-200 hover:to-indigo-200 text-purple-700 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 border border-purple-200"
+              >
+                <Brain className="w-4 h-4 mr-2" />
+                <span className="font-medium">查看智能推荐理由</span>
+                <ChevronDown className="w-4 h-4 ml-2 group-hover:translate-y-0.5 transition-transform" />
+              </button>
+            </div>
+          )}
+
+          {/* Smart Suggestion Info Panel - Expanded View */}
           {showSmartSuggestionInfo && smartSuggestions.size > 0 && (
             <div className="mb-6 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl p-6 border-2 border-purple-300 shadow-xl animate-fade-in relative">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center">
-                  <Brain className="w-6 h-6 text-purple-600 mr-2 animate-pulse" />
+                  <Brain className="w-6 h-6 text-purple-600 mr-2" />
                   <h3 className="text-xl font-bold text-gray-900">智能推荐理由</h3>
                   <span className="ml-3 px-2 py-1 bg-purple-600 text-white text-xs rounded-full">AI 分析</span>
                 </div>
                 <button
                   onClick={() => setShowSmartSuggestionInfo(false)}
                   className="p-1 hover:bg-purple-100 rounded-full transition-colors"
+                  title="收起"
                 >
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
