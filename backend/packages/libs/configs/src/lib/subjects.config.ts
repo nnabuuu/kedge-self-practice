@@ -22,7 +22,7 @@ export interface SubjectsConfiguration {
 
 export class SubjectsConfigService {
   private config: SubjectsConfiguration | null = null;
-  private configPath: string;
+  private configPath: string | null = null;
 
   constructor() {
     // Try multiple paths to find the config file

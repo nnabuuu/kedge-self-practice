@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@kedge/auth';
-import { subjectsConfigService } from '@kedge/configs/src/lib/subjects.config';
+import { subjectsConfigService } from '@kedge/configs';
 
 @ApiTags('subjects')
 @Controller('subjects')
