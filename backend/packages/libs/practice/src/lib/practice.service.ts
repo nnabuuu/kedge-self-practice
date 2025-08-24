@@ -35,12 +35,18 @@ export class PracticeService {
     
     if (data.question_type === 'wrong-only') {
       // Get only wrong questions from user's history
+      // For wrong questions, don't require knowledge points - get any wrong questions
       quizzes = await this.getWrongQuizzesForUser(
         userId,
-        data.knowledge_point_ids || [],
+        [], // Don't filter by knowledge points for wrong questions
         data.question_count,
         data.quiz_types
       );
+      
+      // If no wrong questions found, return empty array but don't error
+      if (quizzes.length === 0) {
+        this.logger.log('No wrong questions found for user, returning empty quiz set');
+      }
     } else if (data.question_type === 'new-only') {
       // Get only questions the user hasn't attempted
       quizzes = await this.getNewQuizzesForUser(
@@ -62,12 +68,17 @@ export class PracticeService {
     if (quizzes.length === 0) {
       let errorMessage = 'No quizzes available';
       
-      if (data.knowledge_point_ids && data.knowledge_point_ids.length > 0) {
-        errorMessage += ` for knowledge points: ${data.knowledge_point_ids.join(', ')}`;
-      }
-      
-      if (data.quiz_types && data.quiz_types.length > 0) {
-        errorMessage += ` with quiz types: ${data.quiz_types.join(', ')}`;
+      // Different message for wrong-only questions
+      if (data.question_type === 'wrong-only') {
+        errorMessage = '暂无错题记录。请先完成几次练习后再使用此功能。';
+      } else {
+        if (data.knowledge_point_ids && data.knowledge_point_ids.length > 0) {
+          errorMessage += ` for knowledge points: ${data.knowledge_point_ids.join(', ')}`;
+        }
+        
+        if (data.quiz_types && data.quiz_types.length > 0) {
+          errorMessage += ` with quiz types: ${data.quiz_types.join(', ')}`;
+        }
       }
       
       throw new BadRequestException(errorMessage);

@@ -451,16 +451,11 @@ function App() {
         return;
       }
       
-      // Get all knowledge points for the subject to include in the session
-      const kpResponse = await api.knowledgePoints.getBySubject(selectedSubject?.id || 'history');
-      const knowledgePointIds = kpResponse.success && kpResponse.data 
-        ? kpResponse.data.map(kp => kp.id)
-        : ['kp_1']; // Fallback to at least one knowledge point
-      
       // Create a wrong questions practice session using the backend API with question_type filter
+      // Don't send knowledge_point_ids for wrong-only questions
       const response = await api.practice.createSession({
         subject_id: selectedSubject?.id,
-        knowledge_point_ids: knowledgePointIds,
+        knowledge_point_ids: [], // Empty array for wrong-only questions
         question_count: 20,
         strategy: 'review',
         shuffle_questions: false,
