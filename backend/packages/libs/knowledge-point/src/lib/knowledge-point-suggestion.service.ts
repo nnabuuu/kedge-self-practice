@@ -246,7 +246,6 @@ export class KnowledgePointSuggestionService {
         kp.lesson
       FROM kedge_practice.knowledge_points kp
       WHERE kp.id NOT IN (SELECT knowledge_point_id FROM practiced_points)
-        ${subjectId ? sql.unsafe`AND kp.subject_id = ${subjectId}` : sql.unsafe``}
       ORDER BY kp.volume, kp.unit, kp.lesson
       LIMIT ${limit}
     `;
