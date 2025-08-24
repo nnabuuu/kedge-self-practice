@@ -185,9 +185,60 @@ export default function KnowledgePointSelection({
     setSelectedPoints(new Set());
   };
 
-  // 智能推荐功能 - 降低能力门槛
-  const useSmartRecommendation = () => {
-    // 简单的推荐逻辑：选择每个册的第一个单元的前几个知识点
+  // 智能推荐功能 - 使用后端AI推荐
+  const useSmartRecommendation = async () => {
+    try {
+      // Show loading state (you could add a loading spinner here)
+      const token = localStorage.getItem('jwt_token');
+      const currentUser = JSON.parse(localStorage.getItem('user_data') || '{}');
+      
+      // Call backend smart suggestions API
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      
+      const params = new URLSearchParams({
+        userId: currentUser.id || 'anonymous',
+        subjectId: subject.id,
+        maxPoints: '10',
+        strategy: 'adaptive', // Use adaptive strategy for best results
+      });
+      
+      const response = await fetch(`${apiBaseUrl}/knowledge-points/smart-suggestions?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.suggestions?.length > 0) {
+          // Extract knowledge point IDs from suggestions
+          const suggestedIds = data.suggestions.map((s: any) => s.knowledgePointId);
+          setSelectedPoints(new Set(suggestedIds));
+          
+          // Show a success message (you could add a toast notification here)
+          console.log('Smart suggestions applied:', data.suggestions);
+        } else {
+          // Fallback to simple logic if no suggestions
+          fallbackSmartRecommendation();
+        }
+      } else {
+        // Fallback to simple logic on error
+        fallbackSmartRecommendation();
+      }
+    } catch (error) {
+      console.error('Failed to get smart suggestions:', error);
+      // Fallback to simple logic on error
+      fallbackSmartRecommendation();
+    }
+  };
+  
+  // Fallback recommendation logic (original simple logic)
+  const fallbackSmartRecommendation = () => {
     const recommendedPoints: string[] = [];
     Object.entries(groupedKnowledgePoints).forEach(([volume, units]) => {
       const firstUnit = Object.keys(units)[0];

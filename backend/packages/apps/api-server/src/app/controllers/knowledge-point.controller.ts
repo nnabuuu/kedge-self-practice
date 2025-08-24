@@ -4,6 +4,7 @@ import {
   KnowledgePointGPTService,
   KnowledgePointStorage,
   KnowledgePointBootstrapService,
+  KnowledgePointSuggestionService,
 } from '@kedge/knowledge-point';
 import { KnowledgePoint } from '@kedge/models';
 import { PersistentService } from '@kedge/persistent';
@@ -44,6 +45,7 @@ export class KnowledgePointController {
     private readonly storage: KnowledgePointStorage,
     private readonly persistentService: PersistentService,
     private readonly bootstrapService: KnowledgePointBootstrapService,
+    private readonly suggestionService: KnowledgePointSuggestionService,
   ) {}
 
   @Post('match')
@@ -361,6 +363,77 @@ export class KnowledgePointController {
     } catch (error) {
       this.logger.error('Failed to force refresh knowledge points', error);
       throw error;
+    }
+  }
+
+  @Get('smart-suggestions')
+  @ApiOperation({ summary: 'Get smart knowledge point suggestions based on user learning history' })
+  @ApiQuery({ name: 'userId', description: 'User ID for personalized suggestions', required: false })
+  @ApiQuery({ name: 'subjectId', description: 'Subject ID to filter suggestions', required: false })
+  @ApiQuery({ name: 'maxPoints', description: 'Maximum number of suggestions (default: 10)', required: false })
+  @ApiQuery({ 
+    name: 'strategy', 
+    description: 'Suggestion strategy: adaptive, balanced, weak_areas, new_topics, review',
+    required: false,
+    enum: ['adaptive', 'balanced', 'weak_areas', 'new_topics', 'review']
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Smart suggestions retrieved successfully',
+  })
+  async getSmartSuggestions(
+    @Query('userId') userId?: string,
+    @Query('subjectId') subjectId?: string,
+    @Query('maxPoints') maxPoints?: string,
+    @Query('strategy') strategy?: 'adaptive' | 'balanced' | 'weak_areas' | 'new_topics' | 'review',
+  ): Promise<{
+    success: boolean;
+    suggestions: any[];
+    metadata: {
+      strategy: string;
+      userId?: string;
+      subjectId?: string;
+      generatedAt: string;
+    };
+  }> {
+    try {
+      // Default to mock user if not provided (for testing)
+      const effectiveUserId = userId || 'anonymous';
+      const limit = maxPoints ? parseInt(maxPoints) : 10;
+
+      this.logger.log(`Generating smart suggestions for user: ${effectiveUserId}, strategy: ${strategy || 'adaptive'}`);
+
+      const suggestions = await this.suggestionService.getSmartSuggestions({
+        userId: effectiveUserId,
+        subjectId,
+        maxPoints: limit,
+        strategy: strategy || 'adaptive',
+      });
+
+      return {
+        success: true,
+        suggestions,
+        metadata: {
+          strategy: strategy || 'adaptive',
+          userId: effectiveUserId,
+          subjectId,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      this.logger.error('Failed to generate smart suggestions', error);
+      
+      // Return basic suggestions as fallback
+      return {
+        success: false,
+        suggestions: [],
+        metadata: {
+          strategy: 'fallback',
+          userId,
+          subjectId,
+          generatedAt: new Date().toISOString(),
+        },
+      };
     }
   }
 }
