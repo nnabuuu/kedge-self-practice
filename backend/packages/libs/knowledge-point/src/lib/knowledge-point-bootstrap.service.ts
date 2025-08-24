@@ -24,13 +24,12 @@ export interface KnowledgePointMapping {
 @Injectable()
 export class KnowledgePointBootstrapService implements OnModuleInit {
   private readonly logger = new Logger(KnowledgePointBootstrapService.name);
-  private readonly excelFilePath = path.join(process.cwd(), 'data', 'knowledge-points.xlsx');
+  private readonly excelFilePath = path.join(process.cwd(), 'data', 'knowledge-points-history.xlsx');
   
   constructor(private readonly persistentService: PersistentService) {}
 
   async onModuleInit() {
-    // Skip bootstrap for now to avoid startup errors
-    // await this.bootstrapKnowledgePoints();
+    await this.bootstrapKnowledgePoints();
   }
 
   /**
@@ -91,17 +90,21 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
       const knowledgePoints: KnowledgePointData[] = [];
       
       // Skip header row, process data rows
+      // Excel columns: 分册(volume), 单元名称(unit), 单课名称(lesson), 子目(sub), 知识点(topic)
       for (let i = 1; i < rawData.length; i++) {
         const row = rawData[i] as any[];
-        if (!row || row.length < 6) continue;
+        if (!row || row.length < 5) continue;
 
-        const [id, topic, volume, unit, lesson, sub] = row;
+        const [volume, unit, lesson, sub, topic] = row;
         
-        // Skip empty rows
-        if (!id || !topic) continue;
+        // Skip empty rows - topic is required
+        if (!topic) continue;
+
+        // Generate ID based on row number
+        const id = `kp_${i}`;
 
         knowledgePoints.push({
-          id: String(id).trim(),
+          id: id,
           topic: String(topic).trim(),
           volume: String(volume || '').trim(),
           unit: String(unit || '').trim(), 
@@ -138,7 +141,9 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
           WHERE key = 'data_hash'
         `
       );
-      return result.rows[0]?.value || null;
+      // The value is stored as JSONB, so it might be a JSON string
+      const value = result.rows[0]?.value;
+      return typeof value === 'string' ? value : (value ? String(value) : null);
     } catch (error) {
       this.logger.warn('Failed to get stored hash, assuming first import');
       return null;
@@ -152,7 +157,7 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
     await this.persistentService.pgPool.query(
       sql.unsafe`
         INSERT INTO kedge_practice.knowledge_points_metadata (key, value)
-        VALUES ('data_hash', ${hash})
+        VALUES ('data_hash', ${JSON.stringify(hash)}::jsonb)
         ON CONFLICT (key) 
         DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
       `
@@ -169,14 +174,15 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
       await connection.query(sql.unsafe`DELETE FROM kedge_practice.knowledge_points`);
       await connection.query(sql.unsafe`DELETE FROM kedge_practice.knowledge_points_metadata WHERE key LIKE 'mapping_%'`);
       
-      // Insert new knowledge points (UUIDs will be auto-generated)
+      // Insert new knowledge points using IDs from Excel (kp_1, kp_2, etc.)
       const mappings: KnowledgePointMapping[] = [];
       
       for (const kp of knowledgePoints) {
+        // Use the ID from Excel file (e.g., kp_1, kp_2, etc.)
         const result = await connection.query(
           sql.unsafe`
-            INSERT INTO kedge_practice.knowledge_points (topic, volume, unit, lesson, sub)
-            VALUES (${kp.topic}, ${kp.volume}, ${kp.unit}, ${kp.lesson}, ${kp.sub})
+            INSERT INTO kedge_practice.knowledge_points (id, topic, volume, unit, lesson, sub)
+            VALUES (${kp.id}, ${kp.topic}, ${kp.volume}, ${kp.unit}, ${kp.lesson}, ${kp.sub})
             RETURNING id
           `
         );
@@ -188,11 +194,11 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
           topic: kp.topic,
         });
         
-        // Store mapping in metadata table
+        // Store mapping in metadata table (value must be JSON)
         await connection.query(
           sql.unsafe`
             INSERT INTO kedge_practice.knowledge_points_metadata (key, value)
-            VALUES (${`mapping_${kp.id}`}, ${databaseId})
+            VALUES (${`mapping_${kp.id}`}, ${JSON.stringify(databaseId)}::jsonb)
           `
         );
       }
