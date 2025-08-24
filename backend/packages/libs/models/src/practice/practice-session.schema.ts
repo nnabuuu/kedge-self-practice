@@ -43,7 +43,7 @@ export const PracticeSessionStatusSchema = z.enum([
 // Practice Session Schemas
 export const CreatePracticeSessionSchema = z.object({
   subject_id: z.string().optional(),
-  knowledge_point_ids: z.array(z.string()).min(1),
+  knowledge_point_ids: z.array(z.string()).min(0),
   question_count: z.number().int().min(1).max(100).default(20),
   time_limit_minutes: z.number().int().min(5).max(180).optional(),
   strategy: PracticeStrategySchema.default('random'),
