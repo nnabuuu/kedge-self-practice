@@ -423,14 +423,14 @@ export default function KnowledgePointSelection({
             <div className="mb-8">
               <div className="flex flex-wrap gap-3 justify-center">
                 <button
-                  onClick={() => setQuizConfig({
-                    questionType: 'new',
+                  onClick={() => setQuizConfig(prev => ({
+                    ...prev,
                     questionCount: 10,
                     shuffleQuestions: true,
                     showExplanation: true
-                  })}
+                  }))}
                   className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                    quizConfig.questionType === 'new' && quizConfig.questionCount === 10
+                    quizConfig.questionCount === 10
                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
                       : 'bg-white/70 text-gray-700 hover:bg-white hover:shadow-md border border-gray-200'
                   }`}
@@ -441,14 +441,14 @@ export default function KnowledgePointSelection({
                 </button>
                 
                 <button
-                  onClick={() => setQuizConfig({
-                    questionType: 'new',
+                  onClick={() => setQuizConfig(prev => ({
+                    ...prev,
                     questionCount: 20,
                     shuffleQuestions: true,
                     showExplanation: true
-                  })}
+                  }))}
                   className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                    quizConfig.questionType === 'new' && quizConfig.questionCount === 20
+                    quizConfig.questionCount === 20
                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
                       : 'bg-white/70 text-gray-700 hover:bg-white hover:shadow-md border border-gray-200'
                   }`}
@@ -459,14 +459,14 @@ export default function KnowledgePointSelection({
                 </button>
                 
                 <button
-                  onClick={() => setQuizConfig({
-                    questionType: 'new',
+                  onClick={() => setQuizConfig(prev => ({
+                    ...prev,
                     questionCount: 'unlimited',
                     shuffleQuestions: true,
                     showExplanation: true
-                  })}
+                  }))}
                   className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                    quizConfig.questionType === 'new' && quizConfig.questionCount === 'unlimited'
+                    quizConfig.questionCount === 'unlimited'
                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
                       : 'bg-white/70 text-gray-700 hover:bg-white hover:shadow-md border border-gray-200'
                   }`}
