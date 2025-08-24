@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Suggestions UI Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">智能推荐 UI 演示</h1>
+        
+        <!-- Button to trigger -->
+        <button onclick="showSuggestions()" class="mb-6 flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+            </svg>
+            智能推荐
+        </button>
+
+        <!-- This is what appears after clicking 智能推荐 -->
+        <div id="suggestionPanel" class="hidden mb-6 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl p-6 border-2 border-purple-300 shadow-xl animate-fade-in relative">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center">
+                    <!-- Brain Icon -->
+                    <svg class="w-6 h-6 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                    <h3 class="text-xl font-bold text-gray-900">智能推荐理由</h3>
+                    <span class="ml-3 px-2 py-1 bg-purple-600 text-white text-xs rounded-full">AI 分析</span>
+                </div>
+                <button onclick="hidePanel()" class="p-1 hover:bg-purple-100 rounded-full transition-colors">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-2 max-h-60 overflow-y-auto">
+                <!-- Weak Area Example -->
+                <div class="flex items-start p-3 rounded-lg bg-red-50 border border-opacity-20">
+                    <div class="text-red-700 mr-3 mt-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-900">五四运动</div>
+                        <div class="text-sm text-red-700 mt-1">需要加强 (正确率: 45%)</div>
+                        <div class="text-xs text-gray-500 mt-1 space-x-3">
+                            <span>正确率: 45%</span>
+                            <span>练习次数: 5</span>
+                            <span>难度: 困难</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review Example -->
+                <div class="flex items-start p-3 rounded-lg bg-orange-50 border border-opacity-20">
+                    <div class="text-orange-700 mr-3 mt-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-900">辛亥革命</div>
+                        <div class="text-sm text-orange-700 mt-1">需要复习 (7天未练习)</div>
+                        <div class="text-xs text-gray-500 mt-1 space-x-3">
+                            <span>正确率: 70%</span>
+                            <span>练习次数: 3</span>
+                            <span>难度: 中等</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Topic Example -->
+                <div class="flex items-start p-3 rounded-lg bg-green-50 border border-opacity-20">
+                    <div class="text-green-700 mr-3 mt-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-900">洋务运动</div>
+                        <div class="text-sm text-green-700 mt-1">新知识点 (未练习)</div>
+                        <div class="text-xs text-gray-500 mt-1 space-x-3">
+                            <span>练习次数: 0</span>
+                            <span>难度: 中等</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Foundation Example -->
+                <div class="flex items-start p-3 rounded-lg bg-purple-50 border border-opacity-20">
+                    <div class="text-purple-700 mr-3 mt-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-900">鸦片战争</div>
+                        <div class="text-sm text-purple-700 mt-1">基础巩固</div>
+                        <div class="text-xs text-gray-500 mt-1 space-x-3">
+                            <span>难度: 简单</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-3 text-xs text-gray-600 italic">
+                <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                推荐基于您的学习历史、错误率、复习间隔等多维度分析
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg p-6 shadow">
+            <h2 class="font-bold mb-4">说明：</h2>
+            <ol class="list-decimal list-inside space-y-2 text-gray-700">
+                <li>点击"智能推荐"按钮后，系统会调用后端 API 获取推荐</li>
+                <li>推荐成功后，会显示"智能推荐理由"面板</li>
+                <li>面板中显示每个推荐知识点的：
+                    <ul class="list-disc list-inside ml-6 mt-1">
+                        <li class="text-red-600">红色：需要加强的薄弱点（正确率低）</li>
+                        <li class="text-orange-600">橙色：需要复习的知识点（长时间未练习）</li>
+                        <li class="text-green-600">绿色：新的未练习知识点</li>
+                        <li class="text-purple-600">紫色：基础巩固知识点</li>
+                    </ul>
+                </li>
+                <li>每个知识点显示具体的推荐理由和相关数据</li>
+                <li>可以手动关闭面板，或等待自动隐藏</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function showSuggestions() {
+            document.getElementById('suggestionPanel').classList.remove('hidden');
+            alert('这就是智能推荐理由面板！\n它会显示在"智能推荐"按钮下方。');
+        }
+        
+        function hidePanel() {
+            document.getElementById('suggestionPanel').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
