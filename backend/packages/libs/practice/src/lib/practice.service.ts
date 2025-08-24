@@ -291,34 +291,36 @@ export class PracticeService {
   ): Promise<QuizItem[]> {
     try {
       // Build the query to get wrong quiz IDs
-      let query = sql.unsafe`
-        SELECT DISTINCT pa.quiz_id
-        FROM kedge_practice.practice_answers pa
-        JOIN kedge_practice.practice_sessions ps ON pa.session_id = ps.id
-        JOIN kedge_practice.quizzes q ON pa.quiz_id = q.id
-        WHERE ps.user_id = ${userId}::uuid
-          AND pa.is_correct = false
+      let whereClause = sql.unsafe`
+        ps.user_id = ${userId}::uuid
+        AND pa.is_correct = false
       `;
 
       // Add knowledge point filter if specified
       if (knowledgePointIds.length > 0) {
-        query = sql.unsafe`
-          ${query}
+        whereClause = sql.unsafe`
+          ${whereClause}
           AND q.knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'text')})
         `;
       }
 
       // Add quiz type filter if specified
       if (quizTypes && quizTypes.length > 0) {
-        query = sql.unsafe`
-          ${query}
+        whereClause = sql.unsafe`
+          ${whereClause}
           AND q.type = ANY(${sql.array(quizTypes, 'text')})
         `;
       }
 
-      // Limit the results
-      query = sql.unsafe`
-        ${query}
+      // Use a subquery to first get distinct quiz IDs, then order randomly
+      const query = sql.unsafe`
+        SELECT quiz_id FROM (
+          SELECT DISTINCT pa.quiz_id
+          FROM kedge_practice.practice_answers pa
+          JOIN kedge_practice.practice_sessions ps ON pa.session_id = ps.id
+          JOIN kedge_practice.quizzes q ON pa.quiz_id = q.id
+          WHERE ${whereClause}
+        ) AS distinct_quizzes
         ORDER BY RANDOM()
         LIMIT ${questionCount}
       `;
