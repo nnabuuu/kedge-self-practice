@@ -186,8 +186,8 @@ export class KnowledgePointSuggestionService {
           ROUND(100.0 * SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END) / COUNT(*), 2) as accuracy_rate,
           MAX(pa.created_at) as last_practiced
         FROM kedge_practice.practice_answers pa
-        JOIN kedge_practice.practice_sessions ps ON pa.practice_session_id = ps.id
-        JOIN kedge_practice.quizzes q ON pa.question_id = q.id
+        JOIN kedge_practice.practice_sessions ps ON pa.session_id = ps.id
+        JOIN kedge_practice.quizzes q ON pa.quiz_id = q.id
         WHERE ps.user_id = ${userId}
         GROUP BY q.knowledge_point_id
         HAVING COUNT(*) >= 3  -- At least 3 attempts
@@ -234,8 +234,8 @@ export class KnowledgePointSuggestionService {
       WITH practiced_points AS (
         SELECT DISTINCT q.knowledge_point_id
         FROM kedge_practice.practice_answers pa
-        JOIN kedge_practice.practice_sessions ps ON pa.practice_session_id = ps.id
-        JOIN kedge_practice.quizzes q ON pa.question_id = q.id
+        JOIN kedge_practice.practice_sessions ps ON pa.session_id = ps.id
+        JOIN kedge_practice.quizzes q ON pa.quiz_id = q.id
         WHERE ps.user_id = ${userId}
       )
       SELECT 
@@ -281,8 +281,8 @@ export class KnowledgePointSuggestionService {
           COUNT(*) as practice_count,
           AVG(CASE WHEN pa.is_correct THEN 1 ELSE 0 END) * 100 as accuracy_rate
         FROM kedge_practice.practice_answers pa
-        JOIN kedge_practice.practice_sessions ps ON pa.practice_session_id = ps.id
-        JOIN kedge_practice.quizzes q ON pa.question_id = q.id
+        JOIN kedge_practice.practice_sessions ps ON pa.session_id = ps.id
+        JOIN kedge_practice.quizzes q ON pa.quiz_id = q.id
         WHERE ps.user_id = ${userId}
         GROUP BY q.knowledge_point_id
         HAVING MAX(pa.created_at) < NOW() - INTERVAL '3 days'  -- Not practiced in last 3 days
@@ -359,12 +359,12 @@ export class KnowledgePointSuggestionService {
     const query = sql.unsafe`
       SELECT 
         COUNT(DISTINCT ps.id) as total_sessions,
-        COUNT(DISTINCT pa.question_id) as total_questions,
+        COUNT(DISTINCT pa.quiz_id) as total_questions,
         AVG(CASE WHEN pa.is_correct THEN 1 ELSE 0 END) * 100 as overall_accuracy,
         COUNT(DISTINCT q.knowledge_point_id) as knowledge_points_practiced
       FROM kedge_practice.practice_sessions ps
-      LEFT JOIN kedge_practice.practice_answers pa ON pa.practice_session_id = ps.id
-      LEFT JOIN kedge_practice.quizzes q ON pa.question_id = q.id
+      LEFT JOIN kedge_practice.practice_answers pa ON pa.session_id = ps.id
+      LEFT JOIN kedge_practice.quizzes q ON pa.quiz_id = q.id
       WHERE ps.user_id = ${userId}
     `;
 

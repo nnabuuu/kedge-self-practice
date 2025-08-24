@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Play, Minus, ChevronRight, ChevronDown, RotateCcw, Settings, Target, Clock, Shuffle, BookOpen, History, CheckSquare, Square, Zap, Sparkles, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Play, Minus, ChevronRight, ChevronDown, RotateCcw, Settings, Target, Clock, Shuffle, BookOpen, History, CheckSquare, Square, Zap, Sparkles, TrendingUp, Info, X, Brain, AlertCircle } from 'lucide-react';
 import { Subject } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -47,6 +47,8 @@ export default function KnowledgePointSelection({
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [smartSuggestions, setSmartSuggestions] = useState<Map<string, { reason: string; priority: number; metadata?: any }>>(new Map());
+  const [showSmartSuggestionInfo, setShowSmartSuggestionInfo] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   
   const [lastSelection, setLastSelection] = useLocalStorage<string[]>(`last-selection-${subject.id}`, []);
@@ -172,6 +174,8 @@ export default function KnowledgePointSelection({
 
   const useLastSelection = () => {
     setSelectedPoints(new Set(lastSelection));
+    setSmartSuggestions(new Map());
+    setShowSmartSuggestionInfo(false);
   };
 
   const selectAllPoints = () => {
@@ -183,6 +187,8 @@ export default function KnowledgePointSelection({
 
   const clearAllSelections = () => {
     setSelectedPoints(new Set());
+    setSmartSuggestions(new Map());
+    setShowSmartSuggestionInfo(false);
   };
 
   // 智能推荐功能 - 使用后端AI推荐
@@ -216,11 +222,24 @@ export default function KnowledgePointSelection({
         const data = await response.json();
         
         if (data.success && data.suggestions?.length > 0) {
-          // Extract knowledge point IDs from suggestions
+          // Extract knowledge point IDs from suggestions and store reasons
           const suggestedIds = data.suggestions.map((s: any) => s.knowledgePointId);
-          setSelectedPoints(new Set(suggestedIds));
+          const suggestionMap = new Map();
+          data.suggestions.forEach((s: any) => {
+            suggestionMap.set(s.knowledgePointId, {
+              reason: s.reason,
+              priority: s.priority,
+              metadata: s.metadata
+            });
+          });
           
-          // Show a success message (you could add a toast notification here)
+          setSelectedPoints(new Set(suggestedIds));
+          setSmartSuggestions(suggestionMap);
+          setShowSmartSuggestionInfo(true);
+          
+          // Auto-hide the info after 10 seconds
+          setTimeout(() => setShowSmartSuggestionInfo(false), 10000);
+          
           console.log('Smart suggestions applied:', data.suggestions);
         } else {
           // Fallback to simple logic if no suggestions
@@ -818,6 +837,90 @@ export default function KnowledgePointSelection({
               </div>
             </div>
           </div>
+
+          {/* Smart Suggestion Info Panel */}
+          {showSmartSuggestionInfo && smartSuggestions.size > 0 && (
+            <div className="mb-6 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-200 shadow-md animate-fade-in">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <Brain className="w-5 h-5 text-purple-600 mr-2" />
+                  <h3 className="text-lg font-bold text-gray-900">智能推荐理由</h3>
+                </div>
+                <button
+                  onClick={() => setShowSmartSuggestionInfo(false)}
+                  className="p-1 hover:bg-purple-100 rounded-full transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {Array.from(selectedPoints).map(pointId => {
+                  const suggestion = smartSuggestions.get(pointId);
+                  if (!suggestion) return null;
+                  
+                  const point = knowledgePoints.find(kp => kp.id === pointId);
+                  if (!point) return null;
+                  
+                  // Determine icon and color based on reason
+                  let icon = <Target className="w-4 h-4" />;
+                  let bgColor = "bg-blue-50";
+                  let textColor = "text-blue-700";
+                  
+                  if (suggestion.reason.includes("需要加强") || suggestion.reason.includes("错误率")) {
+                    icon = <AlertCircle className="w-4 h-4" />;
+                    bgColor = "bg-red-50";
+                    textColor = "text-red-700";
+                  } else if (suggestion.reason.includes("复习")) {
+                    icon = <History className="w-4 h-4" />;
+                    bgColor = "bg-orange-50";
+                    textColor = "text-orange-700";
+                  } else if (suggestion.reason.includes("新知识")) {
+                    icon = <Sparkles className="w-4 h-4" />;
+                    bgColor = "bg-green-50";
+                    textColor = "text-green-700";
+                  } else if (suggestion.reason.includes("基础")) {
+                    icon = <BookOpen className="w-4 h-4" />;
+                    bgColor = "bg-purple-50";
+                    textColor = "text-purple-700";
+                  }
+                  
+                  return (
+                    <div key={pointId} className={`flex items-start p-3 rounded-lg ${bgColor} border border-opacity-20`}>
+                      <div className={`${textColor} mr-3 mt-0.5`}>
+                        {icon}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{point.topic}</div>
+                        <div className={`text-sm ${textColor} mt-1`}>{suggestion.reason}</div>
+                        {suggestion.metadata && (
+                          <div className="text-xs text-gray-500 mt-1 space-x-3">
+                            {suggestion.metadata.accuracy !== undefined && (
+                              <span>正确率: {suggestion.metadata.accuracy}%</span>
+                            )}
+                            {suggestion.metadata.practiceCount !== undefined && (
+                              <span>练习次数: {suggestion.metadata.practiceCount}</span>
+                            )}
+                            {suggestion.metadata.difficulty && (
+                              <span className="capitalize">难度: {
+                                suggestion.metadata.difficulty === 'hard' ? '困难' :
+                                suggestion.metadata.difficulty === 'medium' ? '中等' : '简单'
+                              }</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="mt-3 text-xs text-gray-600 italic">
+                <Info className="w-3 h-3 inline mr-1" />
+                推荐基于您的学习历史、错误率、复习间隔等多维度分析
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3 mb-6">
             {Object.entries(groupedKnowledgePoints).map(([volume, units]) => {
