@@ -144,7 +144,11 @@ export default function SubjectSelection({ onSelectSubject, onBack, currentSubje
                   
                   <div className="relative z-10">
                     <div className={`w-20 h-20 ${subject.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-xl`}>
-                      <IconComponent className="w-10 h-10 text-white" />
+                      {IconComponent ? (
+                        <IconComponent className="w-10 h-10 text-white" />
+                      ) : (
+                        <span className="text-4xl">{subject.icon}</span>
+                      )}
                     </div>
                     
                     <div className="space-y-4">

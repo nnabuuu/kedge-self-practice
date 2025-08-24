@@ -168,28 +168,39 @@ class BackendApiService {
     };
   }
 
-  // Get all subjects from configuration
+  // Get all subjects from backend
   async getSubjects(): Promise<ApiResponse<Subject[]>> {
-    // Import subjects from shared configuration
-    const { getEnabledSubjects } = await import('../config/subjects');
-    
     try {
-      // Try to fetch from backend first if endpoint exists
+      // Fetch from backend /subjects endpoint
       const response = await this.makeRequest<Subject[]>('/subjects');
+      
       if (response.success && response.data) {
-        return response;
+        // Convert backend format to frontend Subject format
+        const subjects: Subject[] = response.data.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          icon: s.emoji || s.icon, // Use emoji as icon
+          color: s.color
+        }));
+        
+        return {
+          success: true,
+          data: subjects
+        };
       }
+      
+      return response;
     } catch (error) {
-      // Backend endpoint doesn't exist, use configuration
-      console.log('Using subjects from configuration file');
+      console.error('Failed to fetch subjects from backend:', error);
+      
+      // Return empty array on error
+      return {
+        success: false,
+        data: [],
+        error: 'Failed to fetch subjects'
+      };
     }
-    
-    // Fallback to configuration file
-    const subjects = getEnabledSubjects();
-    return {
-      success: true,
-      data: subjects
-    };
   }
 
   // Get knowledge points by subject

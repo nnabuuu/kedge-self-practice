@@ -49,25 +49,22 @@ class BackendQuizService {
   async getSubjects(): Promise<ApiResponse<Subject[]>> {
     const response = await this.makeRequest<Subject[]>('/subjects');
     
-    // Fallback to configuration if backend call fails
-    if (!response.success) {
-      // Import subjects from shared configuration
-      const { getEnabledSubjects } = await import('../config/subjects');
-      const subjects = getEnabledSubjects();
-      
-      // Add mock knowledge points for compatibility with existing code
-      // This should be removed once backend provides real knowledge points
-      const subjectsWithKnowledgePoints = subjects.map(subject => ({
-        ...subject,
-        knowledgePoints: [] // Empty for now, will be loaded from backend
+    if (response.success && response.data) {
+      // Convert backend format to frontend format
+      const subjects = response.data.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        icon: s.emoji || s.icon,
+        knowledgePoints: [] // Will be loaded separately from backend
       }));
-
+      
       return {
         success: true,
-        data: subjectsWithKnowledgePoints as any
+        data: subjects
       };
     }
-
+    
     return response;
   }
 
