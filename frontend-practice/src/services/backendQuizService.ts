@@ -49,66 +49,22 @@ class BackendQuizService {
   async getSubjects(): Promise<ApiResponse<Subject[]>> {
     const response = await this.makeRequest<Subject[]>('/subjects');
     
-    // Fallback to mock subjects if backend call fails
+    // Fallback to configuration if backend call fails
     if (!response.success) {
-      const mockSubjects: Subject[] = [
-        {
-          id: 'history',
-          name: '历史',
-          description: '初中历史知识点练习',
-          icon: '📚',
-          knowledgePoints: [
-            {
-              id: 'ancient-china',
-              name: '古代中国',
-              description: '秦汉至清朝历史',
-              subPoints: [
-                { id: 'qin-dynasty', name: '秦朝统一', description: '秦始皇统一六国' },
-                { id: 'han-dynasty', name: '汉朝盛世', description: '汉武帝时期的成就' },
-              ]
-            },
-            {
-              id: 'modern-china',
-              name: '近现代中国',
-              description: '鸦片战争至建国',
-              subPoints: [
-                { id: 'opium-war', name: '鸦片战争', description: '中国近代史开端' },
-                { id: 'republic', name: '民国时期', description: '辛亥革命到建国前' },
-              ]
-            }
-          ]
-        },
-        {
-          id: 'biology',
-          name: '生物',
-          description: '初中生物学习与实验',
-          icon: '🧬',
-          knowledgePoints: [
-            {
-              id: 'cell-biology',
-              name: '细胞生物学',
-              description: '细胞结构与功能',
-              subPoints: [
-                { id: 'cell-structure', name: '细胞结构', description: '细胞膜、细胞质、细胞核' },
-                { id: 'cell-division', name: '细胞分裂', description: '有丝分裂和减数分裂' },
-              ]
-            },
-            {
-              id: 'genetics',
-              name: '遗传学',
-              description: '遗传规律与变异',
-              subPoints: [
-                { id: 'mendel-laws', name: '孟德尔定律', description: '基因的分离与自由组合' },
-                { id: 'dna-rna', name: 'DNA与RNA', description: '遗传物质的结构与功能' },
-              ]
-            }
-          ]
-        }
-      ];
+      // Import subjects from shared configuration
+      const { getEnabledSubjects } = await import('../config/subjects');
+      const subjects = getEnabledSubjects();
+      
+      // Add mock knowledge points for compatibility with existing code
+      // This should be removed once backend provides real knowledge points
+      const subjectsWithKnowledgePoints = subjects.map(subject => ({
+        ...subject,
+        knowledgePoints: [] // Empty for now, will be loaded from backend
+      }));
 
       return {
         success: true,
-        data: mockSubjects
+        data: subjectsWithKnowledgePoints as any
       };
     }
 

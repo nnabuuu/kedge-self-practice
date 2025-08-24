@@ -168,24 +168,24 @@ class BackendApiService {
     };
   }
 
-  // Get all subjects (currently hardcoded as backend doesn't have subjects endpoint)
+  // Get all subjects from configuration
   async getSubjects(): Promise<ApiResponse<Subject[]>> {
-    // For now, return hardcoded subjects as backend doesn't have a subjects endpoint
-    const subjects: Subject[] = [
-      {
-        id: 'history',
-        name: '历史',
-        icon: 'Scroll',
-        color: 'bg-amber-500'
-      },
-      {
-        id: 'biology',
-        name: '生物',
-        icon: 'Dna',
-        color: 'bg-green-500'
-      }
-    ];
+    // Import subjects from shared configuration
+    const { getEnabledSubjects } = await import('../config/subjects');
     
+    try {
+      // Try to fetch from backend first if endpoint exists
+      const response = await this.makeRequest<Subject[]>('/subjects');
+      if (response.success && response.data) {
+        return response;
+      }
+    } catch (error) {
+      // Backend endpoint doesn't exist, use configuration
+      console.log('Using subjects from configuration file');
+    }
+    
+    // Fallback to configuration file
+    const subjects = getEnabledSubjects();
     return {
       success: true,
       data: subjects
