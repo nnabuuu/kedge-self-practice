@@ -66,6 +66,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
   const [polishingQuiz, setPolishingQuiz] = useState<Quiz | null>(null);
   const [typeChangingQuiz, setTypeChangingQuiz] = useState<Quiz | null>(null);
   const [polishedContent, setPolishedContent] = useState('');
+  const [polishGuidance, setPolishGuidance] = useState('');
   const [isPolishing, setIsPolishing] = useState(false);
   const itemsPerPage = 10;
   
@@ -483,6 +484,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
   const handlePolishQuiz = (quiz: Quiz) => {
     setPolishingQuiz(quiz);
     setPolishedContent(quiz.question);
+    setPolishGuidance(''); // Reset guidance
     setShowPolishModal(true);
   };
 
@@ -504,7 +506,8 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
         body: JSON.stringify({
           question: polishedContent,
           type: polishingQuiz.type,
-          options: polishingQuiz.options
+          options: polishingQuiz.options,
+          guidance: polishGuidance // Include user guidance
         })
       });
 
@@ -534,6 +537,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
     setShowPolishModal(false);
     setPolishingQuiz(null);
     setPolishedContent('');
+    setPolishGuidance(''); // Reset guidance
   };
 
   // Handle change quiz type
@@ -1643,6 +1647,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                     setShowPolishModal(false);
                     setPolishingQuiz(null);
                     setPolishedContent('');
+                    setPolishGuidance('');
                   }}
                   className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
@@ -1657,6 +1662,22 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                 <div className="p-3 bg-gray-50 rounded-lg text-gray-700">
                   {polishingQuiz.question}
                 </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  润色指导（可选）
+                </label>
+                <textarea
+                  value={polishGuidance}
+                  onChange={(e) => setPolishGuidance(e.target.value)}
+                  rows={2}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="例如：让题目更贴近生活场景、增加历史背景、使语言更生动..."
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  提供具体的润色要求，AI会根据您的指导来优化题目
+                </p>
               </div>
               
               <div className="mb-4">
@@ -1702,6 +1723,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                   setShowPolishModal(false);
                   setPolishingQuiz(null);
                   setPolishedContent('');
+                  setPolishGuidance('');
                 }}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >

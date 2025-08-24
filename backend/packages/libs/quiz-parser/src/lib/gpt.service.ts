@@ -157,8 +157,14 @@ export class GptService {
     }
   }
 
-  async polishQuizItem(item: QuizItem): Promise<QuizItem> {
-    const prompt = `你是一名教育编辑助手，请在保持题目含义、选项和答案不变的情况下润色题干，使其表述更完整或更具有场景感。只修改 question 字段，返回 JSON。`;
+  async polishQuizItem(item: QuizItem, userGuidance?: string): Promise<QuizItem> {
+    let prompt = `你是一名教育编辑助手，请在保持题目含义、选项和答案不变的情况下润色题干，使其表述更完整或更具有场景感。只修改 question 字段，返回 JSON。`;
+    
+    // Add user guidance if provided
+    if (userGuidance && userGuidance.trim()) {
+      prompt += `\n\n用户的特定要求：${userGuidance}`;
+    }
+    
     const schema = {
       name: 'polish_quiz_item',
       description: '润色题干但保持题目其他部分不变',

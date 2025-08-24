@@ -76,8 +76,30 @@ export class GptController {
   }
 
   @Post('polish-quiz')
-  async polishQuiz(@Body() body: { item: QuizItem }) {
-    return this.gptService.polishQuizItem(body.item);
+  async polishQuiz(@Body() body: { item: QuizItem; guidance?: string }) {
+    return this.gptService.polishQuizItem(body.item, body.guidance);
+  }
+  
+  @Post('polish-question')
+  async polishQuestion(@Body() body: { 
+    question: string; 
+    type?: string;
+    options?: string[];
+    guidance?: string 
+  }) {
+    // Create a temporary quiz item for polishing
+    const tempItem: QuizItem = {
+      type: (body.type as QuizItem['type']) || 'single-choice',
+      question: body.question,
+      options: body.options || [],
+      answer: ''
+    };
+    
+    const polished = await this.gptService.polishQuizItem(tempItem, body.guidance);
+    return {
+      polishedQuestion: polished.question,
+      original: body.question
+    };
   }
 
   @Post('change-quiz-type')
