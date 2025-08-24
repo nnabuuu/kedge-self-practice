@@ -739,7 +739,7 @@ export default function KnowledgePointSelection({
                   className="group flex items-center px-4 py-2 text-gray-600 hover:text-blue-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm hover:bg-white/90 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-out border border-white/20 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
                   title={`恢复上次选择的 ${lastSelection.length} 个知识点`}
                 >
-                  <RotateCcw className="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-300" />
+                  <History className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
                   <span className="text-sm font-medium tracking-wide">上次选择</span>
                 </button>
               )}
