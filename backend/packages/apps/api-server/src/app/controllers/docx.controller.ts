@@ -21,7 +21,7 @@ function escapeRegExp(string: string): string {
 @ApiTags('docx')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, TeacherGuard)
-@Controller('v1/docx')
+@Controller('docx')
 export class DocxController {
   constructor(
     private readonly docxService: DocxService,

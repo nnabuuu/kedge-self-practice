@@ -15,7 +15,7 @@ import { EnhancedQuizStorageService } from '@kedge/quiz';
 import { JwtAuthGuard, JwtOrQueryGuard } from '@kedge/auth';
 
 @ApiTags('attachments')
-@Controller('v1/attachments')
+@Controller('attachments')
 export class AttachmentsController {
   constructor(private readonly storageService: EnhancedQuizStorageService) {}
 

@@ -13,7 +13,7 @@ export class IndexController {
   }
 }
 
-@Controller('v1')
+@Controller()
 export class HealthController {
   @Get('health')
   health(): string {

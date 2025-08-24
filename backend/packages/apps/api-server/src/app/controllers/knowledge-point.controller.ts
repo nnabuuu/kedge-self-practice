@@ -35,7 +35,7 @@ interface KnowledgePointStatsResponse {
 }
 
 @ApiTags('Knowledge Points')
-@Controller('v1/knowledge-points')
+@Controller('knowledge-points')
 export class KnowledgePointController {
   private readonly logger = new Logger(KnowledgePointController.name);
 

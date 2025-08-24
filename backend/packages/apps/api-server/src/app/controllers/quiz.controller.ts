@@ -40,7 +40,7 @@ interface MulterFile {
 
 @ApiTags('quiz')
 @ApiBearerAuth()
-@Controller('v1/quiz')
+@Controller('quiz')
 export class QuizController {
   constructor(
     private readonly quizService: QuizService,

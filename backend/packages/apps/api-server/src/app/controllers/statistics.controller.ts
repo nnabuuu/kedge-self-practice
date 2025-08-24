@@ -7,7 +7,7 @@ import { sql } from 'slonik';
 @ApiTags('statistics')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, TeacherGuard)
-@Controller('v1/statistics')
+@Controller('statistics')
 export class StatisticsController {
   constructor(private readonly persistentService: PersistentService) {}
 

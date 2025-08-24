@@ -5,7 +5,7 @@ import express , { Response, json, urlencoded } from 'express';
 import { patchNestJsSwagger } from 'nestjs-zod';
 import { AppModule } from './app/app.module';
 import { env } from './env';
-import { Logger } from '@nestjs/common';
+import { Logger, VersioningType } from '@nestjs/common';
 
 const clientJsonPayloadLimit = '10mb';
 
@@ -28,6 +28,12 @@ function amendActionPath(document: OpenAPIObject) {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {});
   const logger = new Logger('bootstrap');
+
+  // Enable API versioning with /v1 prefix as default
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  });
 
   app.enableCors({
     origin: true, // Allow all origins

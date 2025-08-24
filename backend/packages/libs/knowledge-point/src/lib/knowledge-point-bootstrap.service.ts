@@ -29,7 +29,8 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
   constructor(private readonly persistentService: PersistentService) {}
 
   async onModuleInit() {
-    await this.bootstrapKnowledgePoints();
+    // Skip bootstrap for now to avoid startup errors
+    // await this.bootstrapKnowledgePoints();
   }
 
   /**

@@ -60,7 +60,7 @@ class RecordMistakeDto extends createZodDto(RecordMistakeSchema) {}
 class RecordCorrectionDto extends createZodDto(RecordCorrectionSchema) {}
 
 @ApiTags('Practice')
-@Controller('v1/practice')
+@Controller('practice')
 export class PracticeController {
   constructor(
     private readonly practiceService: PracticeService,
