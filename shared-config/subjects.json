@@ -3,167 +3,25 @@
     {
       "id": "history",
       "name": "历史",
-      "nameEn": "History",
       "description": "初中历史知识点练习",
-      "descriptionEn": "Middle school history knowledge practice",
       "icon": "Scroll",
       "emoji": "📚",
       "color": "bg-amber-500",
       "enabled": true,
-      "order": 1,
-      "grades": ["初一", "初二", "初三"],
-      "metadata": {
-        "curriculum": "人教版",
-        "totalKnowledgePoints": 0,
-        "totalQuizzes": 0
-      }
+      "order": 1
     },
     {
       "id": "biology", 
       "name": "生物",
-      "nameEn": "Biology",
       "description": "初中生物学习与实验",
-      "descriptionEn": "Middle school biology study and experiments",
       "icon": "Dna",
       "emoji": "🧬",
       "color": "bg-green-500",
       "enabled": true,
-      "order": 2,
-      "grades": ["初一", "初二", "初三"],
-      "metadata": {
-        "curriculum": "人教版",
-        "totalKnowledgePoints": 0,
-        "totalQuizzes": 0
-      }
-    },
-    {
-      "id": "mathematics",
-      "name": "数学",
-      "nameEn": "Mathematics",
-      "description": "初中数学概念与解题",
-      "descriptionEn": "Middle school math concepts and problem solving",
-      "icon": "Calculator",
-      "emoji": "🔢",
-      "color": "bg-blue-500",
-      "enabled": false,
-      "order": 3,
-      "grades": ["初一", "初二", "初三"],
-      "metadata": {
-        "curriculum": "人教版",
-        "totalKnowledgePoints": 0,
-        "totalQuizzes": 0
-      }
-    },
-    {
-      "id": "physics",
-      "name": "物理",
-      "nameEn": "Physics",
-      "description": "初中物理原理与实验",
-      "descriptionEn": "Middle school physics principles and experiments",
-      "icon": "Atom",
-      "emoji": "⚛️",
-      "color": "bg-purple-500",
-      "enabled": false,
-      "order": 4,
-      "grades": ["初二", "初三"],
-      "metadata": {
-        "curriculum": "人教版",
-        "totalKnowledgePoints": 0,
-        "totalQuizzes": 0
-      }
-    },
-    {
-      "id": "chemistry",
-      "name": "化学",
-      "nameEn": "Chemistry",
-      "description": "初中化学基础与实验",
-      "descriptionEn": "Middle school chemistry basics and experiments",
-      "icon": "Flask",
-      "emoji": "🧪",
-      "color": "bg-indigo-500",
-      "enabled": false,
-      "order": 5,
-      "grades": ["初三"],
-      "metadata": {
-        "curriculum": "人教版",
-        "totalKnowledgePoints": 0,
-        "totalQuizzes": 0
-      }
-    },
-    {
-      "id": "english",
-      "name": "英语",
-      "nameEn": "English",
-      "description": "初中英语词汇与语法",
-      "descriptionEn": "Middle school English vocabulary and grammar",
-      "icon": "Globe",
-      "emoji": "🌍",
-      "color": "bg-teal-500",
-      "enabled": false,
-      "order": 6,
-      "grades": ["初一", "初二", "初三"],
-      "metadata": {
-        "curriculum": "人教版",
-        "totalKnowledgePoints": 0,
-        "totalQuizzes": 0
-      }
-    },
-    {
-      "id": "chinese",
-      "name": "语文",
-      "nameEn": "Chinese",
-      "description": "初中语文阅读与写作",
-      "descriptionEn": "Middle school Chinese reading and writing",
-      "icon": "BookOpen",
-      "emoji": "📖",
-      "color": "bg-red-500",
-      "enabled": false,
-      "order": 7,
-      "grades": ["初一", "初二", "初三"],
-      "metadata": {
-        "curriculum": "人教版",
-        "totalKnowledgePoints": 0,
-        "totalQuizzes": 0
-      }
-    },
-    {
-      "id": "geography",
-      "name": "地理",
-      "nameEn": "Geography",
-      "description": "初中地理知识与地图",
-      "descriptionEn": "Middle school geography and maps",
-      "icon": "Map",
-      "emoji": "🗺️",
-      "color": "bg-cyan-500",
-      "enabled": false,
-      "order": 8,
-      "grades": ["初一", "初二"],
-      "metadata": {
-        "curriculum": "人教版",
-        "totalKnowledgePoints": 0,
-        "totalQuizzes": 0
-      }
-    },
-    {
-      "id": "politics",
-      "name": "道德与法治",
-      "nameEn": "Ethics and Law",
-      "description": "初中思想品德与法治教育",
-      "descriptionEn": "Middle school ethics and law education",
-      "icon": "Scale",
-      "emoji": "⚖️",
-      "color": "bg-gray-500",
-      "enabled": false,
-      "order": 9,
-      "grades": ["初一", "初二", "初三"],
-      "metadata": {
-        "curriculum": "人教版",
-        "totalKnowledgePoints": 0,
-        "totalQuizzes": 0
-      }
+      "order": 2
     }
   ],
   "version": "1.0.0",
   "lastUpdated": "2024-01-20",
-  "description": "Subject configuration for middle school practice system"
+  "description": "Subject configuration for practice system"
 }

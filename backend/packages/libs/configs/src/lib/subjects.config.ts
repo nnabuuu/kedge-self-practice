@@ -2,25 +2,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export interface SubjectMetadata {
-  curriculum: string;
-  totalKnowledgePoints: number;
-  totalQuizzes: number;
-}
-
 export interface SubjectConfig {
   id: string;
   name: string;
-  nameEn: string;
   description: string;
-  descriptionEn: string;
   icon: string;
   emoji: string;
   color: string;
   enabled: boolean;
   order: number;
-  grades: string[];
-  metadata: SubjectMetadata;
 }
 
 export interface SubjectsConfiguration {
@@ -84,38 +74,22 @@ export class SubjectsConfigService {
         {
           id: 'history',
           name: '历史',
-          nameEn: 'History',
           description: '初中历史知识点练习',
-          descriptionEn: 'Middle school history knowledge practice',
           icon: 'Scroll',
           emoji: '📚',
           color: 'bg-amber-500',
           enabled: true,
-          order: 1,
-          grades: ['初一', '初二', '初三'],
-          metadata: {
-            curriculum: '人教版',
-            totalKnowledgePoints: 0,
-            totalQuizzes: 0
-          }
+          order: 1
         },
         {
           id: 'biology',
           name: '生物',
-          nameEn: 'Biology',
           description: '初中生物学习与实验',
-          descriptionEn: 'Middle school biology study and experiments',
           icon: 'Dna',
           emoji: '🧬',
           color: 'bg-green-500',
           enabled: true,
-          order: 2,
-          grades: ['初一', '初二', '初三'],
-          metadata: {
-            curriculum: '人教版',
-            totalKnowledgePoints: 0,
-            totalQuizzes: 0
-          }
+          order: 2
         }
       ],
       version: '1.0.0',
@@ -156,25 +130,6 @@ export class SubjectsConfigService {
     return subjects.map(subject => subject.id);
   }
 
-  // Update subject metadata (e.g., quiz count)
-  async updateSubjectMetadata(id: string, metadata: Partial<SubjectMetadata>): Promise<void> {
-    const config = this.loadConfig();
-    const subject = config.subjects.find(s => s.id === id);
-    
-    if (subject) {
-      subject.metadata = { ...subject.metadata, ...metadata };
-      
-      // Save back to file if we have a valid path
-      if (this.configPath) {
-        try {
-          fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
-          this.config = null; // Force reload on next access
-        } catch (error) {
-          console.error('Failed to update subjects configuration:', error);
-        }
-      }
-    }
-  }
 
   // Reload configuration from file
   reloadConfig(): void {

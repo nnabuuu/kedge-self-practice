@@ -1,25 +1,15 @@
 // Subject configuration type definitions
 // Shared between frontend and backend
 
-export interface SubjectMetadata {
-  curriculum: string;
-  totalKnowledgePoints: number;
-  totalQuizzes: number;
-}
-
 export interface SubjectConfig {
   id: string;
   name: string;
-  nameEn: string;
   description: string;
-  descriptionEn: string;
-  icon: string;
-  emoji: string;
-  color: string;
-  enabled: boolean;
-  order: number;
-  grades: string[];
-  metadata: SubjectMetadata;
+  icon: string;      // Icon component name (e.g., 'Scroll', 'Dna')
+  emoji: string;     // Emoji character for display
+  color: string;     // Tailwind CSS color class
+  enabled: boolean;  // Whether subject is currently available
+  order: number;     // Display order
 }
 
 export interface SubjectsConfiguration {

@@ -38,22 +38,10 @@ export function findSubjectById(id: string): Subject | undefined {
   return config ? configToSubject(config) : undefined;
 }
 
-// Get subject configuration metadata
-export function getSubjectMetadata(id: string): SubjectConfig['metadata'] | undefined {
-  const config = subjectsConfig.subjects.find(s => s.id === id);
-  return config?.metadata;
-}
-
 // Check if a subject is enabled
 export function isSubjectEnabled(id: string): boolean {
   const config = subjectsConfig.subjects.find(s => s.id === id);
   return config?.enabled ?? false;
-}
-
-// Get grades for a subject
-export function getSubjectGrades(id: string): string[] {
-  const config = subjectsConfig.subjects.find(s => s.id === id);
-  return config?.grades ?? [];
 }
 
 // Export the raw configuration if needed
@@ -64,8 +52,6 @@ export default {
   getEnabledSubjects,
   getAllSubjects,
   findSubjectById,
-  getSubjectMetadata,
   isSubjectEnabled,
-  getSubjectGrades,
   config: subjectsConfig
 };
