@@ -111,6 +111,9 @@ class AuthService {
         localStorage.setItem('user_data', JSON.stringify(fallbackUser));
         response.data.user = fallbackUser;
       }
+
+      // Fetch and cache quick options availability after successful login
+      this.fetchAndCacheQuickOptionsAvailability();
     }
 
     return response;
@@ -137,6 +140,9 @@ class AuthService {
       
       // Update response data
       response.data.user = normalizedUser;
+
+      // Fetch and cache quick options availability after successful registration
+      this.fetchAndCacheQuickOptionsAvailability();
     }
 
     return response;
@@ -207,6 +213,7 @@ class AuthService {
   logout(): void {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user_data');
+    localStorage.removeItem('quick_options_availability');
   }
 
   getCurrentUser(): any | null {
@@ -220,6 +227,51 @@ class AuthService {
 
   isAuthenticated(): boolean {
     return !!this.getToken();
+  }
+
+  // Fetch and cache quick options availability
+  async fetchAndCacheQuickOptionsAvailability(): Promise<void> {
+    try {
+      const token = this.getToken();
+      if (!token) return;
+
+      const response = await fetch(`${API_BASE_URL}/practice/quick-options-availability`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Cache with timestamp for potential future expiry logic
+        const cacheData = {
+          data: data,
+          timestamp: Date.now()
+        };
+        localStorage.setItem('quick_options_availability', JSON.stringify(cacheData));
+      }
+    } catch (error) {
+      console.error('Failed to fetch quick options availability:', error);
+      // Non-critical failure, don't block login flow
+    }
+  }
+
+  // Get cached quick options availability
+  getCachedQuickOptionsAvailability(): any | null {
+    const cached = localStorage.getItem('quick_options_availability');
+    if (!cached) return null;
+
+    try {
+      const cacheData = JSON.parse(cached);
+      // Optional: Add cache expiry logic here if needed
+      // For now, return cached data as-is
+      return cacheData.data;
+    } catch (error) {
+      console.error('Failed to parse cached quick options:', error);
+      return null;
+    }
   }
 
   // Share token with other frontend applications

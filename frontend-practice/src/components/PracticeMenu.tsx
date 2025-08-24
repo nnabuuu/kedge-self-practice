@@ -3,6 +3,7 @@ import { ArrowLeft, Play, History, BookOpen, Brain, Zap, Timer, BarChart3, Clock
 import { Subject, PracticeHistory } from '../types/quiz';
 import { useSubjects } from '../hooks/useApi';
 import { api } from '../services/api';
+import { authService } from '../services/authService';
 
 interface PracticeMenuProps {
   subject: Subject;
@@ -46,15 +47,29 @@ export default function PracticeMenu({
   // Get subjects from API
   const { data: subjects = [] } = useSubjects();
 
-  // Fetch quick options availability on mount
+  // Use cached quick options availability, fetch only if not available
   useEffect(() => {
-    const fetchAvailability = async () => {
-      const response = await api.practice.getQuickOptionsAvailability();
-      if (response.success && response.data) {
-        setQuickOptionsAvailability(response.data);
-      }
-    };
-    fetchAvailability();
+    // First try to get cached data from auth service
+    const cachedData = authService.getCachedQuickOptionsAvailability();
+    
+    if (cachedData) {
+      setQuickOptionsAvailability(cachedData);
+    } else {
+      // Only fetch if not cached (e.g., user navigated directly without login)
+      const fetchAvailability = async () => {
+        const response = await api.practice.getQuickOptionsAvailability();
+        if (response.success && response.data) {
+          setQuickOptionsAvailability(response.data);
+          // Cache for future use
+          const cacheData = {
+            data: response.data,
+            timestamp: Date.now()
+          };
+          localStorage.setItem('quick_options_availability', JSON.stringify(cacheData));
+        }
+      };
+      fetchAvailability();
+    }
   }, []);
 
   // Close dropdown when clicking outside

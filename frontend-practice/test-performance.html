@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Options Cache Performance Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .results { margin-top: 20px; }
+        .time { font-weight: bold; color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Quick Options Cache Performance Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Without Cache (API Call)</h2>
+        <button onclick="testWithoutCache()">Run Test</button>
+        <div id="without-cache-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: With Cache (localStorage)</h2>
+        <button onclick="testWithCache()">Run Test</button>
+        <div id="with-cache-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Performance Comparison</h2>
+        <div id="comparison-result"></div>
+    </div>
+
+    <script>
+        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtb2NrLWFkbWluIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzU0ODM4OTg2LCJleHAiOjE3NTc0MzA5ODZ9.bVVglheYEqUVf1RlxRL4t8fOfs3xU3huBaLJxveMcRE';
+        let apiTime = 0;
+        let cacheTime = 0;
+
+        async function testWithoutCache() {
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch('http://localhost:8718/v1/practice/quick-options-availability', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                const endTime = performance.now();
+                apiTime = endTime - startTime;
+                
+                // Cache the data for next test
+                localStorage.setItem('quick_options_availability', JSON.stringify({
+                    data: data,
+                    timestamp: Date.now()
+                }));
+                
+                document.getElementById('without-cache-result').innerHTML = `
+                    <p class="success">✅ API call successful</p>
+                    <p class="time">Time taken: ${apiTime.toFixed(2)}ms</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                updateComparison();
+            } catch (error) {
+                document.getElementById('without-cache-result').innerHTML = `
+                    <p class="warning">❌ Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        function testWithCache() {
+            const startTime = performance.now();
+            
+            try {
+                const cached = localStorage.getItem('quick_options_availability');
+                if (!cached) {
+                    throw new Error('No cached data found. Run Test 1 first.');
+                }
+                
+                const cacheData = JSON.parse(cached);
+                const data = cacheData.data;
+                
+                const endTime = performance.now();
+                cacheTime = endTime - startTime;
+                
+                document.getElementById('with-cache-result').innerHTML = `
+                    <p class="success">✅ Cache read successful</p>
+                    <p class="time">Time taken: ${cacheTime.toFixed(2)}ms</p>
+                    <p class="info">Cache timestamp: ${new Date(cacheData.timestamp).toLocaleString()}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                updateComparison();
+            } catch (error) {
+                document.getElementById('with-cache-result').innerHTML = `
+                    <p class="warning">❌ Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        function updateComparison() {
+            if (apiTime > 0 && cacheTime > 0) {
+                const improvement = (apiTime / cacheTime).toFixed(1);
+                const saved = (apiTime - cacheTime).toFixed(2);
+                
+                document.getElementById('comparison-result').innerHTML = `
+                    <h3>Results:</h3>
+                    <ul>
+                        <li>API Call Time: <span class="time">${apiTime.toFixed(2)}ms</span></li>
+                        <li>Cache Read Time: <span class="time">${cacheTime.toFixed(2)}ms</span></li>
+                        <li>Performance Improvement: <span class="success">${improvement}x faster</span></li>
+                        <li>Time Saved: <span class="success">${saved}ms</span></li>
+                    </ul>
+                    <p class="info">
+                        💡 <strong>Impact:</strong> When users navigate to the Practice Menu page, 
+                        they no longer experience a ${apiTime.toFixed(0)}ms delay waiting for the 
+                        quick options to become available. The options are instantly available from cache.
+                    </p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -10,7 +10,7 @@ export class KnowledgePointStorage implements OnModuleInit {
   private knowledgePoints: KnowledgePoint[] = [];
   private readonly dataFilePath = path.join(
     __dirname,
-    '../../../../../data/历史知识点.xlsx',
+    '../../../../../data/knowledge-points-history.xlsx',
   );
 
   async onModuleInit() {
@@ -27,19 +27,19 @@ export class KnowledgePointStorage implements OnModuleInit {
       const workbook = XLSX.readFile(this.dataFilePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      
+
       // Convert to JSON with default values for empty cells
       const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, string>[];
-      
+
       // Variables to track last non-empty values for inheritance
       let lastVolume = '未知册';
       let lastUnit = '未知单元';
       let lastLesson = '未知单课';
       let lastSub = '未知子目';
       let idCounter = 1;
-      
+
       const result: KnowledgePoint[] = [];
-      
+
       rows.forEach((row) => {
         // Get raw values, using the column headers from the Excel file
         const rawVolume = row['分册']?.trim();
@@ -47,24 +47,24 @@ export class KnowledgePointStorage implements OnModuleInit {
         const rawLesson = row['单课名称']?.trim();
         const rawSub = row['子目']?.trim();
         let topic = row['知识点']?.trim();
-        
+
         // Inherit from previous row if current cell is empty
         if (rawVolume) lastVolume = rawVolume;
         if (rawUnit) lastUnit = rawUnit;
         if (rawLesson) lastLesson = rawLesson;
         if (rawSub) lastSub = rawSub;
-        
+
         // If topic is empty but sub exists, use sub as topic
         if (!topic && rawSub) {
           topic = rawSub;
         }
-        
+
         // Skip rows without a topic
         if (!topic) {
           this.logger.debug(`Skipping row without topic`);
           return;
         }
-        
+
         const newKnowledgePoint: KnowledgePoint = {
           id: `kp_${idCounter++}`,
           topic,
@@ -73,19 +73,19 @@ export class KnowledgePointStorage implements OnModuleInit {
           lesson: lastLesson,
           sub: lastSub,
         };
-        
+
         result.push(newKnowledgePoint);
       });
-      
+
       this.knowledgePoints = result;
-      
+
       this.logger.log(`Loaded ${this.knowledgePoints.length} knowledge points from Excel file`);
-      
+
       // Log sample data for debugging
       if (this.knowledgePoints.length > 0) {
         this.logger.log(`First knowledge point: ${JSON.stringify(this.knowledgePoints[0])}`);
         this.logger.log(`Last knowledge point: ${JSON.stringify(this.knowledgePoints[this.knowledgePoints.length - 1])}`);
-        
+
         // Log unique units to verify variety
         const uniqueUnits = new Set(this.knowledgePoints.map(kp => kp.unit));
         this.logger.log(`Unique units loaded: ${uniqueUnits.size}`);
@@ -117,9 +117,9 @@ export class KnowledgePointStorage implements OnModuleInit {
     }
 
     const searchTerm = query.toLowerCase().trim();
-    
+
     return this.knowledgePoints
-      .filter(point => 
+      .filter(point =>
         point.topic.toLowerCase().includes(searchTerm) ||
         point.unit.toLowerCase().includes(searchTerm) ||
         point.lesson.toLowerCase().includes(searchTerm) ||
@@ -130,13 +130,13 @@ export class KnowledgePointStorage implements OnModuleInit {
   }
 
   getKnowledgePointsByVolume(volume: string): KnowledgePoint[] {
-    return this.knowledgePoints.filter(point => 
+    return this.knowledgePoints.filter(point =>
       point.volume.toLowerCase().includes(volume.toLowerCase())
     );
   }
 
   getKnowledgePointsByUnit(unit: string): KnowledgePoint[] {
-    return this.knowledgePoints.filter(point => 
+    return this.knowledgePoints.filter(point =>
       point.unit.toLowerCase().includes(unit.toLowerCase())
     );
   }
@@ -183,7 +183,7 @@ export class KnowledgePointStorage implements OnModuleInit {
   }
 
   getKnowledgePointsByUnits(units: string[]): KnowledgePoint[] {
-    return this.knowledgePoints.filter(point => 
+    return this.knowledgePoints.filter(point =>
       units.some(unit => point.unit.includes(unit))
     );
   }

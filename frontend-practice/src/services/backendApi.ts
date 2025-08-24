@@ -172,11 +172,15 @@ class BackendApiService {
   async getSubjects(): Promise<ApiResponse<Subject[]>> {
     try {
       // Fetch from backend /subjects endpoint
-      const response = await this.makeRequest<Subject[]>('/subjects');
+      const response = await this.makeRequest<any>('/subjects');
       
       if (response.success && response.data) {
+        // The backend returns {success: true, data: [...]}
+        // Extract the actual data array
+        const subjectsData = response.data.data || response.data;
+        
         // Convert backend format to frontend Subject format
-        const subjects: Subject[] = response.data.map((s: any) => ({
+        const subjects: Subject[] = subjectsData.map((s: any) => ({
           id: s.id,
           name: s.name,
           description: s.description,
