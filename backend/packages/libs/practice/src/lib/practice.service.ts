@@ -30,12 +30,33 @@ export class PracticeService {
   ): Promise<PracticeSessionResponse> {
     const sessionId = uuidv4();
     
-    // Fetch random quizzes based on criteria - let the database do the work
-    const quizzes = await this.quizService.getRandomQuizzesByKnowledgePoints(
-      data.knowledge_point_ids || [],
-      data.question_count,
-      data.quiz_types
-    );
+    // Handle different question types (new, with-wrong, wrong-only)
+    let quizzes: QuizItem[] = [];
+    
+    if (data.question_type === 'wrong-only') {
+      // Get only wrong questions from user's history
+      quizzes = await this.getWrongQuizzesForUser(
+        userId,
+        data.knowledge_point_ids || [],
+        data.question_count,
+        data.quiz_types
+      );
+    } else if (data.question_type === 'new-only') {
+      // Get only questions the user hasn't attempted
+      quizzes = await this.getNewQuizzesForUser(
+        userId,
+        data.knowledge_point_ids || [],
+        data.question_count,
+        data.quiz_types
+      );
+    } else {
+      // Default: Get random quizzes (may include both new and wrong)
+      quizzes = await this.quizService.getRandomQuizzesByKnowledgePoints(
+        data.knowledge_point_ids || [],
+        data.question_count,
+        data.quiz_types
+      );
+    }
     
     // If no quizzes found, throw error
     if (quizzes.length === 0) {
@@ -246,6 +267,124 @@ export class PracticeService {
       average_score: parseFloat(basicStats.average_score || 0),
       recent_sessions: recentSessions
     };
+  }
+
+  /**
+   * Get quizzes that the user previously answered incorrectly
+   */
+  private async getWrongQuizzesForUser(
+    userId: string,
+    knowledgePointIds: string[],
+    questionCount: number,
+    quizTypes?: string[]
+  ): Promise<QuizItem[]> {
+    try {
+      // Build the query to get wrong quiz IDs
+      let query = sql.unsafe`
+        SELECT DISTINCT pa.quiz_id
+        FROM kedge_practice.practice_answers pa
+        JOIN kedge_practice.practice_sessions ps ON pa.session_id = ps.id
+        JOIN kedge_practice.quizzes q ON pa.quiz_id = q.id
+        WHERE ps.user_id = ${userId}::uuid
+          AND pa.is_correct = false
+      `;
+
+      // Add knowledge point filter if specified
+      if (knowledgePointIds.length > 0) {
+        query = sql.unsafe`
+          ${query}
+          AND q.knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'text')})
+        `;
+      }
+
+      // Add quiz type filter if specified
+      if (quizTypes && quizTypes.length > 0) {
+        query = sql.unsafe`
+          ${query}
+          AND q.type = ANY(${sql.array(quizTypes, 'text')})
+        `;
+      }
+
+      // Limit the results
+      query = sql.unsafe`
+        ${query}
+        ORDER BY RANDOM()
+        LIMIT ${questionCount}
+      `;
+
+      const result = await this.persistentService.pgPool.query(query);
+      
+      if (result.rows.length === 0) {
+        return [];
+      }
+
+      // Get the full quiz details
+      const quizIds = result.rows.map(row => row.quiz_id);
+      return await this.quizService.getQuizzesByIds(quizIds);
+    } catch (error) {
+      this.logger.error('Failed to get wrong quizzes for user', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get quizzes that the user has never attempted
+   */
+  private async getNewQuizzesForUser(
+    userId: string,
+    knowledgePointIds: string[],
+    questionCount: number,
+    quizTypes?: string[]
+  ): Promise<QuizItem[]> {
+    try {
+      // Build the query to get quiz IDs the user hasn't attempted
+      let query = sql.unsafe`
+        SELECT q.id
+        FROM kedge_practice.quizzes q
+        WHERE q.id NOT IN (
+          SELECT DISTINCT pa.quiz_id
+          FROM kedge_practice.practice_answers pa
+          JOIN kedge_practice.practice_sessions ps ON pa.session_id = ps.id
+          WHERE ps.user_id = ${userId}::uuid
+        )
+      `;
+
+      // Add knowledge point filter if specified
+      if (knowledgePointIds.length > 0) {
+        query = sql.unsafe`
+          ${query}
+          AND q.knowledge_point_id = ANY(${sql.array(knowledgePointIds, 'text')})
+        `;
+      }
+
+      // Add quiz type filter if specified
+      if (quizTypes && quizTypes.length > 0) {
+        query = sql.unsafe`
+          ${query}
+          AND q.type = ANY(${sql.array(quizTypes, 'text')})
+        `;
+      }
+
+      // Limit the results
+      query = sql.unsafe`
+        ${query}
+        ORDER BY RANDOM()
+        LIMIT ${questionCount}
+      `;
+
+      const result = await this.persistentService.pgPool.query(query);
+      
+      if (result.rows.length === 0) {
+        return [];
+      }
+
+      // Get the full quiz details
+      const quizIds = result.rows.map(row => row.id);
+      return await this.quizService.getQuizzesByIds(quizIds);
+    } catch (error) {
+      this.logger.error('Failed to get new quizzes for user', error);
+      return [];
+    }
   }
 
   private shuffleArray<T>(array: T[]): T[] {

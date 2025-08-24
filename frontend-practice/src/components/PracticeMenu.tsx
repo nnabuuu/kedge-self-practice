@@ -95,20 +95,37 @@ export default function PracticeMenu({
   // Quick practice handler - 5-10 min practice with last knowledge points
   const handleQuickPractice = async () => {
     try {
-      // Call backend API to create quick practice session
-      const response = await api.practice.createQuickPracticeSession(8);
+      // Get all knowledge points for the subject
+      const kpResponse = await api.knowledgePoints.getBySubject(subject?.id || 'history');
+      const knowledgePointIds = kpResponse.success && kpResponse.data 
+        ? kpResponse.data.map(kp => kp.id)
+        : ['kp_1']; // Fallback to at least one knowledge point
       
-      if (response.success && response.data?.session_id) {
+      // Create a quick practice session with all quiz types
+      const response = await api.practice.createSession({
+        subject_id: subject?.id,
+        knowledge_point_ids: knowledgePointIds,
+        question_count: 8,
+        time_limit_minutes: 10,
+        strategy: 'random',
+        shuffle_questions: true,
+        quiz_types: ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective', 'other'],
+        question_type: 'with-wrong' // Include both new and wrong questions
+      });
+      
+      if (response.success && response.data) {
+        const { session, quizzes } = response.data;
+        
+        if (quizzes.length === 0) {
+          alert('暂无题目可用。请先添加题目后再使用快速练习功能。');
+          return;
+        }
+        
         // Navigate to practice with the created session
-        onQuickPracticeSession?.(response.data.session_id);
+        onQuickPracticeSession?.(session.id);
       } else {
         // Fallback error handling
-        if (response.error?.includes('No previous practice session')) {
-          alert('暂无练习记录。请先完成一次练习后再使用快速练习功能。');
-          onStartPractice();
-        } else {
-          alert(response.error || '创建快速练习失败，请重试。');
-        }
+        alert(response.error || '创建快速练习失败，请重试。');
       }
     } catch (error) {
       console.error('Failed to create quick practice session:', error);
@@ -119,19 +136,36 @@ export default function PracticeMenu({
   // Weak points practice handler
   const handleWeakPointsPractice = async () => {
     try {
-      // Call backend API to create weak points practice session
-      const response = await api.practice.createWeakPointsSession(20);
+      // Get all knowledge points for the subject
+      const kpResponse = await api.knowledgePoints.getBySubject(subject?.id || 'history');
+      const knowledgePointIds = kpResponse.success && kpResponse.data 
+        ? kpResponse.data.map(kp => kp.id)
+        : ['kp_1']; // Fallback to at least one knowledge point
       
-      if (response.success && response.data?.session_id) {
+      // Create a weak points practice session with all quiz types
+      const response = await api.practice.createSession({
+        subject_id: subject?.id,
+        knowledge_point_ids: knowledgePointIds,
+        question_count: 20,
+        strategy: 'weakness',
+        shuffle_questions: true,
+        quiz_types: ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective', 'other'],
+        question_type: 'with-wrong' // Focus on wrong questions but include new ones too
+      });
+      
+      if (response.success && response.data) {
+        const { session, quizzes } = response.data;
+        
+        if (quizzes.length === 0) {
+          alert('暂无薄弱知识点题目。请先完成几次练习后再使用此功能。');
+          return;
+        }
+        
         // Navigate to practice with the created session
-        onWeakPointsSession?.(response.data.session_id);
+        onWeakPointsSession?.(session.id);
       } else {
         // Fallback error handling
-        if (response.error?.includes('No weak knowledge points')) {
-          alert('暂无薄弱知识点。请先完成几次练习后再使用此功能。');
-        } else {
-          alert(response.error || '创建薄弱知识点练习失败，请重试。');
-        }
+        alert(response.error || '创建薄弱知识点练习失败，请重试。');
       }
     } catch (error) {
       console.error('Failed to create weak points session:', error);

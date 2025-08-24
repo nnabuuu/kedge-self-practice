@@ -451,8 +451,22 @@ function App() {
         return;
       }
       
-      // Create a wrong questions practice session using the backend API
-      const response = await api.practice.createWrongQuestionsSession(undefined, 5);
+      // Get all knowledge points for the subject to include in the session
+      const kpResponse = await api.knowledgePoints.getBySubject(selectedSubject?.id || 'history');
+      const knowledgePointIds = kpResponse.success && kpResponse.data 
+        ? kpResponse.data.map(kp => kp.id)
+        : ['kp_1']; // Fallback to at least one knowledge point
+      
+      // Create a wrong questions practice session using the backend API with question_type filter
+      const response = await api.practice.createSession({
+        subject_id: selectedSubject?.id,
+        knowledge_point_ids: knowledgePointIds,
+        question_count: 20,
+        strategy: 'review',
+        shuffle_questions: false,
+        quiz_types: ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective', 'other'],
+        question_type: 'wrong-only' // This will filter to only wrong questions
+      });
       
       if (!response.success && response.error?.includes('Authentication required')) {
         alert('请先登录后再使用错题练习功能。');
@@ -462,6 +476,11 @@ function App() {
       
       if (response.success && response.data) {
         const { session, quizzes } = response.data;
+        
+        if (quizzes.length === 0) {
+          alert('暂无错题记录。请先完成几次练习后再使用此功能。');
+          return;
+        }
         
         // Set the current session with the wrong questions
         setCurrentSession({
@@ -487,7 +506,7 @@ function App() {
         navigateToScreen('quiz-practice');
       } else {
         // If no wrong questions found or error occurred
-        alert(response.data?.message || response.error || '暂无错题记录。请先完成几次练习后再使用此功能。');
+        alert(response.error || '暂无错题记录。请先完成几次练习后再使用此功能。');
       }
     } catch (error) {
       console.error('Failed to create wrong questions session:', error);

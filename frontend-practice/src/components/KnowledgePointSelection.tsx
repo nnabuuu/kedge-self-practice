@@ -470,21 +470,27 @@ export default function KnowledgePointSelection({
                 </button>
                 
                 <button
-                  onClick={() => setQuizConfig({
-                    questionType: 'wrong-only',
-                    questionCount: 'unlimited',
-                    shuffleQuestions: true,
-                    showExplanation: true
-                  })}
+                  onClick={() => {
+                    // For now, change to mixed mode since wrong-only filtering isn't implemented
+                    setQuizConfig({
+                      questionType: 'with-wrong',
+                      questionCount: 20,
+                      shuffleQuestions: true,
+                      showExplanation: true
+                    });
+                    // Show a message that this will include all questions
+                    alert('错题复习功能正在开发中。当前将显示所有题目，未来版本将支持只显示错题。');
+                  }}
                   className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                    quizConfig.questionType === 'wrong-only'
+                    false // Never highlight since it's not fully implemented
                       ? 'bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg scale-105'
                       : 'bg-white/70 text-gray-700 hover:bg-white hover:shadow-md border border-gray-200'
                   }`}
+                  title="错题复习功能即将推出"
                 >
                   <span className="mr-2">🎯</span>
                   错题复习
-                  <span className="ml-2 text-sm opacity-80">仅错题</span>
+                  <span className="ml-2 text-sm opacity-80">开发中</span>
                 </button>
               </div>
             </div>

@@ -33,7 +33,7 @@ export class QuizRepository {
             ${sql.json(item.tags ?? [])},
             ${item.knowledge_point_id ?? null}
           )
-          RETURNING id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id
+          RETURNING id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id, NULL as "knowledgePoint"
         `,
       );
       return result.rows[0];
@@ -50,7 +50,8 @@ export class QuizRepository {
         sql.type(QuizItemSchema)`
           SELECT id, type, question, options, answer, 
                  original_paragraph as "originalParagraph", 
-                 images, tags, knowledge_point_id
+                 images, tags, knowledge_point_id,
+                 NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           WHERE id = ${id}
         `,
@@ -70,7 +71,8 @@ export class QuizRepository {
         sql.type(QuizItemSchema)`
           SELECT id, type, question, options, answer, 
                  original_paragraph as "originalParagraph", 
-                 images, tags, knowledge_point_id
+                 images, tags, knowledge_point_id,
+                 NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           ORDER BY id DESC
         `,
@@ -132,7 +134,8 @@ export class QuizRepository {
           WHERE id = ${id}
           RETURNING id, type, question, options, answer, 
                     original_paragraph as "originalParagraph", 
-                    images, tags, knowledge_point_id
+                    images, tags, knowledge_point_id,
+                    NULL as "knowledgePoint"
         `,
       );
 
@@ -154,7 +157,8 @@ export class QuizRepository {
         sql.type(QuizItemSchema)`
           SELECT id, type, question, options, answer, 
                  original_paragraph as "originalParagraph", 
-                 images, tags, knowledge_point_id
+                 images, tags, knowledge_point_id,
+                 NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           WHERE tags ?| ${sql.array(tags, 'text')}
           ORDER BY id DESC
@@ -221,7 +225,8 @@ export class QuizRepository {
           sql.type(QuizItemSchema)`
             SELECT id, type, question, options, answer, 
                    original_paragraph as "originalParagraph", 
-                   images, tags, knowledge_point_id
+                   images, tags, knowledge_point_id,
+                   NULL as "knowledgePoint"
             FROM kedge_practice.quizzes
             WHERE ${sql.join(whereConditions, sql.fragment` AND `)}
             ORDER BY RANDOM()
@@ -235,7 +240,8 @@ export class QuizRepository {
             sql.type(QuizItemSchema)`
               SELECT id, type, question, options, answer, 
                      original_paragraph as "originalParagraph", 
-                     images, tags, knowledge_point_id
+                     images, tags, knowledge_point_id,
+                     NULL as "knowledgePoint"
               FROM kedge_practice.quizzes
               WHERE type = ANY(${sql.array(quizTypes, 'text')})
               ORDER BY RANDOM()
@@ -247,7 +253,8 @@ export class QuizRepository {
             sql.type(QuizItemSchema)`
               SELECT id, type, question, options, answer, 
                      original_paragraph as "originalParagraph", 
-                     images, tags, knowledge_point_id
+                     images, tags, knowledge_point_id,
+                     NULL as "knowledgePoint"
               FROM kedge_practice.quizzes
               ORDER BY RANDOM()
               LIMIT ${limit}
@@ -277,7 +284,8 @@ export class QuizRepository {
         sql.type(QuizItemSchema)`
           SELECT id, type, question, options, answer, 
                  original_paragraph as "originalParagraph", 
-                 images, tags, knowledge_point_id
+                 images, tags, knowledge_point_id,
+                 NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           WHERE id = ANY(${sql.array(ids, 'uuid')})
         `,
