@@ -116,9 +116,15 @@ export default function UserManagement() {
         setFormData({ email: '', name: '', password: '', role: 'student' });
         fetchUsers();
       } else {
-        showMessage('error', response.error || '创建用户失败');
+        // Check for specific error messages
+        if (response.error?.includes('already exists')) {
+          showMessage('error', '该账号已存在，请使用其他账号');
+        } else {
+          showMessage('error', response.error || '创建用户失败');
+        }
       }
     } catch (error) {
+      console.error('Error creating user:', error);
       showMessage('error', '创建用户失败');
     }
     setIsLoading(false);
@@ -225,6 +231,7 @@ export default function UserManagement() {
     setIsLoading(true);
     let successCount = 0;
     let failCount = 0;
+    const failedUsers: string[] = [];
 
     for (const user of bulkUsers) {
       try {
@@ -233,16 +240,26 @@ export default function UserManagement() {
           successCount++;
         } else {
           failCount++;
+          if (response.error?.includes('already exists')) {
+            failedUsers.push(`${user.email} (已存在)`);
+          } else {
+            failedUsers.push(user.email);
+          }
         }
       } catch (error) {
         failCount++;
+        failedUsers.push(user.email);
       }
     }
 
     setIsLoading(false);
+    let message = `导入完成：成功 ${successCount} 个，失败 ${failCount} 个`;
+    if (failedUsers.length > 0) {
+      message += `\n失败用户: ${failedUsers.slice(0, 3).join(', ')}${failedUsers.length > 3 ? '...' : ''}`;
+    }
     showMessage(
       failCount === 0 ? 'success' : 'error',
-      `导入完成：成功 ${successCount} 个，失败 ${failCount} 个`
+      message
     );
 
     if (successCount > 0) {

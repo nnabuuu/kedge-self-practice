@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { z } from 'zod';
-import { createHash, randomBytes } from 'crypto';
+import { pbkdf2Sync, randomBytes } from 'crypto';
 import { JwtAuthGuard, AdminGuard } from '@kedge/auth';
 import { PersistentService } from '@kedge/persistent';
 import { sql } from 'slonik';
@@ -43,11 +43,10 @@ export class AdminController {
     const digest = 'sha512';
     
     // Use Node.js crypto pbkdf2Sync for proper PBKDF2 hashing
-    const crypto = require('crypto');
-    const hash = crypto.pbkdf2Sync(password, salt, iterations, keyLength, digest);
+    const hashBuffer = pbkdf2Sync(password, salt, iterations, keyLength, digest);
     
     // Return plain hex string (no prefix) to match auth.service.ts
-    return hash.toString('hex');
+    return hashBuffer.toString('hex');
   }
 
   /**

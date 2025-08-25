@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   NotFoundException,
+  ConflictException,
+  BadRequestException,
   Param,
   Post,
   Put,
@@ -63,21 +65,33 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() body: { email: string; password: string; name?: string; role?: UserRole }) {
-    const user = await this.authService.createUser(
-      body.name || null, // Optional display name
-      body.email, // account_id (email)
-      body.password,
-      body.role || 'teacher'
-    );
-    
-    // Generate token for immediate login after registration
-    const payload = { sub: user.id, role: user.role };
-    const token = await this.jwtService.signAsync(payload);
-    
-    return {
-      token,
-      user,
-    };
+    try {
+      const user = await this.authService.createUser(
+        body.name || null, // Optional display name
+        body.email, // account_id (email)
+        body.password,
+        body.role || 'teacher'
+      );
+      
+      // Generate token for immediate login after registration
+      const payload = { sub: user.id, role: user.role };
+      const token = await this.jwtService.signAsync(payload);
+      
+      return {
+        token,
+        user,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check for duplicate user error
+      if (errorMessage.includes('already exists')) {
+        throw new ConflictException('User with this email already exists');
+      }
+      
+      // Generic error
+      throw new BadRequestException(errorMessage || 'Failed to create user');
+    }
   }
 
   @Post('mock-admin-sign-in')

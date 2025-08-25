@@ -55,6 +55,12 @@ export class AuthRepository {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error creating user: ${errorMessage}`);
+      
+      // Check for unique constraint violation
+      if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
+        throw new Error('User with this account already exists');
+      }
+      
       throw new Error('Failed to create user');
     }
   }
