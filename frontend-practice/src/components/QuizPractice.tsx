@@ -404,6 +404,31 @@ export default function QuizPractice({
     }
   }, [currentQuestionIndex, questions]);
 
+  // Handle Enter key to navigate to next question when result is shown
+  useEffect(() => {
+    if (!showResult || isEvaluating) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Only handle Enter key when result is shown and not evaluating
+      if (e.key === 'Enter') {
+        // Check if we're in an input field or textarea
+        const activeElement = document.activeElement;
+        const isInInput = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+        
+        // Only trigger if not in an input field
+        if (!isInInput) {
+          e.preventDefault();
+          handleNextQuestion();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [showResult, isEvaluating, currentQuestionIndex, questions.length]);
+
   const currentQuestion = questions[currentQuestionIndex];
   console.log('Current question data:', {
     currentQuestionIndex,
