@@ -1,17 +1,14 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { KnowledgePoint } from '@kedge/models';
-import * as XLSX from 'xlsx';
-import * as path from 'path';
-import * as fs from 'fs';
+import { PersistentService } from '@kedge/persistent';
+import { sql } from 'slonik';
 
 @Injectable()
 export class KnowledgePointStorage implements OnModuleInit {
   private readonly logger = new Logger(KnowledgePointStorage.name);
   private knowledgePoints: KnowledgePoint[] = [];
-  private readonly dataFilePath = path.join(
-    __dirname,
-    '../../../../../data/knowledge-points-history.xlsx',
-  );
+
+  constructor(private readonly persistentService: PersistentService) {}
 
   async onModuleInit() {
     await this.loadKnowledgePoints();
@@ -19,67 +16,31 @@ export class KnowledgePointStorage implements OnModuleInit {
 
   async loadKnowledgePoints(): Promise<void> {
     try {
-      if (!fs.existsSync(this.dataFilePath)) {
-        this.logger.warn(`Knowledge point data file not found: ${this.dataFilePath}`);
-        return;
-      }
+      // Load knowledge points from database
+      const result = await this.persistentService.pgPool.query(
+        sql.unsafe`
+          SELECT 
+            id,
+            topic,
+            volume,
+            unit,
+            lesson,
+            sub
+          FROM kedge_practice.knowledge_points
+          ORDER BY id
+        `
+      );
 
-      const workbook = XLSX.readFile(this.dataFilePath);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+      this.knowledgePoints = result.rows.map(row => ({
+        id: row.id,
+        topic: row.topic,
+        volume: row.volume || '',
+        unit: row.unit || '',
+        lesson: row.lesson || '',
+        sub: row.sub || '',
+      }));
 
-      // Convert to JSON with default values for empty cells
-      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, string>[];
-
-      // Variables to track last non-empty values for inheritance
-      let lastVolume = '未知册';
-      let lastUnit = '未知单元';
-      let lastLesson = '未知单课';
-      let lastSub = '未知子目';
-      let idCounter = 1;
-
-      const result: KnowledgePoint[] = [];
-
-      rows.forEach((row) => {
-        // Get raw values, using the column headers from the Excel file
-        const rawVolume = row['分册']?.trim();
-        const rawUnit = row['单元名称']?.trim();
-        const rawLesson = row['单课名称']?.trim();
-        const rawSub = row['子目']?.trim();
-        let topic = row['知识点']?.trim();
-
-        // Inherit from previous row if current cell is empty
-        if (rawVolume) lastVolume = rawVolume;
-        if (rawUnit) lastUnit = rawUnit;
-        if (rawLesson) lastLesson = rawLesson;
-        if (rawSub) lastSub = rawSub;
-
-        // If topic is empty but sub exists, use sub as topic
-        if (!topic && rawSub) {
-          topic = rawSub;
-        }
-
-        // Skip rows without a topic
-        if (!topic) {
-          this.logger.debug(`Skipping row without topic`);
-          return;
-        }
-
-        const newKnowledgePoint: KnowledgePoint = {
-          id: `kp_${idCounter++}`,
-          topic,
-          volume: lastVolume,
-          unit: lastUnit,
-          lesson: lastLesson,
-          sub: lastSub,
-        };
-
-        result.push(newKnowledgePoint);
-      });
-
-      this.knowledgePoints = result;
-
-      this.logger.log(`Loaded ${this.knowledgePoints.length} knowledge points from Excel file`);
+      this.logger.log(`Loaded ${this.knowledgePoints.length} knowledge points from database`);
 
       // Log sample data for debugging
       if (this.knowledgePoints.length > 0) {
@@ -92,7 +53,7 @@ export class KnowledgePointStorage implements OnModuleInit {
         this.logger.log(`Sample units: ${Array.from(uniqueUnits).slice(0, 5).join(', ')}`);
       }
     } catch (error) {
-      this.logger.error('Failed to load knowledge points from Excel file', error);
+      this.logger.error('Failed to load knowledge points from database', error);
     }
   }
 

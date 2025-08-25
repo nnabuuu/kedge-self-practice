@@ -281,10 +281,34 @@ export class KnowledgePointController {
     try {
       const knowledgePoints = this.storage.getAllKnowledgePoints();
       
-      this.logger.log(`Retrieved ${knowledgePoints.length} knowledge points`);
+      // Get quiz counts for each knowledge point
+      const quizCounts = await this.persistentService.pgPool.query(
+        sql.unsafe`
+          SELECT 
+            knowledge_point_id,
+            COUNT(*) as quiz_count
+          FROM kedge_practice.quizzes
+          WHERE knowledge_point_id IS NOT NULL
+          GROUP BY knowledge_point_id
+        `
+      );
+      
+      // Create a map of knowledge_point_id to quiz_count
+      const quizCountMap = new Map<string, number>();
+      quizCounts.rows.forEach(row => {
+        quizCountMap.set(row.knowledge_point_id, parseInt(row.quiz_count, 10));
+      });
+      
+      // Add quiz_count to each knowledge point
+      const knowledgePointsWithCounts = knowledgePoints.map(kp => ({
+        ...kp,
+        quiz_count: quizCountMap.get(kp.id) || 0
+      }));
+      
+      this.logger.log(`Retrieved ${knowledgePoints.length} knowledge points with quiz counts`);
 
       return {
-        knowledgePoints,
+        knowledgePoints: knowledgePointsWithCounts,
         total: knowledgePoints.length,
       };
     } catch (error) {
