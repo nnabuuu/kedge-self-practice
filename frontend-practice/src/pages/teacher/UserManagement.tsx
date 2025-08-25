@@ -66,10 +66,15 @@ export default function UserManagement() {
     try {
       const response = await authService.getAllUsers();
       if (response.success && response.data) {
+        // The backend now returns { success: true, data: [...], pagination: {...} }
+        // response.data is the array of users
         setUsers(response.data);
+      } else {
+        setUsers([]);
       }
     } catch (error) {
       showMessage('error', '获取用户列表失败');
+      setUsers([]); // Set empty array on error to prevent filter issues
     }
     setIsLoading(false);
   };
@@ -236,12 +241,12 @@ export default function UserManagement() {
     }
   };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = Array.isArray(users) ? users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesRole;
-  });
+  }) : [];
 
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';

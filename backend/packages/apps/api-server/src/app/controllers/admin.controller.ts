@@ -63,54 +63,41 @@ export class AdminController {
     @Query('limit') limit?: string,
   ) {
     try {
-      // Build WHERE clause conditions
-      const conditions: any[] = [];
-      const values: any[] = [];
-      
-      // Search filter - searches in both account_id and name
-      if (search) {
-        conditions.push(`(LOWER(account_id) LIKE LOWER($${values.length + 1}) OR LOWER(name) LIKE LOWER($${values.length + 2}))`);
-        values.push(`%${search}%`, `%${search}%`);
-      }
-      
-      // Role filter
-      if (role && role !== 'all') {
-        conditions.push(`role = $${values.length + 1}`);
-        values.push(role);
-      }
-      
       // Pagination
       const pageNum = parseInt(page || '1', 10);
       const limitNum = parseInt(limit || '50', 10);
       const offset = (pageNum - 1) * limitNum;
       
-      // Build WHERE clause
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      // Build WHERE clause conditions using Slonik fragments
+      const whereClauses = [];
+      
+      // Search filter - searches in both account_id and name
+      if (search) {
+        const searchPattern = `%${search}%`;
+        whereClauses.push(sql.fragment`(LOWER(account_id) LIKE LOWER(${searchPattern}) OR LOWER(name) LIKE LOWER(${searchPattern}))`);
+      }
+      
+      // Role filter
+      if (role && role !== 'all') {
+        whereClauses.push(sql.fragment`role = ${role}`);
+      }
+      
+      // Combine WHERE clauses
+      const whereClause = whereClauses.length > 0 
+        ? sql.fragment`WHERE ${sql.join(whereClauses, sql.fragment` AND `)}`
+        : sql.fragment``;
       
       // Get total count for pagination
-      let countResult;
-      if (values.length > 0) {
-        // Build parameterized query when we have filters
-        const countQueryStr = `
-          SELECT COUNT(*) as total
-          FROM kedge_practice.users
-          ${whereClause}
-        `;
-        countResult = await this.persistentService.pgPool.query(
-          sql.unsafe([countQueryStr, ...values])
-        );
-      } else {
-        // Simple query when no filters
-        countResult = await this.persistentService.pgPool.query(sql.unsafe`
-          SELECT COUNT(*) as total
-          FROM kedge_practice.users
-        `);
-      }
+      const countResult = await this.persistentService.pgPool.query(sql.unsafe`
+        SELECT COUNT(*) as total
+        FROM kedge_practice.users
+        ${whereClause}
+      `);
       
       const totalCount = parseInt(countResult.rows[0].total, 10);
       
       // Get users with pagination
-      const usersQuery = `
+      const result = await this.persistentService.pgPool.query(sql.unsafe`
         SELECT 
           id,
           account_id as email,
@@ -128,15 +115,8 @@ export class AdminController {
         FROM kedge_practice.users
         ${whereClause}
         ORDER BY created_at DESC
-        LIMIT $${values.length + 1} OFFSET $${values.length + 2}
-      `;
-      
-      // Add limit and offset to values
-      values.push(limitNum, offset);
-      
-      const result = await this.persistentService.pgPool.query(
-        sql.unsafe([usersQuery, ...values])
-      );
+        LIMIT ${limitNum} OFFSET ${offset}
+      `);
       
       return {
         success: true,
