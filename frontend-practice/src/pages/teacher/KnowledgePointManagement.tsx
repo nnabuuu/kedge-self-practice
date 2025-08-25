@@ -324,61 +324,121 @@ export default function KnowledgePointManagement({ onBack, onNavigateToQuizBank 
                 <div className="space-y-4">
                   {Object.values(groupedKnowledgePoints).map((volumeGroup: any) => (
                     <div key={volumeGroup.volume} className="border border-gray-200 rounded-xl overflow-hidden">
-                      <button
-                        onClick={() => toggleExpanded(`volume-${volumeGroup.volume}`)}
-                        className="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors duration-300 flex items-center justify-between"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <Layers className="w-5 h-5 text-blue-600" />
-                          <span className="font-semibold text-gray-900">{volumeGroup.volume}</span>
-                          <span className="text-sm text-gray-600">
-                            ({Object.keys(volumeGroup.units).length} 个单元)
-                          </span>
-                          <span className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                            {getQuizCountForVolume(volumeGroup.volume)} 题
-                          </span>
-                        </div>
-                        {expandedItems.has(`volume-${volumeGroup.volume}`) ? (
-                          <ChevronUp className="w-5 h-5 text-gray-600" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-gray-600" />
+                      <div className="flex items-center bg-blue-50 hover:bg-blue-100 transition-colors duration-300">
+                        <button
+                          onClick={() => toggleExpanded(`volume-${volumeGroup.volume}`)}
+                          className="flex-1 px-4 py-3 flex items-center justify-between"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <Layers className="w-5 h-5 text-blue-600" />
+                            <span className="font-semibold text-gray-900">{volumeGroup.volume}</span>
+                            <span className="text-sm text-gray-600">
+                              ({Object.keys(volumeGroup.units).length} 个单元)
+                            </span>
+                            <span className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                              {getQuizCountForVolume(volumeGroup.volume)} 题
+                            </span>
+                          </div>
+                          {expandedItems.has(`volume-${volumeGroup.volume}`) ? (
+                            <ChevronUp className="w-5 h-5 text-gray-600" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-gray-600" />
+                          )}
+                        </button>
+                        {getQuizCountForVolume(volumeGroup.volume) > 0 && (
+                          <button
+                            onClick={() => {
+                              if (onNavigateToQuizBank) {
+                                onNavigateToQuizBank({
+                                  volume: volumeGroup.volume,
+                                  unit: '',
+                                  lesson: '',
+                                  knowledgePointId: ''
+                                });
+                              }
+                            }}
+                            className="px-3 py-3 border-l border-blue-200 hover:bg-blue-200 transition-colors"
+                            title="查看此册别的所有题目"
+                          >
+                            <Eye className="w-4 h-4 text-blue-600" />
+                          </button>
                         )}
-                      </button>
+                      </div>
                       
                       {expandedItems.has(`volume-${volumeGroup.volume}`) && (
                         <div className="p-4 space-y-3">
                           {Object.values(volumeGroup.units).map((unitGroup: any) => (
                             <div key={unitGroup.unit} className="border border-gray-100 rounded-lg overflow-hidden">
-                              <button
-                                onClick={() => toggleExpanded(`unit-${volumeGroup.volume}-${unitGroup.unit}`)}
-                                className="w-full px-4 py-2 bg-green-50 hover:bg-green-100 transition-colors duration-300 flex items-center justify-between"
-                              >
-                                <div className="flex items-center space-x-3">
-                                  <Book className="w-4 h-4 text-green-600" />
-                                  <span className="font-medium text-gray-800">{unitGroup.unit}</span>
-                                  <span className="text-sm text-gray-600">
-                                    ({Object.keys(unitGroup.lessons).length} 个课程)
-                                  </span>
-                                  <span className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
-                                    {getQuizCountForUnit(volumeGroup.volume, unitGroup.unit)} 题
-                                  </span>
-                                </div>
-                                {expandedItems.has(`unit-${volumeGroup.volume}-${unitGroup.unit}`) ? (
-                                  <ChevronUp className="w-4 h-4 text-gray-600" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4 text-gray-600" />
+                              <div className="flex items-center bg-green-50 hover:bg-green-100 transition-colors duration-300">
+                                <button
+                                  onClick={() => toggleExpanded(`unit-${volumeGroup.volume}-${unitGroup.unit}`)}
+                                  className="flex-1 px-4 py-2 flex items-center justify-between"
+                                >
+                                  <div className="flex items-center space-x-3">
+                                    <Book className="w-4 h-4 text-green-600" />
+                                    <span className="font-medium text-gray-800">{unitGroup.unit}</span>
+                                    <span className="text-sm text-gray-600">
+                                      ({Object.keys(unitGroup.lessons).length} 个课程)
+                                    </span>
+                                    <span className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
+                                      {getQuizCountForUnit(volumeGroup.volume, unitGroup.unit)} 题
+                                    </span>
+                                  </div>
+                                  {expandedItems.has(`unit-${volumeGroup.volume}-${unitGroup.unit}`) ? (
+                                    <ChevronUp className="w-4 h-4 text-gray-600" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-gray-600" />
+                                  )}
+                                </button>
+                                {getQuizCountForUnit(volumeGroup.volume, unitGroup.unit) > 0 && (
+                                  <button
+                                    onClick={() => {
+                                      if (onNavigateToQuizBank) {
+                                        onNavigateToQuizBank({
+                                          volume: volumeGroup.volume,
+                                          unit: unitGroup.unit,
+                                          lesson: '',
+                                          knowledgePointId: ''
+                                        });
+                                      }
+                                    }}
+                                    className="px-3 py-2 border-l border-green-200 hover:bg-green-200 transition-colors"
+                                    title="查看此单元的所有题目"
+                                  >
+                                    <Eye className="w-4 h-4 text-green-600" />
+                                  </button>
                                 )}
-                              </button>
+                              </div>
                               
                               {expandedItems.has(`unit-${volumeGroup.volume}-${unitGroup.unit}`) && (
                                 <div className="p-3 space-y-2">
                                   {Object.values(unitGroup.lessons).map((lessonGroup: any) => (
                                     <div key={lessonGroup.lesson} className="space-y-2">
                                       <div className="flex items-center justify-between px-2">
-                                        <div className="font-medium text-gray-700">{lessonGroup.lesson}</div>
-                                        <span className="text-sm text-purple-600 bg-purple-50 px-2 py-1 rounded">
-                                          {getQuizCountForLesson(volumeGroup.volume, unitGroup.unit, lessonGroup.lesson)} 题
-                                        </span>
+                                        <div className="flex items-center space-x-2 flex-1">
+                                          <span className="font-medium text-gray-700">{lessonGroup.lesson}</span>
+                                          <span className="text-sm text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                                            {getQuizCountForLesson(volumeGroup.volume, unitGroup.unit, lessonGroup.lesson)} 题
+                                          </span>
+                                        </div>
+                                        {getQuizCountForLesson(volumeGroup.volume, unitGroup.unit, lessonGroup.lesson) > 0 && (
+                                          <button
+                                            onClick={() => {
+                                              if (onNavigateToQuizBank) {
+                                                onNavigateToQuizBank({
+                                                  volume: volumeGroup.volume,
+                                                  unit: unitGroup.unit,
+                                                  lesson: lessonGroup.lesson,
+                                                  knowledgePointId: ''
+                                                });
+                                              }
+                                            }}
+                                            className="p-1 text-purple-400 hover:text-purple-600 transition-colors"
+                                            title="查看此课程的所有题目"
+                                          >
+                                            <Eye className="w-4 h-4" />
+                                          </button>
+                                        )}
                                       </div>
                                       <div className="space-y-1">
                                         {lessonGroup.points.map((point: KnowledgePoint) => (

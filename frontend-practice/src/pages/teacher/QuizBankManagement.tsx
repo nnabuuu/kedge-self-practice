@@ -125,7 +125,19 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       if (searchTerm) params.append('search', searchTerm);
       if (selectedType !== 'all') params.append('type', selectedType);
       if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
-      if (selectedKnowledgePointId) params.append('knowledge_point_id', selectedKnowledgePointId);
+      
+      // If specific knowledge point is selected, use it
+      if (selectedKnowledgePointId) {
+        params.append('knowledge_point_id', selectedKnowledgePointId);
+      } else if (selectedVolume || selectedUnit || selectedLesson) {
+        // Otherwise, get all knowledge points matching the hierarchy filters
+        const filteredKps = getFilteredKnowledgePoints();
+        if (filteredKps.length > 0) {
+          const kpIds = filteredKps.map(kp => kp.id).join(',');
+          params.append('knowledge_point_id', kpIds);
+        }
+      }
+      
       params.append('page', currentPage.toString());
       params.append('limit', itemsPerPage.toString());
       
