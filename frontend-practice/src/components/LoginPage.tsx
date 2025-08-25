@@ -14,11 +14,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [registerData, setRegisterData] = useState({
-    name: '',
-    role: 'student' as 'student' | 'teacher'
-  });
 
   // Demo accounts for testing (fallback when backend is not available)
   const demoAccounts = [
@@ -42,63 +37,43 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setError('');
 
     try {
-      if (isRegisterMode) {
-        // Handle registration
-        const response = await authService.register({
-          email: formData.email,
-          password: formData.password,
-          name: registerData.name,
-          role: registerData.role
-        });
+      // Handle login
+      const response = await authService.login({
+        email: formData.email,
+        password: formData.password
+      });
 
-        if (response.success && response.data) {
-          const userData = {
-            ...response.data.user,
-            subjects: response.data.user.role === 'teacher' ? ['history', 'biology'] : undefined
-          };
-          onLogin(response.data.user.role as 'student' | 'teacher', userData);
-        } else {
-          setError(response.error || '注册失败');
-        }
+      if (response.success && response.data) {
+        const userRole = response.data.user.role as 'student' | 'teacher';
+        const userData = {
+          ...response.data.user,
+          subjects: userRole === 'teacher' ? ['history', 'biology'] : undefined
+        };
+        onLogin(userRole, userData);
       } else {
-        // Handle login
-        const response = await authService.login({
-          email: formData.email,
-          password: formData.password
-        });
-
-        if (response.success && response.data) {
-          const userRole = response.data.user.role as 'student' | 'teacher';
-          const userData = {
-            ...response.data.user,
-            subjects: userRole === 'teacher' ? ['history', 'biology'] : undefined
-          };
-          onLogin(userRole, userData);
+        // Fallback to demo authentication if backend login fails
+        const demoAccount = demoAccounts.find(account => 
+          account.email === formData.email && account.password === formData.password
+        );
+        
+        if (demoAccount) {
+          const userData = demoAccount.role === 'student' 
+            ? {
+                id: 'student-001',
+                name: demoAccount.name,
+                email: formData.email,
+                role: 'student'
+              }
+            : {
+                id: 'teacher-001',
+                name: demoAccount.name,
+                email: formData.email,
+                subjects: ['history', 'biology'],
+                role: 'teacher'
+              };
+          onLogin(demoAccount.role, userData);
         } else {
-          // Fallback to demo authentication if backend login fails
-          const demoAccount = demoAccounts.find(account => 
-            account.email === formData.email && account.password === formData.password
-          );
-          
-          if (demoAccount) {
-            const userData = demoAccount.role === 'student' 
-              ? {
-                  id: 'student-001',
-                  name: demoAccount.name,
-                  email: formData.email,
-                  role: 'student'
-                }
-              : {
-                  id: 'teacher-001',
-                  name: demoAccount.name,
-                  email: formData.email,
-                  subjects: ['history', 'biology'],
-                  role: 'teacher'
-                };
-            onLogin(demoAccount.role, userData);
-          } else {
-            setError(response.error || '登录失败：用户名或密码错误');
-          }
+          setError(response.error || '登录失败：用户名或密码错误');
         }
       }
     } catch (err) {
@@ -108,18 +83,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(false);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    if (e.target.name === 'name' || e.target.name === 'role') {
-      setRegisterData(prev => ({
-        ...prev,
-        [e.target.name]: e.target.value
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [e.target.name]: e.target.value
-      }));
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
   };
 
   const fillDemoAccount = (accountType: 'student' | 'teacher') => {
@@ -129,12 +97,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         email: demo.email,
         password: demo.password
       });
-      if (isRegisterMode) {
-        setRegisterData({
-          name: demo.name,
-          role: demo.role
-        });
-      }
     }
   };
 
@@ -164,34 +126,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
           {/* Login Form */}
           <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
-            {/* Login/Register Mode Toggle */}
-            <div className="mb-6 text-center">
-              <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
-                <button
-                  type="button"
-                  onClick={() => setIsRegisterMode(false)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    !isRegisterMode
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  登录
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsRegisterMode(true)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    isRegisterMode
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  注册
-                </button>
-              </div>
-            </div>
-
             {/* Error Display */}
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -200,46 +134,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Name Input (Registration only) */}
-              {isRegisterMode && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 tracking-wide">
-                    姓名
-                  </label>
-                  <div className="relative">
-                    <User className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                    <input
-                      type="text"
-                      name="name"
-                      value={registerData.name}
-                      onChange={handleInputChange}
-                      placeholder="请输入真实姓名"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/70 backdrop-blur-sm"
-                      required={isRegisterMode}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Role Selection (Registration only) */}
-              {isRegisterMode && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 tracking-wide">
-                    身份
-                  </label>
-                  <select
-                    name="role"
-                    value={registerData.role}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/70 backdrop-blur-sm"
-                    required={isRegisterMode}
-                  >
-                    <option value="student">学生</option>
-                    <option value="teacher">教师</option>
-                  </select>
-                </div>
-              )}
-
               {/* Email Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 tracking-wide">
@@ -286,32 +180,30 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </div>
 
               {/* Demo Account Helper */}
-              {!isRegisterMode && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-blue-900 mb-2">演示账户</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => fillDemoAccount('student')}
-                        className="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg hover:bg-blue-200 transition-colors duration-300"
-                      >
-                        学生账户
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => fillDemoAccount('teacher')}
-                        className="px-3 py-2 bg-indigo-100 text-indigo-800 text-sm rounded-lg hover:bg-indigo-200 transition-colors duration-300"
-                      >
-                        教师账户
-                      </button>
-                    </div>
-                    <p className="text-xs text-blue-700">
-                      点击按钮自动填入对应的演示账户信息
-                    </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="space-y-3">
+                  <h4 className="font-medium text-blue-900 mb-2">演示账户</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fillDemoAccount('student')}
+                      className="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg hover:bg-blue-200 transition-colors duration-300"
+                    >
+                      学生账户
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fillDemoAccount('teacher')}
+                      className="px-3 py-2 bg-indigo-100 text-indigo-800 text-sm rounded-lg hover:bg-indigo-200 transition-colors duration-300"
+                    >
+                      教师账户
+                    </button>
                   </div>
+                  <p className="text-xs text-blue-700">
+                    点击按钮自动填入对应的演示账户信息
+                  </p>
                 </div>
-              )}
+              </div>
 
               {/* Login Button */}
               <button
@@ -326,10 +218,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2"></div>
-                    {isRegisterMode ? '注册中...' : '登录中...'}
+                    登录中...
                   </div>
                 ) : (
-                  isRegisterMode ? '注册账户' : '登录系统'
+                  '登录系统'
                 )}
               </button>
             </form>

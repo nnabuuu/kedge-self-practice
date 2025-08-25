@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Lock, Mail, AlertCircle } from 'lucide-react';
-import { login, register } from '../services/api';
+import { login } from '../services/api';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -9,11 +9,8 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
-  const [name, setName] = useState(''); // Optional display name
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,18 +20,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     e.preventDefault();
     setError('');
     
-    if (mode === 'register' && password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    
     setLoading(true);
     
     try {
-      const result = mode === 'login' 
-        ? await login(email, password)
-        : await register(email, password, name || undefined, 'teacher');
-      
+      const result = await login(email, password);
       onSuccess(result);
       onClose();
     } catch (err) {
@@ -49,7 +38,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">
-            {mode === 'login' ? '登录' : '注册'}
+            登录
           </h2>
           <button
             onClick={onClose}
@@ -84,23 +73,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </div>
           </div>
           
-          {mode === 'register' && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                姓名 (可选)
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="张老师"
-                />
-              </div>
-            </div>
-          )}
           
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -119,45 +91,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </div>
           </div>
           
-          {mode === 'register' && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                确认密码
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-            </div>
-          )}
           
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? '处理中...' : (mode === 'login' ? '登录' : '注册')}
+            {loading ? '处理中...' : '登录'}
           </button>
         </form>
         
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => {
-              setMode(mode === 'login' ? 'register' : 'login');
-              setError('');
-            }}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            {mode === 'login' ? '还没有账号？立即注册' : '已有账号？立即登录'}
-          </button>
-        </div>
         
         {/* Demo credentials hint */}
         <div className="mt-4 p-3 bg-gray-50 rounded-md">
