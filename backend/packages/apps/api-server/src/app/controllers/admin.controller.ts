@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { z } from 'zod';
 import { createHash, randomBytes } from 'crypto';
@@ -51,14 +51,66 @@ export class AdminController {
   }
 
   /**
-   * Get all users
+   * Get all users with optional search and filtering
    */
   @Get('users')
-  @ApiOperation({ summary: 'Get all users (Admin only)' })
-  @ApiResponse({ status: 200, description: 'List of all users' })
-  async getAllUsers() {
+  @ApiOperation({ summary: 'Get all users with optional filtering (Admin only)' })
+  @ApiResponse({ status: 200, description: 'List of users matching the criteria' })
+  async getAllUsers(
+    @Query('search') search?: string,
+    @Query('role') role?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     try {
-      const result = await this.persistentService.pgPool.query(sql.unsafe`
+      // Build WHERE clause conditions
+      const conditions: any[] = [];
+      const values: any[] = [];
+      
+      // Search filter - searches in both account_id and name
+      if (search) {
+        conditions.push(`(LOWER(account_id) LIKE LOWER($${values.length + 1}) OR LOWER(name) LIKE LOWER($${values.length + 2}))`);
+        values.push(`%${search}%`, `%${search}%`);
+      }
+      
+      // Role filter
+      if (role && role !== 'all') {
+        conditions.push(`role = $${values.length + 1}`);
+        values.push(role);
+      }
+      
+      // Pagination
+      const pageNum = parseInt(page || '1', 10);
+      const limitNum = parseInt(limit || '50', 10);
+      const offset = (pageNum - 1) * limitNum;
+      
+      // Build WHERE clause
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      
+      // Get total count for pagination
+      let countResult;
+      if (values.length > 0) {
+        // Build parameterized query when we have filters
+        const countQueryStr = `
+          SELECT COUNT(*) as total
+          FROM kedge_practice.users
+          ${whereClause}
+        `;
+        countResult = await this.persistentService.pgPool.query(
+          sql.unsafe([countQueryStr, ...values])
+        );
+      } else {
+        // Simple query when no filters
+        countResult = await this.persistentService.pgPool.query(sql.unsafe`
+          SELECT COUNT(*) as total
+          FROM kedge_practice.users
+        `);
+      }
+      
+      const totalCount = parseInt(countResult.rows[0].total, 10);
+      
+      // Get users with pagination
+      const usersQuery = `
         SELECT 
           id,
           account_id as email,
@@ -74,8 +126,17 @@ export class AdminController {
             ELSE NULL
           END as last_login
         FROM kedge_practice.users
+        ${whereClause}
         ORDER BY created_at DESC
-      `);
+        LIMIT $${values.length + 1} OFFSET $${values.length + 2}
+      `;
+      
+      // Add limit and offset to values
+      values.push(limitNum, offset);
+      
+      const result = await this.persistentService.pgPool.query(
+        sql.unsafe([usersQuery, ...values])
+      );
       
       return {
         success: true,
@@ -88,7 +149,13 @@ export class AdminController {
           createdAt: user.created_at,
           updatedAt: user.updated_at,
           lastLogin: user.last_login
-        }))
+        })),
+        pagination: {
+          total: totalCount,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(totalCount / limitNum)
+        }
       };
     } catch (error) {
       console.error('Error fetching users:', error);

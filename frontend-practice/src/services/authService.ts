@@ -314,8 +314,29 @@ class AuthService {
   }
 
   // Admin user management methods
-  async getAllUsers(): Promise<ApiResponse<any[]>> {
-    return this.makeRequest<any>('/admin/users', {
+  async getAllUsers(params?: { 
+    search?: string; 
+    role?: string; 
+    page?: number; 
+    limit?: number; 
+  }): Promise<ApiResponse<any[]> & { 
+    pagination?: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.role) queryParams.append('role', params.role);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    
+    const queryString = queryParams.toString();
+    const url = '/admin/users' + (queryString ? `?${queryString}` : '');
+    
+    return this.makeRequest<any>(url, {
       method: 'GET',
       headers: this.getAuthHeaders()
     });
