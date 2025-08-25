@@ -6,8 +6,9 @@ export class TeacherGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const user = request.user as { role?: UserRole } | undefined;
-    if (user?.role !== 'teacher') {
-      throw new ForbiddenException('Only teachers can access this resource');
+    // Allow both teachers and admins to access teacher resources
+    if (user?.role !== 'teacher' && user?.role !== 'admin') {
+      throw new ForbiddenException('Only teachers and admins can access this resource');
     }
     return true;
   }
