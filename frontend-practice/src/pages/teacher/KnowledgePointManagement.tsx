@@ -15,6 +15,12 @@ interface KnowledgePoint {
 
 interface KnowledgePointManagementProps {
   onBack?: () => void;
+  onNavigateToQuizBank?: (filters: {
+    volume: string;
+    unit: string;
+    lesson: string;
+    knowledgePointId: string;
+  }) => void;
 }
 
 // Helper function to ensure API URL has /v1 suffix
@@ -23,7 +29,7 @@ const getApiUrl = () => {
   return baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`;
 };
 
-export default function KnowledgePointManagement({ onBack }: KnowledgePointManagementProps) {
+export default function KnowledgePointManagement({ onBack, onNavigateToQuizBank }: KnowledgePointManagementProps) {
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -387,7 +393,20 @@ export default function KnowledgePointManagement({ onBack }: KnowledgePointManag
                                                 {getQuizCountForKnowledgePoint(point.id)} 题
                                               </span>
                                             </div>
-                                            <button className="p-1 text-gray-400 hover:text-blue-600 transition-colors duration-300">
+                                            <button 
+                                              onClick={() => {
+                                                if (onNavigateToQuizBank) {
+                                                  onNavigateToQuizBank({
+                                                    volume: point.volume,
+                                                    unit: point.unit,
+                                                    lesson: point.lesson,
+                                                    knowledgePointId: point.id
+                                                  });
+                                                }
+                                              }}
+                                              className="p-1 text-gray-400 hover:text-blue-600 transition-colors duration-300"
+                                              title="查看相关题目"
+                                            >
                                               <Eye className="w-4 h-4" />
                                             </button>
                                           </div>

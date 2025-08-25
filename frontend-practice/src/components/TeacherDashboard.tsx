@@ -28,6 +28,12 @@ interface TeacherStats {
 
 export default function TeacherDashboard({ teacher, selectedSubject: propsSelectedSubject, onSelectSubject, onBack }: TeacherDashboardProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  const [quizBankFilters, setQuizBankFilters] = useState<{
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+    knowledgePointId?: string;
+  } | null>(null);
   
   // Use API hooks to fetch data
   const { data: subjects = [], loading: subjectsLoading } = useSubjects();
@@ -282,7 +288,13 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as ActiveTab)}
+                    onClick={() => {
+                      setActiveTab(tab.id as ActiveTab);
+                      // Clear quiz bank filters when switching tabs normally
+                      if (tab.id !== 'questions') {
+                        setQuizBankFilters(null);
+                      }
+                    }}
                     className={`flex items-center px-6 py-4 font-medium transition-all duration-300 whitespace-nowrap ${
                       activeTab === tab.id
                         ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
@@ -300,8 +312,19 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
           {/* Content Area */}
           <div>
             {activeTab === 'overview' && renderOverview()}
-            {activeTab === 'knowledge-points' && <KnowledgePointManagement />}
-            {activeTab === 'questions' && <QuizBankManagement />}
+            {activeTab === 'knowledge-points' && (
+              <KnowledgePointManagement 
+                onNavigateToQuizBank={(filters) => {
+                  setQuizBankFilters(filters);
+                  setActiveTab('questions');
+                }}
+              />
+            )}
+            {activeTab === 'questions' && (
+              <QuizBankManagement 
+                initialFilters={quizBankFilters || undefined}
+              />
+            )}
             {activeTab === 'analytics' && (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">数据分析</h3>

@@ -33,6 +33,13 @@ interface KnowledgePoint {
 
 interface QuizBankManagementProps {
   onBack?: () => void;
+  initialKnowledgePointId?: string;
+  initialFilters?: {
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+    knowledgePointId?: string;
+  };
 }
 
 // Helper function to ensure API URL has /v1 suffix
@@ -41,14 +48,15 @@ const getApiUrl = () => {
   return baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`;
 };
 
-export default function QuizBankManagement({ onBack }: QuizBankManagementProps) {
+export default function QuizBankManagement({ onBack, initialKnowledgePointId, initialFilters }: QuizBankManagementProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
   const [loadingKnowledgePoints, setLoadingKnowledgePoints] = useState(false);
-  const [selectedVolume, setSelectedVolume] = useState<string>('');
-  const [selectedUnit, setSelectedUnit] = useState<string>('');
-  const [selectedLesson, setSelectedLesson] = useState<string>('');
+  const [selectedVolume, setSelectedVolume] = useState<string>(initialFilters?.volume || '');
+  const [selectedUnit, setSelectedUnit] = useState<string>(initialFilters?.unit || '');
+  const [selectedLesson, setSelectedLesson] = useState<string>(initialFilters?.lesson || '');
+  const [selectedKnowledgePointId, setSelectedKnowledgePointId] = useState<string>(initialFilters?.knowledgePointId || initialKnowledgePointId || '');
   const [knowledgePointSearch, setKnowledgePointSearch] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -85,12 +93,12 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
     
     // For real backend data, refetch when filters change
     fetchQuizzes();
-  }, [currentPage, searchTerm, selectedType, selectedDifficulty, selectedTags]);
+  }, [currentPage, searchTerm, selectedType, selectedDifficulty, selectedTags, selectedKnowledgePointId, selectedVolume, selectedUnit, selectedLesson]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedType, selectedDifficulty, selectedTags]);
+  }, [searchTerm, selectedType, selectedDifficulty, selectedTags, selectedKnowledgePointId, selectedVolume, selectedUnit, selectedLesson]);
 
   const fetchQuizzes = async () => {
     try {
@@ -102,6 +110,7 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
       if (searchTerm) params.append('search', searchTerm);
       if (selectedType !== 'all') params.append('type', selectedType);
       if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
+      if (selectedKnowledgePointId) params.append('knowledge_point_id', selectedKnowledgePointId);
       params.append('page', currentPage.toString());
       params.append('limit', itemsPerPage.toString());
       
@@ -821,6 +830,79 @@ export default function QuizBankManagement({ onBack }: QuizBankManagementProps) 
                     ))}
                   </select>
                 </div>
+              </div>
+            </div>
+
+            {/* Knowledge Point Filters */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4">
+              {/* Volume Select */}
+              <div className="lg:col-span-3">
+                <select
+                  value={selectedVolume}
+                  onChange={(e) => {
+                    setSelectedVolume(e.target.value);
+                    setSelectedUnit('');
+                    setSelectedLesson('');
+                    setSelectedKnowledgePointId('');
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">全部册别</option>
+                  {getUniqueVolumes().map(volume => (
+                    <option key={volume} value={volume}>{volume}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Unit Select */}
+              <div className="lg:col-span-3">
+                <select
+                  value={selectedUnit}
+                  onChange={(e) => {
+                    setSelectedUnit(e.target.value);
+                    setSelectedLesson('');
+                    setSelectedKnowledgePointId('');
+                  }}
+                  disabled={!selectedVolume}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                >
+                  <option value="">全部单元</option>
+                  {selectedVolume && getUnitsForVolume(selectedVolume).map(unit => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Lesson Select */}
+              <div className="lg:col-span-3">
+                <select
+                  value={selectedLesson}
+                  onChange={(e) => {
+                    setSelectedLesson(e.target.value);
+                    setSelectedKnowledgePointId('');
+                  }}
+                  disabled={!selectedUnit}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                >
+                  <option value="">全部课程</option>
+                  {selectedUnit && getLessonsForVolumeAndUnit(selectedVolume, selectedUnit).map(lesson => (
+                    <option key={lesson} value={lesson}>{lesson}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Knowledge Point Select */}
+              <div className="lg:col-span-3">
+                <select
+                  value={selectedKnowledgePointId}
+                  onChange={(e) => setSelectedKnowledgePointId(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">全部知识点</option>
+                  {getFilteredKnowledgePoints().map(kp => (
+                    <option key={kp.id} value={kp.id}>{kp.topic}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
