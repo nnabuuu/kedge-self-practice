@@ -477,27 +477,8 @@ function App() {
           return;
         }
         
-        // Set the current session with the wrong questions
-        setCurrentSession({
-          id: session.id,
-          questions: quizzes,
-          answers: [],
-          startTime: new Date(),
-          config: {
-            questionTypes: ['single-choice', 'multiple-choice', 'true-false', 'fill-blank'],
-            questionCount: quizzes.length,
-            timeLimit: undefined, // No time limit for review
-            shuffleQuestions: false,
-            strategy: 'review'
-          },
-          answeredQuestions: 0,
-          totalQuestions: quizzes.length,
-          correctAnswers: 0,
-          incorrectAnswers: 0,
-          score: 0,
-          status: 'pending'
-        });
-        
+        // For backend sessions, use practiceSessionId instead of currentSession
+        setPracticeSessionId(session.id);
         navigateToScreen('quiz-practice');
       } else {
         // If no wrong questions found or error occurred
