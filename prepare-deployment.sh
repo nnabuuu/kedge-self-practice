@@ -56,10 +56,15 @@ npm install
 
 # Use parser config if available
 if [ -f "vite.config.parser.ts" ]; then
+    echo "Building with vite.config.parser.ts (includes base: '/parser/')"
     npx vite build --config vite.config.parser.ts
 else
-    # Ensure vite.config.ts has base: '/parser/'
+    # Add base path to regular config temporarily
+    echo "Adding base: '/parser/' to vite.config.ts"
+    sed -i.bak "s|// base: '/parser/',|base: '/parser/',|" vite.config.ts
     npm run build
+    # Restore original config
+    mv vite.config.ts.bak vite.config.ts
 fi
 
 if [ $? -ne 0 ]; then
