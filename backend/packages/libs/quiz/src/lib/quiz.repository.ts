@@ -222,12 +222,32 @@ export class QuizRepository {
         
         // If knowledge points are specified, filter by them and optionally by quiz types
         result = await this.persistentService.pgPool.query(
-          sql.type(QuizItemSchema)`
-            SELECT id, type, question, options, answer, 
-                   original_paragraph as "originalParagraph", 
-                   images, tags, knowledge_point_id,
-                   NULL as "knowledgePoint"
-            FROM kedge_practice.quizzes
+          sql.unsafe`
+            SELECT 
+              q.id, 
+              q.type, 
+              q.question, 
+              q.options, 
+              q.answer, 
+              q.original_paragraph as "originalParagraph", 
+              q.images, 
+              q.tags, 
+              q.knowledge_point_id,
+              CASE 
+                WHEN kp.id IS NOT NULL THEN 
+                  json_build_object(
+                    'id', kp.id,
+                    'subjectId', 'history',
+                    'volume', kp.volume,
+                    'unit', kp.unit,
+                    'lesson', kp.lesson,
+                    'section', kp.sub,
+                    'topic', kp.topic
+                  )
+                ELSE NULL
+              END as "knowledgePoint"
+            FROM kedge_practice.quizzes q
+            LEFT JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
             WHERE ${sql.join(whereConditions, sql.fragment` AND `)}
             ORDER BY RANDOM()
             LIMIT ${limit}
@@ -237,25 +257,65 @@ export class QuizRepository {
         // If no knowledge points specified, just get random quizzes (optionally filtered by type)
         if (quizTypes && quizTypes.length > 0) {
           result = await this.persistentService.pgPool.query(
-            sql.type(QuizItemSchema)`
-              SELECT id, type, question, options, answer, 
-                     original_paragraph as "originalParagraph", 
-                     images, tags, knowledge_point_id,
-                     NULL as "knowledgePoint"
-              FROM kedge_practice.quizzes
-              WHERE type = ANY(${sql.array(quizTypes, 'text')})
+            sql.unsafe`
+              SELECT 
+                q.id, 
+                q.type, 
+                q.question, 
+                q.options, 
+                q.answer, 
+                q.original_paragraph as "originalParagraph", 
+                q.images, 
+                q.tags, 
+                q.knowledge_point_id,
+                CASE 
+                  WHEN kp.id IS NOT NULL THEN 
+                    json_build_object(
+                      'id', kp.id,
+                      'subjectId', 'history',
+                      'volume', kp.volume,
+                      'unit', kp.unit,
+                      'lesson', kp.lesson,
+                      'section', kp.sub,
+                      'topic', kp.topic
+                    )
+                  ELSE NULL
+                END as "knowledgePoint"
+              FROM kedge_practice.quizzes q
+              LEFT JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
+              WHERE q.type = ANY(${sql.array(quizTypes, 'text')})
               ORDER BY RANDOM()
               LIMIT ${limit}
             `,
           );
         } else {
           result = await this.persistentService.pgPool.query(
-            sql.type(QuizItemSchema)`
-              SELECT id, type, question, options, answer, 
-                     original_paragraph as "originalParagraph", 
-                     images, tags, knowledge_point_id,
-                     NULL as "knowledgePoint"
-              FROM kedge_practice.quizzes
+            sql.unsafe`
+              SELECT 
+                q.id, 
+                q.type, 
+                q.question, 
+                q.options, 
+                q.answer, 
+                q.original_paragraph as "originalParagraph", 
+                q.images, 
+                q.tags, 
+                q.knowledge_point_id,
+                CASE 
+                  WHEN kp.id IS NOT NULL THEN 
+                    json_build_object(
+                      'id', kp.id,
+                      'subjectId', 'history',
+                      'volume', kp.volume,
+                      'unit', kp.unit,
+                      'lesson', kp.lesson,
+                      'section', kp.sub,
+                      'topic', kp.topic
+                    )
+                  ELSE NULL
+                END as "knowledgePoint"
+              FROM kedge_practice.quizzes q
+              LEFT JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
               ORDER BY RANDOM()
               LIMIT ${limit}
             `,
@@ -281,13 +341,33 @@ export class QuizRepository {
       this.logger.log(`[QuizRepository.getQuizzesByIds] Fetching quizzes for IDs: ${ids.join(', ')}`);
 
       const result = await this.persistentService.pgPool.query(
-        sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, 
-                 original_paragraph as "originalParagraph", 
-                 images, tags, knowledge_point_id,
-                 NULL as "knowledgePoint"
-          FROM kedge_practice.quizzes
-          WHERE id = ANY(${sql.array(ids, 'uuid')})
+        sql.unsafe`
+          SELECT 
+            q.id, 
+            q.type, 
+            q.question, 
+            q.options, 
+            q.answer, 
+            q.original_paragraph as "originalParagraph", 
+            q.images, 
+            q.tags, 
+            q.knowledge_point_id,
+            CASE 
+              WHEN kp.id IS NOT NULL THEN 
+                json_build_object(
+                  'id', kp.id,
+                  'subjectId', 'history',
+                  'volume', kp.volume,
+                  'unit', kp.unit,
+                  'lesson', kp.lesson,
+                  'section', kp.sub,
+                  'topic', kp.topic
+                )
+              ELSE NULL
+            END as "knowledgePoint"
+          FROM kedge_practice.quizzes q
+          LEFT JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
+          WHERE q.id = ANY(${sql.array(ids, 'uuid')})
         `,
       );
       

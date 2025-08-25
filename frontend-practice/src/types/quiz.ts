@@ -17,7 +17,7 @@ export interface KnowledgePoint {
 
 export interface QuizQuestion {
   id: string;
-  type: 'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective' | 'other';
+  type: 'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective' | 'essay' | 'other';
   question: string;
   options?: {
     A: string;
@@ -25,12 +25,22 @@ export interface QuizQuestion {
     C: string;
     D: string;
   };
-  answer?: string | string[]; // 单选题为string，多选题为string[]
+  answer?: string | string[]; // 单选题为string，多选题为string[]，填空题可能是string[]
   standardAnswer?: string; // 用于问答题的标准答案
   standardStructure?: string; // 标准答案的结构和逻辑说明
   relatedKnowledgePointId: string;
   evaluationCriteria?: {
     [key: string]: string; // 评价维度和说明
+  };
+  images?: string[]; // Image URLs or paths
+  knowledgePoint?: { // Full knowledge point data from backend
+    id: string;
+    subjectId: string;
+    volume: string;
+    unit: string;
+    lesson: string;
+    section: string;
+    topic: string;
   };
 }
 

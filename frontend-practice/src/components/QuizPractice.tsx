@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, CheckCircle2, XCircle, ArrowRight, RotateCcw, BookOpen, Brain, Sparkles, MessageSquare, Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CheckCircle, XCircle, ArrowRight, RotateCcw, BookOpen, Brain, Sparkles, MessageSquare, Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
 import { Subject, QuizQuestion, PracticeSession, AIEvaluation } from '../types/quiz';
 import { usePracticeSession, useKnowledgePoints } from '../hooks/useApi';
 import { api } from '../services/api';
@@ -34,6 +34,8 @@ export default function QuizPractice({
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [selectedMultipleAnswers, setSelectedMultipleAnswers] = useState<string[]>([]);
   const [essayAnswer, setEssayAnswer] = useState<string>('');
+  const [fillInBlankAnswer, setFillInBlankAnswer] = useState<string>('');
+  const [fillInBlankAnswers, setFillInBlankAnswers] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [answers, setAnswers] = useState<(string | string[] | null)[]>([]);
   const [questionStartTimes, setQuestionStartTimes] = useState<Date[]>([]);
@@ -54,6 +56,66 @@ export default function QuizPractice({
   const recognitionRef = useRef<any>(null);
 
   // Function to parse and render question text with images
+  // Render fill-in-the-blank question with inline input fields
+  const renderFillInBlankQuestion = (questionText: string) => {
+    // Split the question by blanks (______)
+    const parts = questionText.split(/_{2,}/g);
+    const blanksCount = parts.length - 1;
+    
+    // Initialize answers array if needed
+    if (fillInBlankAnswers.length !== blanksCount) {
+      setFillInBlankAnswers(new Array(blanksCount).fill(''));
+    }
+    
+    return (
+      <div className="text-2xl font-bold text-gray-900 leading-relaxed">
+        {parts.map((part, index) => (
+          <React.Fragment key={index}>
+            <span>{part}</span>
+            {index < parts.length - 1 && (
+              <input
+                type="text"
+                value={fillInBlankAnswers[index] || ''}
+                onChange={(e) => {
+                  const newAnswers = [...fillInBlankAnswers];
+                  newAnswers[index] = e.target.value;
+                  setFillInBlankAnswers(newAnswers);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab' && !e.shiftKey && index < blanksCount - 1) {
+                    e.preventDefault();
+                    // Focus next input
+                    const nextInput = document.querySelector(
+                      `input[data-blank-index="${index + 1}"]`
+                    ) as HTMLInputElement;
+                    if (nextInput) nextInput.focus();
+                  } else if (e.key === 'Tab' && e.shiftKey && index > 0) {
+                    e.preventDefault();
+                    // Focus previous input
+                    const prevInput = document.querySelector(
+                      `input[data-blank-index="${index - 1}"]`
+                    ) as HTMLInputElement;
+                    if (prevInput) prevInput.focus();
+                  }
+                }}
+                data-blank-index={index}
+                disabled={showResult}
+                placeholder="..."
+                className={`inline-block mx-2 px-3 py-1 border-b-2 text-center min-w-[100px] max-w-[200px] font-bold text-xl
+                  ${showResult 
+                    ? 'bg-gray-100 border-gray-300 cursor-not-allowed' 
+                    : 'bg-blue-50 border-blue-400 focus:bg-blue-100 focus:border-blue-600 focus:outline-none'
+                  }
+                  transition-all duration-200`}
+                style={{ width: `${Math.max(100, (fillInBlankAnswers[index]?.length || 3) * 12)}px` }}
+              />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
+
   const renderQuestionWithImages = (questionText: string, imageUrls?: string[]) => {
     // Handle undefined or null questionText
     if (!questionText) {
@@ -340,6 +402,13 @@ export default function QuizPractice({
   const isSingleChoice = currentQuestion?.type === 'single-choice';
   const isMultipleChoice = currentQuestion?.type === 'multiple-choice';
   const isEssay = currentQuestion?.type === 'essay';
+  const isFillInBlank = currentQuestion?.type === 'fill-in-the-blank';
+  
+  // Debug: Log the question type
+  if (currentQuestion) {
+    console.log('Current question type:', currentQuestion.type);
+    console.log('isFillInBlank:', isFillInBlank);
+  }
   
   // Safety check for undefined currentQuestion
   if (!currentQuestion && questions.length > 0) {
@@ -567,6 +636,9 @@ export default function QuizPractice({
       currentAnswer = selectedMultipleAnswers;
     } else if (isEssay) {
       currentAnswer = essayAnswer;
+    } else if (isFillInBlank) {
+      // For fill-in-the-blank, use the array of answers
+      currentAnswer = fillInBlankAnswers;
     }
     
     if (currentAnswer !== null && (
@@ -626,6 +698,8 @@ export default function QuizPractice({
       setSelectedAnswer(null);
       setSelectedMultipleAnswers([]);
       setEssayAnswer('');
+      setFillInBlankAnswer('');
+      setFillInBlankAnswers([]);
       setShowResult(false);
       setShowStandardAnswer(false);
       setAiEvaluation(null);
@@ -692,17 +766,28 @@ export default function QuizPractice({
     onEndPractice(session);
   };
 
-  // 判断选择题是否正确
-  const isChoiceCorrect = () => {
+  // 判断答案是否正确
+  const isAnswerCorrect = () => {
     if (isSingleChoice) {
       return selectedAnswer === currentQuestion?.answer;
     } else if (isMultipleChoice && Array.isArray(currentQuestion?.answer)) {
       const correctAnswers = currentQuestion.answer.sort();
       const userAnswers = selectedMultipleAnswers.sort();
       return JSON.stringify(correctAnswers) === JSON.stringify(userAnswers);
+    } else if (isFillInBlank) {
+      // Check if all blanks are filled correctly
+      if (Array.isArray(currentQuestion?.answer)) {
+        return fillInBlankAnswers.every((answer, index) => 
+          answer.trim().toLowerCase() === String(currentQuestion.answer[index]).trim().toLowerCase()
+        );
+      }
+      return fillInBlankAnswers[0]?.trim().toLowerCase() === String(currentQuestion?.answer).trim().toLowerCase();
     }
     return false;
   };
+  
+  // Legacy function name for compatibility
+  const isChoiceCorrect = isAnswerCorrect;
 
   // 加载状态
   if (questionsLoading || sessionLoading) {
@@ -802,7 +887,10 @@ export default function QuizPractice({
                 第 {currentQuestionIndex + 1} 题，共 {questions.length} 题
               </div>
               <div className="text-sm text-gray-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg font-medium tracking-wide">
-                {isSingleChoice ? '单选题' : isMultipleChoice ? '多选题' : '问答题'}
+                {isSingleChoice ? '单选题' : 
+                 isMultipleChoice ? '多选题' : 
+                 isFillInBlank ? '填空题' :
+                 isEssay ? '问答题' : '其他'}
               </div>
               {isEssay && (
                 <button
@@ -837,12 +925,29 @@ export default function QuizPractice({
           </div>
 
           <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-3xl shadow-lg p-8 border border-white/20">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 leading-tight tracking-wide">
-              {renderQuestionWithImages(currentQuestion.question, currentQuestion.images)}
-            </h2>
+            {/* Render question - special handling for fill-in-the-blank */}
+            {isFillInBlank ? (
+              <div className="mb-6">
+                {renderFillInBlankQuestion(currentQuestion.question)}
+                {currentQuestion.images && currentQuestion.images.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-4">
+                    {currentQuestion.images.map((url, index) => (
+                      <img key={index} src={url} alt={`图片 ${index + 1}`} className="max-w-sm rounded-lg shadow-md" />
+                    ))}
+                  </div>
+                )}
+                <div className="mt-4 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
+                  <span className="font-medium">提示：</span>使用 Tab 键在空格之间切换，Shift+Tab 返回上一个空格
+                </div>
+              </div>
+            ) : (
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 leading-tight tracking-wide">
+                {renderQuestionWithImages(currentQuestion.question, currentQuestion.images)}
+              </h2>
+            )}
 
             {/* 单选题选项 */}
-            {isSingleChoice && currentQuestion.options && (
+            {isSingleChoice && !isFillInBlank && currentQuestion.options && (
               <div className="space-y-4 mb-8">
                 {Object.entries(currentQuestion.options).map(([key, option]) => (
                   <button
@@ -998,6 +1103,87 @@ export default function QuizPractice({
               </div>
             )}
 
+
+            {/* 填空题结果显示 */}
+            {showResult && isFillInBlank && (
+              <div className="p-6 rounded-xl mb-6 border bg-gray-50 border-gray-200">
+                <div className="flex items-center mb-4">
+                  <span className="font-bold text-gray-900">答案对比：</span>
+                </div>
+                <div className="space-y-2">
+                  {fillInBlankAnswers.map((answer, index) => {
+                    const correctAnswer = Array.isArray(currentQuestion.answer) 
+                      ? currentQuestion.answer[index] 
+                      : currentQuestion.answer;
+                    const isCorrect = answer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase();
+                    
+                    return (
+                      <div key={index} className="flex items-center space-x-2">
+                        <span className="text-gray-600 min-w-[60px]">空格 {index + 1}:</span>
+                        <span className={`px-3 py-1 rounded ${isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {answer || '（未作答）'}
+                        </span>
+                        {!isCorrect && (
+                          <>
+                            <span className="text-gray-500">→</span>
+                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded">
+                              {correctAnswer}
+                            </span>
+                          </>
+                        )}
+                        {isCorrect ? (
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-600" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* 相关知识点信息 - 填空题 */}
+                {(currentQuestion.knowledgePoint || knowledgePointsData) && (
+                  <div className={`mt-4 p-4 rounded-lg border ${
+                    isAnswerCorrect() 
+                      ? 'bg-green-100/50 border-green-300' 
+                      : 'bg-red-100/50 border-red-300'
+                  }`}>
+                    {(() => {
+                      // Use embedded knowledge point data if available, otherwise look it up
+                      const relatedKnowledgePoint = currentQuestion.knowledgePoint || 
+                        knowledgePointsData?.find(kp => kp.id === currentQuestion.relatedKnowledgePointId);
+                      if (!relatedKnowledgePoint) return null;
+                      
+                      return (
+                        <>
+                          <div className="flex items-center mb-2">
+                            <BookOpen className={`w-5 h-5 mr-2 ${
+                              isAnswerCorrect() ? 'text-green-600' : 'text-red-600'
+                            }`} />
+                            <span className={`font-semibold tracking-wide ${
+                              isAnswerCorrect() ? 'text-green-800' : 'text-red-800'
+                            }`}>
+                              相关知识点
+                            </span>
+                          </div>
+                          <div className={`text-sm tracking-wide ${
+                            isAnswerCorrect() ? 'text-green-700' : 'text-red-700'
+                          }`}>
+                            <div className="space-y-1">
+                              <div><span className="font-medium">册次：</span>{relatedKnowledgePoint.volume}</div>
+                              <div><span className="font-medium">单元：</span>{relatedKnowledgePoint.unit}</div>
+                              <div><span className="font-medium">课程：</span>{relatedKnowledgePoint.lesson}</div>
+                              <div><span className="font-medium">知识点：</span>{relatedKnowledgePoint.topic}</div>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 标准答案显示 - 立即显示 */}
             {showStandardAnswer && isEssay && currentQuestion.standardAnswer && (
               <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-6">
@@ -1045,14 +1231,16 @@ export default function QuizPractice({
                 </p>
                 
                 {/* 相关知识点信息 */}
-                {showResult && knowledgePointsData && (
+                {showResult && (currentQuestion.knowledgePoint || knowledgePointsData) && (
                   <div className={`mt-4 p-4 rounded-lg border ${
                     isChoiceCorrect() 
                       ? 'bg-green-100/50 border-green-300' 
                       : 'bg-red-100/50 border-red-300'
                   }`}>
                     {(() => {
-                      const relatedKnowledgePoint = knowledgePointsData.find(kp => kp.id === currentQuestion.relatedKnowledgePointId);
+                      // Use embedded knowledge point data if available, otherwise look it up
+                      const relatedKnowledgePoint = currentQuestion.knowledgePoint || 
+                        knowledgePointsData?.find(kp => kp.id === currentQuestion.relatedKnowledgePointId);
                       if (!relatedKnowledgePoint) return null;
                       
                       return (
@@ -1171,16 +1359,19 @@ export default function QuizPractice({
             )}
 
             <div className="flex justify-between">
-              {!showResult ? (
+              {(!showResult && !isSingleChoice) ? (
                 <button
                   onClick={handleSubmitAnswer}
                   disabled={
                     (isMultipleChoice && selectedMultipleAnswers.length === 0) || 
                     (isEssay && essayAnswer.trim() === '') ||
+                    (isFillInBlank && fillInBlankAnswers.some(a => a.trim() === '')) ||
                     isEvaluating
                   }
                   className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out tracking-wide ${
-                    ((isMultipleChoice && selectedMultipleAnswers.length > 0) || (isEssay && essayAnswer.trim() !== '')) && !isEvaluating
+                    ((isMultipleChoice && selectedMultipleAnswers.length > 0) || 
+                     (isEssay && essayAnswer.trim() !== '') || 
+                     (isFillInBlank && fillInBlankAnswers.length > 0 && !fillInBlankAnswers.some(a => a.trim() === ''))) && !isEvaluating
                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}

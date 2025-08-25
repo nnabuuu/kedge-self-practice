@@ -114,6 +114,12 @@ class BackendApiService {
       type = 'multiple-choice';
     } else if (backendQuiz.type === 'essay') {
       type = 'essay';
+    } else if (backendQuiz.type === 'fill-in-the-blank') {
+      type = 'fill-in-the-blank';
+    } else if (backendQuiz.type === 'subjective') {
+      type = 'subjective';
+    } else if (backendQuiz.type === 'other') {
+      type = 'other';
     }
 
     // Parse answer options - convert array to object with A, B, C, D keys
@@ -143,6 +149,14 @@ class BackendApiService {
       answer = backendQuiz.answer;
     }
 
+    // Determine the knowledge point ID to use
+    let relatedKnowledgePointId = backendQuiz.knowledge_point_id;
+    
+    // If backend provides knowledgePoint object, use its ID
+    if (backendQuiz.knowledgePoint && backendQuiz.knowledgePoint.id) {
+      relatedKnowledgePointId = backendQuiz.knowledgePoint.id;
+    }
+
     return {
       id: String(backendQuiz.id),
       type,
@@ -150,8 +164,10 @@ class BackendApiService {
       options,
       answer,
       standardAnswer: type === 'essay' ? backendQuiz.answer : undefined,
-      relatedKnowledgePointId: backendQuiz.knowledge_point_id,
-      images: backendQuiz.images || []
+      relatedKnowledgePointId,
+      images: backendQuiz.images || [],
+      // Store the full knowledge point data if available
+      knowledgePoint: backendQuiz.knowledgePoint
     };
   }
 
@@ -540,6 +556,9 @@ class BackendApiService {
       quiz_types: config.quiz_types,
       question_type: config.question_type || 'with-wrong'
     };
+    
+    console.log('Creating practice session with config:', sessionData);
+    console.log('Quiz types being sent:', config.quiz_types);
 
     const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>('/practice/sessions/create', {
       method: 'POST',
@@ -549,6 +568,8 @@ class BackendApiService {
     
     // Convert the quizzes to frontend format if they exist
     if (response.success && response.data && response.data.quizzes) {
+      console.log('Received quizzes from backend:', response.data.quizzes.length);
+      console.log('Quiz types in response:', response.data.quizzes.map((q: any) => q.type));
       const convertedQuizzes = response.data.quizzes.map(quiz => this.convertQuiz(quiz));
       return {
         ...response,
