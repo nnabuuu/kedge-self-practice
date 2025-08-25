@@ -96,6 +96,13 @@ export default function QuizPractice({
                       `input[data-blank-index="${index - 1}"]`
                     ) as HTMLInputElement;
                     if (prevInput) prevInput.focus();
+                  } else if (e.key === 'Enter') {
+                    // Check if all blanks are filled
+                    const allFilled = fillInBlankAnswers.every(answer => answer && answer.trim() !== '');
+                    if (allFilled && !showResult) {
+                      e.preventDefault();
+                      handleSubmitAnswer();
+                    }
                   }
                 }}
                 data-blank-index={index}
@@ -960,7 +967,7 @@ export default function QuizPractice({
                   </div>
                 )}
                 <div className="mt-4 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
-                  <span className="font-medium">提示：</span>使用 Tab 键在空格之间切换，Shift+Tab 返回上一个空格
+                  <span className="font-medium">提示：</span>使用 Tab 键在空格之间切换，Shift+Tab 返回上一个空格。填写完所有空格后按 Enter 键提交答案
                 </div>
               </div>
             ) : (
