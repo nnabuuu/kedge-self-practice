@@ -336,10 +336,24 @@ class AuthService {
     const queryString = queryParams.toString();
     const url = '/admin/users' + (queryString ? `?${queryString}` : '');
     
-    return this.makeRequest<any>(url, {
+    const response = await this.makeRequest<any>(url, {
       method: 'GET',
       headers: this.getAuthHeaders()
     });
+
+    // The backend returns { success: true, data: [...], pagination: {...} }
+    // But makeRequest wraps it as { success: true, data: { success: true, data: [...], pagination: {...} } }
+    // So we need to unwrap it properly
+    if (response.success && response.data) {
+      const backendResponse = response.data as any;
+      return {
+        success: backendResponse.success,
+        data: backendResponse.data,
+        pagination: backendResponse.pagination
+      };
+    }
+    
+    return response as any;
   }
 
   async updateUserPassword(userId: string, newPassword: string): Promise<ApiResponse> {
