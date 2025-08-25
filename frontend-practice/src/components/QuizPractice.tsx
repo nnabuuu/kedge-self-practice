@@ -374,6 +374,29 @@ export default function QuizPractice({
     }
   }, [currentQuestionIndex, questions.length]);
 
+  // Auto-focus first input for fill-in-the-blank questions
+  useEffect(() => {
+    if (questions.length > 0 && currentQuestionIndex < questions.length) {
+      const currentQuestion = questions[currentQuestionIndex];
+      const isFillInBlank = currentQuestion.type === 'fill-in-the-blank';
+      
+      if (isFillInBlank) {
+        // Initialize fill-in-the-blank answers array
+        const blanksCount = currentQuestion.question.split(/_{2,}/g).length - 1;
+        setFillInBlankAnswers(new Array(blanksCount).fill(''));
+        
+        // Auto-focus the first input after a short delay to ensure DOM is ready
+        setTimeout(() => {
+          const firstInput = document.querySelector('input[data-blank-index="0"]') as HTMLInputElement;
+          if (firstInput) {
+            firstInput.focus();
+            firstInput.select(); // Also select the text if any
+          }
+        }, 100);
+      }
+    }
+  }, [currentQuestionIndex, questions]);
+
   const currentQuestion = questions[currentQuestionIndex];
   console.log('Current question data:', {
     currentQuestionIndex,
