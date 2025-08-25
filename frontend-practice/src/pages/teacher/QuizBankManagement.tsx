@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Search, Filter, Upload, Eye, Edit, Trash2, Plus, Calendar, Tag, Target, ChevronLeft, ChevronRight, ExternalLink, X, Sparkles, Shuffle } from 'lucide-react';
 import { authService } from '../../services/authService';
+import { preferencesService } from '../../services/preferencesService';
 
 interface Quiz {
   id: string;
@@ -80,11 +81,27 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   
   // Track if data has been initially loaded
   const [dataLoaded, setDataLoaded] = useState(false);
+  
+  // Feature flags from settings
+  const [enablePolish, setEnablePolish] = useState(true);
+  const [enableQuizTypeAdjustment, setEnableQuizTypeAdjustment] = useState(true);
 
-  // Fetch knowledge points on mount
+  // Fetch knowledge points and settings on mount
   useEffect(() => {
     fetchKnowledgePoints();
+    loadSettings();
   }, []);
+  
+  const loadSettings = async () => {
+    try {
+      const preferences = await preferencesService.getPreferences();
+      setEnablePolish(preferences.quizManagement?.enablePolish ?? true);
+      setEnableQuizTypeAdjustment(preferences.quizManagement?.enableQuizTypeAdjustment ?? true);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+      // Keep default values if loading fails
+    }
+  };
 
   // Update filters when initialFilters prop changes
   useEffect(() => {
@@ -1151,20 +1168,24 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button 
-                            onClick={() => handlePolishQuiz(quiz)}
-                            className="p-2 text-gray-400 hover:text-purple-600 transition-colors duration-300"
-                            title="润色题目"
-                          >
-                            <Sparkles className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleChangeQuizType(quiz)}
-                            className="p-2 text-gray-400 hover:text-orange-600 transition-colors duration-300"
-                            title="调整题型"
-                          >
-                            <Shuffle className="w-4 h-4" />
-                          </button>
+                          {enablePolish && (
+                            <button 
+                              onClick={() => handlePolishQuiz(quiz)}
+                              className="p-2 text-gray-400 hover:text-purple-600 transition-colors duration-300"
+                              title="润色题目"
+                            >
+                              <Sparkles className="w-4 h-4" />
+                            </button>
+                          )}
+                          {enableQuizTypeAdjustment && (
+                            <button 
+                              onClick={() => handleChangeQuizType(quiz)}
+                              className="p-2 text-gray-400 hover:text-orange-600 transition-colors duration-300"
+                              title="调整题型"
+                            >
+                              <Shuffle className="w-4 h-4" />
+                            </button>
+                          )}
                           <button 
                             onClick={() => handleDeleteQuiz(quiz.id)}
                             className="p-2 text-gray-400 hover:text-red-600 transition-colors duration-300"

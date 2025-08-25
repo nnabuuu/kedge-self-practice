@@ -8,6 +8,7 @@ import { preferencesService } from '../services/preferencesService';
 import { statisticsService } from '../services/statisticsService';
 import KnowledgePointManagement from '../pages/teacher/KnowledgePointManagement';
 import QuizBankManagement from '../pages/teacher/QuizBankManagement';
+import SettingsPage from '../pages/teacher/Settings';
 
 interface TeacherDashboardProps {
   teacher: Teacher;
@@ -138,8 +139,11 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
   const teacherSubjects = subjects || [];
 
   // 获取当前学科的知识点 - with null checks
+  // Since all knowledge points are currently history, show all when history is selected
   const currentSubjectKnowledgePoints = selectedSubject 
-    ? (knowledgePoints || []).filter(kp => kp.subjectId === selectedSubject.id)
+    ? (selectedSubject.id === 'history' || selectedSubject.name === '历史') 
+      ? (knowledgePoints || [])  // Show all knowledge points for history
+      : (knowledgePoints || []).filter(kp => kp.subjectId === selectedSubject.id)
     : [];
 
   // 获取当前学科的题目 - with null checks
@@ -281,7 +285,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                 { id: 'overview', label: '概览', icon: BarChart3 },
                 { id: 'knowledge-points', label: '知识点管理', icon: BookOpen },
                 { id: 'questions', label: '题库管理', icon: FileText },
-                { id: 'analytics', label: '数据分析', icon: BarChart3 },
+                // { id: 'analytics', label: '数据分析', icon: BarChart3 }, // Hidden for now
                 { id: 'settings', label: '设置', icon: Settings }
               ].map(tab => {
                 const TabIcon = tab.icon;
@@ -332,10 +336,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
               </div>
             )}
             {activeTab === 'settings' && (
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">系统设置</h3>
-                <p className="text-gray-600">设置功能开发中...</p>
-              </div>
+              <SettingsPage />
             )}
           </div>
         </div>

@@ -71,9 +71,9 @@ export function useSubjects() {
 }
 
 // 知识点相关的Hook
-export function useKnowledgePoints(subjectId: string | null) {
+export function useKnowledgePoints(subjectId?: string | null) {
   return useApi(
-    () => subjectId ? api.knowledgePoints.getBySubject(subjectId) : Promise.resolve({ success: true, data: [] }),
+    () => subjectId ? api.knowledgePoints.getBySubject(subjectId) : api.knowledgePoints.getAll(),
     [subjectId]
   );
 }
