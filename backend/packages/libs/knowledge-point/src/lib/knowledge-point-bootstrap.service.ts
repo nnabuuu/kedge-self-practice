@@ -29,7 +29,18 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
   constructor(private readonly persistentService: PersistentService) {}
 
   async onModuleInit() {
-    await this.bootstrapKnowledgePoints();
+    // Skip bootstrap if disabled
+    if (process.env.DISABLE_KNOWLEDGE_BOOTSTRAP === 'true') {
+      this.logger.log('Knowledge points bootstrap disabled by environment variable');
+      return;
+    }
+    
+    try {
+      await this.bootstrapKnowledgePoints();
+    } catch (error) {
+      this.logger.error('Failed to bootstrap knowledge points, continuing startup', error);
+      // Don't throw error to prevent app from crashing
+    }
   }
 
   /**
@@ -89,16 +100,36 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
 
       const knowledgePoints: KnowledgePointData[] = [];
       
+      // Variables to track last non-empty values for inheritance
+      let lastVolume = '';
+      let lastUnit = '';
+      let lastLesson = '';
+      let lastSub = '';
+      
       // Skip header row, process data rows
       // Excel columns: 分册(volume), 单元名称(unit), 单课名称(lesson), 子目(sub), 知识点(topic)
       for (let i = 1; i < rawData.length; i++) {
         const row = rawData[i] as any[];
         if (!row || row.length < 5) continue;
 
-        const [volume, unit, lesson, sub, topic] = row;
+        const [rawVolume, rawUnit, rawLesson, rawSub, topic] = row;
         
         // Skip empty rows - topic is required
         if (!topic) continue;
+
+        // Inherit from previous row if current cell is empty
+        if (rawVolume && String(rawVolume).trim()) {
+          lastVolume = String(rawVolume).trim();
+        }
+        if (rawUnit && String(rawUnit).trim()) {
+          lastUnit = String(rawUnit).trim();
+        }
+        if (rawLesson && String(rawLesson).trim()) {
+          lastLesson = String(rawLesson).trim();
+        }
+        if (rawSub && String(rawSub).trim()) {
+          lastSub = String(rawSub).trim();
+        }
 
         // Generate ID based on row number
         const id = `kp_${i}`;
@@ -106,10 +137,10 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
         knowledgePoints.push({
           id: id,
           topic: String(topic).trim(),
-          volume: String(volume || '').trim(),
-          unit: String(unit || '').trim(), 
-          lesson: String(lesson || '').trim(),
-          sub: String(sub || '').trim(),
+          volume: lastVolume,
+          unit: lastUnit,
+          lesson: lastLesson,
+          sub: lastSub,
         });
       }
 
