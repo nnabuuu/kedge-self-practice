@@ -37,6 +37,7 @@ interface UserFormData {
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]); // Store all users for client-side filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'teacher'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -45,6 +46,7 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [useBackendSearch, setUseBackendSearch] = useState(false); // Toggle for backend vs frontend search
 
   // Form states
   const [formData, setFormData] = useState<UserFormData>({
@@ -61,20 +63,27 @@ export default function UserManagement() {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (search?: string, role?: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.getAllUsers();
+      const params = search || role ? { search, role } : undefined;
+      const response = await authService.getAllUsers(params);
       if (response.success && response.data) {
         // The backend now returns { success: true, data: [...], pagination: {...} }
         // response.data is the array of users
         setUsers(response.data);
+        if (!params) {
+          // Store all users for client-side filtering when no search params
+          setAllUsers(response.data);
+        }
       } else {
         setUsers([]);
+        setAllUsers([]);
       }
     } catch (error) {
       showMessage('error', '获取用户列表失败');
       setUsers([]); // Set empty array on error to prevent filter issues
+      setAllUsers([]);
     }
     setIsLoading(false);
   };
@@ -241,12 +250,39 @@ export default function UserManagement() {
     }
   };
 
-  const filteredUsers = Array.isArray(users) ? users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    return matchesSearch && matchesRole;
-  }) : [];
+  // Handle search with backend
+  const handleSearch = () => {
+    const searchValue = searchTerm.trim();
+    const roleValue = roleFilter === 'all' ? undefined : roleFilter;
+    fetchUsers(searchValue || undefined, roleValue);
+    setUseBackendSearch(true);
+  };
+
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setRoleFilter('all');
+    fetchUsers(); // Fetch all users
+    setUseBackendSearch(false);
+  };
+
+  // Handle Enter key in search input
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  // Client-side filtering (only when not using backend search)
+  const filteredUsers = !useBackendSearch && Array.isArray(allUsers) 
+    ? allUsers.filter(user => {
+        const matchesSearch = searchTerm === '' || 
+          user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+        return matchesSearch && matchesRole;
+      }) 
+    : users;
 
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
@@ -292,7 +328,11 @@ export default function UserManagement() {
                 type="text"
                 placeholder="搜索用户..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setUseBackendSearch(false); // Switch back to client-side filtering on type
+                }}
+                onKeyPress={handleSearchKeyPress}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
               />
             </div>
@@ -300,13 +340,46 @@ export default function UserManagement() {
             {/* Role Filter */}
             <select
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value as any)}
+              onChange={(e) => {
+                setRoleFilter(e.target.value as any);
+                setUseBackendSearch(false); // Switch back to client-side filtering on change
+              }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">全部角色</option>
               <option value="student">学生</option>
               <option value="teacher">教师</option>
             </select>
+
+            {/* Search Button */}
+            <button
+              onClick={handleSearch}
+              disabled={isLoading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+            >
+              <Search className="w-4 h-4" />
+              搜索
+            </button>
+
+            {/* Clear Button - only show when search is active */}
+            {(searchTerm || roleFilter !== 'all' || useBackendSearch) && (
+              <button
+                onClick={handleClearSearch}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                清除
+              </button>
+            )}
+
+            {/* Search Status Indicator */}
+            {useBackendSearch && (
+              <div className="flex items-center text-sm text-gray-600">
+                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded">
+                  搜索结果: {filteredUsers.length} 个用户
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
