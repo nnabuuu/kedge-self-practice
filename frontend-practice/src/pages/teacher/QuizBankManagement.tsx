@@ -81,6 +81,21 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   // Track if data has been initially loaded
   const [dataLoaded, setDataLoaded] = useState(false);
 
+  // Fetch knowledge points on mount
+  useEffect(() => {
+    fetchKnowledgePoints();
+  }, []);
+
+  // Update filters when initialFilters prop changes
+  useEffect(() => {
+    if (initialFilters) {
+      setSelectedVolume(initialFilters.volume || '');
+      setSelectedUnit(initialFilters.unit || '');
+      setSelectedLesson(initialFilters.lesson || '');
+      setSelectedKnowledgePointId(initialFilters.knowledgePointId || '');
+    }
+  }, [initialFilters]);
+
   // Fetch quizzes from backend - only on initial load for mock data
   useEffect(() => {
     // Always fetch on initial load
