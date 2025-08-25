@@ -25,8 +25,11 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-# Create production env file
-echo "VITE_API_BASE_URL=https://cyez.zhushou.one" > .env.production
+# Create production env file with parser URL
+cat > .env.production << EOF
+VITE_API_BASE_URL=https://cyez.zhushou.one
+VITE_QUIZ_PARSER_URL=https://cyez.zhushou.one/parser
+EOF
 
 # Install and build
 npm install
