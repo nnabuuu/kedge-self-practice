@@ -71,16 +71,18 @@ export default function UserManagement() {
       if (response.success && response.data) {
         // The backend now returns { success: true, data: [...], pagination: {...} }
         // response.data is the array of users
-        setUsers(response.data);
+        const userData = Array.isArray(response.data) ? response.data : [];
+        setUsers(userData);
         if (!params) {
           // Store all users for client-side filtering when no search params
-          setAllUsers(response.data);
+          setAllUsers(userData);
         }
       } else {
         setUsers([]);
         setAllUsers([]);
       }
     } catch (error) {
+      console.error('Error fetching users:', error);
       showMessage('error', '获取用户列表失败');
       setUsers([]); // Set empty array on error to prevent filter issues
       setAllUsers([]);
@@ -274,7 +276,7 @@ export default function UserManagement() {
   };
 
   // Client-side filtering (only when not using backend search)
-  const filteredUsers = !useBackendSearch && Array.isArray(allUsers) 
+  const filteredUsers = !useBackendSearch && Array.isArray(allUsers) && allUsers.length > 0
     ? allUsers.filter(user => {
         const matchesSearch = searchTerm === '' || 
           user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -282,7 +284,7 @@ export default function UserManagement() {
         const matchesRole = roleFilter === 'all' || user.role === roleFilter;
         return matchesSearch && matchesRole;
       }) 
-    : users;
+    : Array.isArray(users) ? users : [];
 
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
@@ -429,7 +431,7 @@ export default function UserManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
+              {Array.isArray(filteredUsers) && filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -488,7 +490,7 @@ export default function UserManagement() {
             </tbody>
           </table>
 
-          {filteredUsers.length === 0 && (
+          {(!Array.isArray(filteredUsers) || filteredUsers.length === 0) && (
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="text-gray-500">没有找到用户</p>
