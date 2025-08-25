@@ -967,7 +967,15 @@ export default function QuizPractice({
                   </div>
                 )}
                 <div className="mt-4 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
-                  <span className="font-medium">提示：</span>使用 Tab 键在空格之间切换，Shift+Tab 返回上一个空格。填写完所有空格后按 Enter 键提交答案
+                  <span className="font-medium">提示：</span>
+                  {(() => {
+                    const blanksCount = currentQuestion.question.split(/_{2,}/g).length - 1;
+                    if (blanksCount > 1) {
+                      return "使用 Tab 键在空格之间切换，Shift+Tab 返回上一个空格。填写完所有空格后按 Enter 键提交答案";
+                    } else {
+                      return "填写完空格后按 Enter 键提交答案";
+                    }
+                  })()}
                 </div>
               </div>
             ) : (
