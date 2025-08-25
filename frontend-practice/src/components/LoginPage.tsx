@@ -18,6 +18,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   // Demo accounts for testing (fallback when backend is not available)
   const demoAccounts = [
     {
+      email: 'admin@example.com',
+      password: '11223344',
+      name: '系统管理员',
+      role: 'admin' as const,
+      isAdmin: true
+    },
+    {
       email: 'student@example.com',
       password: '11223344',
       name: '张同学',
@@ -64,6 +71,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 email: formData.email,
                 role: 'student'
               }
+            : demoAccount.role === 'admin'
+            ? {
+                id: 'admin-001',
+                name: demoAccount.name,
+                email: formData.email,
+                subjects: ['history', 'biology'],
+                role: 'admin',
+                isAdmin: true
+              }
             : {
                 id: 'teacher-001',
                 name: demoAccount.name,
@@ -71,7 +87,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 subjects: ['history', 'biology'],
                 role: 'teacher'
               };
-          onLogin(demoAccount.role, userData);
+          onLogin(demoAccount.role === 'admin' ? 'teacher' : demoAccount.role, userData);
         } else {
           setError(response.error || '登录失败：用户名或密码错误');
         }
@@ -90,7 +106,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }));
   };
 
-  const fillDemoAccount = (accountType: 'student' | 'teacher') => {
+  const fillDemoAccount = (accountType: 'student' | 'teacher' | 'admin') => {
     const demo = demoAccounts.find(acc => acc.role === accountType);
     if (demo) {
       setFormData({
@@ -183,7 +199,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <div className="space-y-3">
                   <h4 className="font-medium text-blue-900 mb-2">演示账户</h4>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => fillDemoAccount('student')}
@@ -197,6 +213,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                       className="px-3 py-2 bg-indigo-100 text-indigo-800 text-sm rounded-lg hover:bg-indigo-200 transition-colors duration-300"
                     >
                       教师账户
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fillDemoAccount('admin')}
+                      className="px-3 py-2 bg-purple-100 text-purple-800 text-sm rounded-lg hover:bg-purple-200 transition-colors duration-300"
+                    >
+                      管理员
                     </button>
                   </div>
                   <p className="text-xs text-blue-700">

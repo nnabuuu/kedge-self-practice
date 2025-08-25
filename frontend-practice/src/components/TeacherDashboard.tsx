@@ -8,6 +8,7 @@ import { preferencesService } from '../services/preferencesService';
 import { statisticsService } from '../services/statisticsService';
 import KnowledgePointManagement from '../pages/teacher/KnowledgePointManagement';
 import QuizBankManagement from '../pages/teacher/QuizBankManagement';
+import UserManagement from '../pages/teacher/UserManagement';
 import SettingsPage from '../pages/teacher/Settings';
 
 interface TeacherDashboardProps {
@@ -17,7 +18,7 @@ interface TeacherDashboardProps {
   onBack: () => void;
 }
 
-type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'analytics' | 'settings';
+type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'users' | 'analytics' | 'settings';
 
 interface TeacherStats {
   totalStudents: number;
@@ -29,6 +30,10 @@ interface TeacherStats {
 
 export default function TeacherDashboard({ teacher, selectedSubject: propsSelectedSubject, onSelectSubject, onBack }: TeacherDashboardProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  
+  // Check if user is admin
+  const userData = authService.getCurrentUser();
+  const isAdmin = userData?.role === 'admin' || userData?.isAdmin === true;
   const [quizBankFilters, setQuizBankFilters] = useState<{
     volume?: string;
     unit?: string;
@@ -285,6 +290,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                 { id: 'overview', label: '概览', icon: BarChart3 },
                 { id: 'knowledge-points', label: '知识点管理', icon: BookOpen },
                 { id: 'questions', label: '题库管理', icon: FileText },
+                ...(isAdmin ? [{ id: 'users', label: '用户管理', icon: Users }] : []),
                 // { id: 'analytics', label: '数据分析', icon: BarChart3 }, // Hidden for now
                 { id: 'settings', label: '设置', icon: Settings }
               ].map(tab => {
@@ -328,6 +334,9 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
               <QuizBankManagement 
                 initialFilters={quizBankFilters || undefined}
               />
+            )}
+            {activeTab === 'users' && isAdmin && (
+              <UserManagement />
             )}
             {activeTab === 'analytics' && (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
