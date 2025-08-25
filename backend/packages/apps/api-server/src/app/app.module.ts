@@ -15,6 +15,7 @@ import { PracticeController } from './controllers/practice.controller';
 import { KnowledgePointController } from './controllers/knowledge-point.controller';
 import { StatisticsController } from './controllers/statistics.controller';
 import { SubjectsController } from './controllers/subjects.controller';
+import { AdminController } from './controllers/admin.controller';
 import { PracticeModule } from '@kedge/practice';
 import { PersistentModule } from '@kedge/persistent';
 
@@ -39,6 +40,7 @@ import { PersistentModule } from '@kedge/persistent';
     KnowledgePointController,
     StatisticsController,
     SubjectsController,
+    AdminController,
   ],
   providers: [
     {

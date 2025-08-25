@@ -30,7 +30,7 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
 
   async onModuleInit() {
     // Skip bootstrap if disabled
-    if (process.env.DISABLE_KNOWLEDGE_BOOTSTRAP === 'true') {
+    if (process.env['DISABLE_KNOWLEDGE_BOOTSTRAP'] === 'true') {
       this.logger.log('Knowledge points bootstrap disabled by environment variable');
       return;
     }

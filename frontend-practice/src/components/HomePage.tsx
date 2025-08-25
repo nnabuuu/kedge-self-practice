@@ -44,7 +44,9 @@ export default function HomePage({
                   </div>
                   <div>
                     <div className="text-sm font-medium text-gray-900">{currentUser?.name}</div>
-                    <div className="text-xs text-gray-600">{userType === 'teacher' ? '教师' : '学生'}</div>
+                    <div className="text-xs text-gray-600">
+                      {currentUser?.role === 'admin' ? '管理员' : userType === 'teacher' ? '教师' : '学生'}
+                    </div>
                   </div>
                 </div>
               </div>

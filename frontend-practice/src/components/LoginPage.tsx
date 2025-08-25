@@ -18,23 +18,23 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   // Demo accounts for testing (fallback when backend is not available)
   const demoAccounts = [
     {
-      email: 'admin@example.com',
-      password: '11223344',
-      name: '系统管理员',
-      role: 'admin' as const,
-      isAdmin: true
-    },
-    {
       email: 'student@example.com',
       password: '11223344',
-      name: '张同学',
+      name: 'Demo Student',
       role: 'student' as const
     },
     {
       email: 'teacher@example.com', 
       password: '11223344',
-      name: '张老师',
+      name: 'Demo Teacher',
       role: 'teacher' as const
+    },
+    {
+      email: 'admin@example.com',
+      password: '11223344',
+      name: 'Demo Admin',
+      role: 'admin' as const,
+      isAdmin: true
     }
   ];
 
@@ -51,10 +51,14 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       });
 
       if (response.success && response.data) {
-        const userRole = response.data.user.role as 'student' | 'teacher';
+        // Treat admin role as teacher for UI purposes
+        const actualRole = response.data.user.role;
+        const userRole = (actualRole === 'admin' ? 'teacher' : actualRole) as 'student' | 'teacher';
         const userData = {
           ...response.data.user,
-          subjects: userRole === 'teacher' ? ['history', 'biology'] : undefined
+          role: actualRole, // Keep the actual role in userData
+          isAdmin: actualRole === 'admin',
+          subjects: (userRole === 'teacher') ? ['history', 'biology'] : undefined
         };
         onLogin(userRole, userData);
       } else {

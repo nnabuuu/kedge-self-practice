@@ -148,8 +148,8 @@ export default function UserManagement() {
 
   const downloadTemplate = () => {
     const template = [
-      { 账号邮箱: 'student1@example.com', 姓名: '张三', 密码: 'password123', 身份: '学生' },
-      { 账号邮箱: 'teacher1@example.com', 姓名: '李老师', 密码: 'password456', 身份: '教师' }
+      { 账号: 'student1', 姓名: '张三', 密码: 'password123', 身份: '学生' },
+      { 账号: 'teacher1', 姓名: '李老师', 密码: 'password456', 身份: '教师' }
     ];
 
     const ws = XLSX.utils.json_to_sheet(template);
@@ -181,7 +181,7 @@ export default function UserManagement() {
         const data = XLSX.utils.sheet_to_json(ws);
 
         const parsedUsers: UserFormData[] = data.map((row: any) => ({
-          email: row['账号邮箱'] || row['email'] || '',
+          email: row['账号'] || row['账号邮箱'] || row['email'] || '',
           name: row['姓名'] || row['name'] || '',
           password: row['密码'] || row['password'] || '',
           role: (row['身份'] === '教师' || row['role'] === 'teacher') ? 'teacher' : 'student'
@@ -334,7 +334,7 @@ export default function UserManagement() {
                   用户信息
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  邮箱
+                  账号
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   角色
@@ -436,14 +436,14 @@ export default function UserManagement() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  邮箱 <span className="text-red-500">*</span>
+                  账号 <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="user@example.com"
+                  placeholder="输入账号 (可以是邮箱或用户名)"
                 />
               </div>
 
@@ -667,7 +667,7 @@ export default function UserManagement() {
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-2 text-left">邮箱</th>
+                          <th className="px-4 py-2 text-left">账号</th>
                           <th className="px-4 py-2 text-left">姓名</th>
                           <th className="px-4 py-2 text-left">密码</th>
                           <th className="px-4 py-2 text-left">角色</th>

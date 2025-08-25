@@ -315,67 +315,25 @@ class AuthService {
 
   // Admin user management methods
   async getAllUsers(): Promise<ApiResponse<any[]>> {
-    // Mock implementation - replace with actual API call
-    return {
-      success: true,
-      data: [
-        { 
-          id: '1', 
-          email: 'admin@example.com', 
-          name: '系统管理员', 
-          role: 'admin' as const,
-          createdAt: '2024-01-01',
-          lastLogin: '2024-08-25'
-        },
-        { 
-          id: '2', 
-          email: 'teacher@example.com', 
-          name: '张老师', 
-          role: 'teacher' as const,
-          createdAt: '2024-02-01',
-          lastLogin: '2024-08-24'
-        },
-        { 
-          id: '3', 
-          email: 'student1@example.com', 
-          name: '李同学', 
-          role: 'student' as const,
-          createdAt: '2024-03-01',
-          lastLogin: '2024-08-23'
-        },
-        { 
-          id: '4', 
-          email: 'student2@example.com', 
-          name: '王同学', 
-          role: 'student' as const,
-          createdAt: '2024-03-15',
-          lastLogin: null
-        }
-      ]
-    };
-    // Actual implementation:
-    // return this.makeRequest<any[]>('/admin/users');
+    return this.makeRequest<any>('/admin/users', {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
   }
 
   async updateUserPassword(userId: string, newPassword: string): Promise<ApiResponse> {
-    // Mock implementation
-    return { success: true, message: '密码更新成功' };
-    // Actual implementation:
-    // return this.makeRequest('/admin/users/' + userId + '/password', {
-    //   method: 'PUT',
-    //   headers: this.getAuthHeaders(),
-    //   body: JSON.stringify({ password: newPassword })
-    // });
+    return this.makeRequest('/admin/users/' + userId + '/password', {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ password: newPassword })
+    });
   }
 
   async deleteUser(userId: string): Promise<ApiResponse> {
-    // Mock implementation
-    return { success: true, message: '用户删除成功' };
-    // Actual implementation:
-    // return this.makeRequest('/admin/users/' + userId, {
-    //   method: 'DELETE',
-    //   headers: this.getAuthHeaders()
-    // });
+    return this.makeRequest('/admin/users/' + userId, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
   }
 }
 

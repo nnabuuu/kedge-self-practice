@@ -18,7 +18,7 @@ import { User, UserRole, UserRoleSchema } from '@kedge/models';
 
 const SignUpSchema = z.object({
   name: z.string().nullable().optional(), // Name is optional
-  account_id: z.string().email().or(z.string().min(1)), // Support email or any non-empty string
+  account_id: z.string().min(1), // Support any non-empty string as account ID
   password: z.string(),
   role: UserRoleSchema,
 });
@@ -26,7 +26,7 @@ const SignUpSchema = z.object({
 export class SignUpDto extends createZodDto(SignUpSchema) {}
 
 const SignInSchema = z.object({
-  account_id: z.string().email().or(z.string().min(1)), // Support email or any non-empty string  
+  account_id: z.string().min(1), // Support any non-empty string as account ID
   password: z.string(),
 });
 

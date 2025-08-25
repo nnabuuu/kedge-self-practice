@@ -76,7 +76,9 @@ function App() {
     
     const existingUser = authService.getCurrentUser();
     if (existingUser && authService.isAuthenticated()) {
-      setUserType(existingUser.role);
+      // Treat admin role as teacher for UI purposes
+      const userRole = existingUser.role === 'admin' ? 'teacher' : existingUser.role;
+      setUserType(userRole as 'student' | 'teacher');
       setCurrentUser(existingUser);
       
       // Fetch fresh profile data
