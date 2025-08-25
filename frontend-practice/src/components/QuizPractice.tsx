@@ -1442,23 +1442,26 @@ export default function QuizPractice({
                   {isEvaluating ? '评价中...' : '提交答案'}
                 </button>
               ) : (
-                <button
-                  onClick={handleNextQuestion}
-                  disabled={isEvaluating}
-                  className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 ease-out shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold tracking-wide focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-                >
-                  {isLastQuestion ? (
-                    <>
-                      <RotateCcw className="w-5 h-5 mr-2" />
-                      完成练习
-                    </>
-                  ) : (
-                    <>
-                      下一题
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </>
-                  )}
-                </button>
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    onClick={handleNextQuestion}
+                    disabled={isEvaluating}
+                    className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 ease-out shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold tracking-wide focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                  >
+                    {isLastQuestion ? (
+                      <>
+                        <RotateCcw className="w-5 h-5 mr-2" />
+                        完成练习
+                      </>
+                    ) : (
+                      <>
+                        下一题
+                        <ArrowRight className="w-5 h-5 ml-2" />
+                      </>
+                    )}
+                  </button>
+                  <span className="text-xs text-gray-500">按 Enter 键继续</span>
+                </div>
               )}
             </div>
           </div>
