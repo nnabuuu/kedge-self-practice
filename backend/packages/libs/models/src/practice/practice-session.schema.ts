@@ -52,7 +52,8 @@ export const CreatePracticeSessionSchema = z.object({
   allow_review: z.boolean().default(true),
   show_answer_immediately: z.boolean().default(false),
   quiz_types: z.array(z.enum(['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective', 'other'])).optional(),
-  question_type: z.enum(['new-only', 'with-wrong', 'wrong-only']).optional().default('with-wrong')
+  question_type: z.enum(['new-only', 'with-wrong', 'wrong-only']).optional().default('with-wrong'),
+  auto_advance_delay: z.number().int().min(0).max(30).default(0) // Delay in seconds (0 = disabled, max 30 seconds)
 });
 
 export const PracticeSessionSchema = z.object({
@@ -70,6 +71,7 @@ export const PracticeSessionSchema = z.object({
   time_limit_minutes: z.number().int().nullable().optional(),
   time_spent_seconds: z.number().int().default(0),
   score: z.number().default(0),
+  auto_advance_delay: z.number().int().default(0), // Delay in seconds before auto-advancing
   started_at: nullableDateSchema.optional(),
   completed_at: nullableDateSchema.optional(),
   created_at: dateSchema,

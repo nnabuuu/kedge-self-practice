@@ -21,7 +21,8 @@ export class QuizRepository {
             original_paragraph,
             images,
             tags,
-            knowledge_point_id
+            knowledge_point_id,
+            alternative_answers
           )
           VALUES (
             ${item.type},
@@ -31,9 +32,10 @@ export class QuizRepository {
             ${item.originalParagraph ?? null},
             ${sql.json(item.images ?? [])},
             ${sql.json(item.tags ?? [])},
-            ${item.knowledge_point_id ?? null}
+            ${item.knowledge_point_id ?? null},
+            ${sql.array(item.alternative_answers ?? [], 'text')}
           )
-          RETURNING id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id, NULL as "knowledgePoint"
+          RETURNING id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id, alternative_answers, NULL as "knowledgePoint"
         `,
       );
       return result.rows[0];
@@ -51,6 +53,7 @@ export class QuizRepository {
           SELECT id, type, question, options, answer, 
                  original_paragraph as "originalParagraph", 
                  images, tags, knowledge_point_id,
+                 alternative_answers,
                  NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           WHERE id = ${id}
@@ -72,6 +75,7 @@ export class QuizRepository {
           SELECT id, type, question, options, answer, 
                  original_paragraph as "originalParagraph", 
                  images, tags, knowledge_point_id,
+                 alternative_answers,
                  NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           ORDER BY id DESC
@@ -390,6 +394,47 @@ export class QuizRepository {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error getting quizzes by ids: ${errorMessage}`);
       throw new Error('Failed to get quizzes by ids');
+    }
+  }
+
+  async addAlternativeAnswer(quizId: string, alternativeAnswer: string): Promise<boolean> {
+    try {
+      // First check if the alternative answer already exists
+      const quiz = await this.findQuizById(quizId);
+      if (!quiz) {
+        this.logger.warn(`Quiz with ID ${quizId} not found`);
+        return false;
+      }
+
+      const trimmedAnswer = alternativeAnswer.trim();
+      if (!trimmedAnswer) {
+        return false;
+      }
+
+      // Check if the answer already exists in alternative_answers
+      if (quiz.alternative_answers?.includes(trimmedAnswer)) {
+        this.logger.log(`Alternative answer already exists for quiz ${quizId}`);
+        return true;
+      }
+
+      // Add the new alternative answer
+      const result = await this.persistentService.pgPool.query(
+        sql.unsafe`
+          UPDATE kedge_practice.quizzes
+          SET alternative_answers = array_append(
+            COALESCE(alternative_answers, ARRAY[]::TEXT[]), 
+            ${trimmedAnswer}
+          )
+          WHERE id = ${quizId}
+        `,
+      );
+      
+      this.logger.log(`Added alternative answer "${trimmedAnswer}" to quiz ${quizId}`);
+      return result.rowCount > 0;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error adding alternative answer: ${errorMessage}`);
+      throw new Error('Failed to add alternative answer');
     }
   }
 }

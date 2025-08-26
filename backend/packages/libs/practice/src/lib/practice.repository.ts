@@ -29,6 +29,7 @@ export class PracticeRepository {
       strategy: string;
       total_questions: number;
       time_limit_minutes?: number;
+      auto_advance_delay?: number;
     }
   ): Promise<PracticeSession> {
     try {
@@ -44,7 +45,8 @@ export class PracticeRepository {
             strategy,
             quiz_ids,
             total_questions,
-            time_limit_minutes
+            time_limit_minutes,
+            auto_advance_delay
           ) VALUES (
             ${sessionId},
             ${userId},
@@ -53,7 +55,8 @@ export class PracticeRepository {
             ${sessionData.strategy},
             ${sql.array(quizIds, 'uuid')},
             ${sessionData.total_questions},
-            ${sessionData.time_limit_minutes || null}
+            ${sessionData.time_limit_minutes || null},
+            ${sessionData.auto_advance_delay || 0}
           ) RETURNING *
         `
       );
@@ -351,6 +354,34 @@ export class PracticeRepository {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error getting last completed session: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Update the correctness of an existing answer
+   * Used when AI re-evaluation determines the answer is actually correct
+   */
+  async updateAnswerCorrectness(
+    sessionId: string,
+    quizId: string,
+    isCorrect: boolean
+  ): Promise<boolean> {
+    try {
+      const result = await this.persistentService.pgPool.query(
+        sql.unsafe`
+          UPDATE kedge_practice.practice_answers
+          SET is_correct = ${isCorrect},
+              updated_at = NOW()
+          WHERE session_id = ${sessionId}::uuid
+            AND quiz_id = ${quizId}::uuid
+        `
+      );
+
+      return result.rowCount > 0;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error updating answer correctness: ${errorMessage}`);
       throw error;
     }
   }

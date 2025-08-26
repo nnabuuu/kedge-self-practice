@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, RotateCcw, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, RotateCcw, Trash2, ChevronRight, ChevronDown, Layers } from 'lucide-react';
 import { Subject, PracticeHistory as PracticeHistoryType } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 
@@ -117,7 +117,7 @@ export default function PracticeHistory({
     return stats;
   };
 
-  const toggleExpand = (type: 'session' | 'volume' | 'unit' | 'lesson', key: string) => {
+  const toggleExpand = (type: 'session' | 'volume' | 'unit' | 'lesson', key: string, session?: PracticeHistoryType) => {
     const setters = {
       session: setExpandedSessions,
       volume: setExpandedVolumes,
@@ -126,19 +126,94 @@ export default function PracticeHistory({
     };
     
     const setter = setters[type];
-    setter(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
+    
+    // Special handling for session expansion - expand all nested levels
+    if (type === 'session' && session) {
+      const isCurrentlyExpanded = expandedSessions.has(key);
+      
+      setExpandedSessions(prev => {
+        const newSet = new Set(prev);
+        if (isCurrentlyExpanded) {
+          // Collapse session and all its children
+          newSet.delete(key);
+        } else {
+          // Expand session
+          newSet.add(key);
+        }
+        return newSet;
+      });
+      
+      // When expanding session, also expand all knowledge point sections
+      if (!isCurrentlyExpanded) {
+        const stats = calculateKnowledgePointStats(session);
+        const newVolumes = new Set(expandedVolumes);
+        const newUnits = new Set(expandedUnits);
+        const newLessons = new Set(expandedLessons);
+        
+        // Expand all volumes, units, and lessons for this session
+        Object.entries(stats).forEach(([volume, units]) => {
+          newVolumes.add(`${session.id}-${volume}`);
+          Object.entries(units).forEach(([unit, lessons]) => {
+            newUnits.add(`${session.id}-${volume}-${unit}`);
+            Object.entries(lessons).forEach(([lesson]) => {
+              newLessons.add(`${session.id}-${volume}-${unit}-${lesson}`);
+            });
+          });
+        });
+        
+        setExpandedVolumes(newVolumes);
+        setExpandedUnits(newUnits);
+        setExpandedLessons(newLessons);
       } else {
-        newSet.add(key);
+        // When collapsing session, also collapse all its children
+        setExpandedVolumes(prev => {
+          const newSet = new Set(prev);
+          Array.from(newSet).forEach(item => {
+            if (item.startsWith(`${session.id}-`)) {
+              newSet.delete(item);
+            }
+          });
+          return newSet;
+        });
+        
+        setExpandedUnits(prev => {
+          const newSet = new Set(prev);
+          Array.from(newSet).forEach(item => {
+            if (item.startsWith(`${session.id}-`)) {
+              newSet.delete(item);
+            }
+          });
+          return newSet;
+        });
+        
+        setExpandedLessons(prev => {
+          const newSet = new Set(prev);
+          Array.from(newSet).forEach(item => {
+            if (item.startsWith(`${session.id}-`)) {
+              newSet.delete(item);
+            }
+          });
+          return newSet;
+        });
       }
-      return newSet;
-    });
+    } else {
+      // Regular toggle for other types
+      setter(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) {
+          newSet.delete(key);
+        } else {
+          newSet.add(key);
+        }
+        return newSet;
+      });
+    }
   };
 
   const renderKnowledgePointStats = (stats: GroupedStats, sessionId: string) => {
-    return Object.entries(stats).map(([volume, units]) => (
+    return (
+      <>
+        {Object.entries(stats).map(([volume, units]) => (
       <div key={volume} className="mb-2">
         <button
           onClick={() => toggleExpand('volume', `${sessionId}-${volume}`)}
@@ -152,9 +227,12 @@ export default function PracticeHistory({
           )}
         </button>
 
-        {expandedVolumes.has(`${sessionId}-${volume}`) && (
-          <div className="ml-4 mt-2">
-            {Object.entries(units).map(([unit, lessons]) => (
+        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          expandedVolumes.has(`${sessionId}-${volume}`) ? 'max-h-[1500px] opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          {expandedVolumes.has(`${sessionId}-${volume}`) && (
+            <div className="ml-4 mt-2">
+              {Object.entries(units).map(([unit, lessons]) => (
               <div key={unit} className="mb-2">
                 <button
                   onClick={() => toggleExpand('unit', `${sessionId}-${volume}-${unit}`)}
@@ -168,9 +246,12 @@ export default function PracticeHistory({
                   )}
                 </button>
 
-                {expandedUnits.has(`${sessionId}-${volume}-${unit}`) && (
-                  <div className="ml-4 mt-2">
-                    {Object.entries(lessons).map(([lesson, sections]) => (
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                  expandedUnits.has(`${sessionId}-${volume}-${unit}`) ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                }`}>
+                  {expandedUnits.has(`${sessionId}-${volume}-${unit}`) && (
+                    <div className="ml-4 mt-2">
+                      {Object.entries(lessons).map(([lesson, sections]) => (
                       <div key={lesson} className="mb-2">
                         <button
                           onClick={() => toggleExpand('lesson', `${sessionId}-${volume}-${unit}-${lesson}`)}
@@ -184,9 +265,12 @@ export default function PracticeHistory({
                           )}
                         </button>
 
-                        {expandedLessons.has(`${sessionId}-${volume}-${unit}-${lesson}`) && (
-                          <div className="ml-4 mt-2 space-y-2">
-                            {Object.entries(sections).map(([section, topics]) => (
+                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                          expandedLessons.has(`${sessionId}-${volume}-${unit}-${lesson}`) ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
+                        }`}>
+                          {expandedLessons.has(`${sessionId}-${volume}-${unit}-${lesson}`) && (
+                            <div className="ml-4 mt-2 space-y-2">
+                              {Object.entries(sections).map(([section, topics]) => (
                               <div key={section} className="mb-2">
                                 <div className="text-sm font-medium text-gray-600 mb-2 px-2 py-1 bg-blue-50 rounded">
                                   {section}
@@ -227,18 +311,23 @@ export default function PracticeHistory({
                                 </div>
                               </div>
                             ))}
-                          </div>
-                        )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
-    ));
+    ))}
+      </>
+    );
   };
 
   const formatDate = (date: Date) => {
@@ -431,22 +520,37 @@ export default function PracticeHistory({
 
                   <div>
                     <button
-                      onClick={() => toggleExpand('session', session.id)}
-                      className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-300 mb-4 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                      onClick={() => toggleExpand('session', session.id, session)}
+                      className="flex items-center justify-between w-full p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 mb-4 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none border border-blue-200"
                     >
-                      <h4 className="font-medium text-gray-900 tracking-wide">知识点练习情况</h4>
-                      {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-gray-600" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-gray-600" />
-                      )}
+                      <div className="flex items-center space-x-2">
+                        <Layers className="w-5 h-5 text-blue-600" />
+                        <h4 className="font-medium text-gray-900 tracking-wide">知识点练习情况</h4>
+                        <span className="text-xs text-gray-500">
+                          {isExpanded ? '(点击收起所有)' : '(点击展开所有)'}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        {!isExpanded && (
+                          <span className="text-xs text-blue-600 mr-2">查看详情</span>
+                        )}
+                        {isExpanded ? (
+                          <ChevronDown className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-blue-600" />
+                        )}
+                      </div>
                     </button>
                     
-                    {isExpanded && (
-                      <div className="space-y-2">
-                        {renderKnowledgePointStats(knowledgePointStats, session.id)}
-                      </div>
-                    )}
+                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                      isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                    }`}>
+                      {isExpanded && (
+                        <div className="space-y-2 pt-2">
+                          {renderKnowledgePointStats(knowledgePointStats, session.id)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

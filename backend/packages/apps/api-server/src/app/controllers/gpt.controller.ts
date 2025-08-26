@@ -92,7 +92,8 @@ export class GptController {
       type: (body.type as QuizItem['type']) || 'single-choice',
       question: body.question,
       options: body.options || [],
-      answer: ''
+      answer: '',
+      alternative_answers: []
     };
     
     const polished = await this.gptService.polishQuizItem(tempItem, body.guidance);

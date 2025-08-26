@@ -366,6 +366,49 @@ export class ApiService {
     }
   }
 
+  // AI re-evaluate answer
+  static async aiReevaluateAnswer(sessionId: string, questionId: string, userAnswer: string): Promise<ApiResponse<{
+    isCorrect: boolean;
+    reasoning: string;
+    message?: string;
+  }>> {
+    try {
+      const token = localStorage.getItem('jwt_token');
+      
+      if (!token) {
+        return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
+      }
+      
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const url = `${apiBaseUrl}/practice/sessions/ai-reevaluate`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          question_id: questionId,
+          user_answer: userAnswer
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return createApiResponse(null, false, undefined, errorData.message || 'Failed to re-evaluate answer');
+      }
+
+      const data = await response.json();
+      return createApiResponse(data, true);
+    } catch (error) {
+      console.error('Error re-evaluating answer:', error);
+      return createApiResponse(null, false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
+
   // Create wrong questions practice session
   static async createWrongQuestionsSession(userId?: string, sessionLimit = 5): Promise<ApiResponse<any>> {
     try {
@@ -446,7 +489,8 @@ export const api = {
     createWrongQuestionsSession: (userId?: string, sessionLimit?: number) => ApiService.createWrongQuestionsSession(userId, sessionLimit),
     createQuickPracticeSession: (questionLimit?: number) => ApiService.createQuickPracticeSession(questionLimit),
     createWeakPointsSession: (limit?: number) => ApiService.createWeakPointsSession(limit),
-    getQuickOptionsAvailability: () => ApiService.getQuickOptionsAvailability()
+    getQuickOptionsAvailability: () => ApiService.getQuickOptionsAvailability(),
+    aiReevaluateAnswer: (sessionId: string, questionId: string, userAnswer: string) => ApiService.aiReevaluateAnswer(sessionId, questionId, userAnswer)
   },
   ai: {
     analyzeQuestion: (question: string) => ApiService.analyzeQuestionWithAI(question)

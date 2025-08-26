@@ -14,6 +14,6 @@ import { EnhancedQuizStorageService } from './quiz.storage.enhanced';
     EnhancedQuizStorageService,
     QuizServiceProvider,
   ],
-  exports: [QuizServiceProvider, EnhancedQuizStorageService],
+  exports: [QuizServiceProvider, EnhancedQuizStorageService, QuizRepository],
 })
 export class QuizModule {}

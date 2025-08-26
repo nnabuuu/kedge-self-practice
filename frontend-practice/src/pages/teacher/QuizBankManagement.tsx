@@ -9,6 +9,7 @@ interface Quiz {
   question: string;
   options?: string[];
   answer: string | string[] | number | number[];
+  alternative_answers?: string[]; // Alternative correct answers for fill-in-the-blank
   difficulty?: 'easy' | 'medium' | 'hard';
   knowledgePointId?: string;
   knowledge_point_id?: string; // Backend field name
@@ -70,6 +71,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [newTag, setNewTag] = useState('');
+  const [newAlternativeAnswer, setNewAlternativeAnswer] = useState('');
   const [showPolishModal, setShowPolishModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [polishingQuiz, setPolishingQuiz] = useState<Quiz | null>(null);
@@ -472,6 +474,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const handleEditQuiz = (quiz: Quiz) => {
     setEditingQuiz(quiz);
     setNewTag(''); // Clear the new tag input
+    setNewAlternativeAnswer(''); // Clear the new alternative answer input
     setShowEditModal(true);
     // Fetch knowledge points for selection
     if (knowledgePoints.length === 0) {
@@ -530,6 +533,24 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       
       // Clear the input
       setNewTag('');
+    }
+  };
+
+  const handleAddAlternativeAnswer = () => {
+    if (newAlternativeAnswer.trim() && editingQuiz) {
+      const trimmedAnswer = newAlternativeAnswer.trim();
+      const currentAlternatives = editingQuiz.alternative_answers || [];
+      
+      // Check if answer already exists
+      if (!currentAlternatives.includes(trimmedAnswer)) {
+        setEditingQuiz({
+          ...editingQuiz,
+          alternative_answers: [...currentAlternatives, trimmedAnswer]
+        });
+      }
+      
+      // Clear the input
+      setNewAlternativeAnswer('');
     }
   };
 
@@ -1100,6 +1121,11 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getQuizTypeColor(quiz.type)}`}>
                               {getQuizTypeLabel(quiz.type)}
                             </span>
+                            {quiz.type === 'fill-in-the-blank' && quiz.alternative_answers && quiz.alternative_answers.length > 0 && (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                                {quiz.alternative_answers.length} 个替代答案
+                              </span>
+                            )}
                             {quiz.difficulty && (
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(quiz.difficulty)}`}>
                                 {getDifficultyLabel(quiz.difficulty)}
@@ -1132,6 +1158,26 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                                   </div>
                                 );
                               })}
+                            </div>
+                          )}
+                          
+                          {/* Answer for fill-in-the-blank */}
+                          {quiz.type === 'fill-in-the-blank' && (
+                            <div className="mb-3 p-2 bg-blue-50 rounded-lg">
+                              <div className="text-sm">
+                                <span className="font-medium text-blue-900">标准答案：</span>
+                                <span className="text-blue-700 ml-1">
+                                  {Array.isArray(quiz.answer) ? quiz.answer.join(', ') : quiz.answer}
+                                </span>
+                              </div>
+                              {quiz.alternative_answers && quiz.alternative_answers.length > 0 && (
+                                <div className="mt-1 text-sm">
+                                  <span className="font-medium text-green-900">替代答案：</span>
+                                  <span className="text-green-700 ml-1">
+                                    {quiz.alternative_answers.join(', ')}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           )}
                           
@@ -1514,6 +1560,67 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                   />
                 )}
               </div>
+
+              {/* Alternative Answers for Fill-in-the-blank */}
+              {editingQuiz.type === 'fill-in-the-blank' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    替代答案 <span className="text-xs text-gray-500">(系统会接受这些答案为正确)</span>
+                  </label>
+                  
+                  {/* Current alternative answers display */}
+                  <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border border-gray-300 rounded-lg bg-gray-50 mb-2">
+                    {(editingQuiz.alternative_answers || []).map((answer, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-md"
+                      >
+                        {answer}
+                        <button
+                          onClick={() => {
+                            const newAlternatives = (editingQuiz.alternative_answers || []).filter((_, i) => i !== index);
+                            setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
+                          }}
+                          className="ml-2 text-green-600 hover:text-green-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    {(!editingQuiz.alternative_answers || editingQuiz.alternative_answers.length === 0) && (
+                      <span className="text-gray-400 text-sm">暂无替代答案</span>
+                    )}
+                  </div>
+                  
+                  {/* Add new alternative answer input */}
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={newAlternativeAnswer}
+                      onChange={(e) => setNewAlternativeAnswer(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddAlternativeAnswer();
+                        }
+                      }}
+                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                      placeholder="输入替代答案，按回车添加"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddAlternativeAnswer}
+                      className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      添加
+                    </button>
+                  </div>
+                  
+                  <p className="mt-2 text-xs text-gray-500">
+                    💡 提示：当学生提交的答案被 AI 验证为正确时，系统会自动添加到替代答案列表中
+                  </p>
+                </div>
+              )}
 
               {/* Difficulty */}
               <div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Play, Minus, ChevronRight, ChevronDown, RotateCcw, Settings, Target, Clock, Shuffle, BookOpen, History, CheckSquare, Square, Zap, Sparkles, TrendingUp, Info, X, Brain, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Play, Minus, ChevronRight, ChevronDown, RotateCcw, Settings, Target, Clock, Shuffle, BookOpen, History, CheckSquare, Square, Zap, Sparkles, TrendingUp, Info, X, Brain, AlertCircle, FileText, Sliders } from 'lucide-react';
 import { Subject } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -19,6 +19,7 @@ interface QuizConfig {
   shuffleQuestions: boolean;
   showExplanation: boolean;
   quizTypes?: ('single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective' | 'other')[];
+  autoAdvanceDelay?: number; // Delay in seconds before auto-advancing to next question after correct answer (0 = disabled)
 }
 
 interface GroupedKnowledgePoints {
@@ -495,16 +496,21 @@ export default function KnowledgePointSelection({
               </div>
             </div>
 
-            {/* 配置选项 */}
-            <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20 mb-6">
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* 左列：题目类型和数量 */}
-                <div className="space-y-6">
-                  {/* Question Type */}
+            {/* 配置选项 - 重新组织为三个主要部分 */}
+            <div className="space-y-4">
+              {/* 第一部分：基础设置（题目类型和数量） */}
+              <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20">
+                <div className="flex items-center mb-5 pb-3 border-b border-gray-200">
+                  <Settings className="w-6 h-6 text-blue-600 mr-3" />
+                  <h2 className="text-xl font-bold text-gray-900 tracking-wide">基础设置</h2>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-8">
+                  {/* 题目来源 */}
                   <div>
                     <div className="flex items-center mb-4">
                       <Target className="w-5 h-5 text-blue-600 mr-2" />
-                      <h3 className="text-lg font-bold text-gray-900 tracking-wide">题目类型</h3>
+                      <h3 className="font-semibold text-gray-800">题目来源</h3>
                     </div>
                     <div className="space-y-2">
                       {[
@@ -531,11 +537,11 @@ export default function KnowledgePointSelection({
                     </div>
                   </div>
 
-                  {/* Question Count */}
+                  {/* 题目数量 */}
                   <div>
                     <div className="flex items-center mb-4">
                       <BookOpen className="w-5 h-5 text-blue-600 mr-2" />
-                      <h3 className="text-lg font-bold text-gray-900 tracking-wide">题目数量</h3>
+                      <h3 className="font-semibold text-gray-800">题目数量</h3>
                     </div>
                     <div className="space-y-2">
                       <label className="group flex items-center space-x-3 p-3 border rounded-xl cursor-pointer hover:bg-blue-50/50 transition-all duration-300 hover:border-blue-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none">
@@ -582,63 +588,84 @@ export default function KnowledgePointSelection({
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* 右列：其他选项 */}
+              {/* 第二部分：题型选择 */}
+              <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20">
+                <div className="flex items-center mb-5 pb-3 border-b border-gray-200">
+                  <FileText className="w-6 h-6 text-indigo-600 mr-3" />
+                  <h2 className="text-xl font-bold text-gray-900 tracking-wide">题型设置</h2>
+                </div>
+                
                 <div>
-                  <div className="flex items-center mb-4">
-                    <Settings className="w-5 h-5 text-blue-600 mr-2" />
-                    <h3 className="text-lg font-bold text-gray-900 tracking-wide">其他选项</h3>
+                  <div className="mb-3">
+                    <p className="text-sm text-gray-600">选择要包含的题目类型，建议全选以获得更全面的练习体验</p>
                   </div>
-                  <div className="space-y-3">
-                    {/* 题型选择 */}
-                    <div className="border rounded-xl p-3">
-                      <div className="font-medium text-gray-900 mb-2">可包括以下题型</div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                        {[
-                          { value: 'single-choice', label: '单选题', icon: '☑️' },
-                          { value: 'multiple-choice', label: '多选题', icon: '✅' },
-                          { value: 'fill-in-the-blank', label: '填空题', icon: '📝' },
-                          { value: 'subjective', label: '主观题', icon: '✍️' },
-                          { value: 'other', label: '其他题型', icon: '❓' }
-                        ].map(type => (
-                          <label key={type.value} className="flex items-center space-x-1.5 cursor-pointer hover:bg-blue-50/50 py-1 px-2 rounded-lg transition-all duration-200">
-                            <input
-                              type="checkbox"
-                              checked={quizConfig.quizTypes?.includes(type.value as any) ?? false}
-                              onChange={(e) => {
-                                const currentTypes = quizConfig.quizTypes || [];
-                                if (e.target.checked) {
-                                  setQuizConfig(prev => ({
-                                    ...prev,
-                                    quizTypes: [...currentTypes, type.value as any]
-                                  }));
-                                } else {
-                                  setQuizConfig(prev => ({
-                                    ...prev,
-                                    quizTypes: currentTypes.filter(t => t !== type.value)
-                                  }));
-                                }
-                              }}
-                              className="w-4 h-4 text-blue-600 rounded flex-shrink-0"
-                            />
-                            <span className="text-sm">{type.icon}</span>
-                            <span className="text-gray-700 text-sm">{type.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                      {(!quizConfig.quizTypes || quizConfig.quizTypes.length === 0) && (
-                        <p className="text-red-500 text-xs mt-1.5">请至少选择一种题型</p>
-                      )}
-                    </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                      { value: 'single-choice', label: '单选题', icon: '☑️', desc: '每题一个正确答案' },
+                      { value: 'multiple-choice', label: '多选题', icon: '✅', desc: '可能有多个正确答案' },
+                      { value: 'fill-in-the-blank', label: '填空题', icon: '📝', desc: '填写正确答案' },
+                      { value: 'subjective', label: '主观题', icon: '✍️', desc: '开放式回答' },
+                      { value: 'other', label: '其他题型', icon: '❓', desc: '判断题等其他类型' }
+                    ].map(type => (
+                      <label key={type.value} className="group flex items-start space-x-2 cursor-pointer bg-white/50 hover:bg-blue-50 p-3 rounded-xl border border-gray-200 hover:border-blue-300 transition-all duration-200">
+                        <input
+                          type="checkbox"
+                          checked={quizConfig.quizTypes?.includes(type.value as any) ?? false}
+                          onChange={(e) => {
+                            const currentTypes = quizConfig.quizTypes || [];
+                            if (e.target.checked) {
+                              setQuizConfig(prev => ({
+                                ...prev,
+                                quizTypes: [...currentTypes, type.value as any]
+                              }));
+                            } else {
+                              setQuizConfig(prev => ({
+                                ...prev,
+                                quizTypes: currentTypes.filter(t => t !== type.value)
+                              }));
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded flex-shrink-0 mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-1">
+                            <span className="text-lg">{type.icon}</span>
+                            <span className="font-medium text-gray-900 group-hover:text-blue-600">{type.label}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">{type.desc}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  {(!quizConfig.quizTypes || quizConfig.quizTypes.length === 0) && (
+                    <p className="text-red-500 text-sm mt-2 flex items-center">
+                      <AlertCircle className="w-4 h-4 mr-1" />
+                      请至少选择一种题型
+                    </p>
+                  )}
+                </div>
+              </div>
 
-                    {/* Time Limit Slider */}
-                    <div className="border rounded-xl p-3">
+              {/* 第三部分：高级选项 */}
+              <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20">
+                <div className="flex items-center mb-5 pb-3 border-b border-gray-200">
+                  <Sliders className="w-6 h-6 text-purple-600 mr-3" />
+                  <h2 className="text-xl font-bold text-gray-900 tracking-wide">高级选项</h2>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* 左列：时间和顺序 */}
+                  <div className="space-y-4">
+                    {/* 时间限制 */}
+                    <div className="bg-white/50 rounded-xl p-4 border border-gray-200">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center">
-                          <Clock className="w-5 h-5 text-blue-600 mr-2" />
+                          <Clock className="w-5 h-5 text-purple-600 mr-2" />
                           <div className="font-medium text-gray-900">时间限制</div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={!!quizConfig.timeLimit}
@@ -646,12 +673,12 @@ export default function KnowledgePointSelection({
                               ...prev,
                               timeLimit: e.target.checked ? 30 : undefined
                             }))}
-                            className="w-4 h-4 text-blue-600 rounded"
+                            className="w-4 h-4 text-purple-600 rounded"
                           />
                           <span className="text-sm text-gray-600">
-                            {quizConfig.timeLimit ? `${quizConfig.timeLimit} 分钟` : '无限制'}
+                            {quizConfig.timeLimit ? '启用' : '不限时'}
                           </span>
-                        </div>
+                        </label>
                       </div>
                       {quizConfig.timeLimit && (
                         <div className="space-y-2">
@@ -668,7 +695,7 @@ export default function KnowledgePointSelection({
                           />
                           <div className="flex justify-between text-xs text-gray-500">
                             <span>5分钟</span>
-                            <span className="font-medium text-blue-600">{quizConfig.timeLimit}分钟</span>
+                            <span className="font-medium text-purple-600">{quizConfig.timeLimit}分钟</span>
                             <span>120分钟</span>
                           </div>
                           <div className="text-center">
@@ -679,7 +706,7 @@ export default function KnowledgePointSelection({
                                   onClick={() => setQuizConfig(prev => ({ ...prev, timeLimit: minutes }))}
                                   className={`px-3 py-1 text-xs rounded-lg transition-all duration-200 ${
                                     quizConfig.timeLimit === minutes
-                                      ? 'bg-blue-600 text-white'
+                                      ? 'bg-purple-600 text-white'
                                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                   }`}
                                 >
@@ -691,35 +718,105 @@ export default function KnowledgePointSelection({
                         </div>
                       )}
                     </div>
-
-                    <label className="group flex items-center space-x-3 p-3 border rounded-xl cursor-pointer hover:bg-blue-50/50 transition-all duration-300 hover:border-blue-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none">
-                      <input
-                        type="checkbox"
-                        checked={quizConfig.shuffleQuestions}
-                        onChange={(e) => setQuizConfig(prev => ({ ...prev, shuffleQuestions: e.target.checked }))}
-                        className="w-4 h-4 text-blue-600 rounded"
-                      />
-                      <Shuffle className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors duration-300 tracking-wide">随机题目顺序</div>
-                        <div className="text-sm text-gray-600">打乱题目顺序，增加练习效果</div>
+                    
+                    {/* 随机顺序 */}
+                    <div className="bg-white/50 rounded-xl p-4 border border-gray-200">
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={quizConfig.shuffleQuestions}
+                          onChange={(e) => setQuizConfig(prev => ({ ...prev, shuffleQuestions: e.target.checked }))}
+                          className="w-4 h-4 text-purple-600 rounded"
+                        />
+                        <Shuffle className="w-5 h-5 text-purple-600" />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">随机题目顺序</div>
+                          <div className="text-sm text-gray-600">打乱题目顺序，避免记忆答案位置</div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {/* 右列：反馈和自动化 */}
+                  <div className="space-y-4">
+                    {/* 答案解析 */}
+                    <div className="bg-white/50 rounded-xl p-4 border border-gray-200">
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={quizConfig.showExplanation}
+                          onChange={(e) => setQuizConfig(prev => ({ ...prev, showExplanation: e.target.checked }))}
+                          className="w-4 h-4 text-purple-600 rounded"
+                        />
+                        <BookOpen className="w-5 h-5 text-purple-600" />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">显示答案解析</div>
+                          <div className="text-sm text-gray-600">答题后立即查看详细解析</div>
+                        </div>
+                      </label>
+                    </div>
+                    
+                    {/* 自动跳转 */}
+                    <div className="bg-white/50 rounded-xl p-4 border border-gray-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center">
+                          <ArrowRight className="w-5 h-5 text-purple-600 mr-2" />
+                          <div className="font-medium text-gray-900">自动进入下一题</div>
+                        </div>
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={(quizConfig.autoAdvanceDelay ?? 0) > 0}
+                            onChange={(e) => setQuizConfig(prev => ({
+                              ...prev,
+                              autoAdvanceDelay: e.target.checked ? 3 : 0
+                            }))}
+                            className="w-4 h-4 text-purple-600 rounded"
+                          />
+                          <span className="text-sm text-gray-600">
+                            {(quizConfig.autoAdvanceDelay ?? 0) > 0 ? '启用' : '手动切换'}
+                          </span>
+                        </label>
                       </div>
-                    </label>
-
-                    <label className="group flex items-center space-x-3 p-3 border rounded-xl cursor-pointer hover:bg-blue-50/50 transition-all duration-300 hover:border-blue-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none">
-                      <input
-                        type="checkbox"
-                        checked={quizConfig.showExplanation}
-                        onChange={(e) => setQuizConfig(prev => ({ ...prev, showExplanation: e.target.checked }))}
-                        className="w-4 h-4 text-blue-600 rounded"
-                      />
-                      <BookOpen className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors duration-300 tracking-wide">显示答案解析</div>
-                        <div className="text-sm text-gray-600">答题后显示详细解析</div>
-                      </div>
-                    </label>
-
+                      {(quizConfig.autoAdvanceDelay ?? 0) > 0 && (
+                        <div className="space-y-3">
+                          <p className="text-sm text-gray-600">
+                            答对后等待 <span className="font-semibold text-purple-600">{quizConfig.autoAdvanceDelay}</span> 秒自动进入下一题
+                          </p>
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="range"
+                              min="1"
+                              max="10"
+                              value={quizConfig.autoAdvanceDelay}
+                              onChange={(e) => setQuizConfig(prev => ({
+                                ...prev,
+                                autoAdvanceDelay: parseInt(e.target.value)
+                              }))}
+                              className="flex-1"
+                            />
+                            <div className="flex items-center space-x-1">
+                              <input
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={quizConfig.autoAdvanceDelay}
+                                onChange={(e) => setQuizConfig(prev => ({
+                                  ...prev,
+                                  autoAdvanceDelay: Math.min(10, Math.max(1, parseInt(e.target.value) || 1))
+                                }))}
+                                className="w-14 px-2 py-1 border border-gray-300 rounded-lg text-center font-semibold"
+                              />
+                              <span className="text-sm text-gray-600">秒</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>1秒（快速）</span>
+                            <span>10秒（充分查看）</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

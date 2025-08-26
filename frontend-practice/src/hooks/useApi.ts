@@ -326,6 +326,7 @@ export function usePracticeSession(config: {
   allow_review?: boolean;
   show_answer_immediately?: boolean;
   quiz_types?: string[];
+  auto_advance_delay?: number;
 } | null) {
   const [state, setState] = useState<{
     session: any | null;

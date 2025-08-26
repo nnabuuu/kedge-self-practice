@@ -25,6 +25,7 @@ interface QuizConfig {
   shuffleQuestions: boolean;
   showExplanation: boolean;
   quizTypes?: ('single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective' | 'other')[];
+  autoAdvanceDelay?: number; // Delay in seconds before auto-advancing to next question after correct answer (0 = disabled)
 }
 
 type Screen = 

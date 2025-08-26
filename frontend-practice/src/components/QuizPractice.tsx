@@ -11,6 +11,7 @@ interface QuizConfig {
   shuffleQuestions: boolean;
   showExplanation: boolean;
   quizTypes?: ('single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective' | 'other')[];
+  autoAdvanceDelay?: number; // Delay in seconds before auto-advancing to next question after correct answer (0 = disabled)
 }
 
 interface QuizPracticeProps {
@@ -47,7 +48,13 @@ export default function QuizPractice({
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [showStandardAnswer, setShowStandardAnswer] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false);
+  const [aiReevaluating, setAiReevaluating] = useState(false);
+  const [aiReevaluationMessage, setAiReevaluationMessage] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(practiceSessionId);
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null);
+  const [sessionAutoAdvanceDelay, setSessionAutoAdvanceDelay] = useState<number | null>(null);
+  const autoAdvanceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoAdvanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // 语音输入相关状态
   const [isListening, setIsListening] = useState(false);
@@ -237,10 +244,11 @@ export default function QuizPractice({
       shuffle_options: true,
       allow_review: true,
       show_answer_immediately: config.showExplanation,
-      quiz_types: config.quizTypes
+      quiz_types: config.quizTypes,
+      auto_advance_delay: config.autoAdvanceDelay || 0
     } : null,
     [practiceSessionId, selectedKnowledgePoints, config.questionCount, config.timeLimit, 
-     config.shuffleQuestions, config.showExplanation, config.quizTypes, subject.id]
+     config.shuffleQuestions, config.showExplanation, config.quizTypes, config.autoAdvanceDelay, subject.id]
   );
 
   const { 
@@ -276,6 +284,10 @@ export default function QuizPractice({
                 // Don't convert again - already converted by backend API service
                 setQuestions(startResponse.data.quizzes);
                 setCurrentSessionId(practiceSessionId);
+                // Save session's auto_advance_delay
+                if (startResponse.data.session?.auto_advance_delay !== undefined) {
+                  setSessionAutoAdvanceDelay(startResponse.data.session.auto_advance_delay);
+                }
                 
                 // Initialize answers array
                 const initialAnswers = new Array(startResponse.data.quizzes.length).fill(null);
@@ -289,6 +301,10 @@ export default function QuizPractice({
               console.log('Quizzes from session:', response.data.quizzes);
               setQuestions(response.data.quizzes);
               setCurrentSessionId(practiceSessionId);
+              // Save session's auto_advance_delay
+              if (response.data.session?.auto_advance_delay !== undefined) {
+                setSessionAutoAdvanceDelay(response.data.session.auto_advance_delay);
+              }
               
               // Initialize answers array based on existing answers if any
               const initialAnswers = new Array(response.data.quizzes.length).fill(null);
@@ -369,8 +385,13 @@ export default function QuizPractice({
       setAnswers(new Array(sessionQuestions.length).fill(null));
       setQuestionStartTimes(new Array(sessionQuestions.length).fill(null));
       setQuestionDurations(new Array(sessionQuestions.length).fill(0));
+      
+      // Save session's auto_advance_delay if available
+      if (session?.auto_advance_delay !== undefined) {
+        setSessionAutoAdvanceDelay(session.auto_advance_delay);
+      }
     }
-  }, [practiceSessionId, sessionQuestions]);
+  }, [practiceSessionId, sessionQuestions, session]);
 
   // 记录当前题目开始时间
   useEffect(() => {
@@ -520,6 +541,11 @@ export default function QuizPractice({
     
     setShowResult(true);
     setShowStandardAnswer(true);
+    
+    // If the answer is correct, automatically move to next question with countdown
+    if (answer === currentQuestion?.answer && (config.autoAdvanceDelay ?? 0) > 0) {
+      startAutoAdvanceCountdown();
+    }
   };
 
   const handleMultipleChoiceToggle = (option: string) => {
@@ -560,6 +586,55 @@ export default function QuizPractice({
       utterance.rate = 0.8;
       speechSynthesis.speak(utterance);
     }
+  };
+
+  // Start auto-advance countdown
+  const startAutoAdvanceCountdown = () => {
+    // Use session's auto_advance_delay if available (from backend session), otherwise use config
+    const delay = sessionAutoAdvanceDelay !== null ? sessionAutoAdvanceDelay : (config.autoAdvanceDelay ?? 0);
+    if (delay <= 0) return;
+
+    // Clear any existing timers
+    if (autoAdvanceTimeoutRef.current) {
+      clearTimeout(autoAdvanceTimeoutRef.current);
+    }
+    if (autoAdvanceIntervalRef.current) {
+      clearInterval(autoAdvanceIntervalRef.current);
+    }
+
+    // Set initial countdown
+    setAutoAdvanceCountdown(delay);
+
+    // Update countdown every second
+    autoAdvanceIntervalRef.current = setInterval(() => {
+      setAutoAdvanceCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          if (autoAdvanceIntervalRef.current) {
+            clearInterval(autoAdvanceIntervalRef.current);
+          }
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Auto-advance after delay
+    autoAdvanceTimeoutRef.current = setTimeout(() => {
+      handleNextQuestion();
+    }, delay * 1000);
+  };
+
+  // Cancel auto-advance
+  const cancelAutoAdvance = () => {
+    if (autoAdvanceTimeoutRef.current) {
+      clearTimeout(autoAdvanceTimeoutRef.current);
+      autoAdvanceTimeoutRef.current = null;
+    }
+    if (autoAdvanceIntervalRef.current) {
+      clearInterval(autoAdvanceIntervalRef.current);
+      autoAdvanceIntervalRef.current = null;
+    }
+    setAutoAdvanceCountdown(null);
   };
 
   // 模拟AI评价生成 - 更加针对性的评价
@@ -730,6 +805,25 @@ export default function QuizPractice({
       setShowStandardAnswer(true);
       setShowResult(true);
       
+      // Check if the answer is correct for auto-advance
+      const checkCorrect = () => {
+        if (isMultipleChoice && Array.isArray(currentQuestion?.answer)) {
+          const correctAnswers = currentQuestion.answer.sort();
+          const userAnswers = (currentAnswer as string[]).sort();
+          return JSON.stringify(correctAnswers) === JSON.stringify(userAnswers);
+        } else if (isFillInBlank && Array.isArray(currentQuestion?.answer)) {
+          return (currentAnswer as string[]).every((answer, index) => 
+            answer.trim().toLowerCase() === String(currentQuestion.answer[index]).trim().toLowerCase()
+          );
+        }
+        return false;
+      };
+      
+      // If answer is correct and not an essay, auto-advance with countdown
+      if (!isEssay && checkCorrect() && (config.autoAdvanceDelay ?? 0) > 0) {
+        startAutoAdvanceCountdown();
+      }
+      
       // 如果是问答题，异步生成AI评价
       if (isEssay && currentQuestion && typeof currentAnswer === 'string') {
         setIsEvaluating(true);
@@ -746,6 +840,9 @@ export default function QuizPractice({
   };
 
   const handleNextQuestion = () => {
+    // Cancel any active countdown
+    cancelAutoAdvance();
+    
     if (isLastQuestion) {
       handleEndPractice();
     } else {
@@ -759,6 +856,49 @@ export default function QuizPractice({
       setShowStandardAnswer(false);
       setAiEvaluation(null);
       setVoiceTranscript('');
+    }
+  };
+
+  const handleAiReevaluate = async () => {
+    if (!currentSessionId || aiReevaluating) return;
+    
+    const currentQuestion = questions[currentQuestionIndex];
+    if (currentQuestion.type !== 'fill-in-the-blank') return;
+    
+    setAiReevaluating(true);
+    setAiReevaluationMessage(null);
+    
+    try {
+      // Get the user's answer
+      const userAnswer = fillInBlankAnswers.join(' ');
+      
+      const response = await api.practice.aiReevaluateAnswer(
+        currentSessionId,
+        currentQuestion.id,
+        userAnswer
+      );
+      
+      if (response.data) {
+        if (response.data.isCorrect) {
+          // Update the local state to show correct
+          setShowResult(false);
+          setTimeout(() => {
+            setShowResult(true);
+            setAiReevaluationMessage(response.data.message || '系统已记录此答案为正确答案');
+            // Update local answers array to mark as correct
+            const newAnswers = [...answers];
+            newAnswers[currentQuestionIndex] = fillInBlankAnswers;
+            setAnswers(newAnswers);
+          }, 100);
+        } else {
+          setAiReevaluationMessage(`AI判断：${response.data.reasoning}`);
+        }
+      }
+    } catch (error) {
+      console.error('AI re-evaluation failed:', error);
+      setAiReevaluationMessage('AI评估失败，请稍后重试');
+    } finally {
+      setAiReevaluating(false);
     }
   };
 
@@ -1204,6 +1344,53 @@ export default function QuizPractice({
                   })}
                 </div>
                 
+                {/* AI Re-evaluation Button and Message */}
+                {!isAnswerCorrect() && (
+                  <div className="mt-4">
+                    <button
+                      onClick={handleAiReevaluate}
+                      disabled={aiReevaluating}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      {aiReevaluating ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>AI 正在评估中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          <span>请求 AI 重新评估</span>
+                        </>
+                      )}
+                    </button>
+                    <p className="text-sm text-gray-500 mt-2">
+                      如果您认为答案正确，可以请求 AI 重新评估
+                    </p>
+                  </div>
+                )}
+                
+                {/* AI Re-evaluation Message */}
+                {aiReevaluationMessage && (
+                  <div className={`mt-4 p-4 rounded-lg border ${
+                    aiReevaluationMessage.includes('正确') || aiReevaluationMessage.includes('系统已记录') 
+                      ? 'bg-green-50 border-green-200 text-green-800' 
+                      : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+                  }`}>
+                    <div className="flex items-start gap-2">
+                      <Brain className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">{aiReevaluationMessage}</p>
+                        {aiReevaluationMessage.includes('系统已记录') && (
+                          <p className="text-sm mt-1 opacity-80">
+                            未来遇到相同答案时，系统将自动判定为正确 ✨
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {/* 相关知识点信息 - 填空题 */}
                 {(currentQuestion.knowledgePoint || knowledgePointsData) && (
                   <div className={`mt-4 p-4 rounded-lg border ${
@@ -1443,6 +1630,37 @@ export default function QuizPractice({
                 </button>
               ) : (
                 <div className="flex flex-col items-center gap-2">
+                  {autoAdvanceCountdown !== null && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="relative w-12 h-12">
+                        <svg className="w-12 h-12 transform -rotate-90">
+                          <circle
+                            cx="24"
+                            cy="24"
+                            r="20"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                            className="text-gray-200"
+                          />
+                          <circle
+                            cx="24"
+                            cy="24"
+                            r="20"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                            strokeDasharray={`${(autoAdvanceCountdown / (config.autoAdvanceDelay || 1)) * 125.6} 125.6`}
+                            className="text-blue-600 transition-all duration-1000 linear"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-lg font-bold text-blue-600">{autoAdvanceCountdown}</span>
+                        </div>
+                      </div>
+                      <span className="text-sm text-gray-600">秒后自动进入下一题</span>
+                    </div>
+                  )}
                   <button
                     onClick={handleNextQuestion}
                     disabled={isEvaluating}
@@ -1460,7 +1678,9 @@ export default function QuizPractice({
                       </>
                     )}
                   </button>
-                  <span className="text-xs text-gray-500">按 Enter 键继续</span>
+                  <span className="text-xs text-gray-500">
+                    {autoAdvanceCountdown !== null ? '点击立即跳转' : '按 Enter 键继续'}
+                  </span>
                 </div>
               )}
             </div>

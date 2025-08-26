@@ -243,4 +243,91 @@ export class GptService {
       return { ...item, type: newType, question: 'GPT 返回解析失败: ' + content } as QuizItem;
     }
   }
+
+  /**
+   * Validate if a user's answer is acceptable for a fill-in-the-blank question
+   * using GPT to understand semantic equivalence
+   */
+  async validateFillInBlankAnswer(
+    question: string,
+    correctAnswer: string,
+    userAnswer: string,
+    context?: string
+  ): Promise<{ isCorrect: boolean; reasoning?: string }> {
+    try {
+      // Define the JSON schema for structured output
+      const responseSchema = {
+        type: 'json_schema',
+        json_schema: {
+          name: 'answer_validation',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              isCorrect: {
+                type: 'boolean',
+                description: 'Whether the student answer is semantically correct'
+              },
+              reasoning: {
+                type: 'string',
+                description: 'Explanation for the validation judgment'
+              }
+            },
+            required: ['isCorrect', 'reasoning'],
+            additionalProperties: false
+          }
+        }
+      };
+
+      const prompt = `请判断用户的答案是否正确。
+
+题目：${question}
+${context ? `题目背景：${context}` : ''}
+标准答案：${correctAnswer}
+用户答案：${userAnswer}
+
+请分析用户答案是否与标准答案在语义上等价或表达了相同的意思。
+考虑以下几点：
+1. 语义等价性（意思相同即可，不需要完全一样的用词）
+2. 同义词或近义词的使用
+3. 不同的表达方式但意思正确
+4. 拼写的细微差异（如简繁体、错别字等）
+5. 数字的不同表示形式（如阿拉伯数字和中文数字）
+
+请提供你的判断结果和理由。`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini', // Use gpt-4o-mini for better structured output support
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个教育评估助手，专门判断学生答案的正确性。你应该对合理的答案持宽容态度，只要意思正确就应该判定为正确。',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3, // Lower temperature for more consistent evaluation
+        max_tokens: 200,
+        response_format: responseSchema as any, // Use structured output with JSON schema
+      });
+
+      const content = response.choices[0].message?.content?.trim() || '{}';
+      
+      // Parse the JSON response (guaranteed to be valid JSON with response_format)
+      const result = JSON.parse(content);
+      return {
+        isCorrect: result.isCorrect || false,
+        reasoning: result.reasoning || '无法判断',
+      };
+    } catch (error) {
+      console.error('Error validating answer with GPT:', error);
+      // On error, be conservative and return false
+      return {
+        isCorrect: false,
+        reasoning: 'GPT验证失败，无法确认答案正确性',
+      };
+    }
+  }
 }

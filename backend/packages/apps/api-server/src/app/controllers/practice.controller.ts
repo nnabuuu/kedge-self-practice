@@ -470,4 +470,34 @@ export class PracticeController {
       parseInt(limit)
     );
   }
+
+  @Post('sessions/ai-reevaluate')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request AI to re-evaluate a fill-in-the-blank answer' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'AI re-evaluation completed',
+  })
+  async aiReevaluateAnswer(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: {
+      session_id: string;
+      question_id: string;
+      user_answer: string;
+    }
+  ): Promise<{
+    isCorrect: boolean;
+    reasoning: string;
+    message?: string;
+  }> {
+    const userId = req.user.userId;
+    return await this.practiceService.aiReevaluateAnswer(
+      body.session_id,
+      body.question_id,
+      body.user_answer,
+      userId
+    );
+  }
 }

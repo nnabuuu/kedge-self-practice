@@ -12,7 +12,9 @@ import {
 } from '@kedge/models';
 import { PracticeRepository } from './practice.repository';
 import { QuizService } from '@kedge/quiz';
+import { QuizRepository } from '@kedge/quiz';
 import { PersistentService } from '@kedge/persistent';
+import { GptService } from '@kedge/quiz-parser';
 
 @Injectable()
 export class PracticeService {
@@ -21,7 +23,9 @@ export class PracticeService {
   constructor(
     private readonly practiceRepository: PracticeRepository,
     private readonly quizService: QuizService,
-    private readonly persistentService: PersistentService
+    private readonly quizRepository: QuizRepository,
+    private readonly persistentService: PersistentService,
+    private readonly gptService: GptService
   ) {}
 
   async createSession(
@@ -102,6 +106,7 @@ export class PracticeService {
         strategy: data.strategy,
         total_questions: finalQuizzes.length,
         time_limit_minutes: data.time_limit_minutes,
+        auto_advance_delay: data.auto_advance_delay,
       }
     );
 
@@ -158,9 +163,41 @@ export class PracticeService {
       throw new NotFoundException('Quiz not found');
     }
 
-    // Determine if answer is correct
-    const correctAnswer = Array.isArray(quiz.answer) ? quiz.answer.join(',') : quiz.answer;
-    const isCorrect = data.answer === correctAnswer;
+    // Enhanced answer evaluation logic (without automatic GPT)
+    let isCorrect = false;
+    const userAnswer = data.answer?.trim();
+    
+    if (!userAnswer) {
+      isCorrect = false;
+    } else if (quiz.type === 'fill-in-the-blank') {
+      // For fill-in-the-blank questions, check exact match and alternative answers only
+      const correctAnswer = Array.isArray(quiz.answer) ? quiz.answer[0] : quiz.answer;
+      const correctAnswerStr = String(correctAnswer).trim();
+      
+      // Step 1: Check exact match (case-insensitive)
+      if (userAnswer.toLowerCase() === correctAnswerStr.toLowerCase()) {
+        isCorrect = true;
+        this.logger.log(`Answer matched exactly (case-insensitive): "${userAnswer}" === "${correctAnswerStr}"`);
+      }
+      // Step 2: Check alternative answers
+      else if (quiz.alternative_answers && quiz.alternative_answers.length > 0) {
+        isCorrect = quiz.alternative_answers.some(
+          alt => alt.toLowerCase() === userAnswer.toLowerCase()
+        );
+        if (isCorrect) {
+          this.logger.log(`Answer matched alternative: "${userAnswer}" in [${quiz.alternative_answers.join(', ')}]`);
+        }
+      }
+      // Step 3: No automatic GPT validation - user must request it manually
+      else {
+        isCorrect = false;
+        this.logger.log(`Answer did not match, user can request AI re-evaluation: "${userAnswer}" vs "${correctAnswerStr}"`);
+      }
+    } else {
+      // For other question types, use original logic
+      const correctAnswer = Array.isArray(quiz.answer) ? quiz.answer.join(',') : quiz.answer;
+      isCorrect = userAnswer === String(correctAnswer);
+    }
 
     // Submit the answer
     const result = await this.practiceRepository.submitAnswer(
@@ -781,6 +818,99 @@ export class PracticeService {
         success: false,
         error: errorMessage
       };
+    }
+  }
+
+  /**
+   * Manual AI re-evaluation of a fill-in-the-blank answer
+   * This allows users to explicitly request AI to check their answer
+   */
+  async aiReevaluateAnswer(
+    sessionId: string,
+    questionId: string,
+    userAnswer: string,
+    userId: string
+  ): Promise<{ isCorrect: boolean; reasoning: string; message?: string }> {
+    try {
+      // Verify session belongs to user
+      const session = await this.practiceRepository.getSession(sessionId, userId);
+      if (!session) {
+        throw new NotFoundException('Practice session not found');
+      }
+
+      // Get the quiz details
+      const quiz = await this.quizService.getQuizById(questionId);
+      if (!quiz) {
+        throw new NotFoundException('Quiz not found');
+      }
+
+      // Only allow re-evaluation for fill-in-the-blank questions
+      if (quiz.type !== 'fill-in-the-blank') {
+        throw new BadRequestException('AI re-evaluation is only available for fill-in-the-blank questions');
+      }
+
+      const correctAnswer = Array.isArray(quiz.answer) ? quiz.answer[0] : quiz.answer;
+      const correctAnswerStr = String(correctAnswer).trim();
+      const userAnswerTrimmed = userAnswer?.trim();
+
+      if (!userAnswerTrimmed) {
+        return {
+          isCorrect: false,
+          reasoning: '答案不能为空',
+        };
+      }
+
+      // Check if it's already an exact match or in alternative answers
+      if (userAnswerTrimmed.toLowerCase() === correctAnswerStr.toLowerCase()) {
+        return {
+          isCorrect: true,
+          reasoning: '答案完全匹配',
+        };
+      }
+
+      if (quiz.alternative_answers?.some(alt => alt.toLowerCase() === userAnswerTrimmed.toLowerCase())) {
+        return {
+          isCorrect: true,
+          reasoning: '答案已在系统认可的替代答案中',
+        };
+      }
+
+      // Use GPT to evaluate the answer
+      this.logger.log(`AI re-evaluation requested for: "${userAnswerTrimmed}" vs "${correctAnswerStr}"`);
+      
+      const gptValidation = await this.gptService.validateFillInBlankAnswer(
+        quiz.question,
+        correctAnswerStr,
+        userAnswerTrimmed,
+        quiz.originalParagraph || undefined
+      );
+
+      if (gptValidation.isCorrect) {
+        // Add this answer to alternative answers for future use
+        await this.quizRepository.addAlternativeAnswer(questionId, userAnswerTrimmed);
+        this.logger.log(`Added "${userAnswerTrimmed}" as alternative answer for quiz ${questionId}`);
+
+        // Update the answer in the database to mark it as correct
+        await this.practiceRepository.updateAnswerCorrectness(sessionId, questionId, true);
+
+        return {
+          isCorrect: true,
+          reasoning: gptValidation.reasoning || 'AI判断答案正确',
+          message: '系统已记录此答案，未来相同答案将自动判定为正确',
+        };
+      } else {
+        return {
+          isCorrect: false,
+          reasoning: gptValidation.reasoning || 'AI判断答案不正确',
+        };
+      }
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      
+      this.logger.error(`Error in AI re-evaluation: ${error}`);
+      throw new BadRequestException('AI评估失败，请稍后重试');
     }
   }
 }
