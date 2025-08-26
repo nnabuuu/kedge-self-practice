@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Search, Filter, Upload, Eye, Edit, Trash2, Plus, Calendar, Tag, Target, ChevronLeft, ChevronRight, ExternalLink, X, Sparkles, Shuffle } from 'lucide-react';
+import { FileText, Search, Filter, Upload, Eye, Edit, Trash2, Plus, Calendar, Tag, Target, ChevronLeft, ChevronRight, ExternalLink, X, Sparkles, Shuffle, MapPin } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { preferencesService } from '../../services/preferencesService';
+import KnowledgePointPicker from '../../components/KnowledgePointPicker';
 
 interface Quiz {
   id: string;
@@ -70,6 +71,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const [selectedQuizzes, setSelectedQuizzes] = useState<Set<string>>(new Set());
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showKnowledgePointPicker, setShowKnowledgePointPicker] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [newAlternativeAnswer, setNewAlternativeAnswer] = useState('');
   const [showPolishModal, setShowPolishModal] = useState(false);
@@ -1636,164 +1638,52 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                 </select>
               </div>
 
-              {/* Knowledge Point - Hierarchical Selection */}
+              {/* Knowledge Point Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">知识点</label>
-                {loadingKnowledgePoints ? (
-                  <div className="text-sm text-gray-500">加载知识点中...</div>
-                ) : (
+                {editingQuiz.knowledgePoint ? (
                   <div className="space-y-3">
                     {/* Current Knowledge Point Display */}
-                    {editingQuiz.knowledgePoint && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="text-sm font-medium text-blue-800">当前知识点:</div>
-                        <div className="text-sm text-blue-700">
-                          {editingQuiz.knowledgePoint.volume} → {editingQuiz.knowledgePoint.unit} → {editingQuiz.knowledgePoint.lesson} → {editingQuiz.knowledgePoint.topic}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingQuiz({
-                              ...editingQuiz,
-                              knowledgePointId: undefined,
-                              knowledge_point_id: undefined,
-                              knowledgePoint: undefined
-                            });
-                            initializeKnowledgePointFilters();
-                          }}
-                          className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
-                        >
-                          清除知识点
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Search */}
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="搜索知识点..."
-                        value={knowledgePointSearch}
-                        onChange={(e) => setKnowledgePointSearch(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-
-                    {/* Hierarchical Filters */}
-                    <div className="grid grid-cols-1 gap-3">
-                      {/* Volume Filter */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">册别</label>
-                        <select
-                          value={selectedVolume}
-                          onChange={(e) => {
-                            setSelectedVolume(e.target.value);
-                            setSelectedUnit(''); // Reset dependent filters
-                            setSelectedLesson('');
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        >
-                          <option value="">选择册别</option>
-                          {getUniqueVolumes().map((volume) => (
-                            <option key={volume} value={volume}>{volume}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Unit Filter */}
-                      {selectedVolume && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">单元</label>
-                          <select
-                            value={selectedUnit}
-                            onChange={(e) => {
-                              setSelectedUnit(e.target.value);
-                              setSelectedLesson(''); // Reset dependent filter
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          >
-                            <option value="">选择单元</option>
-                            {getUnitsForVolume(selectedVolume).map((unit) => (
-                              <option key={unit} value={unit}>{unit}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-
-                      {/* Lesson Filter */}
-                      {selectedVolume && selectedUnit && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">课程</label>
-                          <select
-                            value={selectedLesson}
-                            onChange={(e) => setSelectedLesson(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          >
-                            <option value="">选择课程</option>
-                            {getLessonsForVolumeAndUnit(selectedVolume, selectedUnit).map((lesson) => (
-                              <option key={lesson} value={lesson}>{lesson}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Knowledge Points List */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-2">
-                        知识点 ({getFilteredKnowledgePoints().length} 个)
-                      </label>
-                      <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg">
-                        {getFilteredKnowledgePoints().length === 0 ? (
-                          <div className="p-3 text-sm text-gray-500 text-center">
-                            {knowledgePointSearch || selectedVolume || selectedUnit || selectedLesson 
-                              ? '未找到匹配的知识点' 
-                              : '请先选择册别或搜索知识点'}
-                          </div>
-                        ) : (
-                          getFilteredKnowledgePoints().map((kp) => (
-                            <div
-                              key={kp.id}
-                              onClick={() => {
-                                setEditingQuiz({
-                                  ...editingQuiz,
-                                  knowledgePointId: kp.id,
-                                  knowledge_point_id: kp.id,
-                                  knowledgePoint: {
-                                    topic: kp.topic,
-                                    lesson: kp.lesson,
-                                    unit: kp.unit,
-                                    volume: kp.volume
-                                  }
-                                });
-                              }}
-                              className={`p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${
-                                (editingQuiz.knowledgePointId === kp.id || editingQuiz.knowledge_point_id === kp.id)
-                                  ? 'bg-blue-50 border-blue-200'
-                                  : ''
-                              }`}
-                            >
-                              <div className="text-sm font-medium text-gray-900">{kp.topic}</div>
-                              <div className="text-xs text-gray-600">
-                                {kp.volume} → {kp.unit} → {kp.lesson}
-                              </div>
-                            </div>
-                          ))
-                        )}
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="text-sm font-medium text-blue-800">当前知识点:</div>
+                      <div className="text-sm text-blue-700">
+                        {editingQuiz.knowledgePoint.volume} → {editingQuiz.knowledgePoint.unit} → {editingQuiz.knowledgePoint.lesson} → {editingQuiz.knowledgePoint.topic}
                       </div>
                     </div>
-
-                    {/* Reset Filters Button */}
-                    {(selectedVolume || selectedUnit || selectedLesson || knowledgePointSearch) && (
+                    <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => initializeKnowledgePointFilters()}
-                        className="w-full px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        onClick={() => setShowKnowledgePointPicker(true)}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
-                        重置筛选条件
+                        <MapPin className="w-4 h-4 inline mr-2" />
+                        更改知识点
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingQuiz({
+                            ...editingQuiz,
+                            knowledgePointId: undefined,
+                            knowledge_point_id: undefined,
+                            knowledgePoint: undefined
+                          });
+                        }}
+                        className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      >
+                        清除
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowKnowledgePointPicker(true)}
+                    className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors flex items-center justify-center text-gray-600 hover:text-blue-600"
+                  >
+                    <MapPin className="w-5 h-5 mr-2" />
+                    点击选择知识点
+                  </button>
                 )}
               </div>
 
@@ -2051,6 +1941,34 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
           </div>
         </div>
       )}
+
+      {/* Knowledge Point Picker Modal */}
+      <KnowledgePointPicker
+        isOpen={showKnowledgePointPicker}
+        onClose={() => setShowKnowledgePointPicker(false)}
+        onSelect={(kp) => {
+          setEditingQuiz({
+            ...editingQuiz!,
+            knowledgePointId: kp.id,
+            knowledge_point_id: kp.id,
+            knowledgePoint: {
+              topic: kp.topic,
+              lesson: kp.lesson,
+              unit: kp.unit,
+              volume: kp.volume
+            }
+          });
+          setShowKnowledgePointPicker(false);
+        }}
+        currentKnowledgePoint={editingQuiz?.knowledgePoint ? {
+          id: editingQuiz.knowledgePointId || editingQuiz.knowledge_point_id || '',
+          topic: editingQuiz.knowledgePoint.topic,
+          lesson: editingQuiz.knowledgePoint.lesson,
+          unit: editingQuiz.knowledgePoint.unit,
+          volume: editingQuiz.knowledgePoint.volume
+        } : undefined}
+        knowledgePoints={knowledgePoints}
+      />
     </div>
   );
 }
