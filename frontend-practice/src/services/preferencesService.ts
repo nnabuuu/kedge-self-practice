@@ -11,6 +11,11 @@ interface UserPreferences {
     theme?: 'light' | 'dark';
     language?: string;
   };
+  quizSettings?: {
+    autoAdvanceDelay?: number;
+    shuffleQuestions?: boolean;
+    showExplanation?: boolean;
+  };
   [key: string]: any;
 }
 
@@ -87,6 +92,20 @@ class PreferencesService {
 
   async setLastAccessedSubject(subjectId: string): Promise<boolean> {
     return this.updatePreference('lastAccessedSubject', subjectId);
+  }
+
+  async getQuizSettings(): Promise<UserPreferences['quizSettings']> {
+    const preferences = await this.getPreferences();
+    return preferences.quizSettings || {
+      autoAdvanceDelay: 3,
+      shuffleQuestions: true,
+      showExplanation: true
+    };
+  }
+
+  async updateQuizSettings(settings: Partial<UserPreferences['quizSettings']>): Promise<boolean> {
+    const current = await this.getQuizSettings();
+    return this.updatePreference('quizSettings', { ...current, ...settings });
   }
 }
 

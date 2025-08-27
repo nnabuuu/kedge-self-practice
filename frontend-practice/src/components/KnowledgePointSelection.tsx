@@ -4,6 +4,7 @@ import { Subject } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Slider } from '@/components/ui/slider';
+import { preferencesService } from '../services/preferencesService';
 
 interface KnowledgePointSelectionProps {
   subject: Subject;
@@ -59,8 +60,48 @@ export default function KnowledgePointSelection({
     questionCount: 20,
     shuffleQuestions: true,
     showExplanation: true,
+    autoAdvanceDelay: 3, // Default to 3 seconds auto-advance
     quizTypes: ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective', 'other'] // Default to all quiz types
   });
+
+  // Load user preferences on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const settings = await preferencesService.getQuizSettings();
+        if (settings) {
+          setQuizConfig(prev => ({
+            ...prev,
+            autoAdvanceDelay: settings.autoAdvanceDelay ?? 3,
+            shuffleQuestions: settings.shuffleQuestions ?? true,
+            showExplanation: settings.showExplanation ?? true
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load quiz preferences:', error);
+      }
+    };
+    loadPreferences();
+  }, []);
+
+  // Save preferences when quiz config changes
+  useEffect(() => {
+    const savePreferences = async () => {
+      try {
+        await preferencesService.updateQuizSettings({
+          autoAdvanceDelay: quizConfig.autoAdvanceDelay,
+          shuffleQuestions: quizConfig.shuffleQuestions,
+          showExplanation: quizConfig.showExplanation
+        });
+      } catch (error) {
+        console.error('Failed to save quiz preferences:', error);
+      }
+    };
+    
+    // Debounce the save to avoid too many API calls
+    const timeoutId = setTimeout(savePreferences, 500);
+    return () => clearTimeout(timeoutId);
+  }, [quizConfig.autoAdvanceDelay, quizConfig.shuffleQuestions, quizConfig.showExplanation]);
 
   // 使用API Hook获取知识点数据
   const { data: knowledgePoints, loading, error } = useKnowledgePoints(subject.id);
@@ -758,64 +799,59 @@ export default function KnowledgePointSelection({
                     
                     {/* 自动跳转 */}
                     <div className="bg-white/50 rounded-xl p-4 border border-gray-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center">
-                          <ArrowRight className="w-5 h-5 text-purple-600 mr-2" />
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={(quizConfig.autoAdvanceDelay ?? 0) > 0}
+                          onChange={(e) => setQuizConfig(prev => ({
+                            ...prev,
+                            autoAdvanceDelay: e.target.checked ? 3 : 0
+                          }))}
+                          className="w-4 h-4 text-purple-600 rounded"
+                        />
+                        <ArrowRight className="w-5 h-5 text-purple-600" />
+                        <div className="flex-1">
                           <div className="font-medium text-gray-900">自动进入下一题</div>
+                          <div className="text-sm text-gray-600">
+                            {(quizConfig.autoAdvanceDelay ?? 0) > 0 
+                              ? `答对后 ${quizConfig.autoAdvanceDelay} 秒自动跳转` 
+                              : '需要手动点击下一题'}
+                          </div>
                         </div>
-                        <label className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={(quizConfig.autoAdvanceDelay ?? 0) > 0}
-                            onChange={(e) => setQuizConfig(prev => ({
-                              ...prev,
-                              autoAdvanceDelay: e.target.checked ? 3 : 0
-                            }))}
-                            className="w-4 h-4 text-purple-600 rounded"
-                          />
-                          <span className="text-sm text-gray-600">
-                            {(quizConfig.autoAdvanceDelay ?? 0) > 0 ? '启用' : '手动切换'}
-                          </span>
-                        </label>
-                      </div>
-                      {(quizConfig.autoAdvanceDelay ?? 0) > 0 && (
-                        <div className="space-y-3">
-                          <p className="text-sm text-gray-600">
-                            答对后等待 <span className="font-semibold text-purple-600">{quizConfig.autoAdvanceDelay}</span> 秒自动进入下一题
-                          </p>
-                          <div className="flex items-center space-x-3">
-                            <input
-                              type="range"
-                              min="1"
-                              max="10"
-                              value={quizConfig.autoAdvanceDelay}
-                              onChange={(e) => setQuizConfig(prev => ({
-                                ...prev,
-                                autoAdvanceDelay: parseInt(e.target.value)
-                              }))}
-                              className="flex-1"
-                            />
-                            <div className="flex items-center space-x-1">
-                              <input
-                                type="number"
-                                min="1"
-                                max="10"
-                                value={quizConfig.autoAdvanceDelay}
-                                onChange={(e) => setQuizConfig(prev => ({
+                        {(quizConfig.autoAdvanceDelay ?? 0) > 0 && (
+                          <div className="flex items-center space-x-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuizConfig(prev => ({
                                   ...prev,
-                                  autoAdvanceDelay: Math.min(10, Math.max(1, parseInt(e.target.value) || 1))
-                                }))}
-                                className="w-14 px-2 py-1 border border-gray-300 rounded-lg text-center font-semibold"
-                              />
-                              <span className="text-sm text-gray-600">秒</span>
-                            </div>
+                                  autoAdvanceDelay: Math.max(1, (prev.autoAdvanceDelay || 3) - 1)
+                                }));
+                              }}
+                              className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded"
+                            >
+                              -
+                            </button>
+                            <span className="w-8 text-center text-sm font-semibold text-purple-600">
+                              {quizConfig.autoAdvanceDelay}s
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuizConfig(prev => ({
+                                  ...prev,
+                                  autoAdvanceDelay: Math.min(10, (prev.autoAdvanceDelay || 3) + 1)
+                                }));
+                              }}
+                              className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded"
+                            >
+                              +
+                            </button>
                           </div>
-                          <div className="flex justify-between text-xs text-gray-500">
-                            <span>1秒（快速）</span>
-                            <span>10秒（充分查看）</span>
-                          </div>
-                        </div>
-                      )}
+                        )}
+                      </label>
                     </div>
                   </div>
                 </div>
