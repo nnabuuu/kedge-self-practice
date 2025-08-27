@@ -130,7 +130,7 @@ npm install
 cat > .env <<EOF
 NODE_ENV=production
 API_PORT=8718
-NODE_DATABASE_URL=postgres://arthur:arthur@34.84.100.187:5432/arthur-test
+NODE_DATABASE_URL=postgres://your_db_user:your_db_password@your_db_host:5432/your_database
 JWT_SECRET=$(openssl rand -base64 32)
 REDIS_HOST=localhost
 REDIS_PORT=6379

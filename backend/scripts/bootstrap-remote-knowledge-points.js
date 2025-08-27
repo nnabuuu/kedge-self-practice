@@ -2,9 +2,9 @@ const { Client } = require('pg');
 const XLSX = require('xlsx');
 const path = require('path');
 
-// Remote database connection
+// Database connection - use environment variable
 const client = new Client({
-  connectionString: 'postgres://arthur:arthur@34.84.100.187:5432/arthur-test'
+  connectionString: process.env.NODE_DATABASE_URL || process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/kedge_db'
 });
 
 async function bootstrapKnowledgePoints() {

@@ -13,7 +13,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         API_PORT: 8718,
-        NODE_DATABASE_URL: process.env.NODE_DATABASE_URL || 'postgres://arthur:arthur@34.84.100.187:5432/arthur-test',
+        NODE_DATABASE_URL: process.env.NODE_DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/kedge_db',
         REDIS_HOST: process.env.REDIS_HOST || 'localhost',
         REDIS_PORT: process.env.REDIS_PORT || 6379,
         JWT_SECRET: process.env.JWT_SECRET || 'your-production-jwt-secret-change-this',

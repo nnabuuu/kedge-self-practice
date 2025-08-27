@@ -9,12 +9,12 @@
 
 set -e
 
-# Configuration
-DB_HOST="${DB_HOST:-34.84.100.187}"
+# Configuration - use environment variables
+DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
-DB_USER="${DB_USER:-arthur}"
-DB_NAME="${DB_NAME:-arthur-test}"
-DB_PASSWORD="${PGPASSWORD:-arthur}"
+DB_USER="${DB_USER:-postgres}"
+DB_NAME="${DB_NAME:-kedge_db}"
+DB_PASSWORD="${PGPASSWORD:-postgres}"
 
 # Colors
 RED='\033[0;31m'

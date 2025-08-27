@@ -5,9 +5,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://arthur:arthur@34.84.100.187:5432/arthur-test
-      HASURA_GRAPHQL_DATABASE_URL: postgres://arthur:arthur@34.84.100.187:5432/arthur-test
-      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:-9AgJckEMHPRgrasj7Ey8jR}
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: ${HASURA_GRAPHQL_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/kedge_db}
+      HASURA_GRAPHQL_DATABASE_URL: ${HASURA_GRAPHQL_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/kedge_db}
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:-changeme}
       HASURA_GRAPHQL_SERVER_PORT: 8080
       HASURA_GRAPHQL_ENABLE_CONSOLE: 'true'
       HASURA_GRAPHQL_LOG_LEVEL: 'info'
