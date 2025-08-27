@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import { Subject, KnowledgePoint, QuizQuestion } from '../types/quiz';
 
@@ -342,6 +342,10 @@ export function usePracticeSession(config: {
     sessionId: null
   });
 
+  // Use refs to prevent duplicate session creation
+  const isCreatingRef = useRef(false);
+  const lastConfigKeyRef = useRef<string>('');
+
   const createSession = useCallback(async () => {
     if (!config || config.knowledge_point_ids.length === 0) {
       setState({
@@ -354,6 +358,29 @@ export function usePracticeSession(config: {
       return;
     }
 
+    // Generate a stable key for the config to detect actual changes
+    const configKey = JSON.stringify({
+      knowledge_point_ids: config.knowledge_point_ids,
+      question_count: config.question_count,
+      quiz_types: config.quiz_types,
+      shuffle_questions: config.shuffle_questions,
+      subject_id: config.subject_id
+    });
+
+    // Skip if we're already creating a session
+    if (isCreatingRef.current) {
+      console.log('Session creation already in progress, skipping');
+      return;
+    }
+
+    // Skip if we already have a session with the same config
+    if (state.sessionId && lastConfigKeyRef.current === configKey) {
+      console.log('Session already exists for this config, skipping creation');
+      return;
+    }
+
+    isCreatingRef.current = true;
+    lastConfigKeyRef.current = configKey;
     setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
@@ -396,8 +423,10 @@ export function usePracticeSession(config: {
         error: errorMessage,
         sessionId: null
       });
+    } finally {
+      isCreatingRef.current = false;
     }
-  }, [config]);
+  }, [config, state.sessionId]);
 
   const submitAnswer = useCallback(async (questionId: string, answer: string, timeSpent: number) => {
     if (!state.sessionId) {
@@ -418,7 +447,11 @@ export function usePracticeSession(config: {
   }, [state.sessionId]);
 
   useEffect(() => {
-    createSession();
+    // Only create session when config changes meaningfully
+    // The createSession function already checks for duplicates
+    if (config && config.knowledge_point_ids.length > 0) {
+      createSession();
+    }
   }, [createSession]);
 
   return {
