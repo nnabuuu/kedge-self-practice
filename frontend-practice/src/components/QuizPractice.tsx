@@ -101,8 +101,45 @@ export default function QuizPractice({
     const blanksCount = parts.length - 1;
     
     // Initialize answers array if needed
-    if (fillInBlankAnswers.length !== blanksCount) {
-      setFillInBlankAnswers(new Array(blanksCount).fill(''));
+    // If there are no blanks, create a single blank for the user to answer
+    const actualBlanksCount = blanksCount === 0 ? 1 : blanksCount;
+    if (fillInBlankAnswers.length !== actualBlanksCount) {
+      setFillInBlankAnswers(new Array(actualBlanksCount).fill(''));
+    }
+    
+    // If there are no blanks in the question, show the question as-is with an input below
+    if (blanksCount === 0) {
+      return (
+        <div>
+          <div className="text-2xl font-bold text-gray-900 leading-relaxed mb-4">
+            {questionText}
+          </div>
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">请输入答案：</label>
+            <input
+              type="text"
+              value={fillInBlankAnswers[0] || ''}
+              onChange={(e) => {
+                setFillInBlankAnswers([e.target.value]);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && fillInBlankAnswers[0]?.trim() !== '') {
+                  e.preventDefault();
+                  handleSubmitAnswer();
+                }
+              }}
+              disabled={showResult}
+              placeholder="在此输入答案..."
+              className={`w-full px-4 py-2 border-2 rounded-lg text-lg font-medium
+                ${showResult 
+                  ? 'bg-gray-100 border-gray-300 cursor-not-allowed' 
+                  : 'bg-blue-50 border-blue-400 focus:bg-blue-100 focus:border-blue-600 focus:outline-none'
+                }
+                transition-all duration-200`}
+            />
+          </div>
+        </div>
+      );
     }
     
     return (
@@ -1377,15 +1414,18 @@ export default function QuizPractice({
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   
-                  {viewingQuestionIndex !== workingQuestionIndex && (
-                    <button
-                      onClick={handleJumpToWorking}
-                      className="px-2 py-1.5 text-gray-600 hover:text-blue-600 transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none border-x border-gray-200"
-                      title={`返回当前题 (第${workingQuestionIndex + 1}题)`}
-                    >
-                      <Home className="w-4 h-4" />
-                    </button>
-                  )}
+                  <button
+                    onClick={viewingQuestionIndex !== workingQuestionIndex ? handleJumpToWorking : undefined}
+                    disabled={viewingQuestionIndex === workingQuestionIndex}
+                    className={`px-2 py-1.5 transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none border-x border-gray-200 ${
+                      viewingQuestionIndex === workingQuestionIndex
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                    title={viewingQuestionIndex !== workingQuestionIndex ? `返回当前题 (第${workingQuestionIndex + 1}题)` : '当前题'}
+                  >
+                    <Home className="w-4 h-4" />
+                  </button>
                   
                   <button
                     onClick={handleNavigateToNext}
@@ -1461,7 +1501,9 @@ export default function QuizPractice({
                   <span className="font-medium">提示：</span>
                   {(() => {
                     const blanksCount = currentQuestion.question.split(/_{2,}/g).length - 1;
-                    if (blanksCount > 1) {
+                    if (blanksCount === 0) {
+                      return "请在输入框中填写答案，按 Enter 键提交";
+                    } else if (blanksCount > 1) {
                       return "使用 Tab 键在空格之间切换，Shift+Tab 返回上一个空格。填写完所有空格后按 Enter 键提交答案";
                     } else {
                       return "填写完空格后按 Enter 键提交答案";
@@ -1984,7 +2026,9 @@ export default function QuizPractice({
                       onClick={() => {
                         // Fill all blanks with "-" to indicate skipping
                         const blanksCount = currentQuestion.question.split(/_{2,}/g).length - 1;
-                        const skipAnswers = new Array(blanksCount).fill('-');
+                        // If there are no blanks, treat it as having one blank
+                        const actualBlanksCount = blanksCount === 0 ? 1 : blanksCount;
+                        const skipAnswers = new Array(actualBlanksCount).fill('-');
                         setFillInBlankAnswers(skipAnswers);
                         // Submit immediately after setting skip answers
                         setTimeout(() => {
