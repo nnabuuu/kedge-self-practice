@@ -31,26 +31,55 @@ export default function QuizPractice({
   onEndPractice, 
   onBack 
 }: QuizPracticeProps) {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  // Create a unique key for this practice session to store progress
+  const practiceStateKey = useMemo(() => 
+    `quizPractice_${practiceSessionId || 'local'}_${subject.id}`,
+    [practiceSessionId, subject.id]
+  );
+  
+  // Load saved progress from sessionStorage
+  const [savedProgress] = useState(() => {
+    const saved = sessionStorage.getItem(practiceStateKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        console.log('Restoring saved progress:', {
+          questionCount: parsed.questions?.length,
+          currentIndex: parsed.currentQuestionIndex,
+          answersCount: parsed.answers?.filter((a: any) => a !== null).length
+        });
+        return parsed;
+      } catch (e) {
+        console.error('Failed to load saved progress:', e);
+      }
+    }
+    return null;
+  });
+  
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(savedProgress?.currentQuestionIndex || 0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [selectedMultipleAnswers, setSelectedMultipleAnswers] = useState<string[]>([]);
   const [essayAnswer, setEssayAnswer] = useState<string>('');
   const [fillInBlankAnswer, setFillInBlankAnswer] = useState<string>('');
   const [fillInBlankAnswers, setFillInBlankAnswers] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false);
-  const [answers, setAnswers] = useState<(string | string[] | null)[]>([]);
-  const [questionStartTimes, setQuestionStartTimes] = useState<Date[]>([]);
-  const [questionDurations, setQuestionDurations] = useState<number[]>([]);
-  const [localSessionId] = useState(() => Date.now().toString());
-  const [startTime] = useState(() => new Date());
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [answers, setAnswers] = useState<(string | string[] | null)[]>(savedProgress?.answers || []);
+  const [questionStartTimes, setQuestionStartTimes] = useState<Date[]>(
+    savedProgress?.questionStartTimes?.map((t: string | null) => t ? new Date(t) : null) || []
+  );
+  const [questionDurations, setQuestionDurations] = useState<number[]>(savedProgress?.questionDurations || []);
+  const [localSessionId] = useState(() => savedProgress?.localSessionId || Date.now().toString());
+  const [startTime] = useState(() => savedProgress?.startTime ? new Date(savedProgress.startTime) : new Date());
+  const [questions, setQuestions] = useState<QuizQuestion[]>(savedProgress?.questions || []);
   const [aiEvaluation, setAiEvaluation] = useState<AIEvaluation | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [showStandardAnswer, setShowStandardAnswer] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [aiReevaluating, setAiReevaluating] = useState(false);
   const [aiReevaluationMessage, setAiReevaluationMessage] = useState<string | null>(null);
-  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(practiceSessionId);
+  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(
+    savedProgress?.currentSessionId || practiceSessionId
+  );
   const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null);
   const [sessionAutoAdvanceDelay, setSessionAutoAdvanceDelay] = useState<number | null>(null);
   const autoAdvanceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -236,7 +265,18 @@ export default function QuizPractice({
   const knowledgePointsKey = JSON.stringify(selectedKnowledgePoints);
   const practiceConfig = useMemo(() => {
     const points = JSON.parse(knowledgePointsKey);
-    return !practiceSessionId && points.length > 0 ? {
+    // Don't create new session if we already have saved progress with questions
+    // OR if we have a practiceSessionId
+    const shouldCreateNewSession = !practiceSessionId && !savedProgress?.questions?.length && points.length > 0;
+    
+    console.log('Practice config check:', {
+      practiceSessionId,
+      hasSavedQuestions: savedProgress?.questions?.length > 0,
+      knowledgePointsCount: points.length,
+      shouldCreateNewSession
+    });
+    
+    return shouldCreateNewSession ? {
       subject_id: subject.id,
       knowledge_point_ids: points,
       question_count: typeof config.questionCount === 'number' ? config.questionCount : 20,
@@ -250,7 +290,8 @@ export default function QuizPractice({
       auto_advance_delay: config.autoAdvanceDelay || 0
     } : null;
   }, [practiceSessionId, knowledgePointsKey, config.questionCount, config.timeLimit, 
-      config.shuffleQuestions, config.showExplanation, config.quizTypes, config.autoAdvanceDelay, subject.id]
+      config.shuffleQuestions, config.showExplanation, config.quizTypes, config.autoAdvanceDelay, subject.id,
+      savedProgress?.questions?.length]
   );
 
   const { 
@@ -266,7 +307,8 @@ export default function QuizPractice({
 
   // Fetch session data when practiceSessionId is provided
   useEffect(() => {
-    if (practiceSessionId) {
+    // Skip if we already have saved progress with questions
+    if (practiceSessionId && (!savedProgress || !savedProgress.questions || savedProgress.questions.length === 0)) {
       const fetchSession = async () => {
         setSessionLoading(true);
         try {
@@ -323,8 +365,28 @@ export default function QuizPractice({
         }
       };
       fetchSession();
+    } else if (savedProgress && savedProgress.questions.length > 0) {
+      // We have saved progress with questions, just use session ID
+      setCurrentSessionId(practiceSessionId);
     }
   }, [practiceSessionId]);
+
+  // Save progress to sessionStorage whenever it changes
+  useEffect(() => {
+    if (questions.length > 0) {
+      const progressData = {
+        currentQuestionIndex,
+        answers,
+        questionStartTimes: questionStartTimes.map(t => t ? t.toISOString() : null),
+        questionDurations,
+        localSessionId,
+        startTime: startTime.toISOString(),
+        questions, // Save questions too so we can restore them
+        currentSessionId, // Save the session ID for API calls
+      };
+      sessionStorage.setItem(practiceStateKey, JSON.stringify(progressData));
+    }
+  }, [currentQuestionIndex, answers, questionStartTimes, questionDurations, questions, practiceStateKey, localSessionId, startTime, currentSessionId]);
 
   useEffect(() => {
     // 检查浏览器是否支持语音识别
@@ -373,8 +435,11 @@ export default function QuizPractice({
 
 
   useEffect(() => {
-    // Only use sessionQuestions if not using a pre-existing session
-    if (!practiceSessionId && sessionQuestions && sessionQuestions.length > 0) {
+    // Only use sessionQuestions if:
+    // 1. Not using a pre-existing session
+    // 2. We don't already have saved questions
+    // 3. New questions are available
+    if (!practiceSessionId && !savedProgress?.questions?.length && sessionQuestions && sessionQuestions.length > 0) {
       // Questions are already converted by backend API service
       setQuestions(sessionQuestions);
       setAnswers(new Array(sessionQuestions.length).fill(null));
@@ -485,7 +550,7 @@ export default function QuizPractice({
     return 0;
   };
 
-  const handleSingleChoiceSelect = async (answer: string) => {
+  const handleSingleChoiceSelect = (answer: string) => {
     // 记录答题用时
     const duration = calculateQuestionDuration();
     const newDurations = [...questionDurations];
@@ -498,25 +563,38 @@ export default function QuizPractice({
     newAnswers[currentQuestionIndex] = answer;
     setAnswers(newAnswers);
     
-    // Submit answer to practice session API if available
-    if (sessionId && submitSessionAnswer && sessionQuestions && sessionQuestions[currentQuestionIndex]) {
-      try {
-        const questionId = sessionQuestions[currentQuestionIndex].id;
-        // Convert letter (A, B, C, D) to index (0, 1, 2, 3) for backend
-        const optionIndex = answer.charCodeAt(0) - 'A'.charCodeAt(0);
-        await submitSessionAnswer(questionId, String(optionIndex), duration);
-      } catch (error) {
-        console.error('Failed to submit answer:', error);
-        // Continue with local handling even if API submission fails
-      }
-    }
-    
+    // Immediately show result for better UX
     setShowResult(true);
     setShowStandardAnswer(true);
     
     // If the answer is correct, automatically move to next question with countdown
     if (answer === currentQuestion?.answer && (config.autoAdvanceDelay ?? 0) > 0) {
       startAutoAdvanceCountdown();
+    }
+    
+    // Submit answer to backend asynchronously (fire and forget)
+    const activeSessionId = currentSessionId || sessionId;
+    if (activeSessionId && questions[currentQuestionIndex]) {
+      const questionId = questions[currentQuestionIndex].id;
+      // Convert letter (A, B, C, D) to index (0, 1, 2, 3) for backend
+      const optionIndex = answer.charCodeAt(0) - 'A'.charCodeAt(0);
+      
+      // Async submission - don't block UI
+      (async () => {
+        try {
+          // Use submitSessionAnswer if available, otherwise call API directly
+          if (submitSessionAnswer && sessionQuestions) {
+            await submitSessionAnswer(questionId, String(optionIndex), duration);
+          } else {
+            // Direct API call when we have a restored session
+            await api.practice.submitAnswer(activeSessionId, questionId, String(optionIndex), duration);
+          }
+          console.log('Answer submitted to backend:', questionId);
+        } catch (error) {
+          console.error('Failed to submit answer to backend:', error);
+          // Don't interrupt user experience
+        }
+      })();
     }
   };
 
@@ -725,7 +803,7 @@ export default function QuizPractice({
     return suggestions;
   };
 
-  const handleSubmitAnswer = async () => {
+  const handleSubmitAnswer = () => {
     // 记录答题用时
     const duration = calculateQuestionDuration();
     const newDurations = [...questionDurations];
@@ -751,31 +829,48 @@ export default function QuizPractice({
       newAnswers[currentQuestionIndex] = currentAnswer;
       setAnswers(newAnswers);
       
-      // Submit answer to practice session API if available
-      if (sessionId && submitSessionAnswer && sessionQuestions && sessionQuestions[currentQuestionIndex]) {
-        try {
-          const questionId = sessionQuestions[currentQuestionIndex].id;
-          let answerString: string;
-          
-          if (Array.isArray(currentAnswer)) {
-            // Multiple choice - convert letters to indices
-            const indices = currentAnswer.map(letter => letter.charCodeAt(0) - 'A'.charCodeAt(0));
-            answerString = indices.join(',');
-          } else {
-            // Essay or other text answer
-            answerString = currentAnswer;
-          }
-          
-          await submitSessionAnswer(questionId, answerString, duration);
-        } catch (error) {
-          console.error('Failed to submit answer:', error);
-          // Continue with local handling even if API submission fails
-        }
-      }
-      
-      // 立即显示标准答案
+      // 立即显示标准答案 - show result immediately for better UX
       setShowStandardAnswer(true);
       setShowResult(true);
+      
+      // Submit answer to backend asynchronously (fire and forget)
+      const activeSessionId = currentSessionId || sessionId;
+      if (activeSessionId && questions[currentQuestionIndex]) {
+        const questionId = questions[currentQuestionIndex].id;
+        let answerString: string;
+        
+        if (Array.isArray(currentAnswer)) {
+          // Multiple choice or fill-in-blank - convert appropriately
+          if (isMultipleChoice) {
+            // Convert letters to indices for multiple choice
+            const indices = selectedMultipleAnswers.map(letter => letter.charCodeAt(0) - 'A'.charCodeAt(0));
+            answerString = indices.join(',');
+          } else {
+            // Fill-in-blank answers
+            answerString = currentAnswer.join('|');
+          }
+        } else {
+          // Essay or other text answer
+          answerString = currentAnswer;
+        }
+        
+        // Async submission - don't block UI
+        (async () => {
+          try {
+            // Use submitSessionAnswer if available, otherwise call API directly
+            if (submitSessionAnswer && sessionQuestions) {
+              await submitSessionAnswer(questionId, answerString, duration);
+            } else {
+              // Direct API call when we have a restored session
+              await api.practice.submitAnswer(activeSessionId, questionId, answerString, duration);
+            }
+            console.log('Answer submitted to backend:', questionId);
+          } catch (error) {
+            console.error('Failed to submit answer to backend:', error);
+            // Don't interrupt user experience
+          }
+        })();
+      }
       
       // Check if the answer is correct for auto-advance
       const checkCorrect = () => {
@@ -799,14 +894,16 @@ export default function QuizPractice({
       // 如果是问答题，异步生成AI评价
       if (isEssay && currentQuestion && typeof currentAnswer === 'string') {
         setIsEvaluating(true);
-        try {
-          const evaluation = await generateAIEvaluation(currentAnswer, currentQuestion);
-          setAiEvaluation(evaluation);
-        } catch (error) {
-          console.error('AI评价生成失败:', error);
-        } finally {
-          setIsEvaluating(false);
-        }
+        (async () => {
+          try {
+            const evaluation = await generateAIEvaluation(currentAnswer, currentQuestion);
+            setAiEvaluation(evaluation);
+          } catch (error) {
+            console.error('AI评价生成失败:', error);
+          } finally {
+            setIsEvaluating(false);
+          }
+        })();
       }
     }
   };
@@ -898,12 +995,19 @@ export default function QuizPractice({
     }
     
     // Complete the session via the API if we have an active session
-    if (sessionId && completeSession) {
+    const activeSessionId = currentSessionId || sessionId;
+    if (activeSessionId) {
       try {
-        await completeSession();
+        // Use completeSession if available, otherwise call API directly
+        if (completeSession && sessionId) {
+          await completeSession();
+        } else {
+          // Direct API call when we have a restored session
+          await api.practice.completeSession(activeSessionId);
+        }
         
         // Fetch the completed session data from backend
-        const { data: sessionData } = await api.practice.getSession(sessionId);
+        const { data: sessionData } = await api.practice.getSession(activeSessionId);
         
         if (sessionData && sessionData.session) {
           // Use backend session data with proper statistics
@@ -924,6 +1028,8 @@ export default function QuizPractice({
             incorrectAnswers: backendSession.incorrect_answers,
             score: backendSession.score
           };
+          // Clear saved progress when ending practice
+          sessionStorage.removeItem(practiceStateKey);
           onEndPractice(session);
           return;
         }
@@ -944,6 +1050,8 @@ export default function QuizPractice({
       endTime: new Date(),
       completed: isLastQuestion
     };
+    // Clear saved progress when ending practice
+    sessionStorage.removeItem(practiceStateKey);
     onEndPractice(session);
   };
 
@@ -1633,24 +1741,45 @@ export default function QuizPractice({
 
             <div className="flex justify-between">
               {(!showResult && !isSingleChoice) ? (
-                <button
-                  onClick={handleSubmitAnswer}
-                  disabled={
-                    (isMultipleChoice && selectedMultipleAnswers.length === 0) || 
-                    (isEssay && essayAnswer.trim() === '') ||
-                    (isFillInBlank && fillInBlankAnswers.some(a => a.trim() === '')) ||
-                    isEvaluating
-                  }
-                  className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out tracking-wide ${
-                    ((isMultipleChoice && selectedMultipleAnswers.length > 0) || 
-                     (isEssay && essayAnswer.trim() !== '') || 
-                     (isFillInBlank && fillInBlankAnswers.length > 0 && !fillInBlankAnswers.some(a => a.trim() === ''))) && !isEvaluating
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  {isEvaluating ? '评价中...' : '提交答案'}
-                </button>
+                <div className="flex gap-3">
+                  {/* Skip button for fill-in-the-blank questions */}
+                  {isFillInBlank && (
+                    <button
+                      onClick={() => {
+                        // Fill all blanks with "-" to indicate skipping
+                        const blanksCount = currentQuestion.question.split(/_{2,}/g).length - 1;
+                        const skipAnswers = new Array(blanksCount).fill('-');
+                        setFillInBlankAnswers(skipAnswers);
+                        // Submit immediately after setting skip answers
+                        setTimeout(() => {
+                          handleSubmitAnswer();
+                        }, 100);
+                      }}
+                      className="px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out tracking-wide bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 shadow-lg hover:shadow-xl focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none"
+                    >
+                      不会做，跳过
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={handleSubmitAnswer}
+                    disabled={
+                      (isMultipleChoice && selectedMultipleAnswers.length === 0) || 
+                      (isEssay && essayAnswer.trim() === '') ||
+                      (isFillInBlank && fillInBlankAnswers.some(a => a.trim() === '')) ||
+                      isEvaluating
+                    }
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out tracking-wide ${
+                      ((isMultipleChoice && selectedMultipleAnswers.length > 0) || 
+                       (isEssay && essayAnswer.trim() !== '') || 
+                       (isFillInBlank && fillInBlankAnswers.length > 0 && !fillInBlankAnswers.some(a => a.trim() === ''))) && !isEvaluating
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {isEvaluating ? '评价中...' : '提交答案'}
+                  </button>
+                </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   {autoAdvanceCountdown !== null && (

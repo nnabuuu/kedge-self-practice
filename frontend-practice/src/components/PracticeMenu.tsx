@@ -47,16 +47,10 @@ export default function PracticeMenu({
   // Get subjects from API
   const { data: subjects = [] } = useSubjects();
 
-  // Use cached quick options availability, fetch only if not available
+  // Fetch quick options availability - always get fresh data to ensure correct state
   useEffect(() => {
-    // First try to get cached data from auth service
-    const cachedData = authService.getCachedQuickOptionsAvailability();
-    
-    if (cachedData) {
-      setQuickOptionsAvailability(cachedData);
-    } else {
-      // Only fetch if not cached (e.g., user navigated directly without login)
-      const fetchAvailability = async () => {
+    const fetchAvailability = async () => {
+      try {
         const response = await api.practice.getQuickOptionsAvailability();
         if (response.success && response.data) {
           setQuickOptionsAvailability(response.data);
@@ -66,11 +60,26 @@ export default function PracticeMenu({
             timestamp: Date.now()
           };
           localStorage.setItem('quick_options_availability', JSON.stringify(cacheData));
+        } else {
+          // If API call fails, try cached data as fallback
+          const cachedData = authService.getCachedQuickOptionsAvailability();
+          if (cachedData) {
+            setQuickOptionsAvailability(cachedData);
+          }
         }
-      };
-      fetchAvailability();
-    }
-  }, []);
+      } catch (error) {
+        console.error('Failed to fetch quick options availability:', error);
+        // Fall back to cached data on error
+        const cachedData = authService.getCachedQuickOptionsAvailability();
+        if (cachedData) {
+          setQuickOptionsAvailability(cachedData);
+        }
+      }
+    };
+    
+    // Always fetch fresh data when component mounts
+    fetchAvailability();
+  }, []); // Run once on mount
 
   // Close dropdown when clicking outside
   useEffect(() => {

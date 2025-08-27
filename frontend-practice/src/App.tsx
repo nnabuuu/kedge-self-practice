@@ -56,20 +56,33 @@ function App() {
     }
     return null;
   });
-  const [selectedKnowledgePoints, setSelectedKnowledgePoints] = useState<string[]>([]);
-  const [quizConfig, setQuizConfig] = useState<QuizConfig>({
-    questionType: 'new',
-    questionCount: 20,
-    shuffleQuestions: true,
-    showExplanation: true
+  const [selectedKnowledgePoints, setSelectedKnowledgePoints] = useState<string[]>(() => {
+    const saved = sessionStorage.getItem('selectedKnowledgePoints');
+    return saved ? JSON.parse(saved) : [];
   });
-  const [currentSession, setCurrentSession] = useState<PracticeSession | null>(null);
+  const [quizConfig, setQuizConfig] = useState<QuizConfig>(() => {
+    const saved = sessionStorage.getItem('quizConfig');
+    return saved ? JSON.parse(saved) : {
+      questionType: 'new',
+      questionCount: 20,
+      shuffleQuestions: true,
+      showExplanation: true
+    };
+  });
+  // Load session from sessionStorage on mount
+  const [currentSession, setCurrentSession] = useState<PracticeSession | null>(() => {
+    const savedSession = sessionStorage.getItem('currentSession');
+    return savedSession ? JSON.parse(savedSession) : null;
+  });
   const [practiceHistory, setPracticeHistory] = useLocalStorage<PracticeHistory[]>('practice-history', []);
   const [apiError, setApiError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const { isOnline, backendStatus } = useConnectionStatus();
   const [isNavigatingHistory, setIsNavigatingHistory] = useState(false);
-  const [practiceSessionId, setPracticeSessionId] = useState<string | undefined>(undefined);
+  const [practiceSessionId, setPracticeSessionId] = useState<string | undefined>(() => {
+    const saved = sessionStorage.getItem('practiceSessionId');
+    return saved || undefined;
+  });
 
   // Check for existing authentication on app start
   useEffect(() => {
@@ -162,8 +175,28 @@ function App() {
   useEffect(() => {
     if (selectedSubject) {
       localStorage.setItem('lastSelectedSubject', JSON.stringify(selectedSubject));
+      // Also save to sessionStorage for page refresh support
+      sessionStorage.setItem('selectedSubject', JSON.stringify(selectedSubject));
     }
   }, [selectedSubject]);
+
+  // Save knowledge points and quiz config to sessionStorage for refresh support
+  useEffect(() => {
+    sessionStorage.setItem('selectedKnowledgePoints', JSON.stringify(selectedKnowledgePoints));
+  }, [selectedKnowledgePoints]);
+
+  useEffect(() => {
+    sessionStorage.setItem('quizConfig', JSON.stringify(quizConfig));
+  }, [quizConfig]);
+
+  // Save practiceSessionId to sessionStorage for refresh support
+  useEffect(() => {
+    if (practiceSessionId) {
+      sessionStorage.setItem('practiceSessionId', practiceSessionId);
+    } else {
+      sessionStorage.removeItem('practiceSessionId');
+    }
+  }, [practiceSessionId]);
 
   // Fetch subject information when we have a practiceSessionId but no selectedSubject
   useEffect(() => {
@@ -495,7 +528,12 @@ function App() {
 
   const handleEndPractice = (session: PracticeSession) => {
     setCurrentSession(session);
+    // Save session to sessionStorage for page refresh support
+    sessionStorage.setItem('currentSession', JSON.stringify(session));
     setPracticeSessionId(undefined); // Clear the session ID after practice ends
+    
+    // Clear the quick options availability cache to force refresh on next visit
+    localStorage.removeItem('quick_options_availability');
     
     // Automatically save to history when practice completes
     if (selectedSubject) {
@@ -559,6 +597,8 @@ function App() {
 
   const handleReturnToMenu = () => {
     setCurrentSession(null);
+    // Clear session from storage when returning to menu
+    sessionStorage.removeItem('currentSession');
     navigateToScreen('practice-menu');
   };
 
@@ -577,6 +617,8 @@ function App() {
 
   const handleSaveToHistory = () => {
     if (currentSession && selectedSubject) {
+      // Clear session from storage after saving to history
+      sessionStorage.removeItem('currentSession');
       // Check if already saved (prevent duplicates)
       const alreadySaved = practiceHistory.some(h => h.id === currentSession.id);
       if (alreadySaved) {
@@ -702,14 +744,26 @@ function App() {
         ) : null;
       
       case 'knowledge-selection':
-        return selectedSubject ? (
+        // If no subject selected, redirect to subject selection
+        if (!selectedSubject) {
+          setTimeout(() => navigateToScreen('subject-selection'), 0);
+          return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600">正在返回选择科目...</p>
+              </div>
+            </div>
+          );
+        }
+        return (
           <KnowledgePointSelection
             subject={selectedSubject}
             preSelectedPoints={selectedKnowledgePoints}
             onStartQuiz={handleStartQuiz}
             onBack={handleBack}
           />
-        ) : null;
+        );
       
       case 'quiz-practice':
         return selectedSubject ? (
@@ -724,7 +778,22 @@ function App() {
         ) : null;
       
       case 'quiz-results':
-        return selectedSubject && currentSession ? (
+        // If no session data, redirect to home
+        if (!currentSession || !selectedSubject) {
+          // Clear invalid session storage
+          sessionStorage.removeItem('currentSession');
+          // Use setTimeout to avoid React render cycle issues
+          setTimeout(() => navigateToScreen('home'), 0);
+          return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600">正在返回首页...</p>
+              </div>
+            </div>
+          );
+        }
+        return (
           <QuizResults
             subject={selectedSubject}
             session={currentSession}
@@ -744,7 +813,7 @@ function App() {
               navigateToScreen('home');
             }}
           />
-        ) : null;
+        );
       
       case 'knowledge-analysis':
         return selectedSubject ? (
