@@ -1,6 +1,6 @@
 {
   "name": "@kedge-boilerplate/source",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "license": "UNLICENSED",
   "scripts": {
     "postinstall": "patch-package"
