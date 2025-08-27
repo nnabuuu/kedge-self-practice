@@ -158,8 +158,16 @@ export class GptService {
     const response = await this.openai.chat.completions.create(completionParams);
 
     const content = response.choices[0]?.message?.content;
+    
+    // Check if content is empty or undefined
+    if (!content || content.trim() === '') {
+      console.error('GPT returned empty response for quiz extraction');
+      console.error('Response object:', JSON.stringify(response, null, 2));
+      return []; // Return empty array if no response
+    }
+    
     try {
-      const parsed: QuizExtractionResult = JSON.parse(content ?? '{}');
+      const parsed: QuizExtractionResult = JSON.parse(content);
       return parsed.items ?? [];
     } catch (error) {
       console.error('Failed to parse GPT response as JSON:', error);
@@ -225,8 +233,16 @@ export class GptService {
     const response = await this.openai.chat.completions.create(completionParams);
 
     const content = response.choices[0]?.message?.content;
+    
+    // Check if content is empty or undefined
+    if (!content || content.trim() === '') {
+      console.error('GPT returned empty response');
+      console.error('Response object:', JSON.stringify(response, null, 2));
+      return item; // Return original item if no response
+    }
+    
     try {
-      return JSON.parse(content ?? '{}') as QuizItem;
+      return JSON.parse(content) as QuizItem;
     } catch (error) {
       console.error('Failed to parse GPT polish response as JSON:', error);
       console.error('Raw GPT response:', content);
@@ -287,8 +303,16 @@ export class GptService {
     const response = await this.openai.chat.completions.create(completionParams);
 
     const content = response.choices[0]?.message?.content;
+    
+    // Check if content is empty or undefined
+    if (!content || content.trim() === '') {
+      console.error('GPT returned empty response');
+      console.error('Response object:', JSON.stringify(response, null, 2));
+      return item; // Return original item if no response
+    }
+    
     try {
-      return JSON.parse(content ?? '{}') as QuizItem;
+      return JSON.parse(content) as QuizItem;
     } catch (error) {
       console.error('Failed to parse GPT type change response as JSON:', error);
       console.error('Raw GPT response:', content);
