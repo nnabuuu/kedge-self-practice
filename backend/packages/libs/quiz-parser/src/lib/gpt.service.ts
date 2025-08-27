@@ -168,7 +168,49 @@ export class GptService {
     
     try {
       const parsed: QuizExtractionResult = JSON.parse(content);
-      return parsed.items ?? [];
+      const items = parsed.items ?? [];
+      
+      // Check for fill-in-the-blank questions without blanks and retry
+      const processedItems: QuizItem[] = [];
+      for (const item of items) {
+        if (item.type === 'fill-in-the-blank' && item.question) {
+          const blanksCount = item.question.split(/_{2,}/g).length - 1;
+          
+          if (blanksCount === 0) {
+            console.warn(`Fill-in-the-blank question has no blanks: "${item.question}"`);
+            
+            // Retry regenerating this specific quiz item up to 3 times
+            let retryCount = 0;
+            let regeneratedItem = item;
+            
+            while (retryCount < 3 && regeneratedItem.question.split(/_{2,}/g).length - 1 === 0) {
+              retryCount++;
+              console.log(`Retrying generation for fill-in-the-blank question (attempt ${retryCount}/3)...`);
+              
+              try {
+                // Call polishQuizItem with specific guidance to add blanks
+                regeneratedItem = await this.regenerateFillInBlankWithBlanks(regeneratedItem);
+                
+                const newBlanksCount = regeneratedItem.question.split(/_{2,}/g).length - 1;
+                if (newBlanksCount > 0) {
+                  console.log(`Successfully regenerated with ${newBlanksCount} blank(s)`);
+                  break;
+                }
+              } catch (retryError) {
+                console.error(`Retry ${retryCount} failed:`, retryError);
+              }
+            }
+            
+            processedItems.push(regeneratedItem);
+          } else {
+            processedItems.push(item);
+          }
+        } else {
+          processedItems.push(item);
+        }
+      }
+      
+      return processedItems;
     } catch (error) {
       console.error('Failed to parse GPT response as JSON:', error);
       console.error('Raw GPT response:', content);
@@ -188,6 +230,70 @@ export class GptService {
       // Return empty array instead of error quiz
       console.error('Unable to parse GPT response, returning empty array');
       return [];
+    }
+  }
+
+  /**
+   * Regenerate a fill-in-the-blank question to properly include blanks
+   */
+  private async regenerateFillInBlankWithBlanks(item: QuizItem): Promise<QuizItem> {
+    const prompt = `你是一个教育出题助手。以下填空题没有正确的空格标记（____），请重新生成题目，确保：
+1. 在需要填空的位置使用至少4个下划线（____）作为空格标记
+2. 空格位置应该对应答案数组中的每个答案
+3. 保持题目的核心内容和知识点不变
+4. 返回完整的 JSON 格式
+
+原始题目：
+${JSON.stringify(item, null, 2)}
+
+请返回修正后的题目，确保 question 字段包含正确的空格标记（____）。`;
+
+    const schema = {
+      name: 'fix_fill_in_blank',
+      description: '修正填空题的空格标记',
+      strict: true,
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          type: { type: 'string', enum: ['fill-in-the-blank'] },
+          question: { type: 'string' },
+          options: { type: 'array', items: { type: 'string' } },
+          answer: {
+            anyOf: [
+              { type: 'string' },
+              { type: 'array', items: { type: 'string' } },
+            ],
+          },
+        },
+        required: ['type', 'question', 'answer'],
+      },
+    } as const;
+
+    try {
+      const modelConfig = getModelConfig('quizRenderer');
+      const completionParams = createChatCompletionParams({
+        model: modelConfig.model,
+        temperature: modelConfig.temperature || 0.3,
+        top_p: modelConfig.topP,
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_schema', json_schema: schema },
+      }, modelConfig.maxTokens || 500);
+
+      const response = await this.openai.chat.completions.create(completionParams);
+      const content = response.choices[0]?.message?.content;
+      
+      if (!content || content.trim() === '') {
+        console.error('GPT returned empty response for blank regeneration');
+        return item;
+      }
+      
+      const regenerated = JSON.parse(content) as QuizItem;
+      // Preserve any additional fields from the original item
+      return { ...item, ...regenerated };
+    } catch (error) {
+      console.error('Failed to regenerate fill-in-blank question:', error);
+      return item; // Return original if regeneration fails
     }
   }
 
