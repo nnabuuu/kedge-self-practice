@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigsService } from '@kedge/configs';
+import { ConfigsService, getOpenAIConfig, getModelConfig } from '@kedge/configs';
 import { KnowledgePoint } from '@kedge/models';
 import { OpenAI } from 'openai';
 
@@ -7,14 +7,16 @@ import { OpenAI } from 'openai';
 export class KnowledgePointGPTService {
   private readonly logger = new Logger(KnowledgePointGPTService.name);
   private readonly openai: OpenAI;
+  private readonly config = getOpenAIConfig();
 
   constructor(private readonly configsService: ConfigsService) {
-    const apiKey = this.configsService.getOptional('OPENAI_API_KEY');
-    if (!apiKey) {
+    if (!this.config.apiKey) {
       this.logger.warn('OPENAI_API_KEY not set - GPT features will be disabled');
     }
     this.openai = new OpenAI({
-      apiKey: apiKey || 'dummy-key',
+      apiKey: this.config.apiKey || 'dummy-key',
+      baseURL: this.config.baseURL,
+      organization: this.config.organization,
     });
   }
 
@@ -63,8 +65,12 @@ export class KnowledgePointGPTService {
 3. 避免提取无意义的功能性词（如"选择""描述"），也不要简单照抄选项；`;
 
     try {
+      const modelConfig = getModelConfig('knowledgePointExtractor');
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: modelConfig.model,
+        temperature: modelConfig.temperature,
+        max_tokens: modelConfig.maxTokens,
+        top_p: modelConfig.topP,
         messages: [
           {
             role: 'user',
@@ -128,8 +134,12 @@ ${units.map((u, i) => `索引 ${i}: ${u}`).join('\n')}
 你应根据国家、时代背景、关键词、设问重点等维度，判断哪几个单元最可能与该题有关。`;
 
     try {
+      const modelConfig = getModelConfig('knowledgePointExtractor');
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: modelConfig.model,
+        temperature: modelConfig.temperature,
+        max_tokens: modelConfig.maxTokens,
+        top_p: modelConfig.topP,
         messages: [{ role: 'user', content: prompt }],
         response_format: {
           type: 'json_schema',
@@ -294,15 +304,18 @@ ${quizText}
 注意：即使只有一个匹配项，candidateIds 也必须是数组格式，如：["kp_25"]`;
 
     try {
+      const modelConfig = getModelConfig('knowledgePointExtractor');
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: modelConfig.model,
+        temperature: modelConfig.temperature,
+        max_tokens: modelConfig.maxTokens,
+        top_p: modelConfig.topP,
         messages: [
           {
             role: 'user',
             content: prompt,
           },
         ],
-        temperature: 0,
         response_format: {
           type: 'json_schema',
           json_schema: schema,

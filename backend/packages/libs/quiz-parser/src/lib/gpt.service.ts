@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { GptParagraphBlock, QuizItem, QuizExtractionResult } from '@kedge/models';
+import { getOpenAIConfig, getModelConfig } from '@kedge/configs';
 
 @Injectable()
 export class GptService {
   private readonly openai: OpenAI;
+  private readonly config = getOpenAIConfig();
 
   constructor() {
     this.openai = new OpenAI({
-      apiKey: process.env['OPENAI_API_KEY'] || 'dummy',
+      apiKey: this.config.apiKey || 'dummy',
+      baseURL: this.config.baseURL,
+      organization: this.config.organization,
     });
   }
 
@@ -134,8 +138,12 @@ export class GptService {
       },
     } as const;
 
+    const modelConfig = getModelConfig('quizParser');
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: modelConfig.model,
+      temperature: modelConfig.temperature,
+      max_tokens: modelConfig.maxTokens,
+      top_p: modelConfig.topP,
       messages: [
         {
           role: 'user',
@@ -188,8 +196,12 @@ export class GptService {
       },
     } as const;
 
+    const modelConfig = getModelConfig('quizRenderer');
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: modelConfig.model,
+      temperature: modelConfig.temperature,
+      max_tokens: modelConfig.maxTokens,
+      top_p: modelConfig.topP,
       messages: [{ role: 'user', content: prompt + '\n\n' + JSON.stringify(item) }],
       response_format: { type: 'json_schema', json_schema: schema },
     });
@@ -230,8 +242,12 @@ export class GptService {
       },
     } as const;
 
+    const modelConfig = getModelConfig('quizRenderer');
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: modelConfig.model,
+      temperature: modelConfig.temperature,
+      max_tokens: modelConfig.maxTokens,
+      top_p: modelConfig.topP,
       messages: [{ role: 'user', content: prompt + '\n\n' + JSON.stringify(item) }],
       response_format: { type: 'json_schema', json_schema: schema },
     });
@@ -296,8 +312,9 @@ ${context ? `题目背景：${context}` : ''}
 
 请提供你的判断结果和理由。`;
 
+      const modelConfig = getModelConfig('answerValidator');
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini', // Use gpt-4o-mini for better structured output support
+        model: modelConfig.model, // Use gpt-4o-mini for better structured output support
         messages: [
           {
             role: 'system',
