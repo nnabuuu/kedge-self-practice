@@ -26,7 +26,9 @@ if [ ! -f "package.json" ]; then
 fi
 
 # Create production env file with parser URL
+# Change VITE_ORG_NAME to your organization name
 cat > .env.production << EOF
+VITE_ORG_NAME=曹杨二中
 VITE_API_BASE_URL=https://cyez.zhushou.one
 VITE_QUIZ_PARSER_URL=https://cyez.zhushou.one/parser
 EOF
