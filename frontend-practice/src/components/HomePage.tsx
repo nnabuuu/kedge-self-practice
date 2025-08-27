@@ -88,7 +88,7 @@ export default function HomePage({
             
             <div className="space-y-6">
               <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent leading-tight tracking-wide">
-                智能练习测验系统
+                {import.meta.env.VITE_ORG_NAME || ''}智能练习测验系统
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed tracking-wide">
                 通过<span className="text-blue-600 font-semibold">个性化练习</span>和

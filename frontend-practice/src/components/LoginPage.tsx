@@ -137,7 +137,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               <GraduationCap className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent mb-2 leading-tight tracking-wide">
-              智能练习测验系统
+              {import.meta.env.VITE_ORG_NAME || ''}智能练习测验系统
             </h1>
             <p className="text-gray-600 tracking-wide">
               请使用您的账户登录
