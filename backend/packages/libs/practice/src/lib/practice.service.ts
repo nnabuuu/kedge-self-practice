@@ -170,28 +170,184 @@ export class PracticeService {
     if (!userAnswer) {
       isCorrect = false;
     } else if (quiz.type === 'fill-in-the-blank') {
-      // For fill-in-the-blank questions, check exact match and alternative answers only
-      const correctAnswer = Array.isArray(quiz.answer) ? quiz.answer[0] : quiz.answer;
-      const correctAnswerStr = String(correctAnswer).trim();
+      // For fill-in-the-blank questions, check each blank
+      const correctAnswers = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
+      const userAnswers = userAnswer.includes('|||') ? userAnswer.split('|||') : [userAnswer];
       
-      // Step 1: Check exact match (case-insensitive)
-      if (userAnswer.toLowerCase() === correctAnswerStr.toLowerCase()) {
-        isCorrect = true;
-        this.logger.log(`Answer matched exactly (case-insensitive): "${userAnswer}" === "${correctAnswerStr}"`);
-      }
-      // Step 2: Check alternative answers
-      else if (quiz.alternative_answers && quiz.alternative_answers.length > 0) {
-        isCorrect = quiz.alternative_answers.some(
-          alt => alt.toLowerCase() === userAnswer.toLowerCase()
-        );
-        if (isCorrect) {
-          this.logger.log(`Answer matched alternative: "${userAnswer}" in [${quiz.alternative_answers.join(', ')}]`);
+      // For multiple blanks, first check if it's order-independent
+      if (correctAnswers.length > 1 && userAnswers.length === correctAnswers.length) {
+        // Check if answers can be matched in any order
+        const normalizedCorrectAnswers = correctAnswers.map(a => String(a).trim().toLowerCase());
+        const normalizedUserAnswers = userAnswers.map(a => String(a).trim().toLowerCase());
+        
+        // First, try exact position matching (original logic)
+        let positionMatch = true;
+        for (let i = 0; i < correctAnswers.length; i++) {
+          const correctAnswerStr = normalizedCorrectAnswers[i];
+          const userAnswerStr = normalizedUserAnswers[i];
+          
+          if (userAnswerStr !== correctAnswerStr) {
+            // Also check alternatives for this position
+            let matchFound = false;
+            if (quiz.alternative_answers?.length > 0) {
+              const blankSpecific = quiz.alternative_answers
+                .filter(alt => alt.startsWith(`[${i}]`))
+                .map(alt => alt.replace(`[${i}]`, '').trim().toLowerCase());
+              
+              matchFound = blankSpecific.includes(userAnswerStr);
+            }
+            
+            if (!matchFound) {
+              positionMatch = false;
+              break;
+            }
+          }
         }
+        
+        if (positionMatch) {
+          isCorrect = true;
+          this.logger.log(`All blanks matched in exact positions`);
+        } else {
+          // Try order-independent matching if exact positions don't match
+          // Check if all answers are unique (no duplicates expected)
+          const uniqueCorrectAnswers = [...new Set(normalizedCorrectAnswers)];
+          const uniqueUserAnswers = [...new Set(normalizedUserAnswers)];
+          
+          if (uniqueCorrectAnswers.length === correctAnswers.length) {
+            // All correct answers are unique, we can try any-order matching
+            
+            // Create a copy of correct answers to track which ones are matched
+            const unmatchedCorrectAnswers = [...normalizedCorrectAnswers];
+            const unmatchedUserAnswers = [...normalizedUserAnswers];
+            
+            // Try to match each user answer with a correct answer
+            for (let i = unmatchedUserAnswers.length - 1; i >= 0; i--) {
+              const userAns = unmatchedUserAnswers[i];
+              const correctIndex = unmatchedCorrectAnswers.indexOf(userAns);
+              
+              if (correctIndex !== -1) {
+                // Found a match
+                unmatchedUserAnswers.splice(i, 1);
+                unmatchedCorrectAnswers.splice(correctIndex, 1);
+              } else {
+                // Check if this matches any alternative answer (order-independent)
+                let altMatchFound = false;
+                if (quiz.alternative_answers?.length > 0) {
+                  // For order-independent matching, check all alternatives without position prefix
+                  const allAlternatives = quiz.alternative_answers
+                    .filter(alt => !alt.includes('[') || alt.match(/^\[\d+\]/))
+                    .map(alt => alt.replace(/^\[\d+\]/, '').trim().toLowerCase());
+                  
+                  // Check if this user answer matches any alternative for any correct answer
+                  for (let j = unmatchedCorrectAnswers.length - 1; j >= 0; j--) {
+                    if (allAlternatives.includes(userAns)) {
+                      // This could be an alternative for one of the correct answers
+                      unmatchedUserAnswers.splice(i, 1);
+                      unmatchedCorrectAnswers.splice(j, 1);
+                      altMatchFound = true;
+                      break;
+                    }
+                  }
+                }
+                
+                if (!altMatchFound) {
+                  // No match found for this answer
+                  break;
+                }
+              }
+            }
+            
+            // Check if all answers were matched
+            if (unmatchedUserAnswers.length === 0 && unmatchedCorrectAnswers.length === 0) {
+              isCorrect = true;
+              this.logger.log(`All blanks matched (order-independent): user provided "${userAnswers.join(', ')}" for "${correctAnswers.join(', ')}"`);
+            } else {
+              isCorrect = false;
+              this.logger.log(`Not all blanks matched. Unmatched user answers: [${unmatchedUserAnswers.join(', ')}], Unmatched correct answers: [${unmatchedCorrectAnswers.join(', ')}]`);
+            }
+          } else {
+            // Correct answers contain duplicates, must match positions exactly
+            // Fall back to position-based checking
+            let allCorrect = true;
+            
+            for (let i = 0; i < correctAnswers.length; i++) {
+              const correctAnswerStr = String(correctAnswers[i]).trim();
+              const userAnswerStr = (userAnswers[i] || '').trim();
+              
+              let blankCorrect = false;
+              
+              // Check exact match
+              if (userAnswerStr.toLowerCase() === correctAnswerStr.toLowerCase()) {
+                blankCorrect = true;
+                this.logger.log(`Blank ${i+1} matched exactly: "${userAnswerStr}" === "${correctAnswerStr}"`);
+              }
+              // Check alternatives
+              else if (quiz.alternative_answers?.length > 0) {
+                const blankSpecific = quiz.alternative_answers
+                  .filter(alt => alt.startsWith(`[${i}]`))
+                  .map(alt => alt.replace(`[${i}]`, '').trim());
+                
+                if (blankSpecific.length > 0) {
+                  blankCorrect = blankSpecific.some(
+                    alt => alt.toLowerCase() === userAnswerStr.toLowerCase()
+                  );
+                }
+              }
+              
+              if (!blankCorrect) {
+                allCorrect = false;
+                this.logger.log(`Blank ${i+1} incorrect: "${userAnswerStr}" vs "${correctAnswerStr}"`);
+              }
+            }
+            
+            isCorrect = allCorrect;
+          }
+        }
+      } else {
+        // Single blank or mismatched count - use original position-based logic
+        let allCorrect = true;
+        
+        for (let i = 0; i < correctAnswers.length; i++) {
+          const correctAnswerStr = String(correctAnswers[i]).trim();
+          const userAnswerStr = (userAnswers[i] || '').trim();
+          
+          let blankCorrect = false;
+          
+          if (userAnswerStr.toLowerCase() === correctAnswerStr.toLowerCase()) {
+            blankCorrect = true;
+            this.logger.log(`Blank ${i+1} matched exactly: "${userAnswerStr}" === "${correctAnswerStr}"`);
+          }
+          else if (quiz.alternative_answers?.length > 0) {
+            const blankSpecific = quiz.alternative_answers
+              .filter(alt => alt.startsWith(`[${i}]`))
+              .map(alt => alt.replace(`[${i}]`, '').trim());
+            
+            if (blankSpecific.length > 0) {
+              blankCorrect = blankSpecific.some(
+                alt => alt.toLowerCase() === userAnswerStr.toLowerCase()
+              );
+              if (blankCorrect) {
+                this.logger.log(`Blank ${i+1} matched specific alternative: "${userAnswerStr}"`);
+              }
+            } else if (correctAnswers.length === 1) {
+              // Single blank - check unprefixed alternatives
+              blankCorrect = quiz.alternative_answers.some(
+                alt => !alt.includes('[') && alt.toLowerCase() === userAnswerStr.toLowerCase()
+              );
+            }
+          }
+          
+          if (!blankCorrect) {
+            allCorrect = false;
+            this.logger.log(`Blank ${i+1} incorrect: "${userAnswerStr}" vs "${correctAnswerStr}"`);
+          }
+        }
+        
+        isCorrect = allCorrect;
       }
-      // Step 3: No automatic GPT validation - user must request it manually
-      else {
-        isCorrect = false;
-        this.logger.log(`Answer did not match, user can request AI re-evaluation: "${userAnswer}" vs "${correctAnswerStr}"`);
+      
+      if (!isCorrect) {
+        this.logger.log(`Answer did not match all blanks, user can request AI re-evaluation`);
       }
     } else {
       // For other question types, use original logic
@@ -849,8 +1005,7 @@ export class PracticeService {
         throw new BadRequestException('AI re-evaluation is only available for fill-in-the-blank questions');
       }
 
-      const correctAnswer = Array.isArray(quiz.answer) ? quiz.answer[0] : quiz.answer;
-      const correctAnswerStr = String(correctAnswer).trim();
+      const correctAnswers = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
       const userAnswerTrimmed = userAnswer?.trim();
 
       if (!userAnswerTrimmed) {
@@ -860,49 +1015,122 @@ export class PracticeService {
         };
       }
 
-      // Check if it's already an exact match or in alternative answers
-      if (userAnswerTrimmed.toLowerCase() === correctAnswerStr.toLowerCase()) {
-        return {
-          isCorrect: true,
-          reasoning: '答案完全匹配',
-        };
-      }
-
-      if (quiz.alternative_answers?.some(alt => alt.toLowerCase() === userAnswerTrimmed.toLowerCase())) {
-        return {
-          isCorrect: true,
-          reasoning: '答案已在系统认可的替代答案中',
-        };
-      }
-
-      // Use GPT to evaluate the answer
-      this.logger.log(`AI re-evaluation requested for: "${userAnswerTrimmed}" vs "${correctAnswerStr}"`);
+      // Parse user answers for multiple blanks
+      const userAnswers = userAnswerTrimmed.includes('|||') ? userAnswerTrimmed.split('|||') : [userAnswerTrimmed];
       
-      const gptValidation = await this.gptService.validateFillInBlankAnswer(
-        quiz.question,
-        correctAnswerStr,
-        userAnswerTrimmed,
-        quiz.originalParagraph || undefined
-      );
-
-      if (gptValidation.isCorrect) {
-        // Add this answer to alternative answers for future use
-        await this.quizRepository.addAlternativeAnswer(questionId, userAnswerTrimmed);
-        this.logger.log(`Added "${userAnswerTrimmed}" as alternative answer for quiz ${questionId}`);
-
-        // Update the answer in the database to mark it as correct
-        await this.practiceRepository.updateAnswerCorrectness(sessionId, questionId, true);
-
-        return {
-          isCorrect: true,
-          reasoning: gptValidation.reasoning || 'AI判断答案正确',
-          message: '系统已记录此答案，未来相同答案将自动判定为正确',
-        };
+      // For multiple blanks, we need to evaluate each separately
+      if (correctAnswers.length > 1) {
+        let allCorrect = true;
+        let reasoning = [];
+        let needsAIValidation = [];
+        
+        for (let i = 0; i < correctAnswers.length; i++) {
+          const correctAnswerStr = String(correctAnswers[i]).trim();
+          const userAnswerStr = (userAnswers[i] || '').trim();
+          
+          // Check exact match
+          if (userAnswerStr.toLowerCase() === correctAnswerStr.toLowerCase()) {
+            reasoning.push(`空格${i+1}: 完全匹配`);
+          }
+          // Check blank-specific alternatives
+          else if (quiz.alternative_answers?.some(alt => 
+            (alt.startsWith(`[${i}]`) && alt.replace(`[${i}]`, '').trim().toLowerCase() === userAnswerStr.toLowerCase()) ||
+            (correctAnswers.length === 1 && !alt.includes('[') && alt.toLowerCase() === userAnswerStr.toLowerCase())
+          )) {
+            reasoning.push(`空格${i+1}: 已在替代答案中`);
+          }
+          else {
+            needsAIValidation.push({ index: i, userAnswer: userAnswerStr, correctAnswer: correctAnswerStr });
+            allCorrect = false;
+          }
+        }
+        
+        // If any blank needs AI validation, use GPT to check
+        if (needsAIValidation.length > 0) {
+          for (const blank of needsAIValidation) {
+            this.logger.log(`AI re-evaluation for blank ${blank.index+1}: "${blank.userAnswer}" vs "${blank.correctAnswer}"`);
+            
+            const gptValidation = await this.gptService.validateFillInBlankAnswer(
+              quiz.question,
+              blank.correctAnswer,
+              blank.userAnswer,
+              quiz.originalParagraph || undefined
+            );
+            
+            if (gptValidation.isCorrect) {
+              reasoning.push(`空格${blank.index+1}: ${gptValidation.reasoning || 'AI判断正确'}`);
+              // Add as alternative answer with blank index prefix
+              const prefixedAnswer = `[${blank.index}]${blank.userAnswer}`;
+              await this.quizRepository.addAlternativeAnswer(questionId, prefixedAnswer);
+              this.logger.log(`Added "${prefixedAnswer}" as alternative answer for quiz ${questionId}`);
+            } else {
+              reasoning.push(`空格${blank.index+1}: ${gptValidation.reasoning || 'AI判断不正确'}`);
+              allCorrect = false;
+            }
+          }
+        }
+        
+        if (allCorrect) {
+          await this.practiceRepository.updateAnswerCorrectness(sessionId, questionId, true);
+          return {
+            isCorrect: true,
+            reasoning: reasoning.join('; '),
+            message: '系统已记录正确的答案，未来相同答案将自动判定为正确',
+          };
+        } else {
+          return {
+            isCorrect: false,
+            reasoning: reasoning.join('; '),
+          };
+        }
       } else {
-        return {
-          isCorrect: false,
-          reasoning: gptValidation.reasoning || 'AI判断答案不正确',
-        };
+        // Single blank - use original logic
+        const correctAnswerStr = String(correctAnswers[0]).trim();
+        
+        // Check if it's already an exact match or in alternative answers
+        if (userAnswerTrimmed.toLowerCase() === correctAnswerStr.toLowerCase()) {
+          return {
+            isCorrect: true,
+            reasoning: '答案完全匹配',
+          };
+        }
+
+        if (quiz.alternative_answers?.some(alt => alt.toLowerCase() === userAnswerTrimmed.toLowerCase())) {
+          return {
+            isCorrect: true,
+            reasoning: '答案已在系统认可的替代答案中',
+          };
+        }
+
+        // Use GPT to evaluate the answer
+        this.logger.log(`AI re-evaluation requested for: "${userAnswerTrimmed}" vs "${correctAnswerStr}"`);
+        
+        const gptValidation = await this.gptService.validateFillInBlankAnswer(
+          quiz.question,
+          correctAnswerStr,
+          userAnswerTrimmed,
+          quiz.originalParagraph || undefined
+        );
+
+        if (gptValidation.isCorrect) {
+          // Add this answer to alternative answers for future use
+          await this.quizRepository.addAlternativeAnswer(questionId, userAnswerTrimmed);
+          this.logger.log(`Added "${userAnswerTrimmed}" as alternative answer for quiz ${questionId}`);
+
+          // Update the answer in the database to mark it as correct
+          await this.practiceRepository.updateAnswerCorrectness(sessionId, questionId, true);
+
+          return {
+            isCorrect: true,
+            reasoning: gptValidation.reasoning || 'AI判断答案正确',
+            message: '系统已记录此答案，未来相同答案将自动判定为正确',
+          };
+        } else {
+          return {
+            isCorrect: false,
+            reasoning: gptValidation.reasoning || 'AI判断答案不正确',
+          };
+        }
       }
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {

@@ -62,6 +62,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const [selectedKnowledgePointId, setSelectedKnowledgePointId] = useState<string>(initialFilters?.knowledgePointId || initialKnowledgePointId || '');
   const [knowledgePointSearch, setKnowledgePointSearch] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // Separate state for input field
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -835,15 +836,41 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               {/* Search Input - takes up more space */}
-              <div className="lg:col-span-5 relative">
-                <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="搜索题目内容..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+              <div className="lg:col-span-5 flex gap-2">
+                <div className="flex-1 relative">
+                  <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="搜索题目内容..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        setSearchTerm(searchInput);
+                      }
+                    }}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  onClick={() => setSearchTerm(searchInput)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2"
+                >
+                  <Search className="w-4 h-4" />
+                  搜索
+                </button>
+                {(searchTerm || searchInput) && (
+                  <button
+                    onClick={() => {
+                      setSearchInput('');
+                      setSearchTerm('');
+                    }}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                    title="清除搜索"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
               
               {/* Type Select */}
@@ -1175,9 +1202,47 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                               {quiz.alternative_answers && quiz.alternative_answers.length > 0 && (
                                 <div className="mt-1 text-sm">
                                   <span className="font-medium text-green-900">替代答案：</span>
-                                  <span className="text-green-700 ml-1">
-                                    {quiz.alternative_answers.join(', ')}
-                                  </span>
+                                  {(() => {
+                                    const blanksCount = (quiz.question.match(/_{2,}/g) || []).length;
+                                    if (blanksCount > 1) {
+                                      // Group alternative answers by blank index
+                                      const groupedAnswers: { [key: number]: string[] } = {};
+                                      quiz.alternative_answers.forEach(answer => {
+                                        const match = answer.match(/^\[(\d+)\](.+)/);
+                                        if (match) {
+                                          const blankIndex = parseInt(match[1]);
+                                          const answerText = match[2];
+                                          if (!groupedAnswers[blankIndex]) {
+                                            groupedAnswers[blankIndex] = [];
+                                          }
+                                          groupedAnswers[blankIndex].push(answerText);
+                                        } else {
+                                          // Legacy format - treat as for first blank
+                                          if (!groupedAnswers[0]) {
+                                            groupedAnswers[0] = [];
+                                          }
+                                          groupedAnswers[0].push(answer);
+                                        }
+                                      });
+                                      
+                                      return (
+                                        <span className="text-green-700 ml-1">
+                                          {Object.entries(groupedAnswers).map(([idx, answers]) => (
+                                            <span key={idx}>
+                                              空格{parseInt(idx) + 1}: {answers.join(', ')}
+                                              {parseInt(idx) < Object.keys(groupedAnswers).length - 1 && ' | '}
+                                            </span>
+                                          ))}
+                                        </span>
+                                      );
+                                    } else {
+                                      return (
+                                        <span className="text-green-700 ml-1">
+                                          {quiz.alternative_answers.join(', ')}
+                                        </span>
+                                      );
+                                    }
+                                  })()}
                                 </div>
                               )}
                             </div>
@@ -1570,53 +1635,155 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                     替代答案 <span className="text-xs text-gray-500">(系统会接受这些答案为正确)</span>
                   </label>
                   
-                  {/* Current alternative answers display */}
-                  <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border border-gray-300 rounded-lg bg-gray-50 mb-2">
-                    {(editingQuiz.alternative_answers || []).map((answer, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-md"
-                      >
-                        {answer}
-                        <button
-                          onClick={() => {
-                            const newAlternatives = (editingQuiz.alternative_answers || []).filter((_, i) => i !== index);
-                            setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
-                          }}
-                          className="ml-2 text-green-600 hover:text-green-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    {(!editingQuiz.alternative_answers || editingQuiz.alternative_answers.length === 0) && (
-                      <span className="text-gray-400 text-sm">暂无替代答案</span>
-                    )}
-                  </div>
-                  
-                  {/* Add new alternative answer input */}
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      value={newAlternativeAnswer}
-                      onChange={(e) => setNewAlternativeAnswer(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddAlternativeAnswer();
-                        }
-                      }}
-                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                      placeholder="输入替代答案，按回车添加"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddAlternativeAnswer}
-                      className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      添加
-                    </button>
-                  </div>
+                  {(() => {
+                    const blanksCount = (editingQuiz.question.match(/_{2,}/g) || []).length;
+                    const standardAnswers = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [editingQuiz.answer];
+                    
+                    if (blanksCount > 1) {
+                      // Multiple blanks - show answers for each blank separately
+                      return (
+                        <div className="space-y-3">
+                          {Array.from({ length: blanksCount }, (_, blankIndex) => (
+                            <div key={blankIndex} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-700">
+                                  空格 {blankIndex + 1}
+                                </span>
+                                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                  标准答案: {standardAnswers[blankIndex] || '未设置'}
+                                </span>
+                              </div>
+                              
+                              {/* Alternative answers for this blank */}
+                              <div className="flex flex-wrap gap-1 mb-2 min-h-[2rem]">
+                                {(editingQuiz.alternative_answers || [])
+                                  .filter(answer => answer.startsWith(`[${blankIndex}]`))
+                                  .map((answer, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
+                                    >
+                                      {answer.replace(`[${blankIndex}]`, '')}
+                                      <button
+                                        onClick={() => {
+                                          const newAlternatives = (editingQuiz.alternative_answers || []).filter(a => a !== answer);
+                                          setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
+                                        }}
+                                        className="ml-1 text-green-600 hover:text-green-800"
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                {!editingQuiz.alternative_answers?.some(a => a.startsWith(`[${blankIndex}]`)) && (
+                                  <span className="text-gray-400 text-xs">暂无替代答案</span>
+                                )}
+                              </div>
+                              
+                              {/* Add alternative answer for this blank */}
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder={`为空格 ${blankIndex + 1} 添加替代答案`}
+                                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const input = e.target as HTMLInputElement;
+                                      const value = input.value.trim();
+                                      if (value) {
+                                        const newAnswer = `[${blankIndex}]${value}`;
+                                        const currentAlternatives = editingQuiz.alternative_answers || [];
+                                        if (!currentAlternatives.includes(newAnswer)) {
+                                          setEditingQuiz({
+                                            ...editingQuiz,
+                                            alternative_answers: [...currentAlternatives, newAnswer]
+                                          });
+                                        }
+                                        input.value = '';
+                                      }
+                                    }
+                                  }}
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                    const value = input.value.trim();
+                                    if (value) {
+                                      const newAnswer = `[${blankIndex}]${value}`;
+                                      const currentAlternatives = editingQuiz.alternative_answers || [];
+                                      if (!currentAlternatives.includes(newAnswer)) {
+                                        setEditingQuiz({
+                                          ...editingQuiz,
+                                          alternative_answers: [...currentAlternatives, newAnswer]
+                                        });
+                                      }
+                                      input.value = '';
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors duration-200"
+                                >
+                                  添加
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } else {
+                      // Single blank - use the original UI
+                      return (
+                        <>
+                          {/* Current alternative answers display */}
+                          <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border border-gray-300 rounded-lg bg-gray-50 mb-2">
+                            {(editingQuiz.alternative_answers || []).map((answer, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-md"
+                              >
+                                {answer}
+                                <button
+                                  onClick={() => {
+                                    const newAlternatives = (editingQuiz.alternative_answers || []).filter((_, i) => i !== index);
+                                    setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
+                                  }}
+                                  className="ml-2 text-green-600 hover:text-green-800"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                            {(!editingQuiz.alternative_answers || editingQuiz.alternative_answers.length === 0) && (
+                              <span className="text-gray-400 text-sm">暂无替代答案</span>
+                            )}
+                          </div>
+                          
+                          {/* Add new alternative answer input */}
+                          <div className="flex space-x-2">
+                            <input
+                              type="text"
+                              value={newAlternativeAnswer}
+                              onChange={(e) => setNewAlternativeAnswer(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddAlternativeAnswer();
+                                }
+                              }}
+                              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                              placeholder="输入替代答案，按回车添加"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddAlternativeAnswer}
+                              className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                              添加
+                            </button>
+                          </div>
+                        </>
+                      );
+                    }
+                  })()}
                   
                   <p className="mt-2 text-xs text-gray-500">
                     💡 提示：当学生提交的答案被 AI 验证为正确时，系统会自动添加到替代答案列表中

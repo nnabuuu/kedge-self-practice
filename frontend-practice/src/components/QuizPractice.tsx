@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, CheckCircle2, CheckCircle, XCircle, ArrowRight, RotateCcw, BookOpen, Brain, Sparkles, MessageSquare, Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CheckCircle, XCircle, ArrowRight, RotateCcw, BookOpen, Brain, Sparkles, MessageSquare, Mic, MicOff, Volume2, Loader2, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import { Subject, QuizQuestion, PracticeSession, AIEvaluation } from '../types/quiz';
 import { usePracticeSession, useKnowledgePoints } from '../hooks/useApi';
 import { api } from '../services/api';
@@ -57,6 +57,8 @@ export default function QuizPractice({
   });
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(savedProgress?.currentQuestionIndex || 0);
+  const [viewingQuestionIndex, setViewingQuestionIndex] = useState(savedProgress?.currentQuestionIndex || 0); // For navigation
+  const [workingQuestionIndex, setWorkingQuestionIndex] = useState(savedProgress?.currentQuestionIndex || 0); // The question currently being worked on
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [selectedMultipleAnswers, setSelectedMultipleAnswers] = useState<string[]>([]);
   const [essayAnswer, setEssayAnswer] = useState<string>('');
@@ -490,6 +492,9 @@ export default function QuizPractice({
     }
   }, [currentQuestionIndex, questions]);
 
+  // Add a delay flag to prevent immediate navigation after submitting
+  const [justSubmitted, setJustSubmitted] = useState(false);
+
   // Handle Enter key to navigate to next question when result is shown
   useEffect(() => {
     if (!showResult || isEvaluating) return;
@@ -500,6 +505,22 @@ export default function QuizPractice({
         // Check if we're in an input field or textarea
         const activeElement = document.activeElement;
         const isInInput = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+        
+        // Don't navigate immediately after submitting (give user time to see result)
+        if (justSubmitted) {
+          e.preventDefault();
+          setJustSubmitted(false);
+          return;
+        }
+        
+        // Don't allow manual navigation if auto-advance is in progress
+        if (autoAdvanceCountdown !== null) {
+          e.preventDefault();
+          // Optionally cancel auto-advance and go immediately
+          // cancelAutoAdvance();
+          // handleNextQuestion();
+          return;
+        }
         
         // Only trigger if not in an input field
         if (!isInInput) {
@@ -513,7 +534,7 @@ export default function QuizPractice({
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [showResult, isEvaluating, currentQuestionIndex, questions.length]);
+  }, [showResult, isEvaluating, currentQuestionIndex, questions.length, justSubmitted, autoAdvanceCountdown]);
 
   const currentQuestion = questions[currentQuestionIndex];
   
@@ -833,6 +854,27 @@ export default function QuizPractice({
       setShowStandardAnswer(true);
       setShowResult(true);
       
+      // Set flag to prevent immediate navigation for fill-in-blank 
+      // This applies when:
+      // 1. No auto-advance is configured OR
+      // 2. The answer is wrong (auto-advance only works for correct answers)
+      if (isFillInBlank) {
+        // We'll check if answer is correct first
+        const isCorrect = (() => {
+          if (Array.isArray(currentQuestion?.answer)) {
+            return fillInBlankAnswers.every((answer, index) => 
+              answer.trim().toLowerCase() === String(currentQuestion.answer[index]).trim().toLowerCase()
+            );
+          }
+          return fillInBlankAnswers[0]?.trim().toLowerCase() === String(currentQuestion?.answer).trim().toLowerCase();
+        })();
+        
+        // Set justSubmitted if no auto-advance OR answer is wrong
+        if ((config.autoAdvanceDelay ?? 0) === 0 || !isCorrect) {
+          setJustSubmitted(true);
+        }
+      }
+      
       // Submit answer to backend asynchronously (fire and forget)
       const activeSessionId = currentSessionId || sessionId;
       if (activeSessionId && questions[currentQuestionIndex]) {
@@ -846,8 +888,8 @@ export default function QuizPractice({
             const indices = selectedMultipleAnswers.map(letter => letter.charCodeAt(0) - 'A'.charCodeAt(0));
             answerString = indices.join(',');
           } else {
-            // Fill-in-blank answers
-            answerString = currentAnswer.join('|');
+            // Fill-in-blank answers - use ||| separator for multiple blanks
+            answerString = currentAnswer.join('|||');
           }
         } else {
           // Essay or other text answer
@@ -878,10 +920,14 @@ export default function QuizPractice({
           const correctAnswers = currentQuestion.answer.sort();
           const userAnswers = (currentAnswer as string[]).sort();
           return JSON.stringify(correctAnswers) === JSON.stringify(userAnswers);
-        } else if (isFillInBlank && Array.isArray(currentQuestion?.answer)) {
-          return (currentAnswer as string[]).every((answer, index) => 
-            answer.trim().toLowerCase() === String(currentQuestion.answer[index]).trim().toLowerCase()
-          );
+        } else if (isFillInBlank) {
+          if (Array.isArray(currentQuestion?.answer)) {
+            return (currentAnswer as string[]).every((answer, index) => 
+              answer.trim().toLowerCase() === String(currentQuestion.answer[index]).trim().toLowerCase()
+            );
+          }
+          return (currentAnswer as string[]).length > 0 && 
+                 (currentAnswer as string[])[0]?.trim().toLowerCase() === String(currentQuestion?.answer).trim().toLowerCase();
         }
         return false;
       };
@@ -919,7 +965,10 @@ export default function QuizPractice({
     if (isLastQuestion) {
       handleEndPractice();
     } else {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      const nextIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(nextIndex);
+      setViewingQuestionIndex(nextIndex);
+      setWorkingQuestionIndex(nextIndex);
       setSelectedAnswer(null);
       setSelectedMultipleAnswers([]);
       setEssayAnswer('');
@@ -929,6 +978,135 @@ export default function QuizPractice({
       setShowStandardAnswer(false);
       setAiEvaluation(null);
       setVoiceTranscript('');
+    }
+  };
+
+  // Navigation handlers
+  const handleNavigateToPrevious = () => {
+    if (viewingQuestionIndex > 0) {
+      const prevIndex = viewingQuestionIndex - 1;
+      setViewingQuestionIndex(prevIndex);
+      setCurrentQuestionIndex(prevIndex);
+      
+      // Load the answer for the previous question if it exists
+      const prevAnswer = answers[prevIndex];
+      if (prevAnswer) {
+        setShowResult(true);
+        if (Array.isArray(prevAnswer)) {
+          setSelectedMultipleAnswers(prevAnswer as string[]);
+        } else if (questions[prevIndex]?.type === 'fill-in-the-blank') {
+          const blanksCount = questions[prevIndex].question.split(/_{2,}/g).length - 1;
+          if (blanksCount > 1) {
+            setFillInBlankAnswers(prevAnswer.split('|||'));
+          } else {
+            setFillInBlankAnswer(prevAnswer as string);
+            setFillInBlankAnswers([prevAnswer as string]);
+          }
+        } else if (questions[prevIndex]?.type === 'essay') {
+          setEssayAnswer(prevAnswer as string);
+        } else {
+          setSelectedAnswer(prevAnswer as string);
+        }
+      } else {
+        // No answer yet, reset states
+        setShowResult(false);
+        setSelectedAnswer(null);
+        setSelectedMultipleAnswers([]);
+        setEssayAnswer('');
+        setFillInBlankAnswer('');
+        setFillInBlankAnswers([]);
+      }
+      
+      // Clear AI states
+      setAiEvaluation(null);
+      setAiReevaluating(false);
+      setAiReevaluationMessage(null);
+      setShowStandardAnswer(false);
+    }
+  };
+
+  const handleNavigateToNext = () => {
+    if (viewingQuestionIndex < questions.length - 1) {
+      const nextIndex = viewingQuestionIndex + 1;
+      setViewingQuestionIndex(nextIndex);
+      setCurrentQuestionIndex(nextIndex);
+      
+      // Load the answer for the next question if it exists
+      const nextAnswer = answers[nextIndex];
+      if (nextAnswer) {
+        setShowResult(true);
+        if (Array.isArray(nextAnswer)) {
+          setSelectedMultipleAnswers(nextAnswer as string[]);
+        } else if (questions[nextIndex]?.type === 'fill-in-the-blank') {
+          const blanksCount = questions[nextIndex].question.split(/_{2,}/g).length - 1;
+          if (blanksCount > 1) {
+            setFillInBlankAnswers(nextAnswer.split('|||'));
+          } else {
+            setFillInBlankAnswer(nextAnswer as string);
+            setFillInBlankAnswers([nextAnswer as string]);
+          }
+        } else if (questions[nextIndex]?.type === 'essay') {
+          setEssayAnswer(nextAnswer as string);
+        } else {
+          setSelectedAnswer(nextAnswer as string);
+        }
+      } else {
+        // No answer yet, reset states
+        setShowResult(false);
+        setSelectedAnswer(null);
+        setSelectedMultipleAnswers([]);
+        setEssayAnswer('');
+        setFillInBlankAnswer('');
+        setFillInBlankAnswers([]);
+      }
+      
+      // Clear AI states
+      setAiEvaluation(null);
+      setAiReevaluating(false);
+      setAiReevaluationMessage(null);
+      setShowStandardAnswer(false);
+    }
+  };
+
+  const handleJumpToWorking = () => {
+    if (viewingQuestionIndex !== workingQuestionIndex) {
+      setViewingQuestionIndex(workingQuestionIndex);
+      setCurrentQuestionIndex(workingQuestionIndex);
+      
+      // Load the answer for the working question if it exists
+      const workingAnswer = answers[workingQuestionIndex];
+      if (workingAnswer) {
+        setShowResult(true);
+        if (Array.isArray(workingAnswer)) {
+          setSelectedMultipleAnswers(workingAnswer as string[]);
+        } else if (questions[workingQuestionIndex]?.type === 'fill-in-the-blank') {
+          const blanksCount = questions[workingQuestionIndex].question.split(/_{2,}/g).length - 1;
+          if (blanksCount > 1) {
+            setFillInBlankAnswers(workingAnswer.split('|||'));
+          } else {
+            setFillInBlankAnswer(workingAnswer as string);
+            setFillInBlankAnswers([workingAnswer as string]);
+          }
+        } else if (questions[workingQuestionIndex]?.type === 'essay') {
+          setEssayAnswer(workingAnswer as string);
+        } else {
+          setSelectedAnswer(workingAnswer as string);
+        }
+      } else {
+        // No answer yet, reset states
+        setShowResult(false);
+        setSelectedAnswer(null);
+        setSelectedMultipleAnswers([]);
+        setEssayAnswer('');
+        setFillInBlankAnswer('');
+        setFillInBlankAnswers([]);
+      }
+      
+      // Clear AI states
+      setAiEvaluation(null);
+      setAiReevaluating(false);
+      setAiReevaluationMessage(null);
+      setShowStandardAnswer(false);
     }
   };
 
@@ -950,8 +1128,8 @@ export default function QuizPractice({
     setAiReevaluationMessage(null);
     
     try {
-      // Get the user's answer
-      const userAnswer = fillInBlankAnswers.join(' ');
+      // Get the user's answer - use ||| separator for multiple blanks
+      const userAnswer = fillInBlankAnswers.join('|||');
       
       const response = await api.practice.aiReevaluateAnswer(
         currentSessionId,
@@ -1160,31 +1338,83 @@ export default function QuizPractice({
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-400/8 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="relative z-10 p-6">
+      <div className="relative z-10 p-4 md:p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between gap-3 mb-4">
             <button
               onClick={onBack}
-              className="group flex items-center text-gray-700 hover:text-gray-900 transition-all duration-300 ease-out bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-4 py-2 rounded-xl hover:bg-white/90 shadow-lg hover:shadow-xl border-2 border-transparent hover:border-gray-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+              className="group flex items-center text-gray-700 hover:text-gray-900 transition-all duration-300 ease-out bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-3 py-2 rounded-xl hover:bg-white/90 shadow-lg hover:shadow-xl border-2 border-transparent hover:border-gray-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
             >
-              <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
-              <span className="font-medium tracking-wide">返回配置</span>
+              <ArrowLeft className="w-4 h-4 mr-1.5 group-hover:-translate-x-1 transition-transform duration-300" />
+              <span className="font-medium tracking-wide text-sm">返回</span>
             </button>
             
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg font-medium tracking-wide">
-                第 {currentQuestionIndex + 1} 题，共 {questions.length} 题
+            {/* Extended progress bar for desktop */}
+            <div className="hidden md:flex flex-1 items-center bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-xl shadow-lg px-3 py-1.5">
+              <div className="flex-1 bg-gray-200 rounded-full h-2 mx-2">
+                <div 
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-300 shadow-sm"
+                  style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+                />
               </div>
-              <div className="text-sm text-gray-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg font-medium tracking-wide">
-                {isSingleChoice ? '单选题' : 
-                 isMultipleChoice ? '多选题' : 
-                 isFillInBlank ? '填空题' :
-                 isEssay ? '问答题' : '其他'}
+              <div className="text-xs font-medium text-gray-600 ml-2">
+                {Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}%
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              {/* Navigation buttons - only show when current question is answered or when reviewing */}
+              {(answers[currentQuestionIndex] !== null && answers[currentQuestionIndex] !== undefined) ? (
+                <div className="flex items-center bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-xl shadow-lg">
+                  <button
+                    onClick={handleNavigateToPrevious}
+                    disabled={viewingQuestionIndex === 0}
+                    className="p-1.5 text-gray-600 hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none rounded-l-xl"
+                    title="上一题"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  
+                  {viewingQuestionIndex !== workingQuestionIndex && (
+                    <button
+                      onClick={handleJumpToWorking}
+                      className="px-2 py-1.5 text-gray-600 hover:text-blue-600 transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none border-x border-gray-200"
+                      title={`返回当前题 (第${workingQuestionIndex + 1}题)`}
+                    >
+                      <Home className="w-4 h-4" />
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={handleNavigateToNext}
+                    disabled={viewingQuestionIndex === questions.length - 1}
+                    className="p-1.5 text-gray-600 hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none rounded-r-xl"
+                    title="下一题"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : null}
+              
+              <div className="text-sm text-gray-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow-lg font-medium tracking-wide">
+                <span className="flex items-center gap-1">
+                  {isSingleChoice ? '单选' : 
+                   isMultipleChoice ? '多选' : 
+                   isFillInBlank ? '填空' :
+                   isEssay ? '问答' : '其他'} • 
+                  <span className={viewingQuestionIndex !== workingQuestionIndex ? 'text-orange-600' : ''}>
+                    {currentQuestionIndex + 1}
+                  </span>
+                  /{questions.length}
+                  {answers[currentQuestionIndex] !== null && answers[currentQuestionIndex] !== undefined && (
+                    <CheckCircle className="w-3 h-3 text-green-600 ml-1" />
+                  )}
+                </span>
               </div>
               {isEssay && (
                 <button
                   onClick={readQuestion}
-                  className="p-2 text-gray-600 hover:text-blue-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                  className="p-1.5 text-gray-600 hover:text-blue-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
                   title="朗读题目"
                 >
                   <Volume2 className="w-4 h-4" />
@@ -1192,28 +1422,28 @@ export default function QuizPractice({
               )}
               <button
                 onClick={handleEndPractice}
-                className="px-4 py-2 text-sm bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm text-gray-700 hover:text-gray-900 rounded-xl hover:bg-white/90 transition-all duration-300 ease-out shadow-lg hover:shadow-xl font-medium tracking-wide focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none"
+                className="px-3 py-1.5 text-sm bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm text-gray-700 hover:text-gray-900 rounded-xl hover:bg-white/90 transition-all duration-300 ease-out shadow-lg hover:shadow-xl font-medium tracking-wide focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none"
               >
                 结束练习
               </button>
             </div>
           </div>
 
-          {/* 进度条 */}
-          <div className="mb-8 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
-            <div className="flex justify-between text-sm text-gray-600 mb-2 font-medium tracking-wide">
+          {/* Mobile progress bar */}
+          <div className="md:hidden mb-4 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-white/20">
+            <div className="flex justify-between text-xs text-gray-600 mb-1.5 font-medium tracking-wide">
               <span>进度</span>
               <span>{Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 h-3 rounded-full transition-all duration-300 shadow-sm"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-300 shadow-sm"
                 style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
               />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-3xl shadow-lg p-8 border border-white/20">
+          <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20">
             {/* Render question - special handling for fill-in-the-blank */}
             {isFillInBlank ? (
               <div className="mb-6">
@@ -1441,31 +1671,33 @@ export default function QuizPractice({
                 {/* AI Re-evaluation Button and Message */}
                 {!isAnswerCorrect() && (
                   <div className="mt-4">
-                    <button
-                      onClick={handleAiReevaluate}
-                      disabled={aiReevaluating}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {aiReevaluating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>AI 正在评估中...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4" />
-                          <span>请求 AI 重新评估</span>
-                        </>
-                      )}
-                    </button>
-                    <p className="text-sm text-gray-500 mt-2">
-                      如果您认为答案正确，可以请求 AI 重新评估
-                      {aiReevaluating && (
-                        <span className="ml-1">
-                          （评估期间可直接进入下一题）
-                        </span>
-                      )}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleAiReevaluate}
+                        disabled={aiReevaluating}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {aiReevaluating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>AI 正在评估中...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            <span>请求 AI 重新评估</span>
+                          </>
+                        )}
+                      </button>
+                      <span className="text-sm text-gray-500">
+                        如果您认为答案正确
+                        {aiReevaluating && (
+                          <span className="ml-1 text-gray-400">
+                            （评估期间可直接进入下一题）
+                          </span>
+                        )}
+                      </span>
+                    </div>
                     
                     {/* Progress bar for AI evaluation */}
                     {aiReevaluating && (
@@ -1588,28 +1820,30 @@ export default function QuizPractice({
 
             {/* 选择题结果显示 */}
             {showResult && (isSingleChoice || isMultipleChoice) && config.showExplanation && (
-              <div className={`p-6 rounded-xl mb-6 border ${
+              <div className={`p-4 rounded-xl mb-4 border ${
                 isChoiceCorrect() 
-                  ? 'bg-green-50 border-green-200 shadow-lg shadow-green-500/25' 
-                  : 'bg-red-50 border-red-200 shadow-lg shadow-red-500/25'
+                  ? 'bg-green-50 border-green-200' 
+                  : 'bg-red-50 border-red-200'
               }`}>
-                <div className="flex items-center mb-3">
-                  {isChoiceCorrect() ? (
-                    <CheckCircle2 className="w-6 h-6 text-green-600 mr-2" />
-                  ) : (
-                    <XCircle className="w-6 h-6 text-red-600 mr-2" />
-                  )}
-                  <span className={`font-bold text-lg tracking-wide ${
-                    isChoiceCorrect() ? 'text-green-800' : 'text-red-800'
-                  }`}>
-                    {isChoiceCorrect() ? '回答正确！' : '回答错误'}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    {isChoiceCorrect() ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-600 mr-2" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-600 mr-2" />
+                    )}
+                    <span className={`font-semibold tracking-wide ${
+                      isChoiceCorrect() ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {isChoiceCorrect() ? '正确' : '错误'}
+                    </span>
+                  </div>
+                  <span className={`text-sm tracking-wide ${isChoiceCorrect() ? 'text-green-700' : 'text-red-700'}`}>
+                    答案：{Array.isArray(currentQuestion.answer) 
+                      ? currentQuestion.answer.join('、') 
+                      : currentQuestion.answer}
                   </span>
                 </div>
-                <p className={`mb-3 tracking-wide ${isChoiceCorrect() ? 'text-green-700' : 'text-red-700'}`}>
-                  正确答案是：{Array.isArray(currentQuestion.answer) 
-                    ? currentQuestion.answer.join('、') 
-                    : currentQuestion.answer}
-                </p>
                 
                 {/* 相关知识点信息 */}
                 {showResult && (currentQuestion.knowledgePoint || knowledgePointsData) && (
