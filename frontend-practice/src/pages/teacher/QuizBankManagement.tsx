@@ -63,6 +63,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const [knowledgePointSearch, setKnowledgePointSearch] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Separate state for input field
+  const [isComposing, setIsComposing] = useState(false); // Track IME composition state
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -844,8 +845,13 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                     placeholder="搜索题目内容..."
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                    onKeyDown={(e) => {
+                      // Use onKeyDown instead of onKeyPress for better IME support
+                      // Check if not composing (for Chinese/Japanese/Korean input)
+                      if (e.key === 'Enter' && !isComposing) {
+                        e.preventDefault();
                         setSearchTerm(searchInput);
                       }
                     }}

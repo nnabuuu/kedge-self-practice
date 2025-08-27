@@ -286,15 +286,21 @@ export class QuizController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all quizzes with optional pagination' })
+  @ApiOperation({ summary: 'List all quizzes with optional pagination and search' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)' })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page' })
   @ApiQuery({ name: 'knowledge_point_id', required: false, description: 'Filter by knowledge point ID(s) - supports single ID or comma-separated multiple IDs' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search term for quiz questions' })
+  @ApiQuery({ name: 'type', required: false, description: 'Filter by quiz type' })
+  @ApiQuery({ name: 'difficulty', required: false, description: 'Filter by difficulty level' })
   @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
   async listQuizzes(
     @Query('page') pageStr?: string,
     @Query('limit') limitStr?: string,
     @Query('knowledge_point_id') knowledgePointIds?: string,
+    @Query('search') searchTerm?: string,
+    @Query('type') quizType?: string,
+    @Query('difficulty') difficulty?: string,
   ) {
     const page = pageStr ? parseInt(pageStr, 10) : 1;
     const limit = limitStr ? parseInt(limitStr, 10) : 10;
@@ -302,6 +308,34 @@ export class QuizController {
     
     // Get all quizzes for now (pagination can be added at repository level later)
     let allQuizzes = await this.quizService.listQuizzes();
+    
+    // Filter by search term if provided (supports Chinese characters)
+    if (searchTerm && searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      allQuizzes = allQuizzes.filter(quiz => {
+        // Search in question text
+        if (quiz.question && quiz.question.toLowerCase().includes(searchLower)) {
+          return true;
+        }
+        // Also search in options for multiple choice questions
+        if (quiz.options && Array.isArray(quiz.options)) {
+          return quiz.options.some(option => 
+            option && option.toLowerCase().includes(searchLower)
+          );
+        }
+        return false;
+      });
+    }
+    
+    // Filter by type if provided
+    if (quizType && quizType !== 'all') {
+      allQuizzes = allQuizzes.filter(quiz => quiz.type === quizType);
+    }
+    
+    // Filter by difficulty if provided
+    if (difficulty && difficulty !== 'all') {
+      allQuizzes = allQuizzes.filter(quiz => quiz.difficulty === difficulty);
+    }
     
     // Filter by knowledge point ID(s) if provided
     if (knowledgePointIds) {
