@@ -55,6 +55,9 @@ export default function KnowledgePointSelection({
   
   const [lastSelection, setLastSelection] = useLocalStorage<string[]>(`last-selection-${subject.id}`, []);
   
+  // Remember the previous auto-advance delay value when toggling off
+  const [previousAutoAdvanceDelay, setPreviousAutoAdvanceDelay] = useState<number>(3);
+  
   const [quizConfig, setQuizConfig] = useState<QuizConfig>({
     questionType: 'new',
     questionCount: 20,
@@ -70,12 +73,17 @@ export default function KnowledgePointSelection({
       try {
         const settings = await preferencesService.getQuizSettings();
         if (settings) {
+          const delay = settings.autoAdvanceDelay ?? 3;
           setQuizConfig(prev => ({
             ...prev,
-            autoAdvanceDelay: settings.autoAdvanceDelay ?? 3,
+            autoAdvanceDelay: delay,
             shuffleQuestions: settings.shuffleQuestions ?? true,
             showExplanation: settings.showExplanation ?? true
           }));
+          // Also update the previousAutoAdvanceDelay with the loaded value if it's > 0
+          if (delay > 0) {
+            setPreviousAutoAdvanceDelay(delay);
+          }
         }
       } catch (error) {
         console.error('Failed to load quiz preferences:', error);
@@ -780,10 +788,22 @@ export default function KnowledgePointSelection({
                         <input
                           type="checkbox"
                           checked={(quizConfig.autoAdvanceDelay ?? 0) > 0}
-                          onChange={(e) => setQuizConfig(prev => ({
-                            ...prev,
-                            autoAdvanceDelay: e.target.checked ? 3 : 0
-                          }))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              // When enabling, restore the previous delay value
+                              setQuizConfig(prev => ({
+                                ...prev,
+                                autoAdvanceDelay: previousAutoAdvanceDelay
+                              }));
+                            } else {
+                              // When disabling, save the current delay value and set to 0
+                              setPreviousAutoAdvanceDelay(quizConfig.autoAdvanceDelay || 3);
+                              setQuizConfig(prev => ({
+                                ...prev,
+                                autoAdvanceDelay: 0
+                              }));
+                            }
+                          }}
                           className="w-4 h-4 text-purple-600 rounded"
                         />
                         <ArrowRight className="w-5 h-5 text-purple-600" />
@@ -801,10 +821,12 @@ export default function KnowledgePointSelection({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                const newDelay = Math.max(1, (quizConfig.autoAdvanceDelay || 3) - 1);
                                 setQuizConfig(prev => ({
                                   ...prev,
-                                  autoAdvanceDelay: Math.max(1, (prev.autoAdvanceDelay || 3) - 1)
+                                  autoAdvanceDelay: newDelay
                                 }));
+                                setPreviousAutoAdvanceDelay(newDelay);
                               }}
                               className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded"
                             >
@@ -817,10 +839,12 @@ export default function KnowledgePointSelection({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                const newDelay = Math.min(10, (quizConfig.autoAdvanceDelay || 3) + 1);
                                 setQuizConfig(prev => ({
                                   ...prev,
-                                  autoAdvanceDelay: Math.min(10, (prev.autoAdvanceDelay || 3) + 1)
+                                  autoAdvanceDelay: newDelay
                                 }));
+                                setPreviousAutoAdvanceDelay(newDelay);
                               }}
                               className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded"
                             >

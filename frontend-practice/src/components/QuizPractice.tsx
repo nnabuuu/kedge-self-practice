@@ -588,8 +588,10 @@ export default function QuizPractice({
     setShowResult(true);
     setShowStandardAnswer(true);
     
+    // Get the current question to check if answer is correct
+    const question = questions[currentQuestionIndex];
     // If the answer is correct, automatically move to next question with countdown
-    if (answer === currentQuestion?.answer && (config.autoAdvanceDelay ?? 0) > 0) {
+    if (question && answer === question.answer && (config.autoAdvanceDelay ?? 0) > 0) {
       startAutoAdvanceCountdown();
     }
     
