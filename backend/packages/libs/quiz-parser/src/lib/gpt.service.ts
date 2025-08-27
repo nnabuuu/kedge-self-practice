@@ -162,8 +162,8 @@ export class GptService {
       const parsed: QuizExtractionResult = JSON.parse(content ?? '{}');
       return parsed.items ?? [];
     } catch (error) {
-      this.logger.error('Failed to parse GPT response as JSON:', error);
-      this.logger.error('Raw GPT response:', content);
+      console.error('Failed to parse GPT response as JSON:', error);
+      console.error('Raw GPT response:', content);
       
       // Try to extract JSON from the content if it's wrapped in markdown or has extra text
       const jsonMatch = content?.match(/```json\s*([\s\S]*?)\s*```/) || content?.match(/\{[\s\S]*\}/);
@@ -173,12 +173,12 @@ export class GptService {
           const parsed: QuizExtractionResult = JSON.parse(cleanedContent);
           return parsed.items ?? [];
         } catch (secondError) {
-          this.logger.error('Failed to extract JSON from content:', secondError);
+          console.error('Failed to extract JSON from content:', secondError);
         }
       }
       
       // Return empty array instead of error quiz
-      this.logger.error('Unable to parse GPT response, returning empty array');
+      console.error('Unable to parse GPT response, returning empty array');
       return [];
     }
   }
@@ -228,8 +228,8 @@ export class GptService {
     try {
       return JSON.parse(content ?? '{}') as QuizItem;
     } catch (error) {
-      this.logger.error('Failed to parse GPT polish response as JSON:', error);
-      this.logger.error('Raw GPT response:', content);
+      console.error('Failed to parse GPT polish response as JSON:', error);
+      console.error('Raw GPT response:', content);
       
       // Try to extract JSON from the content if it's wrapped in markdown
       const jsonMatch = content?.match(/```json\s*([\s\S]*?)\s*```/) || content?.match(/\{[\s\S]*\}/);
@@ -238,12 +238,12 @@ export class GptService {
           const cleanedContent = jsonMatch[0].replace(/```json\s*/, '').replace(/```\s*$/, '');
           return JSON.parse(cleanedContent) as QuizItem;
         } catch (secondError) {
-          this.logger.error('Failed to extract JSON from polish content:', secondError);
+          console.error('Failed to extract JSON from polish content:', secondError);
         }
       }
       
       // Return original item if parsing fails
-      this.logger.error('Unable to parse GPT polish response, returning original item');
+      console.error('Unable to parse GPT polish response, returning original item');
       return item;
     }
   }
@@ -290,8 +290,8 @@ export class GptService {
     try {
       return JSON.parse(content ?? '{}') as QuizItem;
     } catch (error) {
-      this.logger.error('Failed to parse GPT type change response as JSON:', error);
-      this.logger.error('Raw GPT response:', content);
+      console.error('Failed to parse GPT type change response as JSON:', error);
+      console.error('Raw GPT response:', content);
       
       // Try to extract JSON from the content if it's wrapped in markdown
       const jsonMatch = content?.match(/```json\s*([\s\S]*?)\s*```/) || content?.match(/\{[\s\S]*\}/);
@@ -300,12 +300,12 @@ export class GptService {
           const cleanedContent = jsonMatch[0].replace(/```json\s*/, '').replace(/```\s*$/, '');
           return JSON.parse(cleanedContent) as QuizItem;
         } catch (secondError) {
-          this.logger.error('Failed to extract JSON from type change content:', secondError);
+          console.error('Failed to extract JSON from type change content:', secondError);
         }
       }
       
       // Return original item with new type if parsing fails
-      this.logger.error('Unable to parse GPT type change response, returning original item with new type');
+      console.error('Unable to parse GPT type change response, returning original item with new type');
       return { ...item, type: newType };
     }
   }
