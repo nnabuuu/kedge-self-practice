@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigsService, getOpenAIConfig, getModelConfig } from '@kedge/configs';
 import { KnowledgePoint } from '@kedge/models';
 import { OpenAI } from 'openai';
+import { createChatCompletionParams } from './openai-utils';
 
 @Injectable()
 export class KnowledgePointGPTService {
@@ -66,10 +67,9 @@ export class KnowledgePointGPTService {
 
     try {
       const modelConfig = getModelConfig('knowledgePointExtractor');
-      const response = await this.openai.chat.completions.create({
+      const completionParams = createChatCompletionParams({
         model: modelConfig.model,
         temperature: modelConfig.temperature,
-        max_tokens: modelConfig.maxTokens,
         top_p: modelConfig.topP,
         messages: [
           {
@@ -81,7 +81,8 @@ export class KnowledgePointGPTService {
           type: 'json_schema',
           json_schema: schema,
         },
-      });
+      }, modelConfig.maxTokens);
+      const response = await this.openai.chat.completions.create(completionParams);
 
       return JSON.parse(response.choices[0].message?.content || '');
     } catch (error) {
@@ -135,17 +136,17 @@ ${units.map((u, i) => `索引 ${i}: ${u}`).join('\n')}
 
     try {
       const modelConfig = getModelConfig('knowledgePointExtractor');
-      const response = await this.openai.chat.completions.create({
+      const completionParams = createChatCompletionParams({
         model: modelConfig.model,
         temperature: modelConfig.temperature,
-        max_tokens: modelConfig.maxTokens,
         top_p: modelConfig.topP,
         messages: [{ role: 'user', content: prompt }],
         response_format: {
           type: 'json_schema',
           json_schema: schema,
         },
-      });
+      }, modelConfig.maxTokens);
+      const response = await this.openai.chat.completions.create(completionParams);
 
       const parsed = JSON.parse(response.choices[0].message?.content || '{}');
       const indexes: number[] = parsed.indexes ?? [];
@@ -305,10 +306,9 @@ ${quizText}
 
     try {
       const modelConfig = getModelConfig('knowledgePointExtractor');
-      const response = await this.openai.chat.completions.create({
+      const completionParams = createChatCompletionParams({
         model: modelConfig.model,
         temperature: modelConfig.temperature,
-        max_tokens: modelConfig.maxTokens,
         top_p: modelConfig.topP,
         messages: [
           {
@@ -320,7 +320,8 @@ ${quizText}
           type: 'json_schema',
           json_schema: schema,
         },
-      });
+      }, modelConfig.maxTokens);
+      const response = await this.openai.chat.completions.create(completionParams);
 
       const raw = response.choices[0].message?.content;
       this.logger.log(`筛选结果： ${raw}`);

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { GptParagraphBlock, QuizItem, QuizExtractionResult } from '@kedge/models';
 import { getOpenAIConfig, getModelConfig } from '@kedge/configs';
+import { createChatCompletionParams } from './openai-utils';
 
 @Injectable()
 export class GptService {
@@ -139,10 +140,9 @@ export class GptService {
     } as const;
 
     const modelConfig = getModelConfig('quizParser');
-    const response = await this.openai.chat.completions.create({
+    const completionParams = createChatCompletionParams({
       model: modelConfig.model,
       temperature: modelConfig.temperature,
-      max_tokens: modelConfig.maxTokens,
       top_p: modelConfig.topP,
       messages: [
         {
@@ -154,7 +154,8 @@ export class GptService {
         type: 'json_schema',
         json_schema: schema,
       },
-    });
+    }, modelConfig.maxTokens);
+    const response = await this.openai.chat.completions.create(completionParams);
 
     const content = response.choices[0]?.message?.content;
     try {
@@ -197,14 +198,14 @@ export class GptService {
     } as const;
 
     const modelConfig = getModelConfig('quizRenderer');
-    const response = await this.openai.chat.completions.create({
+    const completionParams = createChatCompletionParams({
       model: modelConfig.model,
       temperature: modelConfig.temperature,
-      max_tokens: modelConfig.maxTokens,
       top_p: modelConfig.topP,
       messages: [{ role: 'user', content: prompt + '\n\n' + JSON.stringify(item) }],
       response_format: { type: 'json_schema', json_schema: schema },
-    });
+    }, modelConfig.maxTokens);
+    const response = await this.openai.chat.completions.create(completionParams);
 
     const content = response.choices[0]?.message?.content;
     try {
@@ -243,14 +244,14 @@ export class GptService {
     } as const;
 
     const modelConfig = getModelConfig('quizRenderer');
-    const response = await this.openai.chat.completions.create({
+    const completionParams = createChatCompletionParams({
       model: modelConfig.model,
       temperature: modelConfig.temperature,
-      max_tokens: modelConfig.maxTokens,
       top_p: modelConfig.topP,
       messages: [{ role: 'user', content: prompt + '\n\n' + JSON.stringify(item) }],
       response_format: { type: 'json_schema', json_schema: schema },
-    });
+    }, modelConfig.maxTokens);
+    const response = await this.openai.chat.completions.create(completionParams);
 
     const content = response.choices[0]?.message?.content;
     try {
@@ -313,7 +314,7 @@ ${context ? `题目背景：${context}` : ''}
 请提供你的判断结果和理由。`;
 
       const modelConfig = getModelConfig('answerValidator');
-      const response = await this.openai.chat.completions.create({
+      const completionParams = createChatCompletionParams({
         model: modelConfig.model, // Use gpt-4o-mini for better structured output support
         messages: [
           {
@@ -325,10 +326,10 @@ ${context ? `题目背景：${context}` : ''}
             content: prompt,
           },
         ],
-        temperature: 0.3, // Lower temperature for more consistent evaluation
-        max_tokens: 200,
+        temperature: modelConfig.temperature || 0.3, // Use config or default to lower temperature
         response_format: responseSchema as any, // Use structured output with JSON schema
-      });
+      }, modelConfig.maxTokens || 200);
+      const response = await this.openai.chat.completions.create(completionParams);
 
       const content = response.choices[0].message?.content?.trim() || '{}';
       

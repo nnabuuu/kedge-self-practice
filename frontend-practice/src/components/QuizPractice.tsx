@@ -232,11 +232,13 @@ export default function QuizPractice({
   // 使用Practice Session Hook获取题目数据
   // Memoize config to prevent infinite re-renders
   // Only use this when not using a pre-existing session
-  console.log('Creating practice config:', { practiceSessionId, selectedKnowledgePoints });
-  const practiceConfig = useMemo(() => 
-    !practiceSessionId && selectedKnowledgePoints.length > 0 ? {
+  // Use JSON.stringify for selectedKnowledgePoints to avoid reference changes
+  const knowledgePointsKey = JSON.stringify(selectedKnowledgePoints);
+  const practiceConfig = useMemo(() => {
+    const points = JSON.parse(knowledgePointsKey);
+    return !practiceSessionId && points.length > 0 ? {
       subject_id: subject.id,
-      knowledge_point_ids: selectedKnowledgePoints,
+      knowledge_point_ids: points,
       question_count: typeof config.questionCount === 'number' ? config.questionCount : 20,
       time_limit_minutes: config.timeLimit,
       strategy: 'random',
@@ -246,9 +248,9 @@ export default function QuizPractice({
       show_answer_immediately: config.showExplanation,
       quiz_types: config.quizTypes,
       auto_advance_delay: config.autoAdvanceDelay || 0
-    } : null,
-    [practiceSessionId, selectedKnowledgePoints, config.questionCount, config.timeLimit, 
-     config.shuffleQuestions, config.showExplanation, config.quizTypes, config.autoAdvanceDelay, subject.id]
+    } : null;
+  }, [practiceSessionId, knowledgePointsKey, config.questionCount, config.timeLimit, 
+      config.shuffleQuestions, config.showExplanation, config.quizTypes, config.autoAdvanceDelay, subject.id]
   );
 
   const { 
@@ -264,14 +266,11 @@ export default function QuizPractice({
 
   // Fetch session data when practiceSessionId is provided
   useEffect(() => {
-    console.log('practiceSessionId effect triggered:', practiceSessionId);
     if (practiceSessionId) {
       const fetchSession = async () => {
-        console.log('Fetching session for ID:', practiceSessionId);
         setSessionLoading(true);
         try {
           const response = await api.practice.getSession(practiceSessionId);
-          console.log('API response:', response);
           if (response.success && response.data) {
             // Check if session needs to be started
             if (response.data.session.status === 'pending') {
@@ -279,8 +278,6 @@ export default function QuizPractice({
               const startResponse = await api.practice.startSession(practiceSessionId);
               if (startResponse.success && startResponse.data) {
                 // Use the started session data - quizzes are already converted by backend API service
-                console.log('Start response quizzes:', startResponse.data.quizzes);
-                console.log('First quiz from start response:', startResponse.data.quizzes[0]);
                 // Don't convert again - already converted by backend API service
                 setQuestions(startResponse.data.quizzes);
                 setCurrentSessionId(practiceSessionId);
@@ -297,8 +294,6 @@ export default function QuizPractice({
               }
             } else {
               // Session already started, use the fetched data - already converted by backend API service
-              console.log('Session data fetched:', response.data);
-              console.log('Quizzes from session:', response.data.quizzes);
               setQuestions(response.data.quizzes);
               setCurrentSessionId(practiceSessionId);
               // Save session's auto_advance_delay
@@ -386,12 +381,17 @@ export default function QuizPractice({
       setQuestionStartTimes(new Array(sessionQuestions.length).fill(null));
       setQuestionDurations(new Array(sessionQuestions.length).fill(0));
       
+      // Set currentSessionId from the usePracticeSession hook
+      if (sessionId) {
+        setCurrentSessionId(sessionId);
+      }
+      
       // Save session's auto_advance_delay if available
       if (session?.auto_advance_delay !== undefined) {
         setSessionAutoAdvanceDelay(session.auto_advance_delay);
       }
     }
-  }, [practiceSessionId, sessionQuestions, session]);
+  }, [practiceSessionId, sessionQuestions, session, sessionId]);
 
   // 记录当前题目开始时间
   useEffect(() => {
@@ -451,40 +451,12 @@ export default function QuizPractice({
   }, [showResult, isEvaluating, currentQuestionIndex, questions.length]);
 
   const currentQuestion = questions[currentQuestionIndex];
-  console.log('Current question data:', {
-    currentQuestionIndex,
-    questionsLength: questions.length,
-    currentQuestion,
-    questionsLoadingState: questionsLoading,
-    sessionLoadingState: sessionLoading,
-    practiceSessionId,
-    sessionQuestions,
-    questions
-  });
-  
-  // Debug: Check what we have for current question
-  if (currentQuestion) {
-    console.log('Current question details:', {
-      type: currentQuestion.type,
-      hasOptions: !!currentQuestion.options,
-      optionsKeys: currentQuestion.options ? Object.keys(currentQuestion.options) : [],
-      optionsValues: currentQuestion.options,
-      question: currentQuestion.question,
-      answer: currentQuestion.answer
-    });
-  }
   
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const isSingleChoice = currentQuestion?.type === 'single-choice';
   const isMultipleChoice = currentQuestion?.type === 'multiple-choice';
   const isEssay = currentQuestion?.type === 'essay';
   const isFillInBlank = currentQuestion?.type === 'fill-in-the-blank';
-  
-  // Debug: Log the question type
-  if (currentQuestion) {
-    console.log('Current question type:', currentQuestion.type);
-    console.log('isFillInBlank:', isFillInBlank);
-  }
   
   // Safety check for undefined currentQuestion
   if (!currentQuestion && questions.length > 0) {
@@ -843,6 +815,10 @@ export default function QuizPractice({
     // Cancel any active countdown
     cancelAutoAdvance();
     
+    // Clear AI re-evaluation states when moving to next question
+    setAiReevaluating(false);
+    setAiReevaluationMessage(null);
+    
     if (isLastQuestion) {
       handleEndPractice();
     } else {
@@ -860,10 +836,18 @@ export default function QuizPractice({
   };
 
   const handleAiReevaluate = async () => {
-    if (!currentSessionId || aiReevaluating) return;
+    if (!currentSessionId) {
+      console.error('No session ID available for AI re-evaluation');
+      setAiReevaluationMessage('无法进行AI评估：缺少会话ID。请确保已登录并连接到后端服务。');
+      return;
+    }
+    
+    if (aiReevaluating) return;
     
     const currentQuestion = questions[currentQuestionIndex];
-    if (currentQuestion.type !== 'fill-in-the-blank') return;
+    if (currentQuestion.type !== 'fill-in-the-blank') {
+      return;
+    }
     
     setAiReevaluating(true);
     setAiReevaluationMessage(null);
@@ -891,7 +875,9 @@ export default function QuizPractice({
             setAnswers(newAnswers);
           }, 100);
         } else {
-          setAiReevaluationMessage(`AI判断：${response.data.reasoning}`);
+          // Show the AI's reasoning for why it's still incorrect
+          const reasoning = response.data.reasoning || '答案与标准答案存在差异';
+          setAiReevaluationMessage(`AI判断：${reasoning}`);
         }
       }
     } catch (error) {
@@ -1366,7 +1352,28 @@ export default function QuizPractice({
                     </button>
                     <p className="text-sm text-gray-500 mt-2">
                       如果您认为答案正确，可以请求 AI 重新评估
+                      {aiReevaluating && (
+                        <span className="ml-1">
+                          （评估期间可直接进入下一题）
+                        </span>
+                      )}
                     </p>
+                    
+                    {/* Progress bar for AI evaluation */}
+                    {aiReevaluating && (
+                      <div className="mt-3">
+                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-purple-600 to-blue-600 rounded-full animate-pulse"
+                            style={{
+                              width: '80%',
+                              transition: 'width 2s ease-in-out'
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">AI 正在分析您的答案...</p>
+                      </div>
+                    )}
                   </div>
                 )}
                 
@@ -1375,12 +1382,28 @@ export default function QuizPractice({
                   <div className={`mt-4 p-4 rounded-lg border ${
                     aiReevaluationMessage.includes('正确') || aiReevaluationMessage.includes('系统已记录') 
                       ? 'bg-green-50 border-green-200 text-green-800' 
-                      : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+                      : aiReevaluationMessage.includes('AI判断') 
+                        ? 'bg-orange-50 border-orange-200 text-orange-800'
+                        : 'bg-yellow-50 border-yellow-200 text-yellow-800'
                   }`}>
                     <div className="flex items-start gap-2">
                       <Brain className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium">{aiReevaluationMessage}</p>
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {aiReevaluationMessage.includes('AI判断') ? (
+                            <>AI 评估结果：仍判定为错误</>
+                          ) : (
+                            aiReevaluationMessage
+                          )}
+                        </p>
+                        {aiReevaluationMessage.includes('AI判断') && (
+                          <div className="mt-2">
+                            <p className="text-sm font-medium mb-1">AI 分析理由：</p>
+                            <p className="text-sm opacity-90">
+                              {aiReevaluationMessage.replace('AI判断：', '')}
+                            </p>
+                          </div>
+                        )}
                         {aiReevaluationMessage.includes('系统已记录') && (
                           <p className="text-sm mt-1 opacity-80">
                             未来遇到相同答案时，系统将自动判定为正确 ✨
@@ -1663,7 +1686,7 @@ export default function QuizPractice({
                   )}
                   <button
                     onClick={handleNextQuestion}
-                    disabled={isEvaluating}
+                    disabled={isEvaluating && !aiReevaluating}
                     className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 ease-out shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold tracking-wide focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
                   >
                     {isLastQuestion ? (
