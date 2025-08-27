@@ -292,7 +292,6 @@ export class QuizController {
   @ApiQuery({ name: 'knowledge_point_id', required: false, description: 'Filter by knowledge point ID(s) - supports single ID or comma-separated multiple IDs' })
   @ApiQuery({ name: 'search', required: false, description: 'Search term for quiz questions' })
   @ApiQuery({ name: 'type', required: false, description: 'Filter by quiz type' })
-  @ApiQuery({ name: 'difficulty', required: false, description: 'Filter by difficulty level' })
   @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
   async listQuizzes(
     @Query('page') pageStr?: string,
@@ -300,7 +299,6 @@ export class QuizController {
     @Query('knowledge_point_id') knowledgePointIds?: string,
     @Query('search') searchTerm?: string,
     @Query('type') quizType?: string,
-    @Query('difficulty') difficulty?: string,
   ) {
     const page = pageStr ? parseInt(pageStr, 10) : 1;
     const limit = limitStr ? parseInt(limitStr, 10) : 10;
@@ -330,11 +328,6 @@ export class QuizController {
     // Filter by type if provided
     if (quizType && quizType !== 'all') {
       allQuizzes = allQuizzes.filter(quiz => quiz.type === quizType);
-    }
-    
-    // Filter by difficulty if provided
-    if (difficulty && difficulty !== 'all') {
-      allQuizzes = allQuizzes.filter(quiz => quiz.difficulty === difficulty);
     }
     
     // Filter by knowledge point ID(s) if provided
