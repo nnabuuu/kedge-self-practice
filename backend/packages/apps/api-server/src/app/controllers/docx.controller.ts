@@ -30,13 +30,46 @@ export class DocxController {
   ) {}
 
   @Get('llm-provider')
-  @ApiOperation({ summary: 'Get current LLM provider information' })
-  @ApiResponse({ status: 200, description: 'LLM provider info' })
+  @ApiOperation({ summary: 'Get comprehensive LLM configuration and provider information' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Current LLM configuration details (excluding sensitive data)',
+    schema: {
+      type: 'object',
+      properties: {
+        configuration: {
+          type: 'object',
+          properties: {
+            apiKeyConfigured: { type: 'boolean' },
+            baseURL: { type: 'string' },
+            organization: { type: 'string' }
+          }
+        },
+        models: {
+          type: 'object',
+          description: 'Model configurations for each use case'
+        },
+        providers: {
+          type: 'object',
+          description: 'Detected providers for each use case'
+        },
+        baseUrls: {
+          type: 'object',
+          description: 'Base URLs for each provider'
+        },
+        envVariables: {
+          type: 'object',
+          description: 'Environment variable names for configuration'
+        },
+        tips: {
+          type: 'array',
+          items: { type: 'string' }
+        }
+      }
+    }
+  })
   getLLMProvider() {
-    return {
-      ...this.llmService.getProviderInfo(),
-      currentProvider: this.llmService.getProvider(),
-    };
+    return this.llmService.getFullConfiguration();
   }
 
   @Post('extract-quiz')

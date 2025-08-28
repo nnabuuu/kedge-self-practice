@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GptParagraphBlock, QuizItem } from '@kedge/models';
-import { getLLMProvider, LLMProvider, getModelConfig } from '@kedge/configs';
+import { getLLMProvider, LLMProvider, getModelConfig, getOpenAIConfig, getAutoBaseURL } from '@kedge/configs';
 import { GptService } from './gpt.service';
 import { DeepSeekService } from './deepseek.service';
 
@@ -79,5 +79,88 @@ export class LLMService {
           ]
         };
     }
+  }
+
+  /**
+   * Get comprehensive LLM configuration (excludes sensitive data like API keys)
+   */
+  getFullConfiguration() {
+    const config = getOpenAIConfig();
+    const currentProviders: Record<string, string> = {};
+    const modelConfigs: Record<string, any> = {};
+    
+    // Detect provider for each use case
+    const useCases = ['quizParser', 'quizRenderer', 'answerValidator', 'knowledgePointExtractor'] as const;
+    
+    useCases.forEach(useCase => {
+      const provider = getLLMProvider(useCase);
+      currentProviders[useCase] = provider;
+      
+      const modelConfig = getModelConfig(useCase);
+      modelConfigs[useCase] = {
+        model: modelConfig.model,
+        temperature: modelConfig.temperature,
+        maxTokens: modelConfig.maxTokens,
+        provider: provider,
+      };
+    });
+
+    // Get base URLs for each unique provider
+    const uniqueProviders = [...new Set(Object.values(currentProviders))];
+    const baseUrls: Record<string, string | undefined> = {};
+    uniqueProviders.forEach(provider => {
+      baseUrls[provider] = getAutoBaseURL(provider as LLMProvider);
+    });
+
+    return {
+      // Current configuration
+      configuration: {
+        apiKeyConfigured: !!config.apiKey && config.apiKey !== 'your-llm-api-key-here',
+        baseURL: config.baseURL || 'auto-detected',
+        organization: config.organization || 'not configured',
+      },
+      
+      // Model configurations for each use case
+      models: modelConfigs,
+      
+      // Provider detection
+      providers: currentProviders,
+      
+      // Base URLs being used
+      baseUrls: baseUrls,
+      
+      // Environment variable names for reference
+      envVariables: {
+        apiKey: 'LLM_API_KEY',
+        baseURL: 'LLM_BASE_URL (optional)',
+        organization: 'LLM_ORGANIZATION (optional)',
+        models: {
+          quizParser: 'LLM_MODEL_QUIZ_PARSER',
+          quizRenderer: 'LLM_MODEL_QUIZ_RENDERER',
+          answerValidator: 'LLM_MODEL_ANSWER_VALIDATOR',
+          knowledgePointExtractor: 'LLM_MODEL_KNOWLEDGE_EXTRACTOR',
+        },
+        temperatures: {
+          quizParser: 'LLM_TEMP_QUIZ_PARSER',
+          quizRenderer: 'LLM_TEMP_QUIZ_RENDERER',
+          answerValidator: 'LLM_TEMP_ANSWER_VALIDATOR',
+          knowledgePointExtractor: 'LLM_TEMP_KNOWLEDGE_EXTRACTOR',
+        },
+        maxTokens: {
+          quizParser: 'LLM_MAX_TOKENS_QUIZ_PARSER',
+          quizRenderer: 'LLM_MAX_TOKENS_QUIZ_RENDERER',
+          answerValidator: 'LLM_MAX_TOKENS_ANSWER_VALIDATOR',
+          knowledgePointExtractor: 'LLM_MAX_TOKENS_KNOWLEDGE_EXTRACTOR',
+        },
+      },
+      
+      // Tips for configuration
+      tips: [
+        'Models starting with "gpt-", "o1-", "chatgpt-" use OpenAI provider',
+        'Models starting with "deepseek-" use DeepSeek provider',
+        'Base URL is auto-detected based on provider if not explicitly set',
+        'Use .envrc.override to customize settings without modifying tracked files',
+      ],
+    };
   }
 }
