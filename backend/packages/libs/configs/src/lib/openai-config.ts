@@ -32,32 +32,32 @@ export interface OpenAIConfig {
   };
 }
 
-// Default configuration with fallbacks - supports unified LLM_* and legacy OPENAI_*
+// Default configuration using unified LLM_* variables
 export const getOpenAIConfig = (): OpenAIConfig => {
   return {
-    apiKey: process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || '',
-    baseURL: process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL,
-    organization: process.env.OPENAI_ORGANIZATION,
+    apiKey: process.env.LLM_API_KEY || '',
+    baseURL: process.env.LLM_BASE_URL,
+    organization: process.env.LLM_ORGANIZATION,
     models: {
       quizParser: {
-        model: process.env.LLM_MODEL_QUIZ_PARSER || process.env.OPENAI_MODEL_QUIZ_PARSER || 'gpt-4o',
-        temperature: parseFloat(process.env.LLM_TEMP_QUIZ_PARSER || process.env.OPENAI_TEMP_QUIZ_PARSER || '0.7'),
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_QUIZ_PARSER || process.env.OPENAI_MAX_TOKENS_QUIZ_PARSER || '4000'),
+        model: process.env.LLM_MODEL_QUIZ_PARSER || 'gpt-4o',
+        temperature: parseFloat(process.env.LLM_TEMP_QUIZ_PARSER || '0.7'),
+        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_QUIZ_PARSER || '4000'),
       },
       quizRenderer: {
-        model: process.env.LLM_MODEL_QUIZ_RENDERER || process.env.OPENAI_MODEL_QUIZ_RENDERER || 'gpt-4o-mini',
-        temperature: parseFloat(process.env.LLM_TEMP_QUIZ_RENDERER || process.env.OPENAI_TEMP_QUIZ_RENDERER || '0.3'),
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_QUIZ_RENDERER || process.env.OPENAI_MAX_TOKENS_QUIZ_RENDERER || '1000'),
+        model: process.env.LLM_MODEL_QUIZ_RENDERER || 'gpt-4o-mini',
+        temperature: parseFloat(process.env.LLM_TEMP_QUIZ_RENDERER || '0.3'),
+        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_QUIZ_RENDERER || '1000'),
       },
       answerValidator: {
-        model: process.env.LLM_MODEL_ANSWER_VALIDATOR || process.env.OPENAI_MODEL_ANSWER_VALIDATOR || 'gpt-4o-mini',
-        temperature: parseFloat(process.env.LLM_TEMP_ANSWER_VALIDATOR || process.env.OPENAI_TEMP_ANSWER_VALIDATOR || '0.3'),
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_ANSWER_VALIDATOR || process.env.OPENAI_MAX_TOKENS_ANSWER_VALIDATOR || '500'),
+        model: process.env.LLM_MODEL_ANSWER_VALIDATOR || 'gpt-4o-mini',
+        temperature: parseFloat(process.env.LLM_TEMP_ANSWER_VALIDATOR || '0.3'),
+        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_ANSWER_VALIDATOR || '500'),
       },
       knowledgePointExtractor: {
-        model: process.env.LLM_MODEL_KNOWLEDGE_EXTRACTOR || process.env.OPENAI_MODEL_KNOWLEDGE_EXTRACTOR || 'gpt-4o',
-        temperature: parseFloat(process.env.LLM_TEMP_KNOWLEDGE_EXTRACTOR || process.env.OPENAI_TEMP_KNOWLEDGE_EXTRACTOR || '0.3'),
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_KNOWLEDGE_EXTRACTOR || process.env.OPENAI_MAX_TOKENS_KNOWLEDGE_EXTRACTOR || '1000'),
+        model: process.env.LLM_MODEL_KNOWLEDGE_EXTRACTOR || 'gpt-4o',
+        temperature: parseFloat(process.env.LLM_TEMP_KNOWLEDGE_EXTRACTOR || '0.3'),
+        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_KNOWLEDGE_EXTRACTOR || '1000'),
       },
     },
   };
@@ -71,12 +71,12 @@ export const getModelConfig = (useCase: ModelUseCase): OpenAIModelConfig => {
   return config.models[useCase];
 };
 
-// DeepSeek configuration - uses unified LLM_* variables with fallback to DEEPSEEK_*
+// DeepSeek configuration - uses unified LLM_* variables
 export const getDeepSeekConfig = (): DeepSeekConfig => {
   return {
-    apiKey: process.env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY || '',
-    baseURL: process.env.LLM_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
-    model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+    apiKey: process.env.LLM_API_KEY || '',
+    baseURL: process.env.LLM_BASE_URL || 'https://api.deepseek.com',
+    model: 'deepseek-chat', // Default DeepSeek model
   };
 };
 
@@ -108,9 +108,9 @@ export const getAutoBaseURL = (provider: LLMProvider): string | undefined => {
   // Otherwise, use provider-specific defaults
   switch (provider) {
     case 'deepseek':
-      return process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
+      return 'https://api.deepseek.com';
     case 'openai':
     default:
-      return process.env.OPENAI_BASE_URL; // undefined is fine for OpenAI (uses default)
+      return undefined; // OpenAI client uses its default
   }
 };

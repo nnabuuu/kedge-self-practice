@@ -13,7 +13,7 @@ echo ""
 
 # Show current model configuration
 echo "2. Current model configuration:"
-echo "   LLM_MODEL_QUIZ_PARSER: ${LLM_MODEL_QUIZ_PARSER:-${OPENAI_MODEL_QUIZ_PARSER:-gpt-4o (default)}}"
+echo "   LLM_MODEL_QUIZ_PARSER: ${LLM_MODEL_QUIZ_PARSER:-gpt-4o (default)}"
 echo ""
 
 # Check unified API key
@@ -31,27 +31,18 @@ fi
 echo ""
 
 # Detect provider based on model
-MODEL="${LLM_MODEL_QUIZ_PARSER:-${OPENAI_MODEL_QUIZ_PARSER:-gpt-4o}}"
+MODEL="${LLM_MODEL_QUIZ_PARSER:-gpt-4o}"
 if [[ "$MODEL" == deepseek-* ]]; then
     echo "   → Provider: DeepSeek (auto-detected from model prefix)"
-    # Check for API key (unified or legacy)
-    if [ -n "$LLM_API_KEY" ] && [ "$LLM_API_KEY" != "your-llm-api-key-here" ]; then
-        echo "   → API Key: Using LLM_API_KEY"
-    elif [ -n "$DEEPSEEK_API_KEY" ] && [ "$DEEPSEEK_API_KEY" != "your-deepseek-api-key-here" ]; then
-        echo "   → API Key: Using DEEPSEEK_API_KEY (legacy)"
-    else
-        echo "   → API Key: [NOT configured - set LLM_API_KEY in .envrc.override]"
-    fi
 else
     echo "   → Provider: OpenAI (auto-detected from model prefix)"
-    # Check for API key (unified or legacy)
-    if [ -n "$LLM_API_KEY" ] && [ "$LLM_API_KEY" != "your-llm-api-key-here" ]; then
-        echo "   → API Key: Using LLM_API_KEY"
-    elif [ -n "$OPENAI_API_KEY" ] && [ "$OPENAI_API_KEY" != "your-actual-openai-api-key-here" ]; then
-        echo "   → API Key: Using OPENAI_API_KEY (legacy)"
-    else
-        echo "   → API Key: [NOT configured - set LLM_API_KEY in .envrc.override]"
-    fi
+fi
+
+# Check API key status
+if [ -n "$LLM_API_KEY" ] && [ "$LLM_API_KEY" != "your-llm-api-key-here" ]; then
+    echo "   → API Key: [Configured]"
+else
+    echo "   → API Key: [NOT configured - set LLM_API_KEY in .envrc.override]"
 fi
 echo ""
 

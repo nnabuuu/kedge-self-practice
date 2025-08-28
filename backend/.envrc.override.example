@@ -3,7 +3,7 @@
 # Copy this to .envrc.override and update with your actual values
 
 # ============================================
-# UNIFIED LLM CONFIGURATION (Recommended)
+# LLM CONFIGURATION
 # ============================================
 
 # Single API key for any provider
@@ -20,6 +20,9 @@ export LLM_MODEL_KNOWLEDGE_EXTRACTOR="gpt-4o"
 # Optional: Override base URL (auto-detected if not set)
 # export LLM_BASE_URL="https://api.openai.com/v1"  # OpenAI
 # export LLM_BASE_URL="https://api.deepseek.com"   # DeepSeek
+
+# Optional: Organization ID for OpenAI
+# export LLM_ORGANIZATION="your-org-id"
 
 # Fine-tune model behavior
 export LLM_TEMP_QUIZ_PARSER="0.7"
@@ -43,17 +46,6 @@ export LLM_MAX_TOKENS_QUIZ_PARSER="4000"
 # export LLM_MODEL_ANSWER_VALIDATOR="gpt-4o-mini"
 # export LLM_MODEL_KNOWLEDGE_EXTRACTOR="gpt-4o"
 
-# --- Example 3: Mixed (Optimize cost vs quality) ---
-# export LLM_MODEL_QUIZ_PARSER="deepseek-chat"      # Cost-effective for bulk processing
-# export LLM_MODEL_ANSWER_VALIDATOR="gpt-4o-mini"   # Fast OpenAI for validation
-# export LLM_MODEL_KNOWLEDGE_EXTRACTOR="gpt-4o"     # Accurate OpenAI for extraction
-# # Need both API keys for mixed usage
-# export OPENAI_API_KEY="your-openai-key"
-# export DEEPSEEK_API_KEY="your-deepseek-key"
-
-# ============================================
-# LEGACY CONFIGURATION (Still supported)
-# ============================================
-# export OPENAI_API_KEY="..."
-# export OPENAI_MODEL_QUIZ_PARSER="gpt-4o"
-# export DEEPSEEK_API_KEY="..."
+# --- Example 3: Mixed providers (Requires separate API keys) ---
+# Note: When mixing providers, you'll need to set different API keys
+# This is an advanced use case and may require custom configuration

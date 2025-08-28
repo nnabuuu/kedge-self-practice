@@ -54,13 +54,13 @@ export LLM_TEMP_QUIZ_PARSER="0.7"
 export LLM_MAX_TOKENS_QUIZ_PARSER="4000"
 ```
 
-**Note**: All configuration now uses unified `LLM_*` variables:
-- `LLM_API_KEY` - Single API key
+**Note**: All configuration uses unified `LLM_*` variables:
+- `LLM_API_KEY` - Single API key for any provider
 - `LLM_MODEL_*` - Model selection (auto-detects provider)
 - `LLM_TEMP_*` - Temperature settings
 - `LLM_MAX_TOKENS_*` - Token limits
-
-Legacy `OPENAI_*` and `DEEPSEEK_*` variables are still supported for backward compatibility.
+- `LLM_BASE_URL` - Optional base URL override
+- `LLM_ORGANIZATION` - Optional organization ID
 
 ### 3. Apply Configuration
 
@@ -148,12 +148,11 @@ export LLM_MODEL_ANSWER_VALIDATOR="gpt-4o-mini"
 # Use GPT-4o for knowledge extraction (accurate)
 export LLM_MODEL_KNOWLEDGE_EXTRACTOR="gpt-4o"
 
-# With unified key (if both providers accept same key)
+# Single API key (works if using same account/provider)
 export LLM_API_KEY="your-api-key"
 
-# OR use legacy provider-specific keys if needed
-export DEEPSEEK_API_KEY="your-deepseek-key"
-export OPENAI_API_KEY="your-openai-key"
+# Note: Mixing providers with different API keys requires
+# custom configuration and is not directly supported
 ```
 
 ## Cost Comparison
@@ -166,23 +165,17 @@ export OPENAI_API_KEY="your-openai-key"
 
 ## Environment Variable Summary
 
-### Unified Variables (Recommended)
+### Environment Variables
 | Variable | Description | Example |
 |----------|-------------|----------|
 | `LLM_API_KEY` | Single API key for any provider | `sk-xxx` or `deepseek-xxx` |
 | `LLM_BASE_URL` | Override base URL (optional) | `https://api.deepseek.com` |
+| `LLM_ORGANIZATION` | Organization ID (optional) | `org-xxx` |
 | `LLM_MODEL_QUIZ_PARSER` | Model for quiz extraction | `deepseek-chat` or `gpt-4o` |
 | `LLM_TEMP_QUIZ_PARSER` | Temperature for quiz parser | `0.7` |
 | `LLM_MAX_TOKENS_QUIZ_PARSER` | Max tokens for quiz parser | `4000` |
 | `LLM_MODEL_ANSWER_VALIDATOR` | Model for answer validation | `gpt-4o-mini` |
 | `LLM_MODEL_KNOWLEDGE_EXTRACTOR` | Model for knowledge extraction | `gpt-4o` |
-
-### Legacy Variables (Still Supported)
-| Variable | Description |
-|----------|-------------|
-| `OPENAI_API_KEY` | OpenAI-specific API key |
-| `OPENAI_MODEL_*` | OpenAI model settings |
-| `DEEPSEEK_API_KEY` | DeepSeek-specific API key |
 
 ## Implementation Details
 
