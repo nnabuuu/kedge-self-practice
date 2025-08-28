@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Upload, FileText, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { UploadStatus } from '../types/quiz';
+import { FileFormatModal } from './FileFormatModal';
 
 interface FileUploaderProps {
   onUpload: (file: File) => Promise<void>;
@@ -17,6 +18,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 }) => {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showFormatModal, setShowFormatModal] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -37,10 +39,16 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     if (disabled) return;
     
     const files = Array.from(e.dataTransfer.files);
+    const docFile = files.find(file => file.name.toLowerCase().endsWith('.doc'));
     const docxFile = files.find(file => 
       file.name.toLowerCase().endsWith('.docx') || 
       file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     );
+
+    if (docFile && !docxFile) {
+      setShowFormatModal(true);
+      return;
+    }
 
     if (docxFile) {
       setSelectedFile(docxFile);
@@ -53,6 +61,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     
     const file = e.target.files?.[0];
     if (file) {
+      if (file.name.toLowerCase().endsWith('.doc')) {
+        setShowFormatModal(true);
+        // Reset file input
+        e.target.value = '';
+        return;
+      }
       setSelectedFile(file);
       onUpload(file);
     }
@@ -95,7 +109,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <>
+      <div className="w-full max-w-2xl mx-auto">
       <div
         className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${getStatusColor()}`}
         onDragOver={handleDragOver}
@@ -104,7 +119,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       >
         <input
           type="file"
-          accept=".docx"
+          accept=".docx,.doc"
           onChange={handleFileSelect}
           className={`absolute inset-0 w-full h-full opacity-0 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           disabled={disabled || uploadStatus.status === 'uploading' || uploadStatus.status === 'processing'}
@@ -131,9 +146,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
               <h3 className={`text-lg font-semibold mb-2 ${disabled ? 'text-gray-400' : 'text-gray-700'}`}>
                 上传题目文档
               </h3>
-              <p className={`mb-4 ${disabled ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`mb-2 ${disabled ? 'text-gray-400' : 'text-gray-500'}`}>
                 {disabled ? '请先登录后再上传文件' : '拖拽 DOCX 文件到此处，或点击选择文件'}
               </p>
+              {!disabled && (
+                <div className="text-xs text-gray-400 space-y-1">
+                  <p>支持格式：.docx (Word 2007 及以上版本)</p>
+                  <p className="text-amber-600">注意：不支持 .doc 格式，请先转换为 .docx</p>
+                </div>
+              )}
             </div>
           )}
           
@@ -162,6 +183,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           )}
         </div>
       </div>
-    </div>
+      </div>
+      
+      <FileFormatModal 
+        isOpen={showFormatModal}
+        onClose={() => setShowFormatModal(false)}
+      />
+    </>
   );
 };
