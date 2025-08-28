@@ -13,7 +13,7 @@ import {
 import { getAuthToken, setAuthToken } from './services/api';
 import { exportToExcel } from './utils/exportUtils';
 import { ParagraphData, QuizItem, QuizWithKnowledgePoint, UploadStatus } from './types/quiz';
-import { BookOpen, ArrowRight, Download, User, LogOut, AlertCircle, Upload } from 'lucide-react';
+import { BookOpen, ArrowRight, Download, User, LogOut, AlertCircle, Upload, Loader2 } from 'lucide-react';
 
 function App() {
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
@@ -30,6 +30,8 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
 
   useEffect(() => {
     // Check for shared token from URL parameters (from frontend-practice)
@@ -111,11 +113,14 @@ function App() {
       return;
     }
 
+    setIsProcessing(true);
+    setProcessingMessage('正在上传并处理文档...');
+    
     try {
       setUploadStatus({
         status: 'uploading',
         progress: 25,
-        message: '正在上传文件...',
+        message: '正在上传文件到服务器...',
       });
 
       // Use backend with image support
@@ -133,7 +138,7 @@ function App() {
       setUploadStatus({
         status: 'processing',
         progress: 75,
-        message: '正在处理文档...',
+        message: '正在解析文档内容和提取图片...',
       });
 
       // Simulate processing time
@@ -145,7 +150,7 @@ function App() {
       setUploadStatus({
         status: 'success',
         progress: 100,
-        message: '文档处理成功！',
+        message: `文档处理成功！发现 ${Array.isArray(results) ? results.length : 0} 个段落`,
       });
       
       setCurrentStep('parse');
@@ -156,15 +161,21 @@ function App() {
         progress: 0,
         message: error instanceof Error ? error.message : '上传失败',
       });
+    } finally {
+      setIsProcessing(false);
+      setProcessingMessage('');
     }
   };
 
   const handleGenerateQuiz = async () => {
+    setIsProcessing(true);
+    setProcessingMessage('正在通过 AI 分析生成题目，请耐心等待...');
+    
     try {
       setUploadStatus({
         status: 'processing',
         progress: 50,
-        message: '正在生成题目...',
+        message: '正在通过 AI 分析内容生成题目（预计 10-30 秒）...',
       });
 
       // Use backend with image support
@@ -195,18 +206,24 @@ function App() {
         progress: 0,
         message: error instanceof Error ? error.message : '题目生成失败',
       });
+    } finally {
+      setIsProcessing(false);
+      setProcessingMessage('');
     }
   };
 
   const handleKnowledgePointComplete = async (quizWithKnowledgePoints: QuizWithKnowledgePoint[]) => {
     setQuizWithKnowledgePoints(quizWithKnowledgePoints);
     
+    setIsProcessing(true);
+    setProcessingMessage('正在提交题目到数据库...');
+    
     // Submit to backend
     try {
       setUploadStatus({
         status: 'processing',
         progress: 50,
-        message: '正在提交题目到后端...',
+        message: `正在提交 ${quizWithKnowledgePoints.length} 道题目到数据库...`,
       });
 
       const result = await batchSubmitQuizzesWithKnowledgePoints(quizWithKnowledgePoints);
@@ -231,6 +248,9 @@ function App() {
         progress: 0,
         message: error instanceof Error ? error.message : '提交失败',
       });
+    } finally {
+      setIsProcessing(false);
+      setProcessingMessage('');
     }
     
     setCurrentStep('final');
@@ -490,6 +510,23 @@ function App() {
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
       />
+      
+      {/* Processing Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl p-8 max-w-sm mx-4">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+              <p className="text-lg font-medium text-gray-900 text-center mb-2">
+                {processingMessage}
+              </p>
+              <p className="text-sm text-gray-600 text-center">
+                请勿关闭页面或刷新浏览器
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

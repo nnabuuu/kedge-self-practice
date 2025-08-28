@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ParagraphData } from '../types/quiz';
-import { FileText, Highlighter as Highlight, ArrowRight, RotateCcw } from 'lucide-react';
+import { FileText, Highlighter as Highlight, ArrowRight, RotateCcw, Loader2 } from 'lucide-react';
 
 interface ParseResultsProps {
   results: ParagraphData[];
@@ -9,6 +9,7 @@ interface ParseResultsProps {
 }
 
 export const ParseResults: React.FC<ParseResultsProps> = ({ results, onReset, onGenerateQuiz }) => {
+  const [isGenerating, setIsGenerating] = useState(false);
   const renderHighlightedText = (paragraph: string, highlighted: Array<{text: string; color: string}>) => {
     if (highlighted.length === 0) return paragraph;
     
@@ -65,6 +66,21 @@ export const ParseResults: React.FC<ParseResultsProps> = ({ results, onReset, on
         </div>
         
         <div className="p-6">
+          {isGenerating && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">
+                    正在通过 AI 分析内容并生成题目...
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    这可能需要 10-30 秒，请勿重复点击或离开页面
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="grid gap-4">
             {filteredResults.map((item, index) => (
               <div
@@ -106,18 +122,43 @@ export const ParseResults: React.FC<ParseResultsProps> = ({ results, onReset, on
           <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-200">
             <button
               onClick={onReset}
-              className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              disabled={isGenerating}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                isGenerating
+                  ? 'text-gray-400 bg-gray-50 cursor-not-allowed'
+                  : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+              }`}
             >
               <RotateCcw className="w-4 h-4" />
               重新上传
             </button>
             
             <button
-              onClick={onGenerateQuiz}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              onClick={async () => {
+                if (!isGenerating && onGenerateQuiz) {
+                  setIsGenerating(true);
+                  await onGenerateQuiz();
+                  setIsGenerating(false);
+                }
+              }}
+              disabled={isGenerating}
+              className={`flex items-center gap-2 px-6 py-3 text-white rounded-lg font-medium transition-colors ${
+                isGenerating 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              生成题目
-              <ArrowRight className="w-4 h-4" />
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  正在生成题目...
+                </>
+              ) : (
+                <>
+                  生成题目
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </div>

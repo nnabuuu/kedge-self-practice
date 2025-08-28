@@ -40,9 +40,12 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     ...options.headers,
   };
   
+  // Get the current auth token (check both memory and localStorage)
+  const currentToken = getAuthToken();
+  
   // Add auth token if available
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+  if (currentToken) {
+    headers['Authorization'] = `Bearer ${currentToken}`;
   }
   
   // Add content-type for JSON requests
@@ -56,10 +59,22 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   });
   
   if (!response.ok) {
+    // Log detailed error information for debugging
+    console.error(`API Error: ${response.status} ${response.statusText} for ${url}`);
+    console.error(`Headers sent:`, headers);
+    
     // Handle authentication errors
     if (response.status === 401) {
       clearAuthToken();
       throw new Error('Authentication required. Please login.');
+    }
+    
+    if (response.status === 403) {
+      throw new Error('Access denied. You need teacher permissions.');
+    }
+    
+    if (response.status === 405) {
+      throw new Error(`Method not allowed for ${endpoint}. Please check if the backend is running and accessible at ${API_BASE_URL}`);
     }
     
     // Try to get error message from response
