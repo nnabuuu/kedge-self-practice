@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Example .envrc.override file
+# Copy this to .envrc.override and update with your actual values
+
+# ============================================
+# UNIFIED LLM CONFIGURATION (Recommended)
+# ============================================
+
+# Single API key for any provider
+export LLM_API_KEY="your-api-key-here"
+
+# Choose your models (provider auto-detected from prefix)
+# OpenAI models: gpt-4o, gpt-4o-mini, gpt-3.5-turbo
+# DeepSeek models: deepseek-chat, deepseek-coder
+export LLM_MODEL_QUIZ_PARSER="gpt-4o"              # or "deepseek-chat" for DeepSeek
+export LLM_MODEL_QUIZ_RENDERER="gpt-4o-mini"       
+export LLM_MODEL_ANSWER_VALIDATOR="gpt-4o-mini"    
+export LLM_MODEL_KNOWLEDGE_EXTRACTOR="gpt-4o"      
+
+# Optional: Override base URL (auto-detected if not set)
+# export LLM_BASE_URL="https://api.openai.com/v1"  # OpenAI
+# export LLM_BASE_URL="https://api.deepseek.com"   # DeepSeek
+
+# Fine-tune model behavior
+export LLM_TEMP_QUIZ_PARSER="0.7"
+export LLM_MAX_TOKENS_QUIZ_PARSER="4000"
+
+# ============================================
+# EXAMPLE CONFIGURATIONS
+# ============================================
+
+# --- Example 1: All DeepSeek (Most cost-effective) ---
+# export LLM_API_KEY="your-deepseek-api-key"
+# export LLM_MODEL_QUIZ_PARSER="deepseek-chat"
+# export LLM_MODEL_QUIZ_RENDERER="deepseek-chat"
+# export LLM_MODEL_ANSWER_VALIDATOR="deepseek-chat"
+# export LLM_MODEL_KNOWLEDGE_EXTRACTOR="deepseek-chat"
+
+# --- Example 2: All OpenAI (Best quality) ---
+# export LLM_API_KEY="your-openai-api-key"
+# export LLM_MODEL_QUIZ_PARSER="gpt-4o"
+# export LLM_MODEL_QUIZ_RENDERER="gpt-4o-mini"
+# export LLM_MODEL_ANSWER_VALIDATOR="gpt-4o-mini"
+# export LLM_MODEL_KNOWLEDGE_EXTRACTOR="gpt-4o"
+
+# --- Example 3: Mixed (Optimize cost vs quality) ---
+# export LLM_MODEL_QUIZ_PARSER="deepseek-chat"      # Cost-effective for bulk processing
+# export LLM_MODEL_ANSWER_VALIDATOR="gpt-4o-mini"   # Fast OpenAI for validation
+# export LLM_MODEL_KNOWLEDGE_EXTRACTOR="gpt-4o"     # Accurate OpenAI for extraction
+# # Need both API keys for mixed usage
+# export OPENAI_API_KEY="your-openai-key"
+# export DEEPSEEK_API_KEY="your-deepseek-key"
+
+# ============================================
+# LEGACY CONFIGURATION (Still supported)
+# ============================================
+# export OPENAI_API_KEY="..."
+# export OPENAI_MODEL_QUIZ_PARSER="gpt-4o"
+# export DEEPSEEK_API_KEY="..."

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { GptParagraphBlock, QuizItem, QuizExtractionResult } from '@kedge/models';
-import { getOpenAIConfig, getModelConfig } from '@kedge/configs';
+import { getOpenAIConfig, getModelConfig, getLLMProvider, getAutoBaseURL } from '@kedge/configs';
 import { createChatCompletionParams } from './openai-utils';
 
 @Injectable()
@@ -10,9 +10,14 @@ export class GptService {
   private readonly config = getOpenAIConfig();
 
   constructor() {
+    const provider = getLLMProvider('quizParser');
+    const baseURL = provider === 'openai' 
+      ? (this.config.baseURL || getAutoBaseURL('openai'))
+      : this.config.baseURL;
+      
     this.openai = new OpenAI({
       apiKey: this.config.apiKey || 'dummy',
-      baseURL: this.config.baseURL,
+      baseURL: baseURL,
       organization: this.config.organization,
     });
   }

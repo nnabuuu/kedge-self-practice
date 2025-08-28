@@ -1,7 +1,7 @@
-import { Controller, Post, UploadedFile, UseInterceptors, UseGuards } from '@nestjs/common';
+import { Controller, Post, UploadedFile, UseInterceptors, UseGuards, Get } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
-import { DocxService, EnhancedDocxService, GptService } from '@kedge/quiz-parser';
+import { DocxService, EnhancedDocxService, GptService, LLMService } from '@kedge/quiz-parser';
 import { EnhancedQuizStorageService } from '@kedge/quiz';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { ParagraphBlock, GptParagraphBlock } from '@kedge/models';
@@ -19,18 +19,29 @@ function escapeRegExp(string: string): string {
 }
 
 @ApiTags('docx')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, TeacherGuard)
 @Controller('docx')
 export class DocxController {
   constructor(
     private readonly docxService: DocxService,
     private readonly enhancedDocxService: EnhancedDocxService,
     private readonly gptService: GptService,
+    private readonly llmService: LLMService,
     private readonly storageService: EnhancedQuizStorageService,
   ) {}
 
+  @Get('llm-provider')
+  @ApiOperation({ summary: 'Get current LLM provider information' })
+  @ApiResponse({ status: 200, description: 'LLM provider info' })
+  getLLMProvider() {
+    return {
+      ...this.llmService.getProviderInfo(),
+      currentProvider: this.llmService.getProvider(),
+    };
+  }
+
   @Post('extract-quiz')
+  @UseGuards(JwtAuthGuard, TeacherGuard)
+  @ApiBearerAuth()
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Extract quiz from DOCX file (legacy - no images)' })
   @ApiConsumes('multipart/form-data')
@@ -70,11 +81,13 @@ export class DocxController {
       })) : [],
     }));
     
-    console.log('=== Calling GPT with legacy paragraphs (converted to GPT format) ===');
-    return this.gptService.extractQuizItems(gptParagraphs);
+    console.log('=== Calling LLM with legacy paragraphs (converted to GPT format) ===');
+    return this.llmService.extractQuizItems(gptParagraphs);
   }
 
   @Post('extract-quiz-with-images')
+  @UseGuards(JwtAuthGuard, TeacherGuard)
+  @ApiBearerAuth()
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Extract quiz from DOCX file including embedded images' })
   @ApiConsumes('multipart/form-data')
@@ -252,8 +265,8 @@ export class DocxController {
       };
     });
     
-    // Generate quiz items using GPT with placeholder paragraphs (no image data)
-    const quizItems = await this.gptService.extractQuizItems(paragraphsForGPT);
+    // Generate quiz items using configured LLM (OpenAI or DeepSeek) with placeholder paragraphs (no image data)
+    const quizItems = await this.llmService.extractQuizItems(paragraphsForGPT);
     
     return {
       success: true,
