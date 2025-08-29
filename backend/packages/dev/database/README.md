@@ -139,9 +139,21 @@ export PROD_DB_PASSWORD=your-password
 
 ## Docker Integration
 
+### Environment Setup
+**IMPORTANT**: Before running Docker Compose, you must set required environment variables to avoid exposing credentials:
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env and set your secure values:
+# - HASURA_GRAPHQL_DATABASE_URL (PostgreSQL connection string)
+# - HASURA_GRAPHQL_ADMIN_SECRET (Generate with: openssl rand -hex 32)
+```
+
 ### Using Docker Compose
 ```bash
-# Start database
+# Start database (requires .env file)
 docker-compose up -d postgres
 
 # Apply migration
