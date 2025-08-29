@@ -8,7 +8,7 @@ SCHEMA_DIR="${PROJECT_ROOT}/packages/dev/database/schema"
 if [[ -f "${PROJECT_ROOT}/.envrc" ]]; then
     # Set NX_WORKSPACE_ROOT manually since DIR won't be available
     export NX_WORKSPACE_ROOT="${PROJECT_ROOT}"
-    
+
     # Extract and evaluate only simple export statements
     while IFS= read -r line; do
         if [[ $line =~ ^export\ [A-Z_]+=.*$ ]] && [[ ! $line =~ __prevEnv__ ]] && [[ ! $line =~ \$\{DIR\} ]]; then
@@ -77,7 +77,7 @@ fi
 # Apply migrations
 echo "📦 Applying migrations..."
 if ! "${HASURA_CLI}" migrate apply \
-    --database-name main_db \
+    --database-name kedge_db \
     --endpoint "${HASURA_ENDPOINT}" \
     --admin-secret "${ADMIN_SECRET}" \
     --skip-update-check; then
@@ -110,7 +110,7 @@ echo "✅ Migration complete!"
 echo ""
 echo "📊 Migration Status:"
 if ! "${HASURA_CLI}" migrate status \
-    --database-name main_db \
+    --database-name kedge_db \
     --endpoint "${HASURA_ENDPOINT}" \
     --admin-secret "${ADMIN_SECRET}" \
     --skip-update-check; then

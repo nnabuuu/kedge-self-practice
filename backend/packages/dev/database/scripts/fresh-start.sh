@@ -79,7 +79,7 @@ log_info "✓ Schema dropped"
 
 # Step 2: Apply the consolidated migration
 log_info "Step 2/5: Applying fresh migration..."
-MIGRATION_FILE="$(dirname "$0")/../schema/migrations/main_db/1000000000000_initial_schema/up.sql"
+MIGRATION_FILE="$(dirname "$0")/../schema/migrations/kedge_db/1000000000000_initial_schema/up.sql"
 
 if [ ! -f "$MIGRATION_FILE" ]; then
     log_error "Migration file not found: $MIGRATION_FILE"
@@ -118,7 +118,7 @@ curl -s -X POST $HASURA_ENDPOINT/v1/metadata \
     -d '{
         "type": "pg_add_source",
         "args": {
-            "name": "main_db",
+            "name": "kedge_db",
             "configuration": {
                 "connection_info": {
                     "database_url": {
@@ -139,7 +139,7 @@ for table in $TABLES; do
         -d "{
             \"type\": \"pg_track_table\",
             \"args\": {
-                \"source\": \"main_db\",
+                \"source\": \"kedge_db\",
                 \"schema\": \"kedge_practice\",
                 \"name\": \"$table\"
             }
@@ -154,7 +154,7 @@ curl -s -X POST $HASURA_ENDPOINT/v1/metadata \
     -d '{
         "type": "pg_track_table",
         "args": {
-            "source": "main_db",
+            "source": "kedge_db",
             "schema": "kedge_practice",
             "name": "practice_statistics_view"
         }

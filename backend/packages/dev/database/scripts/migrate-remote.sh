@@ -36,7 +36,7 @@ case "$ENV" in
         DB_NAME="${PROD_DB_NAME}"
         DB_USER="${PROD_DB_USER}"
         DB_PASSWORD="${PROD_DB_PASSWORD}"
-        
+
         if [ -z "$PROD_DB_HOST" ]; then
             echo "Error: Production database credentials not set"
             echo "Please set PROD_DB_HOST, PROD_DB_NAME, PROD_DB_USER, PROD_DB_PASSWORD"
@@ -65,7 +65,7 @@ case "$ENV" in
 esac
 
 # Migration file path
-MIGRATION_FILE="$(dirname "$0")/../schema/migrations/main_db/1000000000000_initial_schema/up.sql"
+MIGRATION_FILE="$(dirname "$0")/../schema/migrations/kedge_db/1000000000000_initial_schema/up.sql"
 
 if [ ! -f "$MIGRATION_FILE" ]; then
     echo "Error: Migration file not found: $MIGRATION_FILE"
@@ -112,7 +112,7 @@ if [ "$SCHEMA_EXISTS" = "1" ]; then
     echo "2. Drop existing schema and recreate (WARNING: Data loss!)"
     echo ""
     read -p "Choose option [1-2]: " choice
-    
+
     case $choice in
         2)
             echo -e "${YELLOW}Dropping existing schema...${NC}"
@@ -137,21 +137,21 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${GREEN}✅ Migration applied successfully!${NC}"
     echo ""
-    
+
     # Verify tables
     echo "Verifying schema..."
     TABLE_COUNT=$(PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'kedge_practice'")
     INDEX_COUNT=$(PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -tAc "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'kedge_practice'")
-    
+
     echo "Created:"
     echo "  • $TABLE_COUNT tables"
     echo "  • $INDEX_COUNT indexes"
     echo ""
-    
+
     # List tables
     echo "Tables created:"
     PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -tAc "SELECT '  • ' || table_name FROM information_schema.tables WHERE table_schema = 'kedge_practice' ORDER BY table_name"
-    
+
     echo ""
     echo -e "${GREEN}Deployment complete!${NC}"
 else

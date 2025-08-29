@@ -48,10 +48,10 @@ For a completely fresh Hasura setup:
 1. **Clear all metadata**:
 ```bash
 # Remove old metadata
-rm -rf schema/metadata/databases/main_db/tables/*
+rm -rf schema/metadata/databases/kedge_db/tables/*
 
 # Keep only the tables.yaml file
-echo "[]" > schema/metadata/databases/main_db/tables/tables.yaml
+echo "[]" > schema/metadata/databases/kedge_db/tables/tables.yaml
 ```
 
 2. **Apply fresh migration**:

@@ -7,6 +7,6 @@ the schema incrementally. They have been replaced with a single
 consolidated migration for better performance and maintainability.
 
 To restore these migrations:
-1. Move them back to the main_db directory
+1. Move them back to the kedge_db directory
 2. Remove the consolidated_initial_schema directory
 3. Re-run migrations sequentially

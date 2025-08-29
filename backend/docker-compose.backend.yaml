@@ -1,0 +1,155 @@
+version: '3.8'
+
+services:
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      args:
+        NODE_ENV: ${NODE_ENV:-production}
+        API_PORT: ${API_PORT:-8718}
+    image: kedge-backend:latest
+    container_name: kedge-api-server
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8718}:8718"
+    
+    # Multiple ways to provide environment variables:
+    
+    # Method 1: Load from external .env file (recommended for local development)
+    # Place your .env file outside the repository and reference it here
+    env_file:
+      - ${ENV_FILE:-../config/.env}  # Default path: ../config/.env
+      # You can also load multiple env files
+      # - ../config/.env.base
+      # - ../config/.env.local
+    
+    # Method 2: Direct environment variables (good for CI/CD)
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - API_PORT=${API_PORT:-8718}
+      # Override specific variables if needed
+      # - NODE_DATABASE_URL=${NODE_DATABASE_URL}
+      # - REDIS_HOST=${REDIS_HOST}
+    
+    # Method 3: Mount configuration directory (flexible)
+    volumes:
+      # Mount external config directory
+      - ${CONFIG_DIR:-../config}:/config:ro
+      # Mount storage directories
+      - ${STORAGE_DIR:-./storage}:/app/storage
+      - ${LOGS_DIR:-./logs}:/app/logs
+      - ${QUIZ_STORAGE_DIR:-./quiz-storage}:/app/quiz-storage
+      - ${UPLOADS_DIR:-./uploads}:/app/uploads
+    
+    # Method 4: Docker secrets (for production/swarm mode)
+    # secrets:
+    #   - jwt_secret
+    #   - db_password
+    #   - openai_api_key
+    
+    networks:
+      - kedge-network
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hasura:
+        condition: service_healthy
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15.5-alpine
+    container_name: kedge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-kedge_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Optional: mount initialization scripts
+      # - ./packages/dev/database/schema/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_PORT:-7543}:5432"
+    networks:
+      - kedge-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-kedge_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: kedge-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - kedge-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Hasura GraphQL Engine
+  hasura:
+    image: hasura/graphql-engine:v${HASURA_VERSION:-2.35.1}
+    container_name: kedge-hasura
+    restart: unless-stopped
+    ports:
+      - "${HASURA_PORT:-28717}:8080"
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-kedge_db}
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET}
+      HASURA_GRAPHQL_ENABLE_CONSOLE: ${HASURA_ENABLE_CONSOLE:-true}
+      HASURA_GRAPHQL_LOG_LEVEL: ${HASURA_LOG_LEVEL:-info}
+      HASURA_GRAPHQL_ENABLE_TELEMETRY: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - kedge-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Docker secrets (uncomment for production use)
+# secrets:
+#   jwt_secret:
+#     external: true
+#   db_password:
+#     external: true
+#   openai_api_key:
+#     external: true
+
+networks:
+  kedge-network:
+    driver: bridge
+    name: kedge_network
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local

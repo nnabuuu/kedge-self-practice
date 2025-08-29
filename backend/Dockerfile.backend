@@ -1,0 +1,159 @@
+# Multi-stage build for Kedge Backend
+# This Dockerfile supports multiple ways to provide environment variables:
+# 1. Build-time ARGs (for non-sensitive values)
+# 2. Runtime environment variables
+# 3. External .env file mounting
+# 4. Docker secrets
+# 5. Kubernetes ConfigMaps/Secrets
+
+# Build stage
+FROM node:20-alpine AS builder
+
+# Build arguments for non-sensitive configuration
+ARG NODE_ENV=production
+ARG API_PORT=8718
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@8
+
+# Copy package files
+COPY package.json pnpm-lock.yaml nx.json tsconfig.base.json ./
+
+# Install all dependencies (including dev dependencies for build)
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY packages ./packages
+COPY tools ./tools
+
+# Build all packages in the correct order
+RUN pnpm nx run-many --target=build --all --prod
+
+# Production stage
+FROM node:20-alpine AS production
+
+# Install required runtime packages
+RUN apk add --no-cache \
+    curl \
+    tini \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S kedge -u 1001 -G nodejs
+
+WORKDIR /app
+
+# Install pnpm for production
+RUN npm install -g pnpm@8
+
+# Copy package files for production dependencies
+COPY package.json pnpm-lock.yaml ./
+
+# Install production dependencies only
+RUN pnpm install --prod --frozen-lockfile && \
+    pnpm store prune && \
+    npm cache clean --force
+
+# Copy built application from builder stage
+COPY --from=builder --chown=kedge:nodejs /app/dist ./dist
+COPY --from=builder --chown=kedge:nodejs /app/nx.json ./
+COPY --from=builder --chown=kedge:nodejs /app/tsconfig.base.json ./
+
+# Create necessary directories with proper permissions
+RUN mkdir -p \
+    /app/storage \
+    /app/logs \
+    /app/uploads \
+    /app/quiz-storage \
+    /app/config && \
+    chown -R kedge:nodejs /app
+
+# Create a script to handle environment variable loading
+RUN cat <<'EOF' > /app/docker-entrypoint.sh
+#!/bin/sh
+set -e
+
+# Function to load environment variables from file
+load_env_file() {
+    if [ -f "$1" ]; then
+        echo "Loading environment from $1"
+        set -a
+        . "$1"
+        set +a
+    fi
+}
+
+# Load environment variables from multiple sources
+# Priority order (later sources override earlier ones):
+# 1. Default .env file in the container (if exists)
+# 2. Mounted .env file at /config/.env
+# 3. Environment-specific file (e.g., /config/.env.production)
+# 4. Docker secrets (if using Docker Swarm)
+# 5. Direct environment variables passed to container
+
+# Load default .env if exists
+load_env_file "/app/.env"
+
+# Load mounted configuration file
+load_env_file "/config/.env"
+
+# Load environment-specific configuration
+if [ -n "$NODE_ENV" ]; then
+    load_env_file "/config/.env.$NODE_ENV"
+fi
+
+# Load Docker secrets if they exist
+if [ -d "/run/secrets" ]; then
+    for secret in /run/secrets/*; do
+        if [ -f "$secret" ]; then
+            secret_name=$(basename "$secret")
+            export "${secret_name}"="$(cat "$secret")"
+            echo "Loaded secret: $secret_name"
+        fi
+    done
+fi
+
+# Validate required environment variables
+required_vars="NODE_DATABASE_URL REDIS_HOST JWT_SECRET"
+missing_vars=""
+
+for var in $required_vars; do
+    if [ -z "$(eval echo \$$var)" ]; then
+        missing_vars="$missing_vars $var"
+    fi
+done
+
+if [ -n "$missing_vars" ]; then
+    echo "ERROR: Missing required environment variables:$missing_vars"
+    echo "Please provide these variables through:"
+    echo "  - Environment variables (-e flag)"
+    echo "  - .env file mounted at /config/.env"
+    echo "  - Docker secrets"
+    echo "  - Kubernetes ConfigMap/Secret"
+    exit 1
+fi
+
+# Execute the main application
+exec "$@"
+EOF
+
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Switch to non-root user
+USER kedge
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${API_PORT:-8718}/v1/health || exit 1
+
+# Default port (can be overridden)
+EXPOSE 8718
+
+# Use tini for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--", "/app/docker-entrypoint.sh"]
+
+# Start the application
+CMD ["node", "dist/packages/apps/api-server/main.js"]

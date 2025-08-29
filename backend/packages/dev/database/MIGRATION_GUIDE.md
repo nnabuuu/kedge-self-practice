@@ -18,7 +18,7 @@ This guide explains how to use the consolidated database migration system for th
 backend/packages/dev/database/
 ├── schema/
 │   └── migrations/
-│       └── main_db/
+│       └── kedge_db/
 │           ├── consolidated_initial_schema/  # New consolidated migration
 │           │   ├── up.sql                    # Creates complete schema
 │           │   └── down.sql                  # Drops everything
@@ -75,7 +75,7 @@ Using Docker:
 
 ```bash
 # Apply to Docker PostgreSQL container
-docker exec -i dev-database_kedge-postgres-1 psql -U postgres -d kedge_db < schema/migrations/main_db/consolidated_initial_schema/up.sql
+docker exec -i dev-database_kedge-postgres-1 psql -U postgres -d kedge_db < schema/migrations/kedge_db/consolidated_initial_schema/up.sql
 
 # Or use the script with Docker
 docker exec dev-database_kedge-postgres-1 bash -c "$(cat scripts/apply-consolidated-migration.sh)"
@@ -239,7 +239,7 @@ Run verification to identify missing objects:
 Check migration output for errors:
 
 ```bash
-psql -h localhost -p 7543 -U postgres -d kedge_db -f schema/migrations/main_db/consolidated_initial_schema/up.sql
+psql -h localhost -p 7543 -U postgres -d kedge_db -f schema/migrations/kedge_db/consolidated_initial_schema/up.sql
 ```
 
 ### Comparison Shows Differences

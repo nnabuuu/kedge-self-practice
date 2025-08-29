@@ -21,7 +21,7 @@ For fresh deployments, use the simplified migration script:
 database/
 ├── schema/
 │   └── migrations/
-│       ├── main_db/
+│       ├── kedge_db/
 │       │   └── 1000000000000_initial_schema/  # Single consolidated migration
 │       │       ├── up.sql                      # Creates complete schema
 │       │       └── down.sql                    # Rollback script
@@ -157,7 +157,7 @@ cp .env.example .env
 docker-compose up -d postgres
 
 # Apply migration
-docker exec -i dev-database_kedge-postgres-1 psql -U postgres -d kedge_db < schema/migrations/main_db/1000000000000_initial_schema/up.sql
+docker exec -i dev-database_kedge-postgres-1 psql -U postgres -d kedge_db < schema/migrations/kedge_db/1000000000000_initial_schema/up.sql
 ```
 
 ### Direct Docker Command
@@ -167,7 +167,7 @@ docker run --rm \
   -v $(pwd)/schema:/schema \
   postgres:15 \
   psql -h host.docker.internal -U postgres -d kedge_db \
-  -f /schema/migrations/main_db/1000000000000_initial_schema/up.sql
+  -f /schema/migrations/kedge_db/1000000000000_initial_schema/up.sql
 ```
 
 ## Troubleshooting
