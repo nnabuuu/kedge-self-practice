@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, BookOpen, FileText, Users, BarChart3, Settings, ExternalLink, Plus, Upload, Download } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, Users, BarChart3, Settings, ExternalLink, Plus, Upload, Download, Cpu } from 'lucide-react';
 import { Subject, KnowledgePoint, QuizQuestion } from '../types/quiz';
 import { Teacher } from '../types/teacher';
 import { useSubjects, useKnowledgePoints, useQuestionSearch } from '../hooks/useApi';
@@ -10,6 +10,7 @@ import KnowledgePointManagement from '../pages/teacher/KnowledgePointManagement'
 import QuizBankManagement from '../pages/teacher/QuizBankManagement';
 import UserManagement from '../pages/teacher/UserManagement';
 import SettingsPage from '../pages/teacher/Settings';
+import AIConfigManagement from '../pages/teacher/AIConfigManagement';
 
 interface TeacherDashboardProps {
   teacher: Teacher;
@@ -18,7 +19,7 @@ interface TeacherDashboardProps {
   onBack: () => void;
 }
 
-type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'users' | 'analytics' | 'settings';
+type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'users' | 'ai-config' | 'analytics' | 'settings';
 
 interface TeacherStats {
   totalStudents: number;
@@ -290,7 +291,10 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                 { id: 'overview', label: '概览', icon: BarChart3 },
                 { id: 'knowledge-points', label: '知识点管理', icon: BookOpen },
                 { id: 'questions', label: '题库管理', icon: FileText },
-                ...(isAdmin ? [{ id: 'users', label: '用户管理', icon: Users }] : []),
+                ...(isAdmin ? [
+                  { id: 'users', label: '用户管理', icon: Users },
+                  { id: 'ai-config', label: 'AI配置管理', icon: Cpu }
+                ] : []),
                 // { id: 'analytics', label: '数据分析', icon: BarChart3 }, // Hidden for now
                 { id: 'settings', label: '设置', icon: Settings }
               ].map(tab => {
@@ -337,6 +341,9 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
             )}
             {activeTab === 'users' && isAdmin && (
               <UserManagement />
+            )}
+            {activeTab === 'ai-config' && isAdmin && (
+              <AIConfigManagement />
             )}
             {activeTab === 'analytics' && (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">

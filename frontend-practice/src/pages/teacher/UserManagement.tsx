@@ -14,9 +14,7 @@ import {
   X,
   Eye,
   EyeOff,
-  FileSpreadsheet,
-  Cpu,
-  Info
+  FileSpreadsheet
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { authService } from '../../services/authService';
@@ -35,24 +33,6 @@ interface UserFormData {
   name: string;
   password: string;
   role: 'student' | 'teacher';
-}
-
-interface LLMConfig {
-  configuration: {
-    apiKeyConfigured: boolean;
-    baseURL: string;
-    organization: string;
-  };
-  models: Record<string, {
-    model: string;
-    temperature: number;
-    maxTokens: number;
-    provider: string;
-  }>;
-  providers: Record<string, string>;
-  baseUrls: Record<string, string>;
-  envVariables: Record<string, any>;
-  tips: string[];
 }
 
 export default function UserManagement() {
@@ -78,25 +58,10 @@ export default function UserManagement() {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [bulkUsers, setBulkUsers] = useState<UserFormData[]>([]);
-  const [llmConfig, setLlmConfig] = useState<LLMConfig | null>(null);
-  const [showLLMInfo, setShowLLMInfo] = useState(false);
 
   useEffect(() => {
     fetchUsers();
-    fetchLLMConfig();
   }, []);
-
-  const fetchLLMConfig = async () => {
-    try {
-      const response = await fetch('/v1/docx/llm-provider');
-      if (response.ok) {
-        const data = await response.json();
-        setLlmConfig(data);
-      }
-    } catch (error) {
-      console.error('Error fetching LLM config:', error);
-    }
-  };
 
   const fetchUsers = async (search?: string, role?: string) => {
     setIsLoading(true);
@@ -438,13 +403,6 @@ export default function UserManagement() {
 
           {/* Action Buttons */}
           <div className="flex gap-2">
-            <button
-              onClick={() => setShowLLMInfo(true)}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
-            >
-              <Cpu className="w-4 h-4" />
-              AI配置
-            </button>
             <button
               onClick={() => setShowBulkImportModal(true)}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
@@ -851,181 +809,6 @@ export default function UserManagement() {
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
                 {isLoading ? '导入中...' : `导入 ${bulkUsers.length} 个用户`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* LLM Configuration Modal */}
-      {showLLMInfo && llmConfig && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <Cpu className="w-6 h-6 text-purple-600" />
-                  AI 模型配置信息
-                </h3>
-                <button
-                  onClick={() => setShowLLMInfo(false)}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Configuration Status */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  配置状态
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">API密钥</span>
-                    <span className={`text-sm font-medium ${llmConfig.configuration.apiKeyConfigured ? 'text-green-600' : 'text-red-600'}`}>
-                      {llmConfig.configuration.apiKeyConfigured ? '✓ 已配置' : '✗ 未配置'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">基础URL</span>
-                    <span className="text-sm font-medium text-gray-900">{llmConfig.configuration.baseURL}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">组织ID</span>
-                    <span className="text-sm font-medium text-gray-900">{llmConfig.configuration.organization}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Models Configuration */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3">模型配置</h4>
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">用途</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">模型</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">提供商</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">温度</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">最大令牌</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      <tr>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">题目解析器</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.quizParser?.model}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            llmConfig.models.quizParser?.provider === 'openai' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {llmConfig.models.quizParser?.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.quizParser?.temperature}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.quizParser?.maxTokens}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">题目渲染器</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.quizRenderer?.model}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            llmConfig.models.quizRenderer?.provider === 'openai' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {llmConfig.models.quizRenderer?.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.quizRenderer?.temperature}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.quizRenderer?.maxTokens}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">答案验证器</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.answerValidator?.model}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            llmConfig.models.answerValidator?.provider === 'openai' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {llmConfig.models.answerValidator?.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.answerValidator?.temperature}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.answerValidator?.maxTokens}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">知识点提取器</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.knowledgePointExtractor?.model}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            llmConfig.models.knowledgePointExtractor?.provider === 'openai' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {llmConfig.models.knowledgePointExtractor?.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.knowledgePointExtractor?.temperature}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{llmConfig.models.knowledgePointExtractor?.maxTokens}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Environment Variables Reference */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3">环境变量参考</h4>
-                <div className="bg-gray-50 rounded-lg p-4 font-mono text-xs">
-                  <div className="space-y-2">
-                    <div className="flex">
-                      <span className="text-purple-600 w-48">LLM_API_KEY</span>
-                      <span className="text-gray-600">= "your-api-key"</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-purple-600 w-48">LLM_MODEL_QUIZ_PARSER</span>
-                      <span className="text-gray-600">= "{llmConfig.models.quizParser?.model}"</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-purple-600 w-48">LLM_TEMP_QUIZ_PARSER</span>
-                      <span className="text-gray-600">= "{llmConfig.models.quizParser?.temperature}"</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-purple-600 w-48">LLM_MAX_TOKENS_QUIZ_PARSER</span>
-                      <span className="text-gray-600">= "{llmConfig.models.quizParser?.maxTokens}"</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tips */}
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-900 mb-2">配置提示</h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  {llmConfig.tips.map((tip, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <span className="text-blue-600 mt-1">•</span>
-                      <span>{tip}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
-              <button
-                onClick={() => setShowLLMInfo(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-              >
-                关闭
               </button>
             </div>
           </div>
