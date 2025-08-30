@@ -1,0 +1,3 @@
+table:
+  name: student_weaknesses
+  schema: kedge_practice
