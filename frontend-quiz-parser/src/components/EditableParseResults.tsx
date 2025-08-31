@@ -214,6 +214,35 @@ export const EditableParseResults: React.FC<EditableParseResultsProps> = ({
   const filteredResultsWithIndices = editableResults
     .map((item, originalIndex) => ({ item, originalIndex }))
     .filter(({ item }) => item.paragraph.trim() !== '');
+  
+  // Find duplicate paragraphs (same text but potentially different highlights)
+  const duplicateGroups = new Map<string, number[]>();
+  filteredResultsWithIndices.forEach(({ item }, displayIndex) => {
+    const text = item.paragraph.trim();
+    if (!duplicateGroups.has(text)) {
+      duplicateGroups.set(text, []);
+    }
+    duplicateGroups.get(text)!.push(displayIndex);
+  });
+  
+  // Mark which items are duplicates
+  const isDuplicate = (displayIndex: number): boolean => {
+    const item = filteredResultsWithIndices[displayIndex];
+    if (!item) return false;
+    const group = duplicateGroups.get(item.item.paragraph.trim());
+    return group ? group.length > 1 : false;
+  };
+  
+  const getDuplicateInfo = (displayIndex: number): { count: number; index: number } | null => {
+    const item = filteredResultsWithIndices[displayIndex];
+    if (!item) return null;
+    const group = duplicateGroups.get(item.item.paragraph.trim());
+    if (!group || group.length <= 1) return null;
+    return {
+      count: group.length,
+      index: group.indexOf(displayIndex) + 1
+    };
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -261,9 +290,20 @@ export const EditableParseResults: React.FC<EditableParseResultsProps> = ({
                       </div>
                       <div className="flex-1">
                         <div className="flex items-start justify-between mb-2">
-                          <p className="text-gray-800 leading-relaxed text-base flex-1">
-                            {renderHighlightedText(item.paragraph, item.highlighted)}
-                          </p>
+                          <div className="flex-1">
+                            {getDuplicateInfo(displayIndex) && (
+                              <div className="inline-flex items-center gap-1 mb-2 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                                <span>重复段落</span>
+                                <span className="font-bold">
+                                  {getDuplicateInfo(displayIndex)!.index}/{getDuplicateInfo(displayIndex)!.count}
+                                </span>
+                                <span>- 高亮内容不同</span>
+                              </div>
+                            )}
+                            <p className="text-gray-800 leading-relaxed text-base">
+                              {renderHighlightedText(item.paragraph, item.highlighted)}
+                            </p>
+                          </div>
                           <button
                             onClick={() => startEditing(originalIndex)}
                             className="ml-3 inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium hover:bg-gray-200 transition-colors"
