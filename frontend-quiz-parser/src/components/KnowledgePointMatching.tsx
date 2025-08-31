@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { QuizItem, QuizWithKnowledgePoint, KnowledgePointMatchResult } from '../types/quiz';
-import { matchKnowledgePoint, getKnowledgePointHierarchy } from '../services/localQuizService';
+import { matchKnowledgePoint } from '../services/localQuizService';
 import { Brain, BookOpen, CheckCircle, AlertCircle, Loader2, ArrowRight, Target, ChevronDown, ChevronUp, Tag, Globe, Crown, Search, Edit3, X, Check, RefreshCw } from 'lucide-react';
 import { QuizImageDisplay } from './QuizImageDisplay';
 
@@ -35,6 +35,7 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
     lessons: string[];
     subs: string[];
   }}>({});
+  const [allKnowledgePoints, setAllKnowledgePoints] = useState<any[]>([]);
 
   useEffect(() => {
     // Initialize quiz items with matching status
@@ -47,6 +48,71 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
     // Start matching process
     matchAllKnowledgePoints(initialQuizItems);
   }, [quizItems]);
+
+  // Generate hierarchy options from local knowledge points
+  const getLocalHierarchyOptions = (filters?: {
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+  }) => {
+    const options = {
+      volumes: [] as string[],
+      units: [] as string[],
+      lessons: [] as string[],
+      subs: [] as string[]
+    };
+
+    // If no knowledge points yet, return empty options
+    if (allKnowledgePoints.length === 0) {
+      return options;
+    }
+
+    // Get unique volumes
+    const volumeSet = new Set<string>();
+    allKnowledgePoints.forEach(kp => {
+      if (kp.volume) volumeSet.add(kp.volume);
+    });
+    options.volumes = Array.from(volumeSet).sort();
+
+    // Filter by volume if specified
+    let filtered = allKnowledgePoints;
+    if (filters?.volume) {
+      filtered = filtered.filter(kp => kp.volume === filters.volume);
+    }
+
+    // Get unique units
+    const unitSet = new Set<string>();
+    filtered.forEach(kp => {
+      if (kp.unit) unitSet.add(kp.unit);
+    });
+    options.units = Array.from(unitSet).sort();
+
+    // Filter by unit if specified
+    if (filters?.unit) {
+      filtered = filtered.filter(kp => kp.unit === filters.unit);
+    }
+
+    // Get unique lessons
+    const lessonSet = new Set<string>();
+    filtered.forEach(kp => {
+      if (kp.lesson) lessonSet.add(kp.lesson);
+    });
+    options.lessons = Array.from(lessonSet).sort();
+
+    // Filter by lesson if specified
+    if (filters?.lesson) {
+      filtered = filtered.filter(kp => kp.lesson === filters.lesson);
+    }
+
+    // Get unique subs
+    const subSet = new Set<string>();
+    filtered.forEach(kp => {
+      if (kp.sub) subSet.add(kp.sub);
+    });
+    options.subs = Array.from(subSet).sort();
+
+    return options;
+  };
 
   const matchAllKnowledgePoints = async (items: QuizWithKnowledgePoint[]) => {
     const updatedItems = [...items];
@@ -64,6 +130,19 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
           matchingResult,
           matchingStatus: 'success'
         };
+        
+        // Store knowledge points locally if we get them
+        if (matchingResult.candidates && matchingResult.candidates.length > 0) {
+          setAllKnowledgePoints(prev => {
+            const existing = new Map(prev.map(kp => [kp.id, kp]));
+            matchingResult.candidates.forEach(kp => {
+              if (!existing.has(kp.id)) {
+                existing.set(kp.id, kp);
+              }
+            });
+            return Array.from(existing.values());
+          });
+        }
       } catch (error) {
         console.error(`Knowledge point matching failed for item ${i}:`, error);
         updatedItems[i] = {
@@ -482,8 +561,8 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                                         sub: item.matchingResult.matched.sub,
                                       }
                                     }));
-                                    // Load initial hierarchy options
-                                    const options = await getKnowledgePointHierarchy();
+                                    // Load initial hierarchy options from local data
+                                    const options = getLocalHierarchyOptions();
                                     setHierarchyOptions(prev => ({ ...prev, [index]: options }));
                                   }
                                 }}
@@ -533,8 +612,8 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                                           sub: '',
                                         }
                                       }));
-                                      // Fetch new options for this volume
-                                      const options = await getKnowledgePointHierarchy({ volume: newVolume });
+                                      // Get new options for this volume from local data
+                                      const options = getLocalHierarchyOptions({ volume: newVolume });
                                       setHierarchyOptions(prev => ({ ...prev, [index]: options }));
                                     }}
                                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
@@ -561,8 +640,8 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                                           sub: '',
                                         }
                                       }));
-                                      // Fetch new options for this unit
-                                      const options = await getKnowledgePointHierarchy({ 
+                                      // Get new options for this unit from local data
+                                      const options = getLocalHierarchyOptions({ 
                                         volume: targetHints[index]?.volume,
                                         unit: newUnit 
                                       });
@@ -592,8 +671,8 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                                           sub: '',
                                         }
                                       }));
-                                      // Fetch new options for this lesson
-                                      const options = await getKnowledgePointHierarchy({ 
+                                      // Get new options for this lesson from local data
+                                      const options = getLocalHierarchyOptions({ 
                                         volume: targetHints[index]?.volume,
                                         unit: targetHints[index]?.unit,
                                         lesson: newLesson 

@@ -99,6 +99,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
     lessons: string[];
     subs: string[];
   }>({ volumes: [], units: [], lessons: [], subs: [] });
+  const [allKnowledgePoints, setAllKnowledgePoints] = useState<KnowledgePoint[]>([]);
   const itemsPerPage = 10;
   
   // Track if data has been initially loaded
@@ -260,6 +261,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
         console.log('Knowledge points response:', data);
         if (data.knowledgePoints && Array.isArray(data.knowledgePoints)) {
           setKnowledgePoints(data.knowledgePoints);
+          setAllKnowledgePoints(data.knowledgePoints); // Store all knowledge points for hierarchy generation
         }
       } else {
         console.error('Failed to fetch knowledge points:', response.statusText);
@@ -491,6 +493,71 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
     }
   };
 
+  // Generate hierarchy options from local knowledge points
+  const getLocalHierarchyOptions = (filters?: {
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+  }) => {
+    const options = {
+      volumes: [] as string[],
+      units: [] as string[],
+      lessons: [] as string[],
+      subs: [] as string[]
+    };
+
+    // If no knowledge points yet, return empty options
+    if (allKnowledgePoints.length === 0) {
+      return options;
+    }
+
+    // Get unique volumes
+    const volumeSet = new Set<string>();
+    allKnowledgePoints.forEach(kp => {
+      if (kp.volume) volumeSet.add(kp.volume);
+    });
+    options.volumes = Array.from(volumeSet).sort();
+
+    // Filter by volume if specified
+    let filtered = allKnowledgePoints;
+    if (filters?.volume) {
+      filtered = filtered.filter(kp => kp.volume === filters.volume);
+    }
+
+    // Get unique units
+    const unitSet = new Set<string>();
+    filtered.forEach(kp => {
+      if (kp.unit) unitSet.add(kp.unit);
+    });
+    options.units = Array.from(unitSet).sort();
+
+    // Filter by unit if specified
+    if (filters?.unit) {
+      filtered = filtered.filter(kp => kp.unit === filters.unit);
+    }
+
+    // Get unique lessons
+    const lessonSet = new Set<string>();
+    filtered.forEach(kp => {
+      if (kp.lesson) lessonSet.add(kp.lesson);
+    });
+    options.lessons = Array.from(lessonSet).sort();
+
+    // Filter by lesson if specified
+    if (filters?.lesson) {
+      filtered = filtered.filter(kp => kp.lesson === filters.lesson);
+    }
+
+    // Get unique subs (sections)
+    const subSet = new Set<string>();
+    filtered.forEach(kp => {
+      if (kp.section) subSet.add(kp.section); // Note: frontend-practice uses 'section' not 'sub'
+    });
+    options.subs = Array.from(subSet).sort();
+
+    return options;
+  };
+
   const handleEditQuiz = (quiz: Quiz) => {
     setEditingQuiz(quiz);
     setNewTag(''); // Clear the new tag input
@@ -649,15 +716,9 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       sub: ''
     });
     
-    // Load initial hierarchy options
-    try {
-      const response = await ApiService.getKnowledgePointHierarchy();
-      if (response.success && response.data) {
-        setHierarchyOptions(response.data);
-      }
-    } catch (error) {
-      console.error('Failed to load hierarchy options:', error);
-    }
+    // Load initial hierarchy options from local data
+    const options = getLocalHierarchyOptions();
+    setHierarchyOptions(options);
     
     setShowRematchModal(true);
   };
@@ -2169,12 +2230,10 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                           lesson: '',
                           sub: ''
                         });
-                        // Fetch new options
+                        // Get new options from local data
                         if (newVolume) {
-                          const response = await ApiService.getKnowledgePointHierarchy({ volume: newVolume });
-                          if (response.success && response.data) {
-                            setHierarchyOptions(response.data);
-                          }
+                          const options = getLocalHierarchyOptions({ volume: newVolume });
+                          setHierarchyOptions(options);
                         }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -2198,15 +2257,13 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                           lesson: '',
                           sub: ''
                         }));
-                        // Fetch new options
+                        // Get new options from local data
                         if (newUnit) {
-                          const response = await ApiService.getKnowledgePointHierarchy({ 
+                          const options = getLocalHierarchyOptions({ 
                             volume: rematchHints.volume,
                             unit: newUnit 
                           });
-                          if (response.success && response.data) {
-                            setHierarchyOptions(response.data);
-                          }
+                          setHierarchyOptions(options);
                         }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -2230,16 +2287,14 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                           lesson: newLesson,
                           sub: ''
                         }));
-                        // Fetch new options
+                        // Get new options from local data
                         if (newLesson) {
-                          const response = await ApiService.getKnowledgePointHierarchy({ 
+                          const options = getLocalHierarchyOptions({ 
                             volume: rematchHints.volume,
                             unit: rematchHints.unit,
                             lesson: newLesson 
                           });
-                          if (response.success && response.data) {
-                            setHierarchyOptions(response.data);
-                          }
+                          setHierarchyOptions(options);
                         }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
