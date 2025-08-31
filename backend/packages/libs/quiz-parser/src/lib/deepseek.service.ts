@@ -168,27 +168,74 @@ ${JSON.stringify(paragraphs, null, 2)}`;
             if (blanksCount === 0) {
               console.warn(`Fill-in-the-blank question has no blanks: "${item.question}"`);
               
-              // Try to regenerate with blanks
-              let retryCount = 0;
-              let regeneratedItem = item;
-              
-              while (retryCount < 3 && regeneratedItem.question.split(/_{2,}/g).length - 1 === 0) {
-                retryCount++;
-                console.log(`Retrying generation for fill-in-the-blank question (attempt ${retryCount}/3)...`);
+              // First try to fix it locally by replacing answer text with blanks
+              let fixedItem = { ...item };
+              if (fixedItem.answer) {
+                const answers = Array.isArray(fixedItem.answer) ? fixedItem.answer : [fixedItem.answer];
+                let fixedQuestion = fixedItem.question;
                 
-                try {
-                  regeneratedItem = await this.regenerateFillInBlankWithBlanks(regeneratedItem);
-                  const newBlanksCount = regeneratedItem.question.split(/_{2,}/g).length - 1;
-                  if (newBlanksCount > 0) {
-                    console.log(`Successfully regenerated with ${newBlanksCount} blank(s)`);
-                    break;
+                for (const ans of answers) {
+                  if (typeof ans === 'string' && ans.trim()) {
+                    // Try to find and replace the answer text in the question
+                    const answerText = ans.trim();
+                    
+                    // Try different patterns to find the answer in the question
+                    const patterns = [
+                      new RegExp(`《${answerText}》`, 'g'), // Book title format
+                      new RegExp(`"${answerText}"`, 'g'),   // Quoted format
+                      new RegExp(`'${answerText}'`, 'g'),   // Single quoted
+                      new RegExp(`${answerText}`, 'g'),     // Plain text
+                    ];
+                    
+                    let replaced = false;
+                    for (const pattern of patterns) {
+                      if (fixedQuestion.match(pattern)) {
+                        fixedQuestion = fixedQuestion.replace(pattern, '____');
+                        replaced = true;
+                        break;
+                      }
+                    }
+                    
+                    // If we couldn't find the answer in the text, append blank at the end
+                    if (!replaced && fixedQuestion === fixedItem.question) {
+                      fixedQuestion = fixedQuestion.replace(/[。？！?!]$/, '') + '____。';
+                    }
                   }
-                } catch (retryError) {
-                  console.error(`Retry ${retryCount} failed:`, retryError);
+                }
+                
+                if (fixedQuestion !== fixedItem.question) {
+                  console.log(`Auto-fixed fill-in-blank locally: "${fixedItem.question}" -> "${fixedQuestion}"`);
+                  fixedItem.question = fixedQuestion;
                 }
               }
               
-              processedItems.push(regeneratedItem);
+              // Check if local fix worked
+              const fixedBlanksCount = fixedItem.question.split(/_{2,}/g).length - 1;
+              if (fixedBlanksCount > 0) {
+                processedItems.push(fixedItem);
+              } else {
+                // If local fix didn't work, try to regenerate with API
+                let retryCount = 0;
+                let regeneratedItem = fixedItem;
+                
+                while (retryCount < 3 && regeneratedItem.question.split(/_{2,}/g).length - 1 === 0) {
+                  retryCount++;
+                  console.log(`Retrying generation for fill-in-the-blank question (attempt ${retryCount}/3)...`);
+                  
+                  try {
+                    regeneratedItem = await this.regenerateFillInBlankWithBlanks(regeneratedItem);
+                    const newBlanksCount = regeneratedItem.question.split(/_{2,}/g).length - 1;
+                    if (newBlanksCount > 0) {
+                      console.log(`Successfully regenerated with ${newBlanksCount} blank(s)`);
+                      break;
+                    }
+                  } catch (retryError) {
+                    console.error(`Retry ${retryCount} failed:`, retryError);
+                  }
+                }
+                
+                processedItems.push(regeneratedItem);
+              }
             } else {
               processedItems.push(item);
             }

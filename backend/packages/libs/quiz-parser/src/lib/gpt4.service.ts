@@ -417,10 +417,44 @@ export class GPT4Service {
         const blanksCount = (item.question.match(/____+/g) || []).length;
         if (blanksCount === 0) {
           console.warn('Fill-in-the-blank question missing blanks:', item.question);
-          // Try to auto-fix by adding blanks based on answers
-          if (Array.isArray(item.answer) && item.answer.length > 0) {
-            // This is a simple heuristic - in production you might want to use GPT to fix it
-            item.question = item.question + ' ____';
+          // Try to auto-fix by replacing answer text with blanks
+          if (item.answer) {
+            const answers = Array.isArray(item.answer) ? item.answer : [item.answer];
+            let fixedQuestion = item.question;
+            
+            for (const ans of answers) {
+              if (typeof ans === 'string' && ans.trim()) {
+                // Try to find and replace the answer text in the question
+                const answerText = ans.trim();
+                
+                // Try different patterns to find the answer in the question
+                const patterns = [
+                  new RegExp(`《${answerText}》`, 'g'), // Book title format
+                  new RegExp(`"${answerText}"`, 'g'),   // Quoted format
+                  new RegExp(`'${answerText}'`, 'g'),   // Single quoted
+                  new RegExp(`${answerText}`, 'g'),     // Plain text
+                ];
+                
+                let replaced = false;
+                for (const pattern of patterns) {
+                  if (fixedQuestion.match(pattern)) {
+                    fixedQuestion = fixedQuestion.replace(pattern, '____');
+                    replaced = true;
+                    break;
+                  }
+                }
+                
+                // If we couldn't find the answer in the text, append blank at the end
+                if (!replaced && fixedQuestion === item.question) {
+                  fixedQuestion = fixedQuestion.replace(/[。？！?!]$/, '') + '____。';
+                }
+              }
+            }
+            
+            if (fixedQuestion !== item.question) {
+              console.log(`Auto-fixed fill-in-blank: "${item.question}" -> "${fixedQuestion}"`);
+              item.question = fixedQuestion;
+            }
           }
         }
       }
