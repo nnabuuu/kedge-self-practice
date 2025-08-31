@@ -1,59 +1,16 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PersistentService } from '@kedge/persistent';
-import { sql } from 'slonik';
-import * as crypto from 'crypto';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as XLSX from 'xlsx';
 
-export interface KnowledgePointData {
-  id: string;
-  topic: string;
-  volume: string;
-  unit: string;
-  lesson: string;
-  sub: string;
-}
-
-export interface KnowledgePointMapping {
-  excelId: string; // ID from Excel like 'kp_1'
-  databaseId: string; // UUID from database
-  topic: string;
-}
-
+/**
+ * Service responsible for bootstrapping knowledge points.
+ * Previously loaded from Excel file, now managed via database migrations.
+ * This service is kept for compatibility but no longer performs any bootstrap operations.
+ */
 @Injectable()
 export class KnowledgePointBootstrapService implements OnModuleInit {
   private readonly logger = new Logger(KnowledgePointBootstrapService.name);
-  private readonly excelFilePath = this.getExcelFilePath();
-  
+
   constructor(private readonly persistentService: PersistentService) {}
-
-  private getExcelFilePath(): string {
-    // Try multiple possible locations
-    const possiblePaths = [
-      // In Docker container
-      path.join('/app', 'data', 'knowledge-points-history.xlsx'),
-      // Local development with process.cwd()
-      path.join(process.cwd(), 'data', 'knowledge-points-history.xlsx'),
-      // Local development relative to backend folder
-      path.join(process.cwd(), 'backend', 'data', 'knowledge-points-history.xlsx'),
-      // Relative to the service file location
-      path.join(__dirname, '..', '..', '..', '..', '..', '..', 'data', 'knowledge-points-history.xlsx'),
-    ];
-
-    // Find the first existing path
-    for (const filePath of possiblePaths) {
-      if (fs.existsSync(filePath)) {
-        this.logger?.log(`Found knowledge points file at: ${filePath}`);
-        return filePath;
-      }
-    }
-
-    // Default to the most likely Docker path
-    const defaultPath = path.join('/app', 'data', 'knowledge-points-history.xlsx');
-    this.logger?.warn(`Knowledge points file not found in common locations, defaulting to: ${defaultPath}`);
-    return defaultPath;
-  }
 
   async onModuleInit() {
     // Knowledge points are now managed via database migrations
@@ -63,309 +20,42 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
   }
 
   /**
-   * Bootstrap knowledge points from Excel file
-   * Only updates database if Excel data has changed (using hash comparison)
+   * Get bootstrap information.
+   * @deprecated Knowledge points are now managed via database migrations
    */
-  async bootstrapKnowledgePoints(): Promise<void> {
-    try {
-      this.logger.log('Starting knowledge points bootstrap...');
-      this.logger.log(`Looking for Excel file at: ${this.excelFilePath}`);
-
-      // Check if Excel file exists
-      if (!fs.existsSync(this.excelFilePath)) {
-        this.logger.warn(`Knowledge points Excel file not found at: ${this.excelFilePath}`);
-        this.logger.warn('Current working directory: ' + process.cwd());
-        this.logger.warn('Directory contents of /app/data:');
-        try {
-          const appDataFiles = fs.readdirSync('/app/data');
-          this.logger.warn(appDataFiles.join(', '));
-        } catch (e) {
-          this.logger.warn('Could not read /app/data directory');
-        }
-        this.logger.warn('Skipping knowledge points bootstrap');
-        return;
-      }
-
-      this.logger.log(`Excel file found, size: ${fs.statSync(this.excelFilePath).size} bytes`);
-
-      // Read and parse Excel data
-      const knowledgePoints = await this.readKnowledgePointsFromExcel();
-      if (knowledgePoints.length === 0) {
-        this.logger.warn('No knowledge points found in Excel file');
-        return;
-      }
-
-      // Calculate hash of current Excel data
-      const currentHash = this.calculateDataHash(knowledgePoints);
-      
-      // Check if data has changed since last import
-      const storedHash = await this.getStoredHash();
-      if (storedHash === currentHash) {
-        this.logger.log('Knowledge points data unchanged, skipping import');
-        return;
-      }
-
-      // Data has changed, update database
-      this.logger.log(`Importing ${knowledgePoints.length} knowledge points to database`);
-      await this.importKnowledgePointsToDatabase(knowledgePoints);
-      
-      // Update stored hash
-      await this.updateStoredHash(currentHash);
-      
-      this.logger.log('Knowledge points bootstrap completed successfully');
-    } catch (error) {
-      this.logger.error('Failed to bootstrap knowledge points:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Read knowledge points from Excel file
-   */
-  private async readKnowledgePointsFromExcel(): Promise<KnowledgePointData[]> {
-    try {
-      const workbook = XLSX.readFile(this.excelFilePath);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-      const knowledgePoints: KnowledgePointData[] = [];
-      
-      // Variables to track last non-empty values for inheritance
-      let lastVolume = '';
-      let lastUnit = '';
-      let lastLesson = '';
-      let lastSub = '';
-      
-      // Skip header row, process data rows
-      // Excel columns: 分册(volume), 单元名称(unit), 单课名称(lesson), 子目(sub), 知识点(topic)
-      for (let i = 1; i < rawData.length; i++) {
-        const row = rawData[i] as any[];
-        if (!row || row.length < 5) continue;
-
-        const [rawVolume, rawUnit, rawLesson, rawSub, topic] = row;
-        
-        // Skip empty rows - topic is required
-        if (!topic) continue;
-
-        // Inherit from previous row if current cell is empty
-        if (rawVolume && String(rawVolume).trim()) {
-          lastVolume = String(rawVolume).trim();
-        }
-        if (rawUnit && String(rawUnit).trim()) {
-          lastUnit = String(rawUnit).trim();
-        }
-        if (rawLesson && String(rawLesson).trim()) {
-          lastLesson = String(rawLesson).trim();
-        }
-        if (rawSub && String(rawSub).trim()) {
-          lastSub = String(rawSub).trim();
-        }
-
-        // Generate ID based on row number
-        const id = `kp_${i}`;
-
-        knowledgePoints.push({
-          id: id,
-          topic: String(topic).trim(),
-          volume: lastVolume,
-          unit: lastUnit,
-          lesson: lastLesson,
-          sub: lastSub,
-        });
-      }
-
-      this.logger.log(`Parsed ${knowledgePoints.length} knowledge points from Excel`);
-      return knowledgePoints;
-    } catch (error) {
-      this.logger.error('Failed to read Excel file:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to parse knowledge points Excel file: ${errorMessage}`);
-    }
-  }
-
-  /**
-   * Calculate MD5 hash of knowledge points data for change detection
-   */
-  private calculateDataHash(knowledgePoints: KnowledgePointData[]): string {
-    const dataString = JSON.stringify(knowledgePoints.sort((a, b) => a.id.localeCompare(b.id)));
-    return crypto.createHash('md5').update(dataString).digest('hex');
-  }
-
-  /**
-   * Get stored hash from database
-   */
-  private async getStoredHash(): Promise<string | null> {
-    try {
-      const result = await this.persistentService.pgPool.query(
-        sql.unsafe`
-          SELECT value FROM kedge_practice.knowledge_points_metadata 
-          WHERE key = 'data_hash'
-        `
-      );
-      // The value is stored as JSONB, so it might be a JSON string
-      const value = result.rows[0]?.value;
-      return typeof value === 'string' ? value : (value ? String(value) : null);
-    } catch (error) {
-      this.logger.warn('Failed to get stored hash, assuming first import');
-      return null;
-    }
-  }
-
-  /**
-   * Update stored hash in database
-   */
-  private async updateStoredHash(hash: string): Promise<void> {
-    await this.persistentService.pgPool.query(
-      sql.unsafe`
-        INSERT INTO kedge_practice.knowledge_points_metadata (key, value)
-        VALUES ('data_hash', ${JSON.stringify(hash)}::jsonb)
-        ON CONFLICT (key) 
-        DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-      `
-    );
-  }
-
-  /**
-   * Import knowledge points to database (replace all existing data)
-   * Creates UUID-based knowledge points and maintains mapping to Excel IDs
-   */
-  private async importKnowledgePointsToDatabase(knowledgePoints: KnowledgePointData[]): Promise<void> {
-    await this.persistentService.pgPool.transaction(async (connection) => {
-      // Clear existing knowledge points and mappings
-      await connection.query(sql.unsafe`DELETE FROM kedge_practice.knowledge_points`);
-      await connection.query(sql.unsafe`DELETE FROM kedge_practice.knowledge_points_metadata WHERE key LIKE 'mapping_%'`);
-      
-      // Insert new knowledge points using IDs from Excel (kp_1, kp_2, etc.)
-      const mappings: KnowledgePointMapping[] = [];
-      
-      for (const kp of knowledgePoints) {
-        // Use the ID from Excel file (e.g., kp_1, kp_2, etc.)
-        const result = await connection.query(
-          sql.unsafe`
-            INSERT INTO kedge_practice.knowledge_points (id, topic, volume, unit, lesson, sub)
-            VALUES (${kp.id}, ${kp.topic}, ${kp.volume}, ${kp.unit}, ${kp.lesson}, ${kp.sub})
-            RETURNING id
-          `
-        );
-        
-        const databaseId = result.rows[0].id;
-        mappings.push({
-          excelId: kp.id,
-          databaseId,
-          topic: kp.topic,
-        });
-        
-        // Store mapping in metadata table (value must be JSON)
-        await connection.query(
-          sql.unsafe`
-            INSERT INTO kedge_practice.knowledge_points_metadata (key, value)
-            VALUES (${`mapping_${kp.id}`}, ${JSON.stringify(databaseId)}::jsonb)
-          `
-        );
-      }
-      
-      this.logger.log(`Imported ${knowledgePoints.length} knowledge points to database with UUID mappings`);
-      this.logger.log(`Sample mappings: ${JSON.stringify(mappings.slice(0, 3))}`);
-    });
-  }
-
-  /**
-   * Force refresh knowledge points from Excel (ignoring hash)
-   */
-  async forceRefresh(): Promise<void> {
-    this.logger.log('Force refreshing knowledge points from Excel...');
-    
-    const knowledgePoints = await this.readKnowledgePointsFromExcel();
-    await this.importKnowledgePointsToDatabase(knowledgePoints);
-    
-    const newHash = this.calculateDataHash(knowledgePoints);
-    await this.updateStoredHash(newHash);
-    
-    this.logger.log('Force refresh completed');
-  }
-
-  /**
-   * Get current knowledge points count and last update info
-   */
-  async getBootstrapInfo(): Promise<{
-    count: number;
+  async getBootstrapInfo(): Promise<{ 
+    isAvailable: boolean; 
+    path: string | null; 
+    count: number; 
     lastUpdated: Date | null;
     currentHash: string | null;
   }> {
-    const countResult = await this.persistentService.pgPool.query(
-      sql.unsafe`SELECT COUNT(*) as count FROM kedge_practice.knowledge_points`
-    );
-    
-    const metadataResult = await this.persistentService.pgPool.query(
-      sql.unsafe`
-        SELECT value, updated_at FROM kedge_practice.knowledge_points_metadata 
-        WHERE key = 'data_hash'
-      `
-    );
-    
     return {
-      count: parseInt(countResult.rows[0].count),
-      lastUpdated: metadataResult.rows[0]?.updated_at || null,
-      currentHash: metadataResult.rows[0]?.value || null,
+      isAvailable: false,
+      path: null,
+      count: 0,
+      lastUpdated: null,
+      currentHash: null
     };
   }
 
   /**
-   * Get database UUID for an Excel knowledge point ID
+   * Force refresh knowledge points from Excel file.
+   * @deprecated Knowledge points are now managed via database migrations
    */
-  async getDatabaseIdForExcelId(excelId: string): Promise<string | null> {
-    try {
-      const result = await this.persistentService.pgPool.query(
-        sql.unsafe`
-          SELECT value FROM kedge_practice.knowledge_points_metadata 
-          WHERE key = ${`mapping_${excelId}`}
-        `
-      );
-      return result.rows[0]?.value || null;
-    } catch (error) {
-      this.logger.warn(`Failed to get database ID for Excel ID ${excelId}:`, error);
-      return null;
-    }
+  async forceRefresh(): Promise<void> {
+    this.logger.warn('Force refresh called but Excel import is disabled. Knowledge points are managed via database migrations.');
+    return;
   }
 
   /**
-   * Get all mappings between Excel IDs and database UUIDs
+   * Refresh knowledge points from Excel file.
+   * @deprecated Knowledge points are now managed via database migrations
    */
-  async getAllMappings(): Promise<KnowledgePointMapping[]> {
-    try {
-      const result = await this.persistentService.pgPool.query(
-        sql.unsafe`
-          SELECT key, value FROM kedge_practice.knowledge_points_metadata 
-          WHERE key LIKE 'mapping_%'
-        `
-      );
-      
-      const mappings: KnowledgePointMapping[] = [];
-      for (const row of result.rows) {
-        const excelId = row.key.replace('mapping_', '');
-        const databaseId = row.value;
-        
-        // Get topic from knowledge_points table
-        const kpResult = await this.persistentService.pgPool.query(
-          sql.unsafe`
-            SELECT topic FROM kedge_practice.knowledge_points 
-            WHERE id = ${databaseId}
-          `
-        );
-        
-        if (kpResult.rows[0]) {
-          mappings.push({
-            excelId,
-            databaseId,
-            topic: kpResult.rows[0].topic,
-          });
-        }
-      }
-      
-      return mappings;
-    } catch (error) {
-      this.logger.warn('Failed to get all mappings:', error);
-      return [];
-    }
+  async refreshKnowledgePoints(): Promise<{ message: string; imported: number }> {
+    return {
+      message: 'Knowledge points are now managed via database migrations. Excel import is disabled.',
+      imported: 0
+    };
   }
 }
