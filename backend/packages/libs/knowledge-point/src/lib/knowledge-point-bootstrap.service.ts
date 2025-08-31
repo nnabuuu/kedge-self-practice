@@ -56,18 +56,10 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    // Skip bootstrap if disabled
-    if (process.env['DISABLE_KNOWLEDGE_BOOTSTRAP'] === 'true') {
-      this.logger.log('Knowledge points bootstrap disabled by environment variable');
-      return;
-    }
-    
-    try {
-      await this.bootstrapKnowledgePoints();
-    } catch (error) {
-      this.logger.error('Failed to bootstrap knowledge points, continuing startup', error);
-      // Don't throw error to prevent app from crashing
-    }
+    // Knowledge points are now managed via database migrations
+    // Excel file bootstrap is no longer needed
+    this.logger.log('Knowledge points bootstrap from Excel is disabled - using database migrations instead');
+    return;
   }
 
   /**

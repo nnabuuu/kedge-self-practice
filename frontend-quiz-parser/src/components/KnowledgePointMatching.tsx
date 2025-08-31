@@ -550,21 +550,24 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                               <button
                                 onClick={async () => {
                                   setShowTargetSelector(prev => ({ ...prev, [index]: true }));
-                                  // Initialize with current values
-                                  if (item.matchingResult?.matched) {
-                                    setTargetHints(prev => ({
-                                      ...prev,
-                                      [index]: {
-                                        volume: item.matchingResult.matched.volume,
-                                        unit: item.matchingResult.matched.unit,
-                                        lesson: item.matchingResult.matched.lesson,
-                                        sub: item.matchingResult.matched.sub,
-                                      }
-                                    }));
-                                    // Load initial hierarchy options from local data
-                                    const options = getLocalHierarchyOptions();
-                                    setHierarchyOptions(prev => ({ ...prev, [index]: options }));
-                                  }
+                                  // Initialize with current values or empty if no match
+                                  setTargetHints(prev => ({
+                                    ...prev,
+                                    [index]: item.matchingResult?.matched ? {
+                                      volume: item.matchingResult.matched.volume,
+                                      unit: item.matchingResult.matched.unit,
+                                      lesson: item.matchingResult.matched.lesson,
+                                      sub: item.matchingResult.matched.sub,
+                                    } : {
+                                      volume: '',
+                                      unit: '',
+                                      lesson: '',
+                                      sub: ''
+                                    }
+                                  }));
+                                  // Load initial hierarchy options from local data
+                                  const options = getLocalHierarchyOptions();
+                                  setHierarchyOptions(prev => ({ ...prev, [index]: options }));
                                 }}
                                 className="inline-flex items-center px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-200 transition-colors"
                               >
@@ -743,8 +746,143 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                           )}
                         </div>
                       ) : (
-                        <div className="bg-gray-50 rounded p-3 text-center">
-                          <span className="text-gray-600">当前题目未匹配到合适的知识点</span>
+                        <div>
+                          {showTargetSelector[index] ? (
+                            // Edit mode - show dropdown selectors for no match case
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">分册</label>
+                                  <select
+                                    value={targetHints[index]?.volume || ''}
+                                    onChange={async (e) => {
+                                      const newVolume = e.target.value;
+                                      setTargetHints(prev => ({
+                                        ...prev,
+                                        [index]: { 
+                                          volume: newVolume,
+                                          unit: '',
+                                          lesson: '',
+                                          sub: '',
+                                        }
+                                      }));
+                                      const options = getLocalHierarchyOptions({ volume: newVolume });
+                                      setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                                    }}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                  >
+                                    <option value="">选择分册...</option>
+                                    {hierarchyOptions[index]?.volumes.map(vol => (
+                                      <option key={vol} value={vol}>{vol}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">单元</label>
+                                  <select
+                                    value={targetHints[index]?.unit || ''}
+                                    onChange={async (e) => {
+                                      const newUnit = e.target.value;
+                                      setTargetHints(prev => ({
+                                        ...prev,
+                                        [index]: { 
+                                          ...prev[index], 
+                                          unit: newUnit,
+                                          lesson: '',
+                                          sub: '',
+                                        }
+                                      }));
+                                      const options = getLocalHierarchyOptions({ 
+                                        volume: targetHints[index]?.volume,
+                                        unit: newUnit 
+                                      });
+                                      setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                                    }}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                    disabled={!targetHints[index]?.volume}
+                                  >
+                                    <option value="">选择单元...</option>
+                                    {hierarchyOptions[index]?.units.map(u => (
+                                      <option key={u} value={u}>{u}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">课程</label>
+                                  <select
+                                    value={targetHints[index]?.lesson || ''}
+                                    onChange={async (e) => {
+                                      const newLesson = e.target.value;
+                                      setTargetHints(prev => ({
+                                        ...prev,
+                                        [index]: { 
+                                          ...prev[index], 
+                                          lesson: newLesson,
+                                          sub: '',
+                                        }
+                                      }));
+                                      const options = getLocalHierarchyOptions({ 
+                                        volume: targetHints[index]?.volume,
+                                        unit: targetHints[index]?.unit,
+                                        lesson: newLesson 
+                                      });
+                                      setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                                    }}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                    disabled={!targetHints[index]?.unit}
+                                  >
+                                    <option value="">选择课程...</option>
+                                    {hierarchyOptions[index]?.lessons.map(l => (
+                                      <option key={l} value={l}>{l}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">子目</label>
+                                  <select
+                                    value={targetHints[index]?.sub || ''}
+                                    onChange={(e) => {
+                                      setTargetHints(prev => ({
+                                        ...prev,
+                                        [index]: { 
+                                          ...prev[index], 
+                                          sub: e.target.value
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                    disabled={!targetHints[index]?.lesson}
+                                  >
+                                    <option value="">选择子目...</option>
+                                    {hierarchyOptions[index]?.subs.map(s => (
+                                      <option key={s} value={s}>{s}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setShowTargetSelector(prev => ({ ...prev, [index]: false }));
+                                    setTargetHints(prev => ({ ...prev, [index]: {} }));
+                                  }}
+                                  className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                >
+                                  取消
+                                </button>
+                                <button
+                                  onClick={() => rematchSingleItem(index, true)}
+                                  className="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
+                                >
+                                  应用并重新匹配
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 rounded p-3 text-center">
+                              <span className="text-gray-600">当前题目未匹配到合适的知识点</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
