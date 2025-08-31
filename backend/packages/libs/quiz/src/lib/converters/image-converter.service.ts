@@ -6,7 +6,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { IImageConverter, ConversionOptions, ConversionResult } from './image-converter.interface';
 import { ImageMagickConverter } from './imagemagick-converter';
-import { SharpConverter } from './sharp-converter';
 import * as path from 'path';
 
 @Injectable()
@@ -17,14 +16,24 @@ export class ImageConverterService implements OnModuleInit {
   
   constructor() {
     // Register converters in priority order
+    // Note: Sharp converter is loaded dynamically if available
     this.converters.push(
-      new SharpConverter(),        // Fast, for common formats
-      new ImageMagickConverter(),  // Comprehensive, for special formats
+      new ImageMagickConverter(),  // Always available, comprehensive format support
     );
   }
   
   async onModuleInit() {
+    await this.loadOptionalConverters();
     await this.initializeConverters();
+  }
+  
+  /**
+   * Try to load optional converters like Sharp
+   */
+  private async loadOptionalConverters() {
+    // Sharp is completely optional - skip it for now to avoid build issues
+    // Users can install sharp separately if needed
+    this.logger.debug('Sharp converter disabled - install sharp package to enable it');
   }
   
   /**

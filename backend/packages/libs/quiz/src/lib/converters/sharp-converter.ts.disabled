@@ -25,11 +25,15 @@ export class SharpConverter extends BaseImageConverter {
   
   async isAvailable(): Promise<boolean> {
     try {
-      // Lazy load Sharp to avoid issues if not installed
-      // @ts-ignore - Sharp is an optional dependency
-      this.sharp = await import('sharp');
-      this.logger.log('Sharp library is available');
-      return true;
+      // Use require.resolve to check if module exists without webpack trying to bundle it
+      const sharpPath = require.resolve('sharp');
+      if (sharpPath) {
+        // Dynamically require Sharp to avoid webpack bundling
+        this.sharp = require('sharp');
+        this.logger.log('Sharp library is available');
+        return true;
+      }
+      return false;
     } catch (error) {
       this.logger.warn('Sharp library is not available:', error instanceof Error ? error.message : String(error));
       this.logger.warn('Install with: npm install sharp');

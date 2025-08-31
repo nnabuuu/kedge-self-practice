@@ -2,8 +2,7 @@ import { Controller, Post, UploadedFile, UseInterceptors, UseGuards, Get } from 
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { DocxService, EnhancedDocxService, GptService, LLMService } from '@kedge/quiz-parser';
-import { EnhancedQuizStorageService } from '@kedge/quiz';
-import { ImageConverterService } from '@kedge/quiz/converters';
+import { EnhancedQuizStorageService, ImageConverterService } from '@kedge/quiz';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { ParagraphBlock, GptParagraphBlock } from '@kedge/models';
 
