@@ -108,7 +108,7 @@ export class ImageConverterService implements OnModuleInit {
       return {
         success: false,
         outputFormat: options.format || 'png',
-        error: `Conversion error: ${error.message}`
+        error: `Conversion error: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }

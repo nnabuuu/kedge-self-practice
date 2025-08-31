@@ -55,7 +55,7 @@ export abstract class BaseImageConverter implements IImageConverter {
       return {
         success: false,
         outputFormat: options?.format || 'png',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }

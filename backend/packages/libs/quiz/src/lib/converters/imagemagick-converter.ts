@@ -51,7 +51,7 @@ export class ImageMagickConverter extends BaseImageConverter {
       }
       return isAvailable;
     } catch (error) {
-      this.logger.warn('ImageMagick is not available:', error.message);
+      this.logger.warn('ImageMagick is not available:', error instanceof Error ? error.message : String(error));
       return false;
     }
   }
@@ -140,7 +140,7 @@ export class ImageMagickConverter extends BaseImageConverter {
         metadata.width = width;
         metadata.height = height;
       } catch (error) {
-        this.logger.debug('Could not get image dimensions:', error.message);
+        this.logger.debug('Could not get image dimensions:', error instanceof Error ? error.message : String(error));
       }
       
       return {
@@ -155,14 +155,14 @@ export class ImageMagickConverter extends BaseImageConverter {
       return {
         success: false,
         outputFormat,
-        error: `ImageMagick conversion failed: ${error.message}`
+        error: `ImageMagick conversion failed: ${error instanceof Error ? error.message : String(error)}`
       };
     } finally {
       // Cleanup temp files
       try {
         await fs.promises.rm(tempDir, { recursive: true, force: true });
       } catch (error) {
-        this.logger.debug('Failed to cleanup temp directory:', error.message);
+        this.logger.debug('Failed to cleanup temp directory:', error instanceof Error ? error.message : String(error));
       }
     }
   }

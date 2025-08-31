@@ -26,11 +26,12 @@ export class SharpConverter extends BaseImageConverter {
   async isAvailable(): Promise<boolean> {
     try {
       // Lazy load Sharp to avoid issues if not installed
+      // @ts-ignore - Sharp is an optional dependency
       this.sharp = await import('sharp');
       this.logger.log('Sharp library is available');
       return true;
     } catch (error) {
-      this.logger.warn('Sharp library is not available:', error.message);
+      this.logger.warn('Sharp library is not available:', error instanceof Error ? error.message : String(error));
       this.logger.warn('Install with: npm install sharp');
       return false;
     }
@@ -76,12 +77,15 @@ export class SharpConverter extends BaseImageConverter {
       }
       
       // Convert to target format
-      const outputFormat = options.format || 'png';
+      let outputFormat: string = options.format || 'png';
+      // Normalize jpg to jpeg
+      if (outputFormat === 'jpg') {
+        outputFormat = 'jpeg';
+      }
       let outputBuffer: Buffer;
       
       switch (outputFormat) {
         case 'jpeg':
-        case 'jpg':
           pipeline = pipeline.jpeg({
             quality: options.quality || 85,
             progressive: true
@@ -129,7 +133,7 @@ export class SharpConverter extends BaseImageConverter {
       return {
         success: false,
         outputFormat: options.format || 'png',
-        error: `Sharp conversion failed: ${error.message}`
+        error: `Sharp conversion failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }
