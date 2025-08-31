@@ -72,13 +72,17 @@ export class GPT4Service {
     } as const;
 
     const modelConfig = getModelConfig('quizParser');
+    const maxTokens = modelConfig.maxTokens || 8000; // Increase default to prevent truncation
+    
+    console.log(`GPT-4 extractQuizItems - Model: ${modelConfig.model}, MaxTokens: ${maxTokens}`);
+    console.log(`Processing ${paragraphs.length} paragraphs`);
     
     try {
       const response = await this.openai.chat.completions.create({
         model: modelConfig.model,
         temperature: modelConfig.temperature,
         top_p: modelConfig.topP,
-        max_tokens: modelConfig.maxTokens,
+        max_tokens: maxTokens,
         messages: [
           {
             role: 'user',
@@ -98,8 +102,30 @@ export class GPT4Service {
         return [];
       }
       
-      const parsed: QuizExtractionResult = JSON.parse(content);
-      return this.postProcessQuizItems(parsed.items ?? []);
+      try {
+        const parsed: QuizExtractionResult = JSON.parse(content);
+        return this.postProcessQuizItems(parsed.items ?? []);
+      } catch (parseError) {
+        console.error('Failed to parse GPT-4 response as JSON:', parseError);
+        console.error('Response length:', content.length);
+        console.error('Last 200 chars:', content.slice(-200));
+        
+        // Try to extract valid JSON from the response
+        const extracted = this.extractJSON(content);
+        if (extracted) {
+          try {
+            const parsed: QuizExtractionResult = JSON.parse(extracted);
+            console.log('Successfully extracted and parsed JSON from response');
+            return this.postProcessQuizItems(parsed.items ?? []);
+          } catch (secondError) {
+            console.error('Failed to parse extracted JSON:', secondError);
+          }
+        }
+        
+        // If we still can't parse, return empty array
+        console.error('Unable to extract valid JSON from GPT-4 response');
+        return [];
+      }
     } catch (error) {
       console.error('GPT-4 quiz extraction failed:', error);
       return [];
@@ -264,6 +290,78 @@ export class GPT4Service {
       'subjective': '主观',
     };
     return descriptions[type] || type;
+  }
+
+  /**
+   * Attempt to extract valid JSON from a potentially malformed response
+   */
+  private extractJSON(content: string): string | null {
+    // Try to find JSON object boundaries
+    const patterns = [
+      // Complete JSON object
+      /^\s*(\{[\s\S]*\})\s*$/,
+      // JSON wrapped in markdown code block
+      /```(?:json)?\s*(\{[\s\S]*?\})\s*```/,
+      // Find the first complete JSON object
+      /(\{(?:[^{}]|{[^{}]*})*\})/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = content.match(pattern);
+      if (match && match[1]) {
+        try {
+          // Attempt to clean common issues
+          let cleaned = match[1]
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+            .replace(/,\s*([}\]])/g, '$1') // Remove trailing commas
+            .replace(/([{,]\s*)(\w+):/g, '$1"$2":') // Quote unquoted keys
+            .replace(/:\s*'([^']*)'/g, ': "$1"'); // Replace single quotes with double quotes
+          
+          // Validate it's parseable
+          JSON.parse(cleaned);
+          return cleaned;
+        } catch {
+          // Continue to next pattern
+        }
+      }
+    }
+
+    // Try to fix truncated JSON by closing open structures
+    if (content.includes('{') && !content.includes('}')) {
+      // Count open brackets and arrays
+      const openBraces = (content.match(/{/g) || []).length;
+      const closeBraces = (content.match(/}/g) || []).length;
+      const openBrackets = (content.match(/\[/g) || []).length;
+      const closeBrackets = (content.match(/\]/g) || []).length;
+      
+      let fixed = content;
+      
+      // Close any unterminated strings
+      const quoteCount = (fixed.match(/"/g) || []).length;
+      if (quoteCount % 2 !== 0) {
+        fixed += '"';
+      }
+      
+      // Close arrays
+      for (let i = 0; i < openBrackets - closeBrackets; i++) {
+        fixed += ']';
+      }
+      
+      // Close objects
+      for (let i = 0; i < openBraces - closeBraces; i++) {
+        fixed += '}';
+      }
+      
+      try {
+        JSON.parse(fixed);
+        console.log('Successfully fixed truncated JSON');
+        return fixed;
+      } catch {
+        // Could not fix
+      }
+    }
+
+    return null;
   }
 
   private postProcessQuizItems(items: QuizItem[]): QuizItem[] {
