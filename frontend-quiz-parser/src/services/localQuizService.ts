@@ -190,23 +190,50 @@ export const changeQuizType = async (
 
 // Match knowledge point for a quiz item
 export const matchKnowledgePoint = async (
-  item: QuizItem
+  item: QuizItem,
+  targetHints?: {
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+    sub?: string;
+  }
 ): Promise<{
-  matches: Array<{
-    knowledgePoint: KnowledgePoint;
-    confidence: number;
-    reasoning: string;
-  }>;
-  totalAvailable: number;
+  matched: KnowledgePoint | null;
+  candidates: KnowledgePoint[];
+  keywords: string[];
+  country: string;
+  dynasty: string;
 }> => {
   const response = await apiFetch('/knowledge-points/match', {
     method: 'POST',
     body: JSON.stringify({
       quizText: item.question,
       maxMatches: 3,
+      targetHints,
     }),
   });
   
+  const data = await response.json();
+  return data;
+};
+
+// Get hierarchy options for knowledge points
+export const getKnowledgePointHierarchy = async (filters?: {
+  volume?: string;
+  unit?: string;
+  lesson?: string;
+}): Promise<{
+  volumes: string[];
+  units: string[];
+  lessons: string[];
+  subs: string[];
+}> => {
+  const params = new URLSearchParams();
+  if (filters?.volume) params.append('volume', filters.volume);
+  if (filters?.unit) params.append('unit', filters.unit);
+  if (filters?.lesson) params.append('lesson', filters.lesson);
+  
+  const response = await apiFetch(`/knowledge-points/hierarchy-options?${params.toString()}`);
   const data = await response.json();
   return data;
 };

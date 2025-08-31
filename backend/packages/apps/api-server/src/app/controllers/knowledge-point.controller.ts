@@ -13,6 +13,12 @@ import { sql } from 'slonik';
 interface MatchKnowledgePointRequest {
   quizText: string;
   maxMatches?: number;
+  targetHints?: {
+    volume?: string;    // 册别 (e.g., "上册", "下册")
+    unit?: string;      // 单元 (e.g., "第一单元")
+    lesson?: string;    // 课程 (e.g., "第1课")
+    sub?: string;       // 子目 (e.g., "夏朝的建立")
+  };
 }
 
 interface MatchKnowledgePointResponse {
@@ -58,7 +64,7 @@ export class KnowledgePointController {
     @Body() request: MatchKnowledgePointRequest,
   ): Promise<MatchKnowledgePointResponse> {
     try {
-      const { quizText, maxMatches = 3 } = request;
+      const { quizText, maxMatches = 3, targetHints } = request;
       
       if (!quizText || quizText.trim().length === 0) {
         throw new Error('Quiz text is required');
@@ -77,6 +83,66 @@ export class KnowledgePointController {
         };
       }
 
+      // If target hints are provided, use them to filter candidate points directly
+      if (targetHints && Object.keys(targetHints).length > 0) {
+        this.logger.log(`Using target hints for knowledge point matching: ${JSON.stringify(targetHints)}`);
+        
+        // Filter knowledge points based on hints
+        let candidatePoints = allPoints;
+        
+        if (targetHints.volume) {
+          candidatePoints = candidatePoints.filter(kp => kp.volume === targetHints.volume);
+          this.logger.log(`Filtered by volume "${targetHints.volume}": ${candidatePoints.length} points`);
+        }
+        
+        if (targetHints.unit) {
+          candidatePoints = candidatePoints.filter(kp => kp.unit === targetHints.unit);
+          this.logger.log(`Filtered by unit "${targetHints.unit}": ${candidatePoints.length} points`);
+        }
+        
+        if (targetHints.lesson) {
+          candidatePoints = candidatePoints.filter(kp => kp.lesson === targetHints.lesson);
+          this.logger.log(`Filtered by lesson "${targetHints.lesson}": ${candidatePoints.length} points`);
+        }
+        
+        if (targetHints.sub) {
+          candidatePoints = candidatePoints.filter(kp => kp.sub === targetHints.sub);
+          this.logger.log(`Filtered by sub "${targetHints.sub}": ${candidatePoints.length} points`);
+        }
+        
+        if (candidatePoints.length === 0) {
+          this.logger.warn('No knowledge points found matching the provided hints');
+          return {
+            matched: null,
+            candidates: [],
+            keywords: [],
+            country: '未知',
+            dynasty: '无',
+          };
+        }
+        
+        // Use GPT to select the best match from filtered candidates
+        const {selectedId, candidateIds} = await this.gptService.disambiguateTopicFromCandidates(
+          quizText,
+          candidatePoints,
+        );
+        
+        const matched = this.storage.getKnowledgePointById(selectedId);
+        const candidates = this.storage.getKnowledgePointsByIds(candidateIds);
+        
+        // Still extract keywords for reference
+        const {keywords, country, dynasty} = await this.gptService.extractKeywordsFromQuiz(quizText);
+        
+        return {
+          matched,
+          candidates,
+          keywords,
+          country,
+          dynasty,
+        };
+      }
+
+      // Original flow without target hints
       // Step 1: Extract keywords
       const {keywords, country, dynasty} = await this.gptService.extractKeywordsFromQuiz(quizText);
       if (keywords.length === 0) {
@@ -267,6 +333,41 @@ export class KnowledgePointController {
       };
     } catch (error) {
       this.logger.error('Failed to get knowledge point stats', error);
+      throw error;
+    }
+  }
+
+  @Get('hierarchy-options')
+  @ApiOperation({ summary: 'Get available options for knowledge point hierarchy' })
+  @ApiQuery({ name: 'volume', description: 'Filter by volume', required: false })
+  @ApiQuery({ name: 'unit', description: 'Filter by unit', required: false })
+  @ApiQuery({ name: 'lesson', description: 'Filter by lesson', required: false })
+  @ApiResponse({
+    status: 200,
+    description: 'Hierarchy options retrieved successfully',
+  })
+  async getHierarchyOptions(
+    @Query('volume') volume?: string,
+    @Query('unit') unit?: string,
+    @Query('lesson') lesson?: string,
+  ): Promise<{
+    volumes: string[];
+    units: string[];
+    lessons: string[];
+    subs: string[];
+  }> {
+    try {
+      const options = this.storage.getHierarchyOptions({
+        volume,
+        unit,
+        lesson,
+      });
+      
+      this.logger.log(`Retrieved hierarchy options: ${options.volumes.length} volumes, ${options.units.length} units, ${options.lessons.length} lessons, ${options.subs.length} subs`);
+      
+      return options;
+    } catch (error) {
+      this.logger.error('Failed to get hierarchy options', error);
       throw error;
     }
   }

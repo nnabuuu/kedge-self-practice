@@ -143,6 +143,101 @@ export class KnowledgePointStorage implements OnModuleInit {
     return Array.from(units);
   }
 
+  getAllVolumes(): string[] {
+    const volumes = new Set<string>();
+    this.knowledgePoints.forEach(point => {
+      if (point.volume && point.volume.trim().length > 0) {
+        volumes.add(point.volume);
+      }
+    });
+    return Array.from(volumes).sort();
+  }
+
+  getAllLessons(volume?: string, unit?: string): string[] {
+    const lessons = new Set<string>();
+    let points = this.knowledgePoints;
+    
+    if (volume) {
+      points = points.filter(p => p.volume === volume);
+    }
+    if (unit) {
+      points = points.filter(p => p.unit === unit);
+    }
+    
+    points.forEach(point => {
+      if (point.lesson && point.lesson.trim().length > 0) {
+        lessons.add(point.lesson);
+      }
+    });
+    return Array.from(lessons).sort();
+  }
+
+  getAllSubs(volume?: string, unit?: string, lesson?: string): string[] {
+    const subs = new Set<string>();
+    let points = this.knowledgePoints;
+    
+    if (volume) {
+      points = points.filter(p => p.volume === volume);
+    }
+    if (unit) {
+      points = points.filter(p => p.unit === unit);
+    }
+    if (lesson) {
+      points = points.filter(p => p.lesson === lesson);
+    }
+    
+    points.forEach(point => {
+      if (point.sub && point.sub.trim().length > 0) {
+        subs.add(point.sub);
+      }
+    });
+    return Array.from(subs).sort();
+  }
+
+  getHierarchyOptions(filters?: {
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+  }): {
+    volumes: string[];
+    units: string[];
+    lessons: string[];
+    subs: string[];
+  } {
+    let points = this.knowledgePoints;
+    
+    // Apply filters progressively
+    if (filters?.volume) {
+      points = points.filter(p => p.volume === filters.volume);
+    }
+    if (filters?.unit) {
+      points = points.filter(p => p.unit === filters.unit);
+    }
+    if (filters?.lesson) {
+      points = points.filter(p => p.lesson === filters.lesson);
+    }
+    
+    // Extract unique values at each level
+    const volumes = new Set<string>();
+    const units = new Set<string>();
+    const lessons = new Set<string>();
+    const subs = new Set<string>();
+    
+    points.forEach(point => {
+      if (point.volume) volumes.add(point.volume);
+      if (point.unit) units.add(point.unit);
+      if (point.lesson) lessons.add(point.lesson);
+      if (point.sub) subs.add(point.sub);
+    });
+    
+    return {
+      volumes: Array.from(volumes).sort(),
+      units: Array.from(units).sort(),
+      lessons: Array.from(lessons).sort(),
+      subs: Array.from(subs).sort(),
+    };
+  }
+
   getKnowledgePointsByUnits(units: string[]): KnowledgePoint[] {
     return this.knowledgePoints.filter(point =>
       units.some(unit => point.unit.includes(unit))

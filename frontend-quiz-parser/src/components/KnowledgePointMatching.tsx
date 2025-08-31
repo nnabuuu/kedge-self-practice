@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { QuizItem, QuizWithKnowledgePoint, KnowledgePointMatchResult } from '../types/quiz';
-import { matchKnowledgePoint } from '../services/localQuizService';
+import { matchKnowledgePoint, getKnowledgePointHierarchy } from '../services/localQuizService';
 import { Brain, BookOpen, CheckCircle, AlertCircle, Loader2, ArrowRight, Target, ChevronDown, ChevronUp, Tag, Globe, Crown, Search, Edit3, X, Check, RefreshCw } from 'lucide-react';
 import { QuizImageDisplay } from './QuizImageDisplay';
 
@@ -22,6 +22,19 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
   const [isCompleted, setIsCompleted] = useState(false);
   const [expandedCandidates, setExpandedCandidates] = useState<{[key: number]: boolean}>({});
   const [editingKnowledgePoint, setEditingKnowledgePoint] = useState<{[key: number]: boolean}>({});
+  const [targetHints, setTargetHints] = useState<{[key: number]: {
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+    sub?: string;
+  }}>({});
+  const [showTargetSelector, setShowTargetSelector] = useState<{[key: number]: boolean}>({});
+  const [hierarchyOptions, setHierarchyOptions] = useState<{[key: number]: {
+    volumes: string[];
+    units: string[];
+    lessons: string[];
+    subs: string[];
+  }}>({});
 
   useEffect(() => {
     // Initialize quiz items with matching status
@@ -70,14 +83,15 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
     setIsCompleted(true);
   };
 
-  // Re-match a single quiz item
-  const rematchSingleItem = async (index: number) => {
+  // Re-match a single quiz item with optional target hints
+  const rematchSingleItem = async (index: number, useTargetHints: boolean = false) => {
     const updatedItems = [...quizWithKnowledgePoints];
     updatedItems[index] = { ...updatedItems[index], matchingStatus: 'loading' };
     setQuizWithKnowledgePoints(updatedItems);
     
     try {
-      const matchingResult = await matchKnowledgePoint(updatedItems[index]);
+      const hints = useTargetHints ? targetHints[index] : undefined;
+      const matchingResult = await matchKnowledgePoint(updatedItems[index], hints);
       updatedItems[index] = {
         ...updatedItems[index],
         knowledgePoint: matchingResult.matched,
@@ -93,6 +107,7 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
     }
     
     setQuizWithKnowledgePoints(updatedItems);
+    setShowTargetSelector(prev => ({ ...prev, [index]: false }));
   };
 
   // Re-match all failed items
@@ -320,9 +335,17 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
     );
   };
 
-  const completedCount = quizWithKnowledgePoints.filter(item => 
-    item.matchingStatus === 'success' || item.matchingStatus === 'error'
-  ).length;
+  // Count completed items, but consider 'loading' as completed if it was previously matched
+  const completedCount = quizWithKnowledgePoints.filter((item, index) => {
+    if (item.matchingStatus === 'success' || item.matchingStatus === 'error') {
+      return true;
+    }
+    // If currently loading but has a previous match result, count as completed
+    if (item.matchingStatus === 'loading' && item.matchingResult) {
+      return true;
+    }
+    return false;
+  }).length;
 
   const successCount = quizWithKnowledgePoints.filter(item => 
     item.matchingStatus === 'success'
@@ -363,7 +386,9 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  completedCount === quizItems.length ? 'bg-emerald-500' : 'bg-orange-500'
+                }`}
                 style={{ width: `${(completedCount / quizItems.length) * 100}%` }}
               />
             </div>
@@ -441,34 +466,202 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => rematchSingleItem(index)}
-                            className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                          >
-                            <RefreshCw className="w-3 h-3 mr-1" />
-                            重新匹配
-                          </button>
-                          <button
-                            onClick={() => toggleEditingMode(index)}
-                            className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
-                          >
-                            <Edit3 className="w-4 h-4 mr-1" />
-                            {editingKnowledgePoint[index] ? '取消编辑' : '手动调整'}
-                          </button>
+                          {!showTargetSelector[index] && (
+                            <>
+                              <button
+                                onClick={async () => {
+                                  setShowTargetSelector(prev => ({ ...prev, [index]: true }));
+                                  // Initialize with current values
+                                  if (item.matchingResult?.matched) {
+                                    setTargetHints(prev => ({
+                                      ...prev,
+                                      [index]: {
+                                        volume: item.matchingResult.matched.volume,
+                                        unit: item.matchingResult.matched.unit,
+                                        lesson: item.matchingResult.matched.lesson,
+                                        sub: item.matchingResult.matched.sub,
+                                      }
+                                    }));
+                                    // Load initial hierarchy options
+                                    const options = await getKnowledgePointHierarchy();
+                                    setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                                  }
+                                }}
+                                className="inline-flex items-center px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-200 transition-colors"
+                              >
+                                <Edit3 className="w-3 h-3 mr-1" />
+                                修改范围
+                              </button>
+                              <button
+                                onClick={() => rematchSingleItem(index, false)}
+                                className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                重新匹配
+                              </button>
+                              <button
+                                onClick={() => toggleEditingMode(index)}
+                                className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                              >
+                                <Search className="w-3 h-3 mr-1" />
+                                {editingKnowledgePoint[index] ? '取消选择' : '手动选择'}
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                       
                       {item.matchingResult.matched ? (
                         <div>
-                          <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                            <div><span className="text-gray-500">分册:</span> <span className="text-gray-800">{item.matchingResult.matched.volume}</span></div>
-                            <div><span className="text-gray-500">单元:</span> <span className="text-gray-800">{item.matchingResult.matched.unit}</span></div>
-                            <div><span className="text-gray-500">课程:</span> <span className="text-gray-800">{item.matchingResult.matched.lesson}</span></div>
-                            <div><span className="text-gray-500">子目:</span> <span className="text-gray-800">{item.matchingResult.matched.sub}</span></div>
-                          </div>
-                          <div className="bg-emerald-50 rounded p-3">
-                            <span className="text-emerald-800 font-medium">{item.matchingResult.matched.topic}</span>
-                          </div>
+                          {showTargetSelector[index] ? (
+                            // Edit mode - show dropdown selectors
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">分册</label>
+                                  <select
+                                    value={targetHints[index]?.volume || item.matchingResult.matched.volume}
+                                    onChange={async (e) => {
+                                      const newVolume = e.target.value;
+                                      setTargetHints(prev => ({
+                                        ...prev,
+                                        [index]: { 
+                                          volume: newVolume,
+                                          // Clear lower levels when volume changes
+                                          unit: '',
+                                          lesson: '',
+                                          sub: '',
+                                        }
+                                      }));
+                                      // Fetch new options for this volume
+                                      const options = await getKnowledgePointHierarchy({ volume: newVolume });
+                                      setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                                    }}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                  >
+                                    <option value="">选择分册...</option>
+                                    {hierarchyOptions[index]?.volumes.map(vol => (
+                                      <option key={vol} value={vol}>{vol}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">单元</label>
+                                  <select
+                                    value={targetHints[index]?.unit || ''}
+                                    onChange={async (e) => {
+                                      const newUnit = e.target.value;
+                                      setTargetHints(prev => ({
+                                        ...prev,
+                                        [index]: { 
+                                          ...prev[index], 
+                                          unit: newUnit,
+                                          // Clear lower levels when unit changes
+                                          lesson: '',
+                                          sub: '',
+                                        }
+                                      }));
+                                      // Fetch new options for this unit
+                                      const options = await getKnowledgePointHierarchy({ 
+                                        volume: targetHints[index]?.volume,
+                                        unit: newUnit 
+                                      });
+                                      setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                                    }}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                    disabled={!targetHints[index]?.volume}
+                                  >
+                                    <option value="">选择单元...</option>
+                                    {hierarchyOptions[index]?.units.map(u => (
+                                      <option key={u} value={u}>{u}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">课程</label>
+                                  <select
+                                    value={targetHints[index]?.lesson || ''}
+                                    onChange={async (e) => {
+                                      const newLesson = e.target.value;
+                                      setTargetHints(prev => ({
+                                        ...prev,
+                                        [index]: { 
+                                          ...prev[index], 
+                                          lesson: newLesson,
+                                          // Clear lower level when lesson changes
+                                          sub: '',
+                                        }
+                                      }));
+                                      // Fetch new options for this lesson
+                                      const options = await getKnowledgePointHierarchy({ 
+                                        volume: targetHints[index]?.volume,
+                                        unit: targetHints[index]?.unit,
+                                        lesson: newLesson 
+                                      });
+                                      setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                                    }}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                    disabled={!targetHints[index]?.unit}
+                                  >
+                                    <option value="">选择课程...</option>
+                                    {hierarchyOptions[index]?.lessons.map(l => (
+                                      <option key={l} value={l}>{l}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">子目</label>
+                                  <select
+                                    value={targetHints[index]?.sub || ''}
+                                    onChange={(e) => setTargetHints(prev => ({
+                                      ...prev,
+                                      [index]: { ...prev[index], sub: e.target.value }
+                                    }))}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                    disabled={!targetHints[index]?.lesson}
+                                  >
+                                    <option value="">选择子目...</option>
+                                    {hierarchyOptions[index]?.subs.map(s => (
+                                      <option key={s} value={s}>{s}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="bg-gray-50 rounded p-2">
+                                <span className="text-sm text-gray-700 font-medium">{item.matchingResult.matched.topic}</span>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setShowTargetSelector(prev => ({ ...prev, [index]: false }));
+                                    setTargetHints(prev => ({ ...prev, [index]: {} }));
+                                  }}
+                                  className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300 transition-colors"
+                                >
+                                  取消
+                                </button>
+                                <button
+                                  onClick={() => rematchSingleItem(index, true)}
+                                  className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700 transition-colors"
+                                >
+                                  应用并重新匹配
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            // View mode - show current values
+                            <div>
+                              <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                                <div><span className="text-gray-500">分册:</span> <span className="text-gray-800">{item.matchingResult.matched.volume}</span></div>
+                                <div><span className="text-gray-500">单元:</span> <span className="text-gray-800">{item.matchingResult.matched.unit}</span></div>
+                                <div><span className="text-gray-500">课程:</span> <span className="text-gray-800">{item.matchingResult.matched.lesson}</span></div>
+                                <div><span className="text-gray-500">子目:</span> <span className="text-gray-800">{item.matchingResult.matched.sub}</span></div>
+                              </div>
+                              <div className="bg-emerald-50 rounded p-3">
+                                <span className="text-emerald-800 font-medium">{item.matchingResult.matched.topic}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="bg-gray-50 rounded p-3 text-center">
