@@ -1,3 +1,18 @@
+-- Ensure the schema exists
+CREATE SCHEMA IF NOT EXISTS kedge_practice;
+
+-- Ensure the knowledge_points table exists
+CREATE TABLE IF NOT EXISTS kedge_practice.knowledge_points (
+  id VARCHAR(255) PRIMARY KEY,
+  topic VARCHAR(255) NOT NULL,
+  volume VARCHAR(255),
+  unit VARCHAR(255),
+  lesson VARCHAR(255),
+  sub VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Insert or update knowledge points
 -- If the ID already exists, update the content to ensure volume names are standardized
 INSERT INTO kedge_practice.knowledge_points (id, topic, volume, unit, lesson, sub) VALUES
