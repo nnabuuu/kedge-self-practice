@@ -52,6 +52,12 @@ export class DeepSeekService {
       ? (options.targetTypes as GeneratableQuizType[])
       : ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'];
     
+    // Special handling for fill-in-the-blank only requests
+    if (allowedTypes.length === 1 && allowedTypes[0] === 'fill-in-the-blank') {
+      console.log('DeepSeek: Using optimized per-paragraph processing for fill-in-the-blank questions');
+      return this.extractFillInBlankItemsPerParagraph(paragraphs, options);
+    }
+    
     const typeDescriptions = allowedTypes.map(type => {
       switch(type) {
         case 'single-choice': return '"single-choice"（单选题）';
@@ -286,6 +292,190 @@ ${JSON.stringify(paragraphs, null, 2)}`;
       console.error('DeepSeek API error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Process fill-in-the-blank questions one paragraph at a time with context
+   * Optimized for DeepSeek models
+   */
+  private async extractFillInBlankItemsPerParagraph(
+    paragraphs: GptParagraphBlock[],
+    options?: QuizExtractionOptions
+  ): Promise<QuizItem[]> {
+    const results: QuizItem[] = [];
+    const maxItems = options?.maxItems || Infinity;
+    
+    // Process each paragraph individually
+    for (let i = 0; i < paragraphs.length && results.length < maxItems; i++) {
+      const currentParagraph = paragraphs[i];
+      
+      // Skip paragraphs without highlights
+      if (!currentParagraph.highlighted || currentParagraph.highlighted.length === 0) {
+        continue;
+      }
+      
+      // Build context with previous and next paragraphs
+      const context = {
+        previous: i > 0 ? paragraphs[i - 1] : null,
+        current: currentParagraph,
+        next: i < paragraphs.length - 1 ? paragraphs[i + 1] : null,
+      };
+      
+      try {
+        const item = await this.generateSingleFillInBlank(context, i + 1, paragraphs.length);
+        if (item) {
+          results.push(item);
+          console.log(`DeepSeek: Generated fill-in-blank for paragraph ${i + 1}/${paragraphs.length}`);
+        }
+      } catch (error) {
+        console.error(`DeepSeek: Failed to generate quiz for paragraph ${i + 1}:`, error);
+        // Continue with next paragraph even if one fails
+      }
+    }
+    
+    return results.slice(0, maxItems);
+  }
+
+  /**
+   * Generate a single fill-in-the-blank question with context (DeepSeek optimized)
+   */
+  private async generateSingleFillInBlank(
+    context: { 
+      previous: GptParagraphBlock | null;
+      current: GptParagraphBlock;
+      next: GptParagraphBlock | null;
+    },
+    paragraphNumber: number,
+    totalParagraphs: number
+  ): Promise<QuizItem | null> {
+    const systemPrompt = `你是一个教育出题助手。为当前段落生成一道填空题。
+
+规则：
+1. 必须基于当前段落的高亮内容生成填空题
+2. 使用至少4个下划线（____）作为空格标记
+3. 高亮验证：忽略超过10个字的高亮（可能是解析错误）
+4. 如果所有高亮都过长，提取关键概念：人名、地名、时间、数字、专有名词
+5. 答案应该是完整的、有意义的内容
+6. 返回 JSON 格式
+
+填空题示例：
+- 如果高亮是"神农本草经"，题目：东汉时的《____》是中国古代第一部药物学专著。
+- 答案："神农本草经"（完整名称）
+
+输出 JSON 格式：
+{
+  "type": "fill-in-the-blank",
+  "question": "题目内容，包含____空格",
+  "answer": ["答案"] 或 ["答案1", "答案2"]
+}`;
+
+    const userPrompt = `当前段落（第 ${paragraphNumber}/${totalParagraphs} 段）：
+${JSON.stringify(context.current, null, 2)}
+
+${context.previous ? `上文（仅供理解上下文）：
+${JSON.stringify(context.previous, null, 2)}` : ''}
+
+${context.next ? `下文（仅供理解上下文）：
+${JSON.stringify(context.next, null, 2)}` : ''}
+
+请为当前段落生成一道填空题。这是第 ${paragraphNumber} 段，共 ${totalParagraphs} 段，必须生成题目。`;
+
+    try {
+      const modelConfig = getModelConfig('quizParser');
+      const model = modelConfig.model.startsWith('deepseek') 
+        ? modelConfig.model 
+        : 'deepseek-chat';
+        
+      const response = await this.deepseek.chat.completions.create({
+        model: model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: modelConfig.temperature ?? 0.3,
+        max_tokens: 500, // Smaller limit for single question
+        top_p: modelConfig.topP,
+        response_format: {
+          type: 'json_object'
+        }
+      });
+
+      const content = response.choices[0]?.message?.content;
+      
+      if (!content || content.trim() === '') {
+        console.error(`DeepSeek: Empty response for paragraph ${paragraphNumber}`);
+        return null;
+      }
+
+      try {
+        const parsed = JSON.parse(content);
+        const item: QuizItem = {
+          type: 'fill-in-the-blank',
+          question: parsed.question || '',
+          options: [], // Always include empty options for consistency
+          answer: parsed.answer || '',
+          alternative_answers: [], // Required field
+        };
+        
+        // Post-process to ensure blanks exist
+        if (!item.question.includes('____')) {
+          console.warn(`DeepSeek: No blanks in question for paragraph ${paragraphNumber}, attempting to fix...`);
+          // Try local fix first
+          const fixed = this.autoAddBlanksToQuestion(item);
+          if (fixed.question.includes('____')) {
+            return fixed;
+          }
+          // If local fix failed, try regeneration (existing method)
+          return await this.regenerateFillInBlankWithBlanks(item);
+        }
+        
+        return item;
+      } catch (parseError) {
+        console.error(`DeepSeek: Failed to parse response for paragraph ${paragraphNumber}:`, parseError);
+        return null;
+      }
+    } catch (error) {
+      console.error(`DeepSeek: API error for paragraph ${paragraphNumber}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Auto-fix fill-in-blank questions that are missing blanks
+   */
+  private autoAddBlanksToQuestion(item: QuizItem): QuizItem {
+    if (!item.answer) return item;
+    
+    const answers = Array.isArray(item.answer) ? item.answer : [item.answer];
+    let fixedQuestion = item.question;
+    
+    for (const ans of answers) {
+      if (typeof ans === 'string' && ans.trim()) {
+        const answerText = ans.trim();
+        
+        // Try different patterns to find the answer in the question
+        const patterns = [
+          new RegExp(`《${answerText}》`, 'g'),
+          new RegExp(`"${answerText}"`, 'g'),
+          new RegExp(`'${answerText}'`, 'g'),
+          new RegExp(`${answerText}`, 'g'),
+        ];
+        
+        for (const pattern of patterns) {
+          if (fixedQuestion.match(pattern)) {
+            fixedQuestion = fixedQuestion.replace(pattern, '____');
+            break;
+          }
+        }
+      }
+    }
+    
+    // If we still don't have blanks, append at the end
+    if (!fixedQuestion.includes('____')) {
+      fixedQuestion = fixedQuestion.replace(/[。？！?!]$/, '') + '____。';
+    }
+    
+    return { ...item, question: fixedQuestion };
   }
 
   private async regenerateFillInBlankWithBlanks(item: QuizItem): Promise<QuizItem> {
