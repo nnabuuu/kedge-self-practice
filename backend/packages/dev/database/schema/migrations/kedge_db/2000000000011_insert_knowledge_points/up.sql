@@ -1,7 +1,5 @@
--- Delete existing knowledge points to avoid conflicts
-DELETE FROM kedge_practice.knowledge_points;
-
--- Insert all knowledge points from Excel file
+-- Insert or update knowledge points
+-- If the ID already exists, update the content to ensure volume names are standardized
 INSERT INTO kedge_practice.knowledge_points (id, topic, volume, unit, lesson, sub) VALUES
 ('kp_1', '旧石器时代与新石器文明', '中外历史纲要上', '第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固', '第1课 中华文明的起源与早期国家', '第一子目 石器时代的古人类和文化遗存'),
 ('kp_2', '原始社会的组织形态', '中外历史纲要上', '第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固', '第1课 中华文明的起源与早期国家', '第一子目 石器时代的古人类和文化遗存'),
@@ -502,4 +500,11 @@ INSERT INTO kedge_practice.knowledge_points (id, topic, volume, unit, lesson, su
 ('kp_502', '文化多样性', '中外历史纲要下', '第九单元 当代世界发展的特点与主要趋势', '第22课 世界多极化与经济全球化', '第三子目 社会信息化和文化多样性'),
 ('kp_503', '和平与发展的时代主题', '中外历史纲要下', '第九单元 当代世界发展的特点与主要趋势', '第23课 和平发展合作共赢的时代潮流', '第一子目 和平与发展的时代主题'),
 ('kp_504', '问题和挑战', '中外历史纲要下', '第九单元 当代世界发展的特点与主要趋势', '第23课 和平发展合作共赢的时代潮流', '第二子目 人类发展面临的问题'),
-('kp_505', '人类命运共同体', '中外历史纲要下', '第九单元 当代世界发展的特点与主要趋势', '第23课 和平发展合作共赢的时代潮流', '第三子目 在合作共赢中促进全球共同发展');
+('kp_505', '人类命运共同体', '中外历史纲要下', '第九单元 当代世界发展的特点与主要趋势', '第23课 和平发展合作共赢的时代潮流', '第三子目 在合作共赢中促进全球共同发展')
+ON CONFLICT (id) DO UPDATE SET
+  topic = EXCLUDED.topic,
+  volume = EXCLUDED.volume,
+  unit = EXCLUDED.unit,
+  lesson = EXCLUDED.lesson,
+  sub = EXCLUDED.sub,
+  updated_at = NOW();
