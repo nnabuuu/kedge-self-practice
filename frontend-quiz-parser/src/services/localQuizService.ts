@@ -106,13 +106,18 @@ export const getQuizAttachmentUrl = (path: string): string => {
 // Extract quiz using GPT (local backend)
 export const extractQuizFromParagraphsLocal = async (
   paragraphs: ParagraphData[],
-  images?: string[]
+  images?: string[],
+  options?: {
+    targetTypes?: Array<'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective'>;
+    maxItems?: number;
+  }
 ): Promise<QuizItem[]> => {
   const response = await apiFetch('/gpt/extract-quiz', {
     method: 'POST',
     body: JSON.stringify({ 
       paragraphs,
       images: images || [],
+      options: options || {},
     }),
   });
   

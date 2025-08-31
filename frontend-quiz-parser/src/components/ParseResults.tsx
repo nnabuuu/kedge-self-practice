@@ -6,9 +6,10 @@ interface ParseResultsProps {
   results: ParagraphData[];
   onReset?: () => void;
   onGenerateQuiz?: () => void;
+  disabled?: boolean;
 }
 
-export const ParseResults: React.FC<ParseResultsProps> = ({ results, onReset, onGenerateQuiz }) => {
+export const ParseResults: React.FC<ParseResultsProps> = ({ results, onReset, onGenerateQuiz, disabled = false }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const renderHighlightedText = (paragraph: string, highlighted: Array<{text: string; color: string}>) => {
     if (highlighted.length === 0) return paragraph;
@@ -135,18 +136,19 @@ export const ParseResults: React.FC<ParseResultsProps> = ({ results, onReset, on
             
             <button
               onClick={async () => {
-                if (!isGenerating && onGenerateQuiz) {
+                if (!isGenerating && !disabled && onGenerateQuiz) {
                   setIsGenerating(true);
                   await onGenerateQuiz();
                   setIsGenerating(false);
                 }
               }}
-              disabled={isGenerating}
+              disabled={isGenerating || disabled}
               className={`flex items-center gap-2 px-6 py-3 text-white rounded-lg font-medium transition-colors ${
-                isGenerating 
+                (isGenerating || disabled)
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
+              title={disabled ? '请至少选择一种题目类型' : ''}
             >
               {isGenerating ? (
                 <>

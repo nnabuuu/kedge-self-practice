@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { GptService, LLMService } from '@kedge/quiz-parser';
-import { QuizItem, GptParagraphBlock } from '@kedge/models';
+import { QuizItem, GptParagraphBlock, QuizExtractionOptions } from '@kedge/models';
 
 @UseGuards(JwtAuthGuard, TeacherGuard)
 @Controller('gpt')
@@ -16,6 +16,7 @@ export class GptController {
     @Body()
     body: {
       paragraphs: GptParagraphBlock[];
+      options?: QuizExtractionOptions;
     },
   ) {
     console.log('=== DIRECT GPT Controller Debug ===');
@@ -71,11 +72,17 @@ export class GptController {
       console.log('After cleaning - estimated tokens:', Math.ceil(cleanedSize / 4));
       
       console.log('=== Calling GPT service with cleaned data ===');
-      return this.llmService.extractQuizItems(cleanedParagraphs);
+      if (body.options?.targetTypes) {
+        console.log('Filtering for quiz types:', body.options.targetTypes);
+      }
+      return this.llmService.extractQuizItems(cleanedParagraphs, body.options);
     }
     
     console.log('=== Calling GPT service from direct controller ===');
-    return this.llmService.extractQuizItems(body.paragraphs);
+    if (body.options?.targetTypes) {
+      console.log('Filtering for quiz types:', body.options.targetTypes);
+    }
+    return this.llmService.extractQuizItems(body.paragraphs, body.options);
   }
 
   @Post('polish-quiz')

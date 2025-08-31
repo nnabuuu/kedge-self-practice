@@ -5,6 +5,7 @@ import { QuizDisplay } from './components/QuizDisplay';
 import { KnowledgePointMatching } from './components/KnowledgePointMatching';
 import { Footer } from './components/Footer';
 import { AuthModal } from './components/AuthModal';
+import { QuizTypeSelector, QuizType } from './components/QuizTypeSelector';
 import { 
   uploadDocxFileWithImages, 
   extractQuizFromParagraphsLocal,
@@ -32,6 +33,9 @@ function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
+  const [selectedQuizTypes, setSelectedQuizTypes] = useState<QuizType[]>([
+    'single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'
+  ]);
 
   useEffect(() => {
     // Check for shared token from URL parameters (from frontend-practice)
@@ -178,8 +182,14 @@ function App() {
         message: '正在通过 AI 分析内容生成题目（预计 10-30 秒）...',
       });
 
-      // Use backend with image support
-      let items = await extractQuizFromParagraphsLocal(parseResults, extractedImages);
+      // Use backend with image support and quiz type filtering
+      let items = await extractQuizFromParagraphsLocal(
+        parseResults, 
+        extractedImages,
+        {
+          targetTypes: selectedQuizTypes.length > 0 ? selectedQuizTypes : undefined
+        }
+      );
       
       console.log('=== Quiz Generation Debug ===');
       console.log('Generated quiz items:', items);
@@ -420,10 +430,20 @@ function App() {
 
         {currentStep === 'parse' && (
           <div className="space-y-8">
+            {/* Quiz Type Selector */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <QuizTypeSelector
+                selectedTypes={selectedQuizTypes}
+                onChange={setSelectedQuizTypes}
+              />
+            </div>
+            
+            {/* Parse Results */}
             <ParseResults 
               results={parseResults}
               onReset={handleReset}
               onGenerateQuiz={handleGenerateQuiz}
+              disabled={selectedQuizTypes.length === 0}
             />
           </div>
         )}
