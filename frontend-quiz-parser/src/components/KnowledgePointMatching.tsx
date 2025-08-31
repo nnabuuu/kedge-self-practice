@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { QuizItem, QuizWithKnowledgePoint, KnowledgePointMatchResult } from '../types/quiz';
 import { matchKnowledgePoint } from '../services/localQuizService';
-import { Brain, BookOpen, CheckCircle, AlertCircle, Loader2, ArrowRight, Target, ChevronDown, ChevronUp, Tag, Globe, Crown, Search, Edit3, X, Check } from 'lucide-react';
+import { Brain, BookOpen, CheckCircle, AlertCircle, Loader2, ArrowRight, Target, ChevronDown, ChevronUp, Tag, Globe, Crown, Search, Edit3, X, Check, RefreshCw } from 'lucide-react';
 import { QuizImageDisplay } from './QuizImageDisplay';
 
 interface KnowledgePointMatchingProps {
@@ -65,6 +65,72 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
       if (i < items.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
+    }
+    
+    setIsCompleted(true);
+  };
+
+  // Re-match a single quiz item
+  const rematchSingleItem = async (index: number) => {
+    const updatedItems = [...quizWithKnowledgePoints];
+    updatedItems[index] = { ...updatedItems[index], matchingStatus: 'loading' };
+    setQuizWithKnowledgePoints(updatedItems);
+    
+    try {
+      const matchingResult = await matchKnowledgePoint(updatedItems[index]);
+      updatedItems[index] = {
+        ...updatedItems[index],
+        knowledgePoint: matchingResult.matched,
+        matchingResult,
+        matchingStatus: 'success'
+      };
+    } catch (error) {
+      console.error(`Re-match failed for item ${index}:`, error);
+      updatedItems[index] = {
+        ...updatedItems[index],
+        matchingStatus: 'error'
+      };
+    }
+    
+    setQuizWithKnowledgePoints(updatedItems);
+  };
+
+  // Re-match all failed items
+  const rematchAllFailed = async () => {
+    const failedIndices = quizWithKnowledgePoints
+      .map((item, index) => item.matchingStatus === 'error' ? index : -1)
+      .filter(index => index !== -1);
+    
+    if (failedIndices.length === 0) return;
+    
+    setIsCompleted(false);
+    const updatedItems = [...quizWithKnowledgePoints];
+    
+    for (const index of failedIndices) {
+      setCurrentMatchingIndex(index);
+      updatedItems[index] = { ...updatedItems[index], matchingStatus: 'loading' };
+      setQuizWithKnowledgePoints([...updatedItems]);
+      
+      try {
+        const matchingResult = await matchKnowledgePoint(updatedItems[index]);
+        updatedItems[index] = {
+          ...updatedItems[index],
+          knowledgePoint: matchingResult.matched,
+          matchingResult,
+          matchingStatus: 'success'
+        };
+      } catch (error) {
+        console.error(`Re-match failed for item ${index}:`, error);
+        updatedItems[index] = {
+          ...updatedItems[index],
+          matchingStatus: 'error'
+        };
+      }
+      
+      setQuizWithKnowledgePoints([...updatedItems]);
+      
+      // Add delay between requests
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     setIsCompleted(true);
@@ -261,6 +327,10 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
   const successCount = quizWithKnowledgePoints.filter(item => 
     item.matchingStatus === 'success'
   ).length;
+  
+  const errorCount = quizWithKnowledgePoints.filter(item => 
+    item.matchingStatus === 'error'
+  ).length;
 
   return (
     <div className="w-full max-w-6xl mx-auto">
@@ -298,8 +368,26 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
               />
             </div>
             {isCompleted && (
-              <div className="mt-2 text-sm text-emerald-600">
-                ✅ 匹配完成！成功匹配 {successCount} 个知识点
+              <div className="mt-2 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-emerald-600">
+                    ✅ 匹配完成！成功匹配 {successCount} 个知识点
+                  </span>
+                  {errorCount > 0 && (
+                    <span className="text-sm text-red-600">
+                      ❌ {errorCount} 个匹配失败
+                    </span>
+                  )}
+                </div>
+                {errorCount > 0 && (
+                  <button
+                    onClick={rematchAllFailed}
+                    className="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-1" />
+                    重新匹配失败项 ({errorCount})
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -310,11 +398,35 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
               <div key={index} className="bg-gray-50 rounded-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">题目 #{index + 1}</h3>
-                  {getStatusIcon(item.matchingStatus || 'pending')}
+                  <div className="flex items-center gap-2">
+                    {item.matchingStatus === 'error' && (
+                      <button
+                        onClick={() => rematchSingleItem(index)}
+                        className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                      >
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                        重试
+                      </button>
+                    )}
+                    {getStatusIcon(item.matchingStatus || 'pending')}
+                  </div>
                 </div>
                 
                 {/* Quiz Content */}
                 {renderQuizContent(item)}
+                
+                {/* Error State */}
+                {item.matchingStatus === 'error' && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                      <span className="font-medium text-red-700">匹配失败</span>
+                    </div>
+                    <p className="text-sm text-red-600 mt-2">
+                      无法匹配到合适的知识点。请检查网络连接或稍后重试。
+                    </p>
+                  </div>
+                )}
                 
                 {/* Matching Results */}
                 {item.matchingStatus === 'success' && item.matchingResult && (
@@ -328,13 +440,22 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                             {item.matchingResult.matched ? '匹配的知识点' : '无合适匹配'}
                           </span>
                         </div>
-                        <button
-                          onClick={() => toggleEditingMode(index)}
-                          className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
-                        >
-                          <Edit3 className="w-4 h-4 mr-1" />
-                          {editingKnowledgePoint[index] ? '取消编辑' : '手动调整'}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => rematchSingleItem(index)}
+                            className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                          >
+                            <RefreshCw className="w-3 h-3 mr-1" />
+                            重新匹配
+                          </button>
+                          <button
+                            onClick={() => toggleEditingMode(index)}
+                            className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                          >
+                            <Edit3 className="w-4 h-4 mr-1" />
+                            {editingKnowledgePoint[index] ? '取消编辑' : '手动调整'}
+                          </button>
+                        </div>
                       </div>
                       
                       {item.matchingResult.matched ? (
