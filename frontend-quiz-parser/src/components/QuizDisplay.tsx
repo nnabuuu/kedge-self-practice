@@ -3,6 +3,7 @@ import { QuizItem } from '../types/quiz';
 import { Brain, CheckCircle, Edit3, List, FileText, HelpCircle, Wand2, RefreshCw, Loader2, Undo2, RotateCcw, Sparkles } from 'lucide-react';
 import { polishQuizItem, changeQuizType } from '../services/localQuizService';
 import { QuizImageDisplay } from './QuizImageDisplay';
+import { EditableQuizItem } from './EditableQuizItem';
 
 interface QuizDisplayProps {
   quizItems: QuizItem[];
@@ -179,6 +180,12 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
     );
   };
 
+  const handleManualEdit = (globalIndex: number, updatedItem: QuizItem) => {
+    // Save current version to history before updating
+    saveToHistory(globalIndex, quizItems[globalIndex]);
+    onQuizItemUpdate?.(globalIndex, updatedItem);
+  };
+
   const renderEditingOptions = (item: QuizItem, globalIndex: number) => {
     const polishLoading = loadingStates[`polish-${globalIndex}`];
     const changeLoading = loadingStates[`change-${globalIndex}`];
@@ -187,6 +194,11 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
     return (
       <div className="mt-4 pt-4 border-t border-gray-200">
         <div className="flex flex-wrap gap-2">
+          <EditableQuizItem
+            item={item}
+            onSave={(updatedItem) => handleManualEdit(globalIndex, updatedItem)}
+          />
+          
           <button
             onClick={() => handlePolishQuestion(item, globalIndex)}
             disabled={isLoading || batchPolishing}
