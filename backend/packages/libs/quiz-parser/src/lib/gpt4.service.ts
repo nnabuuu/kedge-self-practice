@@ -28,7 +28,9 @@ export class GPT4Service {
 2. 题型包括：single-choice（单选）、multiple-choice（多选）、fill-in-the-blank（填空）、subjective（主观题）
 3. 填空题的空格用至少4个下划线表示（____）
 4. 确保题目符合中学生的认知水平
-5. 返回 JSON 格式，包含 items 数组`;
+5. 所有题目都必须包含 options 字段（即使是空数组）
+6. 选择题的 options 需要包含选项，填空题和主观题的 options 可以是空数组
+7. 返回 JSON 格式，包含 items 数组`;
 
     const schema = {
       name: 'quiz_extraction',
@@ -60,7 +62,8 @@ export class GPT4Service {
                   ],
                 },
               },
-              required: ['type', 'question', 'answer'],
+              // In strict mode, ALL properties must be in required array
+              required: ['type', 'question', 'options', 'answer'],
             },
           },
         },
@@ -104,10 +107,23 @@ export class GPT4Service {
   }
 
   async polishQuizItem(item: QuizItem, userGuidance?: string): Promise<QuizItem> {
-    let prompt = `你是一名教育编辑助手，请在保持题目含义、选项和答案不变的情况下润色题干，使其表述更完整或更具有场景感。只修改 question 字段，返回 JSON。`;
+    let prompt = `你是一名教育编辑助手，请在保持题目含义、选项和答案不变的情况下润色题干，使其表述更完整或更具有场景感。
+
+要求：
+1. 只修改 question 字段
+2. 保持 type, options, answer 字段完全不变
+3. options 字段必须存在（即使是空数组）
+4. 返回完整的 JSON 对象`;
     
     if (userGuidance) {
-      prompt = `你是一名教育编辑助手。用户要求：${userGuidance}\n\n请按照用户的要求修改题目，返回 JSON。`;
+      prompt = `你是一名教育编辑助手。
+
+用户要求：${userGuidance}
+
+注意：
+1. 请按照用户的要求修改题目
+2. options 字段必须存在（即使是空数组）
+3. 返回完整的 JSON 对象`;
     }
 
     const schema = {
@@ -131,7 +147,8 @@ export class GPT4Service {
             ],
           },
         },
-        required: ['type', 'question', 'answer'],
+        // In strict mode, ALL properties must be in required array
+        required: ['type', 'question', 'options', 'answer'],
       },
     } as const;
 
@@ -179,7 +196,8 @@ export class GPT4Service {
 1. 保持题目的核心知识点不变
 2. 根据新题型调整题目格式
 3. 填空题使用至少4个下划线（____）表示空格
-4. 返回完整的 JSON 格式`;
+4. options 字段必须存在：选择题需要4个选项，填空题和主观题可以是空数组
+5. 返回完整的 JSON 格式，包含 type, question, options, answer 所有字段`;
 
     const schema = {
       name: 'change_quiz_type',
@@ -199,7 +217,8 @@ export class GPT4Service {
             ],
           },
         },
-        required: ['type', 'question', 'answer'],
+        // In strict mode, ALL properties must be in required array
+        required: ['type', 'question', 'options', 'answer'],
       },
     } as const;
 
@@ -249,6 +268,11 @@ export class GPT4Service {
 
   private postProcessQuizItems(items: QuizItem[]): QuizItem[] {
     return items.map(item => {
+      // Ensure options always exists (required by strict schema)
+      if (!item.options) {
+        item.options = [];
+      }
+      
       // Ensure fill-in-the-blank questions have proper blanks
       if (item.type === 'fill-in-the-blank') {
         const blanksCount = (item.question.match(/____+/g) || []).length;
@@ -262,9 +286,9 @@ export class GPT4Service {
         }
       }
       
-      // Ensure options exist for choice questions
-      if ((item.type === 'single-choice' || item.type === 'multiple-choice') && !item.options) {
-        item.options = [];
+      // Warn if choice questions don't have options
+      if ((item.type === 'single-choice' || item.type === 'multiple-choice') && item.options.length === 0) {
+        console.warn(`${item.type} question missing options:`, item.question);
       }
       
       return item;
