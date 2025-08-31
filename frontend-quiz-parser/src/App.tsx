@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileUploader } from './components/FileUploader';
-import { ParseResults } from './components/ParseResults';
+import { EditableParseResults } from './components/EditableParseResults';
 import { QuizDisplay } from './components/QuizDisplay';
 import { KnowledgePointMatching } from './components/KnowledgePointMatching';
 import { Footer } from './components/Footer';
@@ -171,9 +171,12 @@ function App() {
     }
   };
 
-  const handleGenerateQuiz = async () => {
+  const handleGenerateQuiz = async (updatedResults?: ParagraphData[]) => {
     setIsProcessing(true);
     setProcessingMessage('正在通过 AI 分析生成题目，请耐心等待...');
+    
+    // Use updated results if provided (from EditableParseResults), otherwise use original
+    const resultsToUse = updatedResults || parseResults;
     
     try {
       setUploadStatus({
@@ -184,7 +187,7 @@ function App() {
 
       // Use backend with image support and quiz type filtering
       let items = await extractQuizFromParagraphsLocal(
-        parseResults, 
+        resultsToUse, 
         extractedImages,
         {
           targetTypes: selectedQuizTypes.length > 0 ? selectedQuizTypes : undefined
@@ -439,7 +442,7 @@ function App() {
             </div>
             
             {/* Parse Results */}
-            <ParseResults 
+            <EditableParseResults 
               results={parseResults}
               onReset={handleReset}
               onGenerateQuiz={handleGenerateQuiz}
