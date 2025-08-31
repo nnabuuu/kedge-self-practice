@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { GptParagraphBlock, QuizItem, QuizExtractionResult } from '@kedge/models';
 import { getOpenAIConfig, getModelConfig, getLLMProvider, getAutoBaseURL } from '@kedge/configs';
-import { createChatCompletionParams } from './openai-utils';
+import { createChatCompletionParams, supportsJsonSchema } from './openai-utils';
 
 @Injectable()
 export class GptService {
@@ -145,6 +145,22 @@ export class GptService {
     } as const;
 
     const modelConfig = getModelConfig('quizParser');
+    
+    // Determine response format based on model capabilities
+    const responseFormat = supportsJsonSchema(modelConfig.model)
+      ? {
+          type: 'json_schema' as const,
+          json_schema: schema,
+        }
+      : {
+          type: 'json_object' as const,
+        };
+    
+    // Add JSON format instruction to prompt if not using json_schema
+    const finalPrompt = !supportsJsonSchema(modelConfig.model)
+      ? prompt + '\n\n请确保返回严格的JSON格式，包含一个items数组。\n\n' + JSON.stringify(paragraphs, null, 2)
+      : prompt + '\n\n' + JSON.stringify(paragraphs, null, 2);
+    
     const completionParams = createChatCompletionParams({
       model: modelConfig.model,
       temperature: modelConfig.temperature,
@@ -152,13 +168,10 @@ export class GptService {
       messages: [
         {
           role: 'user',
-          content: prompt + '\n\n' + JSON.stringify(paragraphs, null, 2),
+          content: finalPrompt,
         },
       ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: schema,
-      },
+      response_format: responseFormat,
     }, modelConfig.maxTokens);
     const response = await this.openai.chat.completions.create(completionParams);
 
@@ -277,12 +290,18 @@ ${JSON.stringify(item, null, 2)}
 
     try {
       const modelConfig = getModelConfig('quizRenderer');
+      
+      // Determine response format based on model capabilities
+      const responseFormat = supportsJsonSchema(modelConfig.model)
+        ? { type: 'json_schema' as const, json_schema: schema }
+        : { type: 'json_object' as const };
+      
       const completionParams = createChatCompletionParams({
         model: modelConfig.model,
         temperature: modelConfig.temperature || 0.3,
         top_p: modelConfig.topP,
         messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_schema', json_schema: schema },
+        response_format: responseFormat,
       }, modelConfig.maxTokens || 500);
 
       const response = await this.openai.chat.completions.create(completionParams);
@@ -334,12 +353,18 @@ ${JSON.stringify(item, null, 2)}
     } as const;
 
     const modelConfig = getModelConfig('quizRenderer');
+    
+    // Determine response format based on model capabilities
+    const responseFormat = supportsJsonSchema(modelConfig.model)
+      ? { type: 'json_schema' as const, json_schema: schema }
+      : { type: 'json_object' as const };
+    
     const completionParams = createChatCompletionParams({
       model: modelConfig.model,
       temperature: modelConfig.temperature,
       top_p: modelConfig.topP,
       messages: [{ role: 'user', content: prompt + '\n\n' + JSON.stringify(item) }],
-      response_format: { type: 'json_schema', json_schema: schema },
+      response_format: responseFormat,
     }, modelConfig.maxTokens);
     const response = await this.openai.chat.completions.create(completionParams);
 
@@ -404,12 +429,18 @@ ${JSON.stringify(item, null, 2)}
     } as const;
 
     const modelConfig = getModelConfig('quizRenderer');
+    
+    // Determine response format based on model capabilities
+    const responseFormat = supportsJsonSchema(modelConfig.model)
+      ? { type: 'json_schema' as const, json_schema: schema }
+      : { type: 'json_object' as const };
+    
     const completionParams = createChatCompletionParams({
       model: modelConfig.model,
       temperature: modelConfig.temperature,
       top_p: modelConfig.topP,
       messages: [{ role: 'user', content: prompt + '\n\n' + JSON.stringify(item) }],
-      response_format: { type: 'json_schema', json_schema: schema },
+      response_format: responseFormat,
     }, modelConfig.maxTokens);
     const response = await this.openai.chat.completions.create(completionParams);
 

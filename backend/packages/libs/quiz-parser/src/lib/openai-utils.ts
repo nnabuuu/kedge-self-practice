@@ -11,6 +11,18 @@ const NEW_MODELS = [
 ];
 
 /**
+ * Models that support json_schema response format
+ * Other models should use json_object or text format
+ */
+const JSON_SCHEMA_MODELS = [
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-4o-2024-08-06',
+  'gpt-4o-2024-05-13',
+  'gpt-4o-mini-2024-07-18',
+];
+
+/**
  * Determines if a model is one of the newer models with restrictions
  */
 function isNewModel(model: string): boolean {
@@ -33,6 +45,14 @@ function supportsMaxCompletionTokens(model: string): boolean {
  */
 function supportsCustomTemperature(model: string): boolean {
   return !isNewModel(model);
+}
+
+/**
+ * Determines if a model supports json_schema response format
+ * Only specific GPT-4o models support this feature
+ */
+export function supportsJsonSchema(model: string): boolean {
+  return JSON_SCHEMA_MODELS.some(m => model.toLowerCase().includes(m.toLowerCase()));
 }
 
 /**

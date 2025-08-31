@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { GptParagraphBlock, QuizItem } from '@kedge/models';
 import { getLLMProvider, LLMProvider, getModelConfig, getOpenAIConfig, getAutoBaseURL } from '@kedge/configs';
 import { GptService } from './gpt.service';
+import { GPT4Service } from './gpt4.service';
+import { GPT5Service } from './gpt5.service';
 import { DeepSeekService } from './deepseek.service';
 
 /**
@@ -11,7 +13,9 @@ import { DeepSeekService } from './deepseek.service';
 @Injectable()
 export class LLMService {
   constructor(
-    private readonly gptService: GptService,
+    private readonly gptService: GptService, // Legacy, will be removed
+    private readonly gpt4Service: GPT4Service,
+    private readonly gpt5Service: GPT5Service,
     private readonly deepseekService: DeepSeekService,
   ) {
     const provider = this.getProvider();
@@ -20,23 +24,46 @@ export class LLMService {
   }
 
   /**
+   * Determine which service to use based on the model name
+   * - deepseek-* -> DeepSeek service (json_object)
+   * - o1-*, gpt-5-* -> GPT5 service (limited params, json_object)
+   * - gpt-4*, gpt-3.5-* -> GPT4 service (json_schema)
+   */
+  private getServiceForModel(modelName: string): 'gpt4' | 'gpt5' | 'deepseek' {
+    const model = modelName.toLowerCase();
+    
+    // DeepSeek models
+    if (model.includes('deepseek')) {
+      return 'deepseek';
+    }
+    
+    // O1 and newer models (GPT-5 category)
+    if (model.includes('o1-') || model.includes('gpt-5')) {
+      return 'gpt5';
+    }
+    
+    // GPT-4 and GPT-4o models (supports json_schema)
+    // This includes: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo
+    return 'gpt4';
+  }
+
+  /**
    * Extract quiz items from paragraphs using the appropriate LLM provider
-   * Provider is determined by model name prefix:
-   * - gpt-*, o1-*, chatgpt-* -> OpenAI
-   * - deepseek-* -> DeepSeek
    */
   async extractQuizItems(paragraphs: GptParagraphBlock[]): Promise<QuizItem[]> {
-    const provider = getLLMProvider('quizParser');
     const modelConfig = getModelConfig('quizParser');
+    const service = this.getServiceForModel(modelConfig.model);
     
-    console.log(`Using ${provider} provider with model ${modelConfig.model} for quiz extraction`);
+    console.log(`Using ${service} service with model ${modelConfig.model} for quiz extraction`);
     
-    switch (provider) {
+    switch (service) {
       case 'deepseek':
         return this.deepseekService.extractQuizItems(paragraphs);
-      case 'openai':
+      case 'gpt5':
+        return this.gpt5Service.extractQuizItems(paragraphs);
+      case 'gpt4':
       default:
-        return this.gptService.extractQuizItems(paragraphs);
+        return this.gpt4Service.extractQuizItems(paragraphs);
     }
   }
 

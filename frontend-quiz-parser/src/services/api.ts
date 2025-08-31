@@ -1,5 +1,7 @@
 // API configuration and utilities
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718/v1';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
+const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
+const API_BASE_URL = `${BASE_URL}/${API_VERSION}`;
 
 // Store JWT token in memory and localStorage
 let authToken: string | null = null;
