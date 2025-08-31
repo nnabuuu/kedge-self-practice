@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
-import { GptParagraphBlock, QuizItem, QuizExtractionResult } from '@kedge/models';
+import { GptParagraphBlock, QuizItem, QuizExtractionResult, QuizExtractionOptions } from '@kedge/models';
 import { getDeepSeekConfig, getModelConfig, getAutoBaseURL } from '@kedge/configs';
+
+type GeneratableQuizType = 'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective';
 
 @Injectable()
 export class DeepSeekService {
@@ -18,7 +20,10 @@ export class DeepSeekService {
     });
   }
 
-  async extractQuizItems(paragraphs: GptParagraphBlock[]): Promise<QuizItem[]> {
+  async extractQuizItems(
+    paragraphs: GptParagraphBlock[], 
+    options?: QuizExtractionOptions
+  ): Promise<QuizItem[]> {
     console.log('=== DeepSeek Input Debug ===');
     console.log('Number of paragraphs:', paragraphs.length);
 
@@ -42,6 +47,21 @@ export class DeepSeekService {
       paragraphs = paragraphs.slice(0, 10);
     }
 
+    // Build allowed types based on options (excluding 'other' type)
+    const allowedTypes: GeneratableQuizType[] = options?.targetTypes && options.targetTypes.length > 0 
+      ? (options.targetTypes as GeneratableQuizType[])
+      : ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'];
+    
+    const typeDescriptions = allowedTypes.map(type => {
+      switch(type) {
+        case 'single-choice': return '"single-choice"（单选题）';
+        case 'multiple-choice': return '"multiple-choice"（多选题）';
+        case 'fill-in-the-blank': return '"fill-in-the-blank"（填空题）';
+        case 'subjective': return '"subjective"（主观题）';
+        default: return `"${type}"`;
+      }
+    }).join('、');
+
     // Create prompt with JSON example for DeepSeek
     const systemPrompt = `你是一个教育出题助手。你的任务是从提供的段落中提取题目，并严格基于高亮部分生成题干和答案。
 
@@ -54,9 +74,10 @@ export class DeepSeekService {
 6. 若原文中未明确列出多个选项但包含高亮词汇，作为"填空题"处理
 7. 若原文中出现大段答案结果且仅有一处高亮，作为"主观题"处理
 8. 去除题干/选项/答案开头的编号（如"1."、"①"、"A."等）
+9. 只生成以下题型：${typeDescriptions}
 
 请输出 JSON 格式，包含 items 数组，每个题目包含：
-- type: "single-choice"、"multiple-choice"、"fill-in-the-blank"、"subjective" 或 "other"
+- type: ${typeDescriptions}
 - question: 题干
 - options: 选项数组（仅选择题需要）
 - answer: 答案（选择题为索引数组，填空题为字符串数组，其他为字符串）
@@ -117,7 +138,19 @@ ${JSON.stringify(paragraphs, null, 2)}`;
 
       try {
         const parsed: QuizExtractionResult = JSON.parse(content);
-        const items = parsed.items ?? [];
+        let items = parsed.items ?? [];
+        
+        // Filter to only requested types if specified (excluding 'other' type)
+        if (options?.targetTypes && options.targetTypes.length > 0) {
+          items = items.filter(item => 
+            item.type !== 'other' && options.targetTypes!.includes(item.type as any)
+          );
+        }
+        
+        // Apply max items limit if specified
+        if (options?.maxItems && items.length > options.maxItems) {
+          items = items.slice(0, options.maxItems);
+        }
         
         // Process fill-in-the-blank questions
         const processedItems: QuizItem[] = [];

@@ -1,7 +1,4 @@
-/**
- * Quiz type options for extraction
- */
-export type QuizType = 'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective';
+import { QuizType } from '../quiz/quiz-item.schema';
 
 /**
  * Options for quiz extraction
@@ -10,8 +7,9 @@ export interface QuizExtractionOptions {
   /**
    * Target quiz types to generate
    * If not specified or empty, all types will be generated
+   * Note: 'other' type is excluded from generation options
    */
-  targetTypes?: QuizType[];
+  targetTypes?: Exclude<QuizType, 'other'>[];
   
   /**
    * Maximum number of quiz items to generate

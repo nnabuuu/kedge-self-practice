@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
-import { GptParagraphBlock, QuizItem, QuizExtractionResult, QuizExtractionOptions, QuizType } from '@kedge/models';
+import { GptParagraphBlock, QuizItem, QuizExtractionResult, QuizExtractionOptions } from '@kedge/models';
 import { getOpenAIConfig, getModelConfig } from '@kedge/configs';
+
+type GeneratableQuizType = 'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective';
 
 /**
  * GPT-5 Service - For O1, O1-mini and future models
@@ -28,10 +30,10 @@ export class GPT5Service {
     paragraphs: GptParagraphBlock[], 
     options?: QuizExtractionOptions
   ): Promise<QuizItem[]> {
-    // Build allowed types based on options
-    const allowedTypes = options?.targetTypes && options.targetTypes.length > 0 
-      ? options.targetTypes 
-      : ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'] as QuizType[];
+    // Build allowed types based on options (excluding 'other' type)
+    const allowedTypes: GeneratableQuizType[] = options?.targetTypes && options.targetTypes.length > 0 
+      ? (options.targetTypes as GeneratableQuizType[])
+      : ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'];
     
     const typeDescriptions = allowedTypes.map(type => {
       switch(type) {
@@ -93,9 +95,11 @@ export class GPT5Service {
         const parsed: QuizExtractionResult = JSON.parse(content);
         let items = parsed.items ?? [];
         
-        // Filter to only requested types if specified
+        // Filter to only requested types if specified (excluding 'other' type)
         if (options?.targetTypes && options.targetTypes.length > 0) {
-          items = items.filter(item => options.targetTypes!.includes(item.type as QuizType));
+          items = items.filter(item => 
+            item.type !== 'other' && options.targetTypes!.includes(item.type as any)
+          );
         }
         
         // Apply max items limit if specified
