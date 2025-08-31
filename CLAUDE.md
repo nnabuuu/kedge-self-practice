@@ -27,7 +27,7 @@ This is a self-practice learning platform designed for middle school students to
 # Start API server (port 8718)
 nx run api-server:serve
 
-# Build all packages
+# Build all packages - ALWAYS RUN THIS AFTER BACKEND CHANGES!
 nx run-many --target=build --all
 
 # Build specific package
@@ -44,6 +44,9 @@ nx run-many --target=lint --all
 # Format code (using prettier)
 npx prettier --write "**/*.{ts,tsx,js,jsx,json,md}"
 ```
+
+### ⚠️ IMPORTANT: Type Checking After Backend Changes
+**ALWAYS run `nx run-many --target=build --all` after modifying any backend code** to ensure all type checks pass across the entire monorepo. This catches type errors that might not be visible in a single package build due to the interdependencies between packages.
 
 ### Database Operations
 ```bash
