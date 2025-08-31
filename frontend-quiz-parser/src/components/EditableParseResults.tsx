@@ -210,8 +210,10 @@ export const EditableParseResults: React.FC<EditableParseResultsProps> = ({
     }
   };
 
-  // Filter out empty paragraphs for display
-  const filteredResults = editableResults.filter(item => item.paragraph.trim() !== '');
+  // Filter out empty paragraphs for display and track original indices
+  const filteredResultsWithIndices = editableResults
+    .map((item, originalIndex) => ({ item, originalIndex }))
+    .filter(({ item }) => item.paragraph.trim() !== '');
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -221,7 +223,7 @@ export const EditableParseResults: React.FC<EditableParseResultsProps> = ({
             <FileText className="w-6 h-6 text-white" />
             <h2 className="text-xl font-bold text-white">解析结果</h2>
             <span className="bg-white/20 text-white px-2 py-1 rounded-full text-sm">
-              {filteredResults.length} 项
+              {filteredResultsWithIndices.length} 项
             </span>
           </div>
         </div>
@@ -244,18 +246,18 @@ export const EditableParseResults: React.FC<EditableParseResultsProps> = ({
           )}
           
           <div className="grid gap-4">
-            {filteredResults.map((item, index) => (
+            {filteredResultsWithIndices.map(({ item, originalIndex }, displayIndex) => (
               <div
-                key={index}
+                key={originalIndex}
                 className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-gray-300 transition-colors"
               >
-                {editingIndex === index ? (
-                  renderEditingItem(item, index)
+                {editingIndex === originalIndex ? (
+                  renderEditingItem(item, displayIndex + 1)
                 ) : (
                   <>
                     <div className="flex items-start space-x-3">
                       <div className="bg-blue-100 text-blue-600 rounded-full p-2 flex-shrink-0">
-                        <span className="text-sm font-bold">{index + 1}</span>
+                        <span className="text-sm font-bold">{displayIndex + 1}</span>
                       </div>
                       <div className="flex-1">
                         <div className="flex items-start justify-between mb-2">
@@ -263,7 +265,7 @@ export const EditableParseResults: React.FC<EditableParseResultsProps> = ({
                             {renderHighlightedText(item.paragraph, item.highlighted)}
                           </p>
                           <button
-                            onClick={() => startEditing(index)}
+                            onClick={() => startEditing(originalIndex)}
                             className="ml-3 inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium hover:bg-gray-200 transition-colors"
                           >
                             <Edit2 className="w-3 h-3 mr-1" />
