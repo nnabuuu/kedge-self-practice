@@ -1,0 +1,136 @@
+/**
+ * Sharp Converter
+ * High-performance image converter for common formats using Sharp library
+ */
+
+import { BaseImageConverter } from './base-converter';
+import { ConversionOptions, ConversionResult } from './image-converter.interface';
+
+export class SharpConverter extends BaseImageConverter {
+  private sharp: any;
+  
+  constructor() {
+    super('Sharp', [
+      'jpeg',
+      'jpg',
+      'png',
+      'webp',
+      'gif',
+      'avif',
+      'tiff',
+      'tif',
+      'svg',
+    ]);
+  }
+  
+  async isAvailable(): Promise<boolean> {
+    try {
+      // Lazy load Sharp to avoid issues if not installed
+      this.sharp = await import('sharp');
+      this.logger.log('Sharp library is available');
+      return true;
+    } catch (error) {
+      this.logger.warn('Sharp library is not available:', error.message);
+      this.logger.warn('Install with: npm install sharp');
+      return false;
+    }
+  }
+  
+  async convertFromBuffer(
+    buffer: Buffer,
+    sourceFormat: string,
+    options: ConversionOptions = {}
+  ): Promise<ConversionResult> {
+    try {
+      if (!this.sharp) {
+        await this.isAvailable();
+        if (!this.sharp) {
+          throw new Error('Sharp library not available');
+        }
+      }
+      
+      let pipeline = this.sharp.default(buffer);
+      
+      // Get input metadata
+      const inputMetadata = await pipeline.metadata();
+      
+      // Resize if specified
+      if (options.width || options.height) {
+        const resizeOptions: any = {
+          width: options.width,
+          height: options.height,
+          fit: options.maintainAspectRatio ? 'inside' : 'fill',
+          withoutEnlargement: true
+        };
+        
+        if (options.background) {
+          resizeOptions.background = options.background;
+        }
+        
+        pipeline = pipeline.resize(resizeOptions);
+      }
+      
+      // Flatten with background if specified (useful for transparent images)
+      if (options.background) {
+        pipeline = pipeline.flatten({ background: options.background });
+      }
+      
+      // Convert to target format
+      const outputFormat = options.format || 'png';
+      let outputBuffer: Buffer;
+      
+      switch (outputFormat) {
+        case 'jpeg':
+        case 'jpg':
+          pipeline = pipeline.jpeg({
+            quality: options.quality || 85,
+            progressive: true
+          });
+          break;
+          
+        case 'png':
+          pipeline = pipeline.png({
+            quality: options.quality || 100,
+            compressionLevel: 9,
+            progressive: true
+          });
+          break;
+          
+        case 'webp':
+          pipeline = pipeline.webp({
+            quality: options.quality || 85,
+            lossless: options.quality === 100
+          });
+          break;
+          
+        default:
+          pipeline = pipeline.png();
+      }
+      
+      outputBuffer = await pipeline.toBuffer();
+      
+      // Get output metadata
+      const outputMetadata = await this.sharp.default(outputBuffer).metadata();
+      
+      return {
+        success: true,
+        outputBuffer,
+        outputFormat,
+        metadata: {
+          width: outputMetadata.width,
+          height: outputMetadata.height,
+          size: outputBuffer.length,
+          originalFormat: inputMetadata.format
+        }
+      };
+      
+    } catch (error) {
+      this.logger.error(`Sharp conversion failed:`, error);
+      return {
+        success: false,
+        outputFormat: options.format || 'png',
+        error: `Sharp conversion failed: ${error.message}`
+      };
+    }
+  }
+}

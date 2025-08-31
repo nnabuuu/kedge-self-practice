@@ -3,6 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { DocxService, EnhancedDocxService, GptService, LLMService } from '@kedge/quiz-parser';
 import { EnhancedQuizStorageService } from '@kedge/quiz';
+import { ImageConverterService } from '@kedge/quiz/converters';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { ParagraphBlock, GptParagraphBlock } from '@kedge/models';
 
@@ -27,6 +28,7 @@ export class DocxController {
     private readonly gptService: GptService,
     private readonly llmService: LLMService,
     private readonly storageService: EnhancedQuizStorageService,
+    private readonly imageConverter: ImageConverterService,
   ) {}
 
   @Get('llm-provider')
@@ -211,22 +213,49 @@ export class DocxController {
     }> = [];
     for (const docxImage of allImages) {
       try {
+        let imageData = docxImage.data;
+        let filename = docxImage.filename;
+        let contentType = docxImage.contentType;
+        
+        // Check if it's an EMF/WMF file that needs conversion
+        const ext = filename.toLowerCase();
+        if (ext.endsWith('.emf') || ext.endsWith('.wmf')) {
+          console.log(`Converting ${filename} from EMF/WMF to PNG...`);
+          
+          const conversionResult = await this.imageConverter.convertEmfWmf(
+            docxImage.data,
+            ext.endsWith('.emf') ? 'emf' : 'wmf',
+            { format: 'png', quality: 95 }
+          );
+          
+          if (conversionResult.success && conversionResult.outputBuffer) {
+            // Use converted image
+            imageData = conversionResult.outputBuffer;
+            filename = filename.replace(/\.(emf|wmf)$/i, '.png');
+            contentType = 'image/png';
+            console.log(`Successfully converted ${docxImage.filename} to PNG`);
+          } else {
+            console.warn(`Failed to convert ${filename}: ${conversionResult.error}`);
+            // Continue with original file, but it may not display
+          }
+        }
+        
         const metadata = await this.storageService.saveAttachment({
-          filename: docxImage.filename,
-          data: docxImage.data,
-          mimetype: docxImage.contentType,
+          filename: filename,
+          data: imageData,
+          mimetype: contentType,
         });
         
         savedImages.push({
           id: metadata.id,
           url: `/v1/attachments/${metadata.storedName}`,
-          filename: docxImage.filename,
+          filename: filename,
           originalDocxId: docxImage.id,
           size: metadata.size,
           contentType: metadata.mimetype,
         });
       } catch (error) {
-        console.error(`Failed to save image ${docxImage.filename}:`, error);
+        console.error(`Failed to process image ${docxImage.filename}:`, error);
       }
     }
     

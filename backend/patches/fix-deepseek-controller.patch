@@ -1,0 +1,33 @@
+--- a/packages/apps/api-server/src/app/controllers/gpt.controller.ts
++++ b/packages/apps/api-server/src/app/controllers/gpt.controller.ts
+@@ -1,12 +1,13 @@
+ import { Body, Controller, Post } from '@nestjs/common';
+ import { ApiTags } from '@nestjs/swagger';
+-import { GptService } from '@kedge/quiz-parser';
++import { GptService, LLMService } from '@kedge/quiz-parser';
+ import { GptParagraphBlock, QuizItem } from '@kedge/models';
+ 
+ @Controller('gpt')
+ @ApiTags('GPT')
+ export class GptController {
+-  constructor(private readonly gptService: GptService) {}
++  constructor(private readonly gptService: GptService,
++              private readonly llmService: LLMService) {}
+ 
+   @Post('extract-quiz')
+   async extractQuiz(@Body() body: { paragraphs: GptParagraphBlock[] }) {
+@@ -68,11 +69,11 @@ export class GptController {
+       });
+       
+       console.log('=== Calling GPT service with cleaned data ===');
+-      return this.gptService.extractQuizItems(cleanedParagraphs);
++      return this.llmService.extractQuizItems(cleanedParagraphs);
+     }
+     
+-    console.log('=== Calling GPT service from direct controller ===');
+-    return this.gptService.extractQuizItems(body.paragraphs);
++    console.log('=== Calling LLM service from direct controller ===');
++    return this.llmService.extractQuizItems(body.paragraphs);
+   }
+ 
+   @Post('polish-quiz')

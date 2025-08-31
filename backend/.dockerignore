@@ -78,7 +78,8 @@ quiz-storage/
 *.sqlite
 *.db
 pgdata/
-data/
+# data/  # Don't ignore - we need the knowledge points Excel files
+!data/knowledge-points*.xlsx
 
 # Backup files
 *.backup

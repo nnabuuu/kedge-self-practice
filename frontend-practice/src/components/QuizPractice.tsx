@@ -245,7 +245,7 @@ export default function QuizPractice({
         // Ensure the URL is absolute
         const absoluteUrl = imageUrl.startsWith('http') 
           ? imageUrl 
-          : `http://localhost:8718${imageUrl}`;
+          : `https://cyez.jiaoshi.one/v1${imageUrl}`;
         
         parts.push(
           <div key={`img-${imageRef}`} className="my-4">

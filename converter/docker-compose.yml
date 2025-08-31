@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  converter:
+    build: .
+    image: docx-emf-converter:latest
+    container_name: docx-converter
+    volumes:
+      - ./input:/app/input
+      - ./output:/app/output
+      - ./temp:/app/temp
+    environment:
+      - NODE_ENV=production
+      - CONVERTER_VERBOSE=true
+    command: ["convert", "/app/input", "-o", "/app/output", "-r", "-v", "--doc-to-docx"]
+    
+  # Web UI service (optional)
+  converter-ui:
+    build: .
+    image: docx-emf-converter:latest
+    container_name: converter-ui
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./input:/app/input
+      - ./output:/app/output
+      - ./uploads:/app/uploads
+    environment:
+      - NODE_ENV=production
+      - WEB_MODE=true
+      - PORT=3000
+    command: ["serve"]
+    profiles:
+      - web

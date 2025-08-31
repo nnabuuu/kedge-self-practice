@@ -10,7 +10,7 @@
 FROM node:20-alpine AS builder
 
 # Build arguments for non-sensitive configuration
-ARG NODE_ENV=production
+ARG NODE_ENV=development
 ARG API_PORT=8718
 
 WORKDIR /app
@@ -22,11 +22,17 @@ RUN npm install -g pnpm@8
 COPY package.json pnpm-lock.yaml nx.json tsconfig.base.json ./
 
 # Install all dependencies (including dev dependencies for build)
-RUN pnpm install --frozen-lockfile
+# Set NODE_ENV to development for the build stage to get all dependencies
+# Skip postinstall script if patch-package fails (no patches to apply)
+RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts && \
+    pnpm run postinstall || true
 
 # Copy source code
 COPY packages ./packages
 COPY tools ./tools
+
+# Copy data files (including knowledge-points-history.xlsx)
+COPY data ./data
 
 # Build all packages in the correct order
 RUN pnpm nx run-many --target=build --all --prod
@@ -34,10 +40,12 @@ RUN pnpm nx run-many --target=build --all --prod
 # Production stage
 FROM node:20-alpine AS production
 
-# Install required runtime packages
+# Install required runtime packages including ImageMagick for image conversion
 RUN apk add --no-cache \
     curl \
     tini \
+    imagemagick \
+    ghostscript \
     && rm -rf /var/cache/apk/*
 
 # Create non-root user
@@ -53,7 +61,8 @@ RUN npm install -g pnpm@8
 COPY package.json pnpm-lock.yaml ./
 
 # Install production dependencies only
-RUN pnpm install --prod --frozen-lockfile && \
+# Skip postinstall since patch-package is a dev dependency
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts && \
     pnpm store prune && \
     npm cache clean --force
 
@@ -61,6 +70,9 @@ RUN pnpm install --prod --frozen-lockfile && \
 COPY --from=builder --chown=kedge:nodejs /app/dist ./dist
 COPY --from=builder --chown=kedge:nodejs /app/nx.json ./
 COPY --from=builder --chown=kedge:nodejs /app/tsconfig.base.json ./
+
+# Copy data files to production
+COPY --from=builder --chown=kedge:nodejs /app/data ./data
 
 # Create necessary directories with proper permissions
 RUN mkdir -p \

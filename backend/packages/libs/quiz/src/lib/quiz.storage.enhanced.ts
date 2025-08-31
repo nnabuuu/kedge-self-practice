@@ -44,8 +44,13 @@ export class EnhancedQuizStorageService {
       'image/webp',
       'image/svg+xml',
       'application/pdf',
+      'image/x-emf',
+      'image/emf',
+      'image/x-wmf',
+      'image/wmf',
+      'application/octet-stream', // EMF/WMF files sometimes come as binary
     ],
-    allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.pdf'],
+    allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.pdf', '.emf', '.wmf'],
   };
 
   /**
@@ -345,6 +350,8 @@ export class EnhancedQuizStorageService {
       '.webp': 'image/webp',
       '.svg': 'image/svg+xml',
       '.pdf': 'application/pdf',
+      '.emf': 'image/x-emf',
+      '.wmf': 'image/x-wmf',
     };
     
     return mimeTypes[ext.toLowerCase()] || 'application/octet-stream';

@@ -4,7 +4,7 @@ export const uploadDocxFile = async (file: File): Promise<ParagraphData[]> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch('https://api.zhushou.one/docx/upload', {
+  const response = await fetch('https://cyez.jiaoshi.one/v1/docx/extract-quiz-with-images', {
     method: 'POST',
     body: formData,
   });
@@ -17,7 +17,7 @@ export const uploadDocxFile = async (file: File): Promise<ParagraphData[]> => {
 };
 
 export const extractQuizFromParagraphs = async (paragraphs: ParagraphData[]): Promise<QuizItem[]> => {
-  const response = await fetch('https://api.zhushou.one/gpt/extract-quiz', {
+  const response = await fetch('https://cyez.jiaoshi.one/v1/quiz/generate', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ export const extractQuizFromParagraphs = async (paragraphs: ParagraphData[]): Pr
 };
 
 export const polishQuizItem = async (item: QuizItem): Promise<QuizItem> => {
-  const response = await fetch('https://api.zhushou.one/gpt/polish-quiz', {
+  const response = await fetch('https://cyez.jiaoshi.one/v1/quiz/polish', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ export const polishQuizItem = async (item: QuizItem): Promise<QuizItem> => {
 };
 
 export const changeQuizType = async (item: QuizItem, newType: 'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective'): Promise<QuizItem> => {
-  const response = await fetch('https://api.zhushou.one/gpt/change-quiz-type', {
+  const response = await fetch('https://cyez.jiaoshi.one/v1/quiz/change-type', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ export const changeQuizType = async (item: QuizItem, newType: 'single-choice' | 
 };
 
 export const matchKnowledgePoint = async (item: QuizItem): Promise<{matched?: KnowledgePoint, candidates: KnowledgePoint[], keywords: string[], country: string, dynasty: string}> => {
-  const response = await fetch('https://api.zhushou.one/knowledge-point/match', {
+  const response = await fetch('https://cyez.jiaoshi.one/v1/knowledge-points/match', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

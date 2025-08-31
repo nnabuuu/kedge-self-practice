@@ -5,6 +5,7 @@ import { QuizRepository } from './quiz.repository';
 import { QuizServiceProvider } from './quiz.service';
 import { QuizStorageService } from './quiz.storage';
 import { EnhancedQuizStorageService } from './quiz.storage.enhanced';
+import { ImageConverterService } from './converters/image-converter.service';
 
 @Module({
   imports: [PersistentModule, KnowledgePointModule],
@@ -13,7 +14,8 @@ import { EnhancedQuizStorageService } from './quiz.storage.enhanced';
     QuizStorageService,
     EnhancedQuizStorageService,
     QuizServiceProvider,
+    ImageConverterService,
   ],
-  exports: [QuizServiceProvider, EnhancedQuizStorageService, QuizRepository],
+  exports: [QuizServiceProvider, EnhancedQuizStorageService, QuizRepository, ImageConverterService],
 })
 export class QuizModule {}

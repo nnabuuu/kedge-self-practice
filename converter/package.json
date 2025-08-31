@@ -1,0 +1,46 @@
+{
+  "name": "docx-emf-converter",
+  "version": "1.0.0",
+  "description": "Convert old DOC/DOCX files with EMF images to modern DOCX with PNG images",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "convert": "ts-node src/index.ts",
+    "diagnose": "ts-node src/diagnose.ts",
+    "clean": "rm -rf dist temp output/*"
+  },
+  "keywords": [
+    "docx",
+    "doc",
+    "emf",
+    "wmf",
+    "image",
+    "converter",
+    "imagemagick"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "adm-zip": "^0.5.10",
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "fs-extra": "^11.2.0",
+    "glob": "^10.3.10",
+    "libreoffice-convert": "^1.5.0",
+    "mammoth": "^1.6.0",
+    "ora": "^5.4.1",
+    "pizzip": "^3.1.4",
+    "sharp": "^0.33.0",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.10.0",
+    "@types/xml2js": "^0.4.14",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.0"
+  }
+}

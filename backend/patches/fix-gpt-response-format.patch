@@ -1,0 +1,48 @@
+--- a/packages/libs/quiz-parser/src/lib/gpt.service.ts
++++ b/packages/libs/quiz-parser/src/lib/gpt.service.ts
+@@ -155,11 +155,29 @@ export class GptService {
+           content: prompt + '\n\n' + JSON.stringify(paragraphs, null, 2),
+         },
+       ],
+-      response_format: {
+-        type: 'json_schema',
+-        json_schema: schema,
+-      },
++      // Use json_schema if supported, fallback to json_object
++      response_format: this.getResponseFormat(schema),
+     }, modelConfig.maxTokens);
++    
++    try {
++      const response = await this.openai.chat.completions.create(completionParams);
++      return response;
++    } catch (error: any) {
++      // If json_schema is not supported, retry with json_object
++      if (error?.message?.includes('response_format') && completionParams.response_format?.type === 'json_schema') {
++        this.logger.warn('json_schema not supported, falling back to json_object format');
++        completionParams.response_format = { type: 'json_object' };
++        
++        // Update system message to include schema as instruction
++        completionParams.messages[0].content += `\n\nPlease ensure your response follows this JSON structure:\n${JSON.stringify(schema.json_schema.schema, null, 2)}`;
++        
++        const response = await this.openai.chat.completions.create(completionParams);
++        return response;
++      }
++      throw error;
++    }
++  }
++
++  private getResponseFormat(schema: any): any {
++    // Check if model supports json_schema (gpt-4o-2024-08-06 or later)
++    const model = this.configService.get('LLM_MODEL_QUIZ_PARSER', 'gpt-4o');
++    const supportsJsonSchema = model.includes('2024-08-06') || model.includes('2024-11');
++    
++    if (supportsJsonSchema && schema) {
++      return {
++        type: 'json_schema',
++        json_schema: schema,
++      };
++    }
++    
++    // Fallback to json_object for older models
++    return { type: 'json_object' };
+   }

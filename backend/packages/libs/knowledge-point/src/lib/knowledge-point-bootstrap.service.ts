@@ -24,9 +24,36 @@ export interface KnowledgePointMapping {
 @Injectable()
 export class KnowledgePointBootstrapService implements OnModuleInit {
   private readonly logger = new Logger(KnowledgePointBootstrapService.name);
-  private readonly excelFilePath = path.join(process.cwd(), 'data', 'knowledge-points-history.xlsx');
+  private readonly excelFilePath = this.getExcelFilePath();
   
   constructor(private readonly persistentService: PersistentService) {}
+
+  private getExcelFilePath(): string {
+    // Try multiple possible locations
+    const possiblePaths = [
+      // In Docker container
+      path.join('/app', 'data', 'knowledge-points-history.xlsx'),
+      // Local development with process.cwd()
+      path.join(process.cwd(), 'data', 'knowledge-points-history.xlsx'),
+      // Local development relative to backend folder
+      path.join(process.cwd(), 'backend', 'data', 'knowledge-points-history.xlsx'),
+      // Relative to the service file location
+      path.join(__dirname, '..', '..', '..', '..', '..', '..', 'data', 'knowledge-points-history.xlsx'),
+    ];
+
+    // Find the first existing path
+    for (const filePath of possiblePaths) {
+      if (fs.existsSync(filePath)) {
+        this.logger?.log(`Found knowledge points file at: ${filePath}`);
+        return filePath;
+      }
+    }
+
+    // Default to the most likely Docker path
+    const defaultPath = path.join('/app', 'data', 'knowledge-points-history.xlsx');
+    this.logger?.warn(`Knowledge points file not found in common locations, defaulting to: ${defaultPath}`);
+    return defaultPath;
+  }
 
   async onModuleInit() {
     // Skip bootstrap if disabled
@@ -50,13 +77,24 @@ export class KnowledgePointBootstrapService implements OnModuleInit {
   async bootstrapKnowledgePoints(): Promise<void> {
     try {
       this.logger.log('Starting knowledge points bootstrap...');
+      this.logger.log(`Looking for Excel file at: ${this.excelFilePath}`);
 
       // Check if Excel file exists
       if (!fs.existsSync(this.excelFilePath)) {
         this.logger.warn(`Knowledge points Excel file not found at: ${this.excelFilePath}`);
+        this.logger.warn('Current working directory: ' + process.cwd());
+        this.logger.warn('Directory contents of /app/data:');
+        try {
+          const appDataFiles = fs.readdirSync('/app/data');
+          this.logger.warn(appDataFiles.join(', '));
+        } catch (e) {
+          this.logger.warn('Could not read /app/data directory');
+        }
         this.logger.warn('Skipping knowledge points bootstrap');
         return;
       }
+
+      this.logger.log(`Excel file found, size: ${fs.statSync(this.excelFilePath).size} bytes`);
 
       // Read and parse Excel data
       const knowledgePoints = await this.readKnowledgePointsFromExcel();
