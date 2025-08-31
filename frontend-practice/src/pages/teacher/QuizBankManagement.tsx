@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Search, Filter, Upload, Eye, Edit, Trash2, Plus, Calendar, Tag, Target, ChevronLeft, ChevronRight, ExternalLink, X, Sparkles, Shuffle, MapPin } from 'lucide-react';
+import { FileText, Search, Filter, Upload, Eye, Edit, Trash2, Plus, Calendar, Tag, Target, ChevronLeft, ChevronRight, ExternalLink, X, Sparkles, Shuffle, MapPin, RefreshCw } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { preferencesService } from '../../services/preferencesService';
+import { ApiService } from '../../services/api';
 import KnowledgePointPicker from '../../components/KnowledgePointPicker';
 
 interface Quiz {
@@ -78,11 +79,26 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const [newAlternativeAnswer, setNewAlternativeAnswer] = useState('');
   const [showPolishModal, setShowPolishModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
+  const [showRematchModal, setShowRematchModal] = useState(false);
   const [polishingQuiz, setPolishingQuiz] = useState<Quiz | null>(null);
   const [typeChangingQuiz, setTypeChangingQuiz] = useState<Quiz | null>(null);
+  const [rematchingQuiz, setRematchingQuiz] = useState<Quiz | null>(null);
   const [polishedContent, setPolishedContent] = useState('');
   const [polishGuidance, setPolishGuidance] = useState('');
   const [isPolishing, setIsPolishing] = useState(false);
+  const [isRematching, setIsRematching] = useState(false);
+  const [rematchHints, setRematchHints] = useState<{
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+    sub?: string;
+  }>({});
+  const [hierarchyOptions, setHierarchyOptions] = useState<{
+    volumes: string[];
+    units: string[];
+    lessons: string[];
+    subs: string[];
+  }>({ volumes: [], units: [], lessons: [], subs: [] });
   const itemsPerPage = 10;
   
   // Track if data has been initially loaded
@@ -622,6 +638,61 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const handleChangeQuizType = (quiz: Quiz) => {
     setTypeChangingQuiz(quiz);
     setShowTypeModal(true);
+  };
+
+  const handleRematchKnowledgePoint = async (quiz: Quiz) => {
+    setRematchingQuiz(quiz);
+    setRematchHints({
+      volume: quiz.knowledgePoint?.volume || '',
+      unit: quiz.knowledgePoint?.unit || '',
+      lesson: quiz.knowledgePoint?.lesson || '',
+      sub: ''
+    });
+    
+    // Load initial hierarchy options
+    try {
+      const response = await ApiService.getKnowledgePointHierarchy();
+      if (response.success && response.data) {
+        setHierarchyOptions(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load hierarchy options:', error);
+    }
+    
+    setShowRematchModal(true);
+  };
+
+  const handleConfirmRematch = async () => {
+    if (!rematchingQuiz) return;
+    
+    setIsRematching(true);
+    try {
+      const response = await ApiService.matchKnowledgePoint(
+        rematchingQuiz.question,
+        rematchHints
+      );
+      
+      if (response.success && response.data?.matched) {
+        const updatedQuiz = {
+          ...rematchingQuiz,
+          knowledgePointId: response.data.matched.id,
+          knowledge_point_id: response.data.matched.id,
+          knowledgePoint: response.data.matched
+        };
+        
+        await handleSaveQuiz(updatedQuiz);
+        setShowRematchModal(false);
+        setRematchingQuiz(null);
+        setRematchHints({});
+      } else {
+        alert('未找到匹配的知识点，请调整筛选条件重试');
+      }
+    } catch (error) {
+      console.error('Failed to rematch knowledge point:', error);
+      alert('重新匹配失败，请稍后重试');
+    } finally {
+      setIsRematching(false);
+    }
   };
 
   const handleConfirmTypeChange = async (newType: Quiz['type']) => {
@@ -1305,6 +1376,13 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                               <Shuffle className="w-4 h-4" />
                             </button>
                           )}
+                          <button 
+                            onClick={() => handleRematchKnowledgePoint(quiz)}
+                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors duration-300"
+                            title="重新匹配知识点"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
                           <button 
                             onClick={() => handleDeleteQuiz(quiz.id)}
                             className="p-2 text-gray-400 hover:text-red-600 transition-colors duration-300"
@@ -2035,6 +2113,189 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
               >
                 保存润色结果
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Re-match Knowledge Point Modal */}
+      {showRematchModal && rematchingQuiz && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">重新匹配知识点</h2>
+                <button
+                  onClick={() => {
+                    setShowRematchModal(false);
+                    setRematchingQuiz(null);
+                    setRematchHints({});
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Current Knowledge Point */}
+              {rematchingQuiz.knowledgePoint && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">当前知识点</label>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="text-sm text-gray-600 mb-2">
+                      {rematchingQuiz.knowledgePoint.volume} / {rematchingQuiz.knowledgePoint.unit} / {rematchingQuiz.knowledgePoint.lesson}
+                    </div>
+                    <div className="font-medium text-gray-900">{rematchingQuiz.knowledgePoint.topic}</div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Target Selection */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-4">设置匹配范围（留空表示不限制）</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">分册</label>
+                    <select
+                      value={rematchHints.volume || ''}
+                      onChange={async (e) => {
+                        const newVolume = e.target.value;
+                        setRematchHints({
+                          volume: newVolume,
+                          unit: '',
+                          lesson: '',
+                          sub: ''
+                        });
+                        // Fetch new options
+                        if (newVolume) {
+                          const response = await ApiService.getKnowledgePointHierarchy({ volume: newVolume });
+                          if (response.success && response.data) {
+                            setHierarchyOptions(response.data);
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="">全部分册</option>
+                      {hierarchyOptions.volumes.map(vol => (
+                        <option key={vol} value={vol}>{vol}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">单元</label>
+                    <select
+                      value={rematchHints.unit || ''}
+                      onChange={async (e) => {
+                        const newUnit = e.target.value;
+                        setRematchHints(prev => ({
+                          ...prev,
+                          unit: newUnit,
+                          lesson: '',
+                          sub: ''
+                        }));
+                        // Fetch new options
+                        if (newUnit) {
+                          const response = await ApiService.getKnowledgePointHierarchy({ 
+                            volume: rematchHints.volume,
+                            unit: newUnit 
+                          });
+                          if (response.success && response.data) {
+                            setHierarchyOptions(response.data);
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!rematchHints.volume}
+                    >
+                      <option value="">全部单元</option>
+                      {hierarchyOptions.units.map(u => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">课程</label>
+                    <select
+                      value={rematchHints.lesson || ''}
+                      onChange={async (e) => {
+                        const newLesson = e.target.value;
+                        setRematchHints(prev => ({
+                          ...prev,
+                          lesson: newLesson,
+                          sub: ''
+                        }));
+                        // Fetch new options
+                        if (newLesson) {
+                          const response = await ApiService.getKnowledgePointHierarchy({ 
+                            volume: rematchHints.volume,
+                            unit: rematchHints.unit,
+                            lesson: newLesson 
+                          });
+                          if (response.success && response.data) {
+                            setHierarchyOptions(response.data);
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!rematchHints.unit}
+                    >
+                      <option value="">全部课程</option>
+                      {hierarchyOptions.lessons.map(l => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">子目</label>
+                    <select
+                      value={rematchHints.sub || ''}
+                      onChange={(e) => setRematchHints(prev => ({ ...prev, sub: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!rematchHints.lesson}
+                    >
+                      <option value="">全部子目</option>
+                      {hierarchyOptions.subs.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Question Preview */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">题目内容</label>
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="text-gray-800">{rematchingQuiz.question}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowRematchModal(false);
+                  setRematchingQuiz(null);
+                  setRematchHints({});
+                }}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleConfirmRematch}
+                disabled={isRematching}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRematching ? 'animate-spin' : ''}`} />
+                {isRematching ? '匹配中...' : '重新匹配'}
               </button>
             </div>
           </div>

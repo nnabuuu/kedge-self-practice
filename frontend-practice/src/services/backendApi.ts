@@ -262,6 +262,62 @@ class BackendApiService {
     } as ApiResponse<KnowledgePoint[]>;
   }
 
+  // Match knowledge point for a quiz
+  async matchKnowledgePoint(
+    quizText: string,
+    targetHints?: {
+      volume?: string;
+      unit?: string;
+      lesson?: string;
+      sub?: string;
+    }
+  ): Promise<ApiResponse<{
+    matched: BackendKnowledgePoint | null;
+    candidates: BackendKnowledgePoint[];
+    keywords: string[];
+    country: string;
+    dynasty: string;
+  }>> {
+    const body = {
+      quizText,
+      maxMatches: 3,
+      targetHints
+    };
+
+    const response = await this.makeRequest<any>('/knowledge-points/match', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+
+    return response;
+  }
+
+  // Get knowledge point hierarchy options
+  async getHierarchyOptions(filters?: {
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+  }): Promise<ApiResponse<{
+    volumes: string[];
+    units: string[];
+    lessons: string[];
+    subs: string[];
+  }>> {
+    const params = new URLSearchParams();
+    if (filters?.volume) params.append('volume', filters.volume);
+    if (filters?.unit) params.append('unit', filters.unit);
+    if (filters?.lesson) params.append('lesson', filters.lesson);
+    
+    const response = await this.makeRequest<{
+      volumes: string[];
+      units: string[];
+      lessons: string[];
+      subs: string[];
+    }>(`/knowledge-points/hierarchy-options?${params.toString()}`);
+
+    return response;
+  }
+
   // Get quizzes by knowledge points - optimized to use single API call
   async getQuizzesByKnowledgePoints(knowledgePointIds: string[]): Promise<ApiResponse<QuizQuestion[]>> {
     
@@ -666,7 +722,9 @@ export const api = {
     getAll: () => backendApi.getAllKnowledgePoints(),
     create: (kp: Omit<KnowledgePoint, 'id'>) => backendApi.createKnowledgePoint(kp),
     update: (id: string, updates: Partial<KnowledgePoint>) => backendApi.updateKnowledgePoint(id, updates),
-    delete: (id: string) => backendApi.deleteKnowledgePoint(id)
+    delete: (id: string) => backendApi.deleteKnowledgePoint(id),
+    match: (quizText: string, targetHints?: any) => backendApi.matchKnowledgePoint(quizText, targetHints),
+    getHierarchyOptions: (filters?: any) => backendApi.getHierarchyOptions(filters)
   },
   questions: {
     getByKnowledgePoints: (kpIds: string[]) => backendApi.getQuizzesByKnowledgePoints(kpIds),

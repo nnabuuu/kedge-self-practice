@@ -80,6 +80,57 @@ export class ApiService {
     }
   }
 
+  // Match knowledge point for a quiz
+  static async matchKnowledgePoint(
+    quizText: string,
+    targetHints?: {
+      volume?: string;
+      unit?: string;
+      lesson?: string;
+      sub?: string;
+    }
+  ): Promise<ApiResponse<{
+    matched: KnowledgePoint | null;
+    candidates: KnowledgePoint[];
+    keywords: string[];
+    country: string;
+    dynasty: string;
+  }>> {
+    try {
+      const response = await backendApiMethods.knowledgePoints.match(quizText, targetHints);
+      if (response.success) {
+        return createApiResponse(response.data || { matched: null, candidates: [], keywords: [], country: '未知', dynasty: '无' }, true);
+      }
+      return createApiResponse({ matched: null, candidates: [], keywords: [], country: '未知', dynasty: '无' }, false, undefined, response.error || 'Failed to match knowledge point');
+    } catch (error) {
+      console.error('Failed to match knowledge point:', error);
+      return createApiResponse({ matched: null, candidates: [], keywords: [], country: '未知', dynasty: '无' }, false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
+
+  // Get knowledge point hierarchy options
+  static async getKnowledgePointHierarchy(filters?: {
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+  }): Promise<ApiResponse<{
+    volumes: string[];
+    units: string[];
+    lessons: string[];
+    subs: string[];
+  }>> {
+    try {
+      const response = await backendApiMethods.knowledgePoints.getHierarchyOptions(filters);
+      if (response.success) {
+        return createApiResponse(response.data || { volumes: [], units: [], lessons: [], subs: [] }, true);
+      }
+      return createApiResponse({ volumes: [], units: [], lessons: [], subs: [] }, false, undefined, response.error || 'Failed to fetch hierarchy options');
+    } catch (error) {
+      console.error('Failed to fetch hierarchy options:', error);
+      return createApiResponse({ volumes: [], units: [], lessons: [], subs: [] }, false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
+
   // Get question by ID
   static async getQuestionById(id: string): Promise<ApiResponse<QuizQuestion | null>> {
     try {
