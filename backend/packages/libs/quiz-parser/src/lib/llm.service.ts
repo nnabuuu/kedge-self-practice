@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GptParagraphBlock, QuizItem } from '@kedge/models';
+import { GptParagraphBlock, QuizItem, QuizExtractionOptions } from '@kedge/models';
 import { getLLMProvider, LLMProvider, getModelConfig, getOpenAIConfig, getAutoBaseURL } from '@kedge/configs';
 import { GptService } from './gpt.service';
 import { GPT4Service } from './gpt4.service';
@@ -50,20 +50,26 @@ export class LLMService {
   /**
    * Extract quiz items from paragraphs using the appropriate LLM provider
    */
-  async extractQuizItems(paragraphs: GptParagraphBlock[]): Promise<QuizItem[]> {
+  async extractQuizItems(
+    paragraphs: GptParagraphBlock[], 
+    options?: QuizExtractionOptions
+  ): Promise<QuizItem[]> {
     const modelConfig = getModelConfig('quizParser');
     const service = this.getServiceForModel(modelConfig.model);
     
     console.log(`Using ${service} service with model ${modelConfig.model} for quiz extraction`);
+    if (options?.targetTypes && options.targetTypes.length > 0) {
+      console.log(`Filtering for quiz types: ${options.targetTypes.join(', ')}`);
+    }
     
     switch (service) {
       case 'deepseek':
-        return this.deepseekService.extractQuizItems(paragraphs);
+        return this.deepseekService.extractQuizItems(paragraphs, options);
       case 'gpt5':
-        return this.gpt5Service.extractQuizItems(paragraphs);
+        return this.gpt5Service.extractQuizItems(paragraphs, options);
       case 'gpt4':
       default:
-        return this.gpt4Service.extractQuizItems(paragraphs);
+        return this.gpt4Service.extractQuizItems(paragraphs, options);
     }
   }
 

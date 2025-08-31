@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
-import { GptParagraphBlock, QuizItem, QuizExtractionResult } from '@kedge/models';
+import { GptParagraphBlock, QuizItem, QuizExtractionResult, QuizExtractionOptions, QuizType } from '@kedge/models';
 import { getOpenAIConfig, getModelConfig } from '@kedge/configs';
 
 /**
@@ -20,12 +20,30 @@ export class GPT4Service {
     });
   }
 
-  async extractQuizItems(paragraphs: GptParagraphBlock[]): Promise<QuizItem[]> {
+  async extractQuizItems(
+    paragraphs: GptParagraphBlock[], 
+    options?: QuizExtractionOptions
+  ): Promise<QuizItem[]> {
+    // Build allowed types based on options
+    const allowedTypes = options?.targetTypes && options.targetTypes.length > 0 
+      ? options.targetTypes 
+      : ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'] as QuizType[];
+    
+    const typeDescriptions = allowedTypes.map(type => {
+      switch(type) {
+        case 'single-choice': return 'single-choice（单选题）';
+        case 'multiple-choice': return 'multiple-choice（多选题）';
+        case 'fill-in-the-blank': return 'fill-in-the-blank（填空题）';
+        case 'subjective': return 'subjective（主观题）';
+        default: return type;
+      }
+    }).join('、');
+
     const prompt = `你是一名出题专家，基于提供的文本段落生成中学教育题目。
 
 要求：
 1. 根据高亮内容生成题目（黄色、绿色等高亮表示重要内容）
-2. 题型包括：single-choice（单选）、multiple-choice（多选）、fill-in-the-blank（填空）、subjective（主观题）
+2. 只生成以下题型：${typeDescriptions}
 3. 填空题的空格用至少4个下划线表示（____）
 4. 确保题目符合中学生的认知水平
 5. 所有题目都必须包含 options 字段（即使是空数组）
@@ -48,7 +66,7 @@ export class GPT4Service {
               properties: {
                 type: {
                   type: 'string',
-                  enum: ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'],
+                  enum: allowedTypes, // Use the filtered types
                 },
                 question: { type: 'string' },
                 options: {
@@ -104,7 +122,19 @@ export class GPT4Service {
       
       try {
         const parsed: QuizExtractionResult = JSON.parse(content);
-        return this.postProcessQuizItems(parsed.items ?? []);
+        let items = parsed.items ?? [];
+        
+        // Filter to only requested types if specified
+        if (options?.targetTypes && options.targetTypes.length > 0) {
+          items = items.filter(item => options.targetTypes!.includes(item.type as QuizType));
+        }
+        
+        // Apply max items limit if specified
+        if (options?.maxItems && items.length > options.maxItems) {
+          items = items.slice(0, options.maxItems);
+        }
+        
+        return this.postProcessQuizItems(items);
       } catch (parseError) {
         console.error('Failed to parse GPT-4 response as JSON:', parseError);
         console.error('Response length:', content.length);
