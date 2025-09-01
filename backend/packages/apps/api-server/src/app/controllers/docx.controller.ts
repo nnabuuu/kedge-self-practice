@@ -301,8 +301,8 @@ export class DocxController {
     console.log('paragraphsForGPT uses GptParagraphBlock type (no images by design)');
     console.log('=== End Verification ===');
     
-    // Update paragraphs to include saved image URLs AND UUID placeholders for response
-    const enhancedParagraphs = paragraphs.map(para => {
+    // Create clean paragraphs for response - NO image data, just text and highlights
+    const cleanParagraphs = paragraphs.map(para => {
       let processedText = para.paragraph || '';
       
       // Replace {{image:original-path}} with {{image:uuid}} in the response paragraphs too
@@ -312,17 +312,10 @@ export class DocxController {
         processedText = processedText.replace(new RegExp(escapeRegExp(originalPlaceholder), 'g'), uuidPlaceholder);
       });
       
+      // Return ONLY paragraph and highlighted - no images property
       return {
-        ...para,
         paragraph: processedText, // Use the UUID-processed text
-        images: para.images.map(img => {
-          const savedImage = savedImages.find(saved => saved.originalDocxId === img.id);
-          return savedImage ? {
-            ...img,
-            url: savedImage.url,
-            savedId: savedImage.id,
-          } : img;
-        }),
+        highlighted: para.highlighted || []
       };
     });
     
@@ -333,7 +326,7 @@ export class DocxController {
       success: true,
       quizItems,
       extractedImages: savedImages,
-      paragraphs: enhancedParagraphs,
+      paragraphs: cleanParagraphs, // Use clean paragraphs without image data
       imageMapping: Object.fromEntries(uuidToUrlMap),
     };
   }

@@ -116,8 +116,14 @@ export const extractQuizFromParagraphsLocal = async (
   console.log('Sending paragraphs:', paragraphs);
   console.log('Number of paragraphs:', paragraphs.length);
   
+  // Clean paragraphs to ensure no images property is sent
+  const cleanParagraphs = paragraphs.map(p => ({
+    paragraph: p.paragraph || '',
+    highlighted: p.highlighted || []
+  }));
+  
   // Log paragraphs with images
-  paragraphs.forEach((p, idx) => {
+  cleanParagraphs.forEach((p, idx) => {
     if (p.paragraph && p.paragraph.includes('{{image:')) {
       console.log(`Paragraph ${idx} contains images:`, p.paragraph);
     }
@@ -126,7 +132,7 @@ export const extractQuizFromParagraphsLocal = async (
   const response = await apiFetch('/gpt/extract-quiz', {
     method: 'POST',
     body: JSON.stringify({ 
-      paragraphs,
+      paragraphs: cleanParagraphs, // Send clean paragraphs without images property
       images: images || [],
       options: options || {},
     }),
