@@ -7,7 +7,45 @@ import { QuizItemSchema, QuizItem } from '@kedge/models';
 export class QuizRepository {
   private readonly logger = new Logger(QuizRepository.name);
 
-  constructor(private readonly persistentService: PersistentService) {}
+  constructor(private readonly persistentService: PersistentService) {
+    // Log database connection info on initialization
+    this.logger.log('QuizRepository initialized');
+    this.logDatabaseInfo();
+  }
+
+  private async logDatabaseInfo() {
+    try {
+      // Log the database URL (mask password)
+      const dbUrl = process.env.NODE_DATABASE_URL || 'NOT SET';
+      const maskedUrl = dbUrl.replace(/:([^@]+)@/, ':****@');
+      this.logger.log(`Database URL: ${maskedUrl}`);
+      
+      // Check database name and schema
+      const dbInfo = await this.persistentService.pgPool.query(sql.unsafe`
+        SELECT current_database() as database, current_schema() as schema
+      `);
+      this.logger.log(`Current database: ${dbInfo.rows[0].database}, schema: ${dbInfo.rows[0].schema}`);
+      
+      // Count quizzes in database
+      const countResult = await this.persistentService.pgPool.query(sql.unsafe`
+        SELECT COUNT(*) as count FROM kedge_practice.quizzes
+      `);
+      this.logger.log(`Total quizzes in kedge_practice.quizzes table: ${countResult.rows[0].count}`);
+      
+      // Check if table exists
+      const tableCheck = await this.persistentService.pgPool.query(sql.unsafe`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_schema = 'kedge_practice' 
+          AND table_name = 'quizzes'
+        ) as table_exists
+      `);
+      this.logger.log(`Table kedge_practice.quizzes exists: ${tableCheck.rows[0].table_exists}`);
+      
+    } catch (error) {
+      this.logger.error(`Error logging database info: ${error}`);
+    }
+  }
 
   async createQuiz(item: QuizItem): Promise<QuizItem> {
     try {
@@ -69,6 +107,15 @@ export class QuizRepository {
 
   async listQuizzes(): Promise<QuizItem[]> {
     try {
+      // Log before query
+      this.logger.log(`listQuizzes called - querying kedge_practice.quizzes`);
+      
+      // Also log current connection info
+      const connInfo = await this.persistentService.pgPool.query(sql.unsafe`
+        SELECT current_database() as db, inet_server_addr() as server_addr, inet_server_port() as server_port
+      `);
+      this.logger.log(`Connected to: ${connInfo.rows[0].db} at ${connInfo.rows[0].server_addr}:${connInfo.rows[0].server_port}`);
+      
       // Use type-safe query with proper schema
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
@@ -84,11 +131,17 @@ export class QuizRepository {
       
       this.logger.log(`QuizRepository fetched ${result.rows.length} quizzes from database`);
       
+      // Log first quiz if exists
+      if (result.rows.length > 0) {
+        this.logger.log(`First quiz ID: ${result.rows[0].id}, Question: ${result.rows[0].question?.substring(0, 50)}...`);
+      }
+      
       // Return the quizzes - spread to create a new mutable array
       return [...result.rows];
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error listing quizzes: ${errorMessage}`);
+      this.logger.error(`Full error: ${JSON.stringify(error)}`);
       throw new Error('Failed to list quizzes');
     }
   }
