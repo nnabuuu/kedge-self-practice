@@ -12,7 +12,7 @@ export class KnowledgePointGPTService {
 
   constructor(private readonly configsService: ConfigsService) {
     if (!this.config.apiKey) {
-      this.logger.warn('OPENAI_API_KEY not set - GPT features will be disabled');
+      this.logger.warn('LLM_API_KEY not set - GPT features will be disabled');
     }
     this.openai = new OpenAI({
       apiKey: this.config.apiKey || 'dummy-key',
@@ -22,8 +22,9 @@ export class KnowledgePointGPTService {
   }
 
   async extractKeywordsFromQuiz(quizText: string): Promise<{keywords: string[], country: string, dynasty: string}> {
-    const apiKey = this.configsService.getOptional('OPENAI_API_KEY');
+    const apiKey = this.configsService.getOptional('LLM_API_KEY') || this.configsService.getOptional('OPENAI_API_KEY');
     if (!apiKey) {
+      this.logger.warn('No LLM_API_KEY or OPENAI_API_KEY found, returning empty keywords');
       return {keywords: [], country: '未知', dynasty: '无'};
     }
 
@@ -95,8 +96,9 @@ export class KnowledgePointGPTService {
     quizText: string,
     units: string[],
   ): Promise<string[]> {
-    const apiKey = this.configsService.getOptional('OPENAI_API_KEY');
+    const apiKey = this.configsService.getOptional('LLM_API_KEY') || this.configsService.getOptional('OPENAI_API_KEY');
     if (!apiKey) {
+      this.logger.warn('No LLM_API_KEY or OPENAI_API_KEY found, cannot suggest units');
       return [];
     }
 
@@ -209,8 +211,9 @@ ${units.map((u, i) => `索引 ${i}: ${u}`).join('\n')}
     quizText: string,
     knowledgePoints: KnowledgePoint[],
   ): Promise<{ selectedId: string; candidateIds: string[] }> {
-    const apiKey = this.configsService.getOptional('OPENAI_API_KEY');
+    const apiKey = this.configsService.getOptional('LLM_API_KEY') || this.configsService.getOptional('OPENAI_API_KEY');
     if (!apiKey) {
+      this.logger.warn('No LLM_API_KEY or OPENAI_API_KEY found, cannot disambiguate topics');
       return { selectedId: '', candidateIds: [] };
     }
 
