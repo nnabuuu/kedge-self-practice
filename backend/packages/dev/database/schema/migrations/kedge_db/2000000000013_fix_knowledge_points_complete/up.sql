@@ -606,7 +606,7 @@ END $$;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM kedge_practice.knowledge_points WHERE id = 'kp_355' AND topic = '工业革命的背景') THEN
-    RAISE EXCEPTION 'Knowledge point kp_355 (工业革命的背景) is missing\!';
+    RAISE EXCEPTION 'Knowledge point kp_355 (工业革命的背景) is missing!';
   END IF;
 END $$;
 
