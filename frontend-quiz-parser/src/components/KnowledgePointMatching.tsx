@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { QuizItem, QuizWithKnowledgePoint, KnowledgePointMatchResult } from '../types/quiz';
 import { matchKnowledgePoint } from '../services/localQuizService';
-import { Brain, BookOpen, CheckCircle, AlertCircle, Loader2, ArrowRight, Target, ChevronDown, ChevronUp, Tag, Globe, Crown, Search, Edit3, X, Check, RefreshCw } from 'lucide-react';
+import { Brain, BookOpen, CheckCircle, AlertCircle, Loader2, ArrowRight, Target, ChevronDown, ChevronUp, Tag, Globe, Crown, Search, Edit3, X, Check, RefreshCw, Settings, Settings2, SlidersHorizontal, StopCircle } from 'lucide-react';
 import { QuizImageDisplay } from './QuizImageDisplay';
 
 interface KnowledgePointMatchingProps {
@@ -36,6 +36,29 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
     subs: string[];
   }}>({});
   const [allKnowledgePoints, setAllKnowledgePoints] = useState<any[]>([]);
+  const [showBatchTargetSelector, setShowBatchTargetSelector] = useState(false);
+  const [batchTargetHints, setBatchTargetHints] = useState<{
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+    sub?: string;
+  }>({});
+  const [batchHierarchyOptions, setBatchHierarchyOptions] = useState<{
+    volumes: string[];
+    units: string[];
+    lessons: string[];
+    subs: string[];
+  }>({
+    volumes: [],
+    units: [],
+    lessons: [],
+    subs: []
+  });
+  const [isMatching, setIsMatching] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
+  const [wasStopped, setWasStopped] = useState(false);
+  const shouldStopMatchingRef = useRef(false);
+  const currentOperationRef = useRef<'initial' | 'batch' | 'failed' | null>(null);
 
   useEffect(() => {
     // Initialize quiz items with matching status
@@ -116,14 +139,36 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
 
   const matchAllKnowledgePoints = async (items: QuizWithKnowledgePoint[]) => {
     const updatedItems = [...items];
+    setIsMatching(true);
+    setIsStopping(false);
+    setWasStopped(false);
+    shouldStopMatchingRef.current = false;
+    currentOperationRef.current = 'initial';
     
     for (let i = 0; i < items.length; i++) {
+      // Check if we should stop
+      if (shouldStopMatchingRef.current || currentOperationRef.current !== 'initial') {
+        console.log(`Initial matching stopped at item ${i + 1} of ${items.length}`);
+        setWasStopped(true);
+        break;
+      }
+      
       setCurrentMatchingIndex(i);
       updatedItems[i] = { ...updatedItems[i], matchingStatus: 'loading' };
       setQuizWithKnowledgePoints([...updatedItems]);
       
       try {
         const matchingResult = await matchKnowledgePoint(items[i]);
+        
+        // Check again after async operation
+        if (shouldStopMatchingRef.current || currentOperationRef.current !== 'initial') {
+          console.log(`Initial matching stopped after API call for item ${i + 1}`);
+          // Revert the loading status
+          updatedItems[i] = { ...updatedItems[i], matchingStatus: items[i].matchingStatus || 'pending' };
+          setWasStopped(true);
+          break;
+        }
+        
         updatedItems[i] = {
           ...updatedItems[i],
           knowledgePoint: matchingResult.matched,
@@ -133,25 +178,33 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
         
         // Store knowledge points locally if we get them
         if (matchingResult.candidates && matchingResult.candidates.length > 0) {
-          setAllKnowledgePoints(prev => {
-            const existing = new Map(prev.map(kp => [kp.id, kp]));
-            matchingResult.candidates.forEach(kp => {
-              if (!existing.has(kp.id)) {
-                existing.set(kp.id, kp);
-              }
+          // Check if we should still update state
+          if (!shouldStopMatchingRef.current && currentOperationRef.current === 'initial') {
+            setAllKnowledgePoints(prev => {
+              const existing = new Map(prev.map(kp => [kp.id, kp]));
+              matchingResult.candidates.forEach(kp => {
+                if (!existing.has(kp.id)) {
+                  existing.set(kp.id, kp);
+                }
+              });
+              return Array.from(existing.values());
             });
-            return Array.from(existing.values());
-          });
+          }
         }
       } catch (error) {
         console.error(`Knowledge point matching failed for item ${i}:`, error);
-        updatedItems[i] = {
-          ...updatedItems[i],
-          matchingStatus: 'error'
-        };
+        if (!shouldStopMatchingRef.current && currentOperationRef.current === 'initial') {
+          updatedItems[i] = {
+            ...updatedItems[i],
+            matchingStatus: 'error'
+          };
+        }
       }
       
-      setQuizWithKnowledgePoints([...updatedItems]);
+      // Only update state if not stopped
+      if (!shouldStopMatchingRef.current && currentOperationRef.current === 'initial') {
+        setQuizWithKnowledgePoints([...updatedItems]);
+      }
       
       // Add a small delay between requests to avoid overwhelming the API
       if (i < items.length - 1) {
@@ -159,13 +212,25 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
       }
     }
     
-    setIsCompleted(true);
+    // Only mark as completed if we weren't stopped
+    if (currentOperationRef.current === 'initial' && !shouldStopMatchingRef.current) {
+      setIsCompleted(true);
+    }
+    setIsMatching(false);
+    setIsStopping(false);
+    shouldStopMatchingRef.current = false;
+    currentOperationRef.current = null;
   };
 
   // Re-match a single quiz item with optional target hints
   const rematchSingleItem = async (index: number, useTargetHints: boolean = false) => {
     const updatedItems = [...quizWithKnowledgePoints];
-    updatedItems[index] = { ...updatedItems[index], matchingStatus: 'loading' };
+    updatedItems[index] = { 
+      ...updatedItems[index], 
+      matchingStatus: 'loading',
+      knowledgePoint: undefined,
+      matchingResult: undefined
+    };
     setQuizWithKnowledgePoints(updatedItems);
     
     try {
@@ -198,15 +263,51 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
     if (failedIndices.length === 0) return;
     
     setIsCompleted(false);
-    const updatedItems = [...quizWithKnowledgePoints];
+    setIsMatching(true);
+    setIsStopping(false);
+    setWasStopped(false);
+    shouldStopMatchingRef.current = false;
+    currentOperationRef.current = 'failed';
+    
+    // Reset failed items to pending and clear their matches
+    const updatedItems = quizWithKnowledgePoints.map((item, index) => 
+      failedIndices.includes(index) 
+        ? { 
+            ...item, 
+            matchingStatus: 'pending' as const,
+            knowledgePoint: undefined,
+            matchingResult: undefined
+          }
+        : item
+    );
+    setQuizWithKnowledgePoints(updatedItems);
+    if (failedIndices.length > 0) {
+      setCurrentMatchingIndex(failedIndices[0]);
+    }
     
     for (const index of failedIndices) {
+      // Check if we should stop
+      if (shouldStopMatchingRef.current || currentOperationRef.current !== 'failed') {
+        console.log(`Failed items re-matching stopped at index ${index}`);
+        setWasStopped(true);
+        break;
+      }
+      
       setCurrentMatchingIndex(index);
       updatedItems[index] = { ...updatedItems[index], matchingStatus: 'loading' };
       setQuizWithKnowledgePoints([...updatedItems]);
       
       try {
         const matchingResult = await matchKnowledgePoint(updatedItems[index]);
+        
+        // Check again after async operation
+        if (shouldStopMatchingRef.current || currentOperationRef.current !== 'failed') {
+          console.log(`Failed items re-matching stopped after API call for index ${index}`);
+          updatedItems[index] = { ...updatedItems[index], matchingStatus: 'error' };
+          setWasStopped(true);
+          break;
+        }
+        
         updatedItems[index] = {
           ...updatedItems[index],
           knowledgePoint: matchingResult.matched,
@@ -215,19 +316,149 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
         };
       } catch (error) {
         console.error(`Re-match failed for item ${index}:`, error);
-        updatedItems[index] = {
-          ...updatedItems[index],
-          matchingStatus: 'error'
-        };
+        if (!shouldStopMatchingRef.current && currentOperationRef.current === 'failed') {
+          updatedItems[index] = {
+            ...updatedItems[index],
+            matchingStatus: 'error'
+          };
+        }
       }
       
-      setQuizWithKnowledgePoints([...updatedItems]);
+      // Only update state if not stopped
+      if (!shouldStopMatchingRef.current && currentOperationRef.current === 'failed') {
+        setQuizWithKnowledgePoints([...updatedItems]);
+      }
       
       // Add delay between requests
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     
-    setIsCompleted(true);
+    // Only mark as completed if we weren't stopped
+    if (currentOperationRef.current === 'failed' && !shouldStopMatchingRef.current) {
+      setIsCompleted(true);
+    }
+    setIsMatching(false);
+    setIsStopping(false);
+    shouldStopMatchingRef.current = false;
+    currentOperationRef.current = null;
+  };
+
+  // Re-match all items with optional target hints
+  const rematchAllItems = async (useTargetHints: boolean = false) => {
+    if (!useTargetHints && !confirm('确定要重新匹配所有题目吗？这将覆盖当前的匹配结果。')) {
+      return;
+    }
+    
+    setIsCompleted(false);
+    setIsMatching(true);
+    setIsStopping(false);
+    setWasStopped(false);
+    shouldStopMatchingRef.current = false;
+    currentOperationRef.current = 'batch';
+    setShowBatchTargetSelector(false);
+    setCurrentMatchingIndex(0); // Reset to start
+    
+    // Reset all items to pending status and clear existing matches
+    const updatedItems = quizWithKnowledgePoints.map(item => ({
+      ...item,
+      matchingStatus: 'pending' as const,
+      knowledgePoint: undefined,
+      matchingResult: undefined
+    }));
+    setQuizWithKnowledgePoints(updatedItems);
+    
+    for (let i = 0; i < updatedItems.length; i++) {
+      // Check if we should stop
+      if (shouldStopMatchingRef.current || currentOperationRef.current !== 'batch') {
+        console.log(`Batch re-matching stopped at item ${i + 1} of ${updatedItems.length}`);
+        setWasStopped(true);
+        break;
+      }
+      
+      setCurrentMatchingIndex(i);
+      updatedItems[i] = { ...updatedItems[i], matchingStatus: 'loading' };
+      setQuizWithKnowledgePoints([...updatedItems]);
+      
+      try {
+        // Only pass high-level constraints (volume/unit), not lesson/sub
+        // This allows each item to find its best match within the broader range
+        const hints = useTargetHints && batchTargetHints ? {
+          volume: batchTargetHints.volume,
+          unit: batchTargetHints.unit,
+          // Only include lesson if specifically selected, but not sub
+          ...(batchTargetHints.lesson && !batchTargetHints.sub ? { lesson: batchTargetHints.lesson } : {})
+        } : undefined;
+        
+        const matchingResult = await matchKnowledgePoint(updatedItems[i], hints);
+        
+        // Check again after async operation
+        if (shouldStopMatchingRef.current || currentOperationRef.current !== 'batch') {
+          console.log(`Batch re-matching stopped after API call for item ${i + 1}`);
+          // Keep the previous state for this item
+          updatedItems[i] = quizWithKnowledgePoints[i];
+          setWasStopped(true);
+          break;
+        }
+        
+        updatedItems[i] = {
+          ...updatedItems[i],
+          knowledgePoint: matchingResult.matched,
+          matchingResult,
+          matchingStatus: 'success'
+        };
+        
+        // Store knowledge points locally if we get them
+        if (matchingResult.candidates && matchingResult.candidates.length > 0) {
+          // Check if we should still update state
+          if (!shouldStopMatchingRef.current && currentOperationRef.current === 'batch') {
+            setAllKnowledgePoints(prev => {
+              const existing = new Map(prev.map(kp => [kp.id, kp]));
+              matchingResult.candidates.forEach(kp => {
+                if (!existing.has(kp.id)) {
+                  existing.set(kp.id, kp);
+                }
+              });
+              return Array.from(existing.values());
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Re-match failed for item ${i}:`, error);
+        if (!shouldStopMatchingRef.current && currentOperationRef.current === 'batch') {
+          updatedItems[i] = {
+            ...updatedItems[i],
+            matchingStatus: 'error'
+          };
+        }
+      }
+      
+      // Only update state if not stopped
+      if (!shouldStopMatchingRef.current && currentOperationRef.current === 'batch') {
+        setQuizWithKnowledgePoints([...updatedItems]);
+      }
+      
+      // Add delay between requests
+      if (i < updatedItems.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
+    // Only mark as completed if we weren't stopped
+    if (currentOperationRef.current === 'batch' && !shouldStopMatchingRef.current) {
+      setIsCompleted(true);
+    }
+    setIsMatching(false);
+    setIsStopping(false);
+    shouldStopMatchingRef.current = false;
+    currentOperationRef.current = null;
+    setBatchTargetHints({}); // Clear hints after use
+  };
+
+  const handleStopMatching = () => {
+    shouldStopMatchingRef.current = true;
+    setIsStopping(true); // Show stopping state immediately
+    currentOperationRef.current = null; // This will immediately stop any running operation
+    console.log('User requested to stop matching');
   };
 
   const getQuestionTypeInfo = (type: string) => {
@@ -446,9 +677,32 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                 {completedCount}/{quizItems.length}
               </span>
             </div>
-            {!isCompleted && (
-              <div className="text-white text-sm">
-                正在匹配第 {currentMatchingIndex + 1} 题...
+            {(isMatching || wasStopped) && (
+              <div className="flex items-center gap-3">
+                <div className="text-white text-sm">
+                  {isStopping ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      正在停止...
+                    </span>
+                  ) : wasStopped ? (
+                    <span className="text-yellow-100">
+                      已停止 ({successCount}/{completedCount} 完成)
+                    </span>
+                  ) : (
+                    `正在匹配第 ${currentMatchingIndex + 1} 题...`
+                  )}
+                </div>
+                {isMatching && !isStopping && (
+                  <button
+                    onClick={handleStopMatching}
+                    className="inline-flex items-center px-3 py-1 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
+                    title="停止匹配"
+                  >
+                    <StopCircle className="w-4 h-4 mr-1" />
+                    停止
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -471,26 +725,182 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                 style={{ width: `${(completedCount / quizItems.length) * 100}%` }}
               />
             </div>
-            {isCompleted && (
-              <div className="mt-2 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-emerald-600">
-                    ✅ 匹配完成！成功匹配 {successCount} 个知识点
-                  </span>
-                  {errorCount > 0 && (
-                    <span className="text-sm text-red-600">
-                      ❌ {errorCount} 个匹配失败
-                    </span>
-                  )}
+            {(isCompleted || wasStopped) && !isMatching && (
+              <div className="mt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {wasStopped ? (
+                      <span className="text-sm text-amber-600">
+                        ⚠️ 匹配已停止！成功匹配 {successCount}/{completedCount} 个知识点
+                      </span>
+                    ) : (
+                      <span className="text-sm text-emerald-600">
+                        ✅ 匹配完成！成功匹配 {successCount} 个知识点
+                      </span>
+                    )}
+                    {errorCount > 0 && (
+                      <span className="text-sm text-red-600">
+                        ❌ {errorCount} 个匹配失败
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setShowBatchTargetSelector(true);
+                        setBatchTargetHints({});
+                        // Load initial hierarchy options from local data
+                        const options = getLocalHierarchyOptions();
+                        setBatchHierarchyOptions(options);
+                      }}
+                      className="inline-flex items-center px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-200 transition-colors group"
+                      title="设置匹配范围并重新匹配所有题目"
+                    >
+                      <SlidersHorizontal className="w-4 h-4 mr-1.5 group-hover:scale-110 transition-transform" />
+                      批量重新匹配
+                    </button>
+                    {errorCount > 0 && (
+                      <button
+                        onClick={rematchAllFailed}
+                        className="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        重新匹配失败项 ({errorCount})
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {errorCount > 0 && (
-                  <button
-                    onClick={rematchAllFailed}
-                    className="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-1" />
-                    重新匹配失败项 ({errorCount})
-                  </button>
+                
+                {/* Batch Target Selector */}
+                {showBatchTargetSelector && (
+                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Target className="w-5 h-5 text-blue-600" />
+                      <span className="font-medium text-blue-700">设置批量匹配范围</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">分册</label>
+                        <select
+                          value={batchTargetHints.volume || ''}
+                          onChange={(e) => {
+                            const newVolume = e.target.value;
+                            setBatchTargetHints({
+                              volume: newVolume,
+                              unit: '',
+                              lesson: '',
+                              sub: ''
+                            });
+                            // Get new options for this volume from local data
+                            const options = getLocalHierarchyOptions({ volume: newVolume });
+                            setBatchHierarchyOptions(options);
+                          }}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">全部分册</option>
+                          {batchHierarchyOptions.volumes.map(vol => (
+                            <option key={vol} value={vol}>{vol}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">单元</label>
+                        <select
+                          value={batchTargetHints.unit || ''}
+                          onChange={(e) => {
+                            const newUnit = e.target.value;
+                            setBatchTargetHints(prev => ({
+                              ...prev,
+                              unit: newUnit,
+                              lesson: '',
+                              sub: ''
+                            }));
+                            // Get new options for this unit from local data
+                            const options = getLocalHierarchyOptions({ 
+                              volume: batchTargetHints.volume,
+                              unit: newUnit 
+                            });
+                            setBatchHierarchyOptions(options);
+                          }}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          disabled={!batchTargetHints.volume}
+                        >
+                          <option value="">全部单元</option>
+                          {batchHierarchyOptions.units.map(u => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">课程</label>
+                        <select
+                          value={batchTargetHints.lesson || ''}
+                          onChange={(e) => {
+                            const newLesson = e.target.value;
+                            setBatchTargetHints(prev => ({
+                              ...prev,
+                              lesson: newLesson,
+                              sub: ''
+                            }));
+                            // Get new options for this lesson from local data
+                            const options = getLocalHierarchyOptions({ 
+                              volume: batchTargetHints.volume,
+                              unit: batchTargetHints.unit,
+                              lesson: newLesson 
+                            });
+                            setBatchHierarchyOptions(options);
+                          }}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          disabled={!batchTargetHints.unit}
+                        >
+                          <option value="">全部课程</option>
+                          {batchHierarchyOptions.lessons.map(l => (
+                            <option key={l} value={l}>{l}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">子目</label>
+                        <select
+                          value={batchTargetHints.sub || ''}
+                          onChange={(e) => setBatchTargetHints(prev => ({
+                            ...prev,
+                            sub: e.target.value
+                          }))}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          disabled={!batchTargetHints.lesson}
+                        >
+                          <option value="">全部子目</option>
+                          {batchHierarchyOptions.subs.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-3">
+                      <button
+                        onClick={() => {
+                          setShowBatchTargetSelector(false);
+                          setBatchTargetHints({});
+                        }}
+                        className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300 transition-colors"
+                      >
+                        取消
+                      </button>
+                      <button
+                        onClick={() => rematchAllItems(false)}
+                        className="px-3 py-1.5 bg-gray-600 text-white rounded text-sm font-medium hover:bg-gray-700 transition-colors"
+                      >
+                        忽略范围重新匹配
+                      </button>
+                      <button
+                        onClick={() => rematchAllItems(true)}
+                        className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors"
+                      >
+                        在指定范围内匹配
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -1032,10 +1442,172 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                 
                 {item.matchingStatus === 'error' && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <div className="flex items-center space-x-2">
-                      <AlertCircle className="w-5 h-5 text-red-500" />
-                      <span className="text-sm text-red-700">知识点匹配失败</span>
-                    </div>
+                    {showTargetSelector[index] ? (
+                      // Edit mode - show dropdown selectors for error case
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <Settings className="w-5 h-5 text-orange-600" />
+                          <span className="text-sm font-medium text-orange-700">设置匹配范围</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">分册</label>
+                            <select
+                              value={targetHints[index]?.volume || ''}
+                              onChange={async (e) => {
+                                const newVolume = e.target.value;
+                                setTargetHints(prev => ({
+                                  ...prev,
+                                  [index]: { 
+                                    volume: newVolume,
+                                    unit: '',
+                                    lesson: '',
+                                    sub: '',
+                                  }
+                                }));
+                                const options = getLocalHierarchyOptions({ volume: newVolume });
+                                setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                              }}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                              <option value="">选择分册...</option>
+                              {hierarchyOptions[index]?.volumes.map(vol => (
+                                <option key={vol} value={vol}>{vol}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">单元</label>
+                            <select
+                              value={targetHints[index]?.unit || ''}
+                              onChange={async (e) => {
+                                const newUnit = e.target.value;
+                                setTargetHints(prev => ({
+                                  ...prev,
+                                  [index]: { 
+                                    ...prev[index], 
+                                    unit: newUnit,
+                                    lesson: '',
+                                    sub: '',
+                                  }
+                                }));
+                                const options = getLocalHierarchyOptions({ 
+                                  volume: targetHints[index]?.volume,
+                                  unit: newUnit 
+                                });
+                                setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                              }}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                              disabled={!targetHints[index]?.volume}
+                            >
+                              <option value="">选择单元...</option>
+                              {hierarchyOptions[index]?.units.map(u => (
+                                <option key={u} value={u}>{u}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">课程</label>
+                            <select
+                              value={targetHints[index]?.lesson || ''}
+                              onChange={async (e) => {
+                                const newLesson = e.target.value;
+                                setTargetHints(prev => ({
+                                  ...prev,
+                                  [index]: { 
+                                    ...prev[index], 
+                                    lesson: newLesson,
+                                    sub: '',
+                                  }
+                                }));
+                                const options = getLocalHierarchyOptions({ 
+                                  volume: targetHints[index]?.volume,
+                                  unit: targetHints[index]?.unit,
+                                  lesson: newLesson 
+                                });
+                                setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                              }}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                              disabled={!targetHints[index]?.unit}
+                            >
+                              <option value="">选择课程...</option>
+                              {hierarchyOptions[index]?.lessons.map(l => (
+                                <option key={l} value={l}>{l}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">子目</label>
+                            <select
+                              value={targetHints[index]?.sub || ''}
+                              onChange={(e) => setTargetHints(prev => ({
+                                ...prev,
+                                [index]: { ...prev[index], sub: e.target.value }
+                              }))}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                              disabled={!targetHints[index]?.lesson}
+                            >
+                              <option value="">选择子目...</option>
+                              {hierarchyOptions[index]?.subs.map(s => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setShowTargetSelector(prev => ({ ...prev, [index]: false }));
+                              setTargetHints(prev => ({ ...prev, [index]: {} }));
+                            }}
+                            className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300 transition-colors"
+                          >
+                            取消
+                          </button>
+                          <button
+                            onClick={() => rematchSingleItem(index, true)}
+                            className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700 transition-colors"
+                          >
+                            应用并重新匹配
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center space-x-2 mb-3">
+                          <AlertCircle className="w-5 h-5 text-red-500" />
+                          <span className="text-sm text-red-700">知识点匹配失败</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => {
+                              // Initialize hierarchy options for this index
+                              const options = getLocalHierarchyOptions({});
+                              setHierarchyOptions(prev => ({ ...prev, [index]: options }));
+                              setShowTargetSelector(prev => ({ ...prev, [index]: true }));
+                            }}
+                            className="inline-flex items-center px-3 py-1.5 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors border border-gray-300"
+                          >
+                            <Settings className="w-4 h-4 mr-1" />
+                            修改范围
+                          </button>
+                          <button
+                            onClick={() => rematchSingleItem(index)}
+                            className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                          >
+                            <RefreshCw className="w-4 h-4 mr-1" />
+                            重新匹配
+                          </button>
+                          <button
+                            onClick={() => toggleEditingMode(index)}
+                            className="inline-flex items-center px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+                          >
+                            <Edit3 className="w-4 h-4 mr-1" />
+                            手动选择
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

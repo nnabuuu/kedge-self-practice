@@ -63,6 +63,12 @@ export class GPT4Service {
 - 不要跳过任何段落，即使内容相似
 - 按照段落出现的顺序依次处理，不要遗漏
 - 每个段落独立处理，即使段落文字相同但高亮不同，也要生成不同的题目
+
+选择题格式说明：
+- options数组中只包含选项的实际内容，不要添加A.、B.、C.、D.等字母前缀
+- 例如：正确的格式是 ["聚族定居", "建立国家", "冶炼青铜", "创造文字"]
+- 错误的格式是 ["A．聚族定居", "B．建立国家", "C．冶炼青铜", "D．创造文字"]
+- answer字段也应该只包含选项内容，如 "聚族定居"，而不是 "A．聚族定居"
 - 例如：
   段落1：九一八事变和华北事变... (高亮: 九一八, 事变)
   段落2：九一八事变和华北事变... (高亮: 华北)
@@ -681,9 +687,48 @@ ${JSON.stringify(context.next, null, 2)}` : ''}
         }
       }
       
-      // Warn if choice questions don't have options
-      if ((item.type === 'single-choice' || item.type === 'multiple-choice') && item.options.length === 0) {
-        console.warn(`${item.type} question missing options:`, item.question);
+      // Clean up choice questions and warn if they don't have options
+      if ((item.type === 'single-choice' || item.type === 'multiple-choice')) {
+        if (item.options.length === 0) {
+          console.warn(`${item.type} question missing options:`, item.question);
+        } else {
+          // Remove A./B./C./D. prefixes from options
+          item.options = item.options.map(option => {
+            if (typeof option === 'string') {
+              // Remove common prefixes like "A.", "A．", "A、", "(A)", etc.
+              return option.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim();
+            }
+            return option;
+          });
+          
+          // Clean up answer as well
+          if (typeof item.answer === 'string') {
+            // If answer contains prefix, remove it
+            const cleanAnswer = item.answer.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim();
+            // Try to find the clean answer in options
+            const matchIndex = item.options.findIndex(opt => 
+              opt === cleanAnswer || opt === item.answer.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim()
+            );
+            if (matchIndex !== -1) {
+              item.answer = item.options[matchIndex];
+            } else {
+              item.answer = cleanAnswer;
+            }
+          } else if (Array.isArray(item.answer)) {
+            // For multiple choice, clean each answer
+            item.answer = item.answer.map(ans => {
+              if (typeof ans === 'string') {
+                const cleanAnswer = ans.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim();
+                // Find matching option
+                const matchIndex = item.options.findIndex(opt => 
+                  opt === cleanAnswer || opt === ans.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim()
+                );
+                return matchIndex !== -1 ? item.options[matchIndex] : cleanAnswer;
+              }
+              return ans;
+            });
+          }
+        }
       }
       
       return item;

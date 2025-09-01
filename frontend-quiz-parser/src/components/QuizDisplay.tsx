@@ -193,11 +193,13 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
     
     return (
       <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="flex flex-wrap gap-2">
-          <EditableQuizItem
-            item={item}
-            onSave={(updatedItem) => handleManualEdit(globalIndex, updatedItem)}
-          />
+        <div className="flex flex-wrap gap-2 items-start">
+          <div className="flex-shrink-0">
+            <EditableQuizItem
+              item={item}
+              onSave={(updatedItem) => handleManualEdit(globalIndex, updatedItem)}
+            />
+          </div>
           
           <button
             onClick={() => handlePolishQuestion(item, globalIndex)}

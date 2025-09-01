@@ -204,10 +204,32 @@ export const matchKnowledgePoint = async (
   country: string;
   dynasty: string;
 }> => {
+  // Format answer for better context
+  let answerText = '';
+  if (item.answer) {
+    if (typeof item.answer === 'string') {
+      answerText = item.answer;
+    } else if (Array.isArray(item.answer)) {
+      // For multiple choice, get the actual option text
+      if (item.options && typeof item.answer[0] === 'number') {
+        answerText = item.answer.map(idx => item.options![idx]).join(', ');
+      } else {
+        answerText = item.answer.join(', ');
+      }
+    } else if (typeof item.answer === 'number' && item.options) {
+      answerText = item.options[item.answer];
+    }
+  }
+  
+  // Combine question and answer for better LLM context
+  const fullQuizText = answerText 
+    ? `${item.question}\n答案：${answerText}`
+    : item.question;
+  
   const response = await apiFetch('/knowledge-points/match', {
     method: 'POST',
     body: JSON.stringify({
-      quizText: item.question,
+      quizText: fullQuizText,
       maxMatches: 3,
       targetHints,
     }),
