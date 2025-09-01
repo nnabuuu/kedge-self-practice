@@ -197,12 +197,14 @@ function App() {
       console.log('=== Quiz Generation Debug ===');
       console.log('Generated quiz items:', items);
       console.log('Image mapping available:', imageMapping);
+      console.log('Extracted images:', extractedImages);
       
-      // Don't add images array to items - they should use imageMapping instead
-      // items = items.map(item => ({
-      //   ...item,
-      //   images: extractedImages
-      // }));
+      // Add images array to each item for QuizImageDisplay to use
+      // QuizImageDisplay expects both legacy images array and new imageMapping
+      items = items.map(item => ({
+        ...item,
+        images: extractedImages
+      }));
       
       setQuizItems(items);
       setUploadStatus({
@@ -298,7 +300,11 @@ function App() {
   const handleQuizItemUpdate = (index: number, updatedItem: QuizItem) => {
     setQuizItems(prevItems => {
       const newItems = [...prevItems];
-      newItems[index] = updatedItem;
+      // Preserve the images array from the original item
+      newItems[index] = {
+        ...updatedItem,
+        images: prevItems[index].images || extractedImages
+      };
       return newItems;
     });
   };

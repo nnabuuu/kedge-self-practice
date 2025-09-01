@@ -128,16 +128,9 @@ export const extractQuizFromParagraphsLocal = async (
     throw new Error('Quiz extraction failed: Invalid response format');
   }
   
-  // Process image placeholders in questions and options
-  const processedQuizItems = data.map((item: QuizItem) => ({
-    ...item,
-    question: images ? processImagePlaceholders(item.question, images) : item.question,
-    options: item.options?.map(opt => 
-      images ? processImagePlaceholders(opt, images) : opt
-    ) || [],
-  }));
-  
-  return processedQuizItems;
+  // Don't process image placeholders here - let QuizImageDisplay handle them
+  // Just return the raw quiz items with placeholders intact
+  return data;
 };
 
 // Create knowledge point
