@@ -29,32 +29,16 @@ export class GptController {
       
       // Check what's actually in the first few paragraphs
       console.log('=== Analyzing received data structure ===');
-      body.paragraphs.slice(0, 3).forEach((p, idx) => {
+      body.paragraphs.forEach((p, idx) => {
         console.log(`Paragraph ${idx} keys:`, Object.keys(p));
         console.log(`Paragraph ${idx} text length:`, p.paragraph?.length || 0);
-        console.log(`Paragraph ${idx} JSON size:`, JSON.stringify(p).length);
-        if (p.highlighted) {
-          console.log(`Paragraph ${idx} highlights count:`, p.highlighted.length);
+        // Log paragraphs with images
+        if (p.paragraph && p.paragraph.includes('{{image:')) {
+          console.log(`Paragraph ${idx} contains IMAGE placeholders:`, p.paragraph);
         }
-        
-        // Check if there are any unexpected properties
-        const unexpectedKeys = Object.keys(p).filter(key => !['paragraph', 'highlighted'].includes(key));
-        if (unexpectedKeys.length > 0) {
-          console.error(`Paragraph ${idx} has unexpected keys:`, unexpectedKeys);
-          unexpectedKeys.forEach(key => {
-            const value = (p as any)[key];
-            if (Array.isArray(value)) {
-              console.error(`  ${key}: array with ${value.length} items`);
-              if (value.length > 0) {
-                console.error(`  ${key}[0] keys:`, Object.keys(value[0] || {}));
-                if (value[0]?.data) {
-                  console.error(`  ${key}[0].data size:`, Buffer.isBuffer(value[0].data) ? value[0].data.length : JSON.stringify(value[0].data).length);
-                }
-              }
-            } else {
-              console.error(`  ${key}:`, typeof value, value?.length || 'no length');
-            }
-          });
+        // Log paragraphs with highlights
+        if (p.highlighted && p.highlighted.length > 0) {
+          console.log(`Paragraph ${idx} has highlights:`, p.highlighted);
         }
       });
       
@@ -75,14 +59,26 @@ export class GptController {
       if (body.options?.targetTypes) {
         console.log('Filtering for quiz types:', body.options.targetTypes);
       }
-      return this.llmService.extractQuizItems(cleanedParagraphs, body.options);
+      const results = await this.llmService.extractQuizItems(cleanedParagraphs, body.options);
+      console.log('=== GPT Service Results ===');
+      console.log('Number of quiz items generated:', results.length);
+      results.forEach((item, idx) => {
+        console.log(`Quiz ${idx}: type=${item.type}, has_image=${item.question?.includes('{{image:')}`);
+        if (item.question?.includes('{{image:')) {
+          console.log(`  Question with image: ${item.question.substring(0, 100)}...`);
+        }
+      });
+      return results;
     }
     
     console.log('=== Calling GPT service from direct controller ===');
     if (body.options?.targetTypes) {
       console.log('Filtering for quiz types:', body.options.targetTypes);
     }
-    return this.llmService.extractQuizItems(body.paragraphs, body.options);
+    const results = await this.llmService.extractQuizItems(body.paragraphs, body.options);
+    console.log('=== GPT Service Results ===');
+    console.log('Number of quiz items generated:', results.length);
+    return results;
   }
 
   @Post('polish-quiz')

@@ -112,6 +112,17 @@ export const extractQuizFromParagraphsLocal = async (
     maxItems?: number;
   }
 ): Promise<QuizItem[]> => {
+  console.log('=== Frontend Quiz Extraction Debug ===');
+  console.log('Sending paragraphs:', paragraphs);
+  console.log('Number of paragraphs:', paragraphs.length);
+  
+  // Log paragraphs with images
+  paragraphs.forEach((p, idx) => {
+    if (p.paragraph && p.paragraph.includes('{{image:')) {
+      console.log(`Paragraph ${idx} contains images:`, p.paragraph);
+    }
+  });
+  
   const response = await apiFetch('/gpt/extract-quiz', {
     method: 'POST',
     body: JSON.stringify({ 
@@ -123,10 +134,28 @@ export const extractQuizFromParagraphsLocal = async (
   
   const data = await response.json();
   
+  console.log('=== Backend Response ===');
+  console.log('Received quiz items:', data);
+  console.log('Number of quiz items:', Array.isArray(data) ? data.length : 0);
+  
   if (!Array.isArray(data)) {
     console.error('Invalid response format:', data);
     throw new Error('Quiz extraction failed: Invalid response format');
   }
+  
+  // Log any quiz items with images
+  data.forEach((item: QuizItem, idx: number) => {
+    if (item.question && item.question.includes('{{image:')) {
+      console.log(`Quiz item ${idx} contains images in question:`, item.question);
+    }
+    if (item.options) {
+      item.options.forEach((opt, optIdx) => {
+        if (opt && opt.includes('{{image:')) {
+          console.log(`Quiz item ${idx} option ${optIdx} contains images:`, opt);
+        }
+      });
+    }
+  });
   
   // Don't process image placeholders here - let QuizImageDisplay handle them
   // Just return the raw quiz items with placeholders intact
