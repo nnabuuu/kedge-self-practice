@@ -146,6 +146,21 @@ export class PracticeService {
     };
   }
 
+  /**
+   * Normalize text for answer comparison by removing middle dots and similar punctuation
+   * This allows "马丁・路德" and "马丁路德" to be considered equivalent
+   */
+  private normalizeAnswerText(text: string): string {
+    return text
+      .trim()
+      .toLowerCase()
+      // Remove various middle dot characters
+      .replace(/[・·・･‧]/g, '')  // Different types of middle dots
+      .replace(/\s+/g, ' ')  // Normalize spaces
+      .replace(/['']/g, "'")  // Normalize quotes
+      .replace(/[""]/g, '"');  // Normalize quotes
+  }
+
   async submitAnswer(data: SubmitAnswer, userId: string): Promise<{ isCorrect: boolean }> {
     const session = await this.practiceRepository.getSession(data.session_id, userId);
     
@@ -177,8 +192,8 @@ export class PracticeService {
       // For multiple blanks, first check if it's order-independent
       if (correctAnswers.length > 1 && userAnswers.length === correctAnswers.length) {
         // Check if answers can be matched in any order
-        const normalizedCorrectAnswers = correctAnswers.map(a => String(a).trim().toLowerCase());
-        const normalizedUserAnswers = userAnswers.map(a => String(a).trim().toLowerCase());
+        const normalizedCorrectAnswers = correctAnswers.map(a => this.normalizeAnswerText(String(a)));
+        const normalizedUserAnswers = userAnswers.map(a => this.normalizeAnswerText(String(a)));
         
         // First, try exact position matching (original logic)
         let positionMatch = true;
@@ -276,8 +291,8 @@ export class PracticeService {
               
               let blankCorrect = false;
               
-              // Check exact match
-              if (userAnswerStr.toLowerCase() === correctAnswerStr.toLowerCase()) {
+              // Check exact match (with normalization)
+              if (this.normalizeAnswerText(userAnswerStr) === this.normalizeAnswerText(correctAnswerStr)) {
                 blankCorrect = true;
                 this.logger.log(`Blank ${i+1} matched exactly: "${userAnswerStr}" === "${correctAnswerStr}"`);
               }
@@ -289,7 +304,7 @@ export class PracticeService {
                 
                 if (blankSpecific.length > 0) {
                   blankCorrect = blankSpecific.some(
-                    alt => alt.toLowerCase() === userAnswerStr.toLowerCase()
+                    alt => this.normalizeAnswerText(alt) === this.normalizeAnswerText(userAnswerStr)
                   );
                 }
               }
@@ -313,7 +328,7 @@ export class PracticeService {
           
           let blankCorrect = false;
           
-          if (userAnswerStr.toLowerCase() === correctAnswerStr.toLowerCase()) {
+          if (this.normalizeAnswerText(userAnswerStr) === this.normalizeAnswerText(correctAnswerStr)) {
             blankCorrect = true;
             this.logger.log(`Blank ${i+1} matched exactly: "${userAnswerStr}" === "${correctAnswerStr}"`);
           }
@@ -324,7 +339,7 @@ export class PracticeService {
             
             if (blankSpecific.length > 0) {
               blankCorrect = blankSpecific.some(
-                alt => alt.toLowerCase() === userAnswerStr.toLowerCase()
+                alt => this.normalizeAnswerText(alt) === this.normalizeAnswerText(userAnswerStr)
               );
               if (blankCorrect) {
                 this.logger.log(`Blank ${i+1} matched specific alternative: "${userAnswerStr}"`);
@@ -332,7 +347,7 @@ export class PracticeService {
             } else if (correctAnswers.length === 1) {
               // Single blank - check unprefixed alternatives
               blankCorrect = quiz.alternative_answers.some(
-                alt => !alt.includes('[') && alt.toLowerCase() === userAnswerStr.toLowerCase()
+                alt => !alt.includes('[') && this.normalizeAnswerText(alt) === this.normalizeAnswerText(userAnswerStr)
               );
             }
           }
@@ -1029,13 +1044,13 @@ export class PracticeService {
           const userAnswerStr = (userAnswers[i] || '').trim();
           
           // Check exact match
-          if (userAnswerStr.toLowerCase() === correctAnswerStr.toLowerCase()) {
+          if (this.normalizeAnswerText(userAnswerStr) === this.normalizeAnswerText(correctAnswerStr)) {
             reasoning.push(`空格${i+1}: 完全匹配`);
           }
           // Check blank-specific alternatives
           else if (quiz.alternative_answers?.some(alt => 
-            (alt.startsWith(`[${i}]`) && alt.replace(`[${i}]`, '').trim().toLowerCase() === userAnswerStr.toLowerCase()) ||
-            (correctAnswers.length === 1 && !alt.includes('[') && alt.toLowerCase() === userAnswerStr.toLowerCase())
+            (alt.startsWith(`[${i}]`) && this.normalizeAnswerText(alt.replace(`[${i}]`, '').trim()) === this.normalizeAnswerText(userAnswerStr)) ||
+            (correctAnswers.length === 1 && !alt.includes('[') && this.normalizeAnswerText(alt) === this.normalizeAnswerText(userAnswerStr))
           )) {
             reasoning.push(`空格${i+1}: 已在替代答案中`);
           }
@@ -1088,14 +1103,14 @@ export class PracticeService {
         const correctAnswerStr = String(correctAnswers[0]).trim();
         
         // Check if it's already an exact match or in alternative answers
-        if (userAnswerTrimmed.toLowerCase() === correctAnswerStr.toLowerCase()) {
+        if (this.normalizeAnswerText(userAnswerTrimmed) === this.normalizeAnswerText(correctAnswerStr)) {
           return {
             isCorrect: true,
             reasoning: '答案完全匹配',
           };
         }
 
-        if (quiz.alternative_answers?.some(alt => alt.toLowerCase() === userAnswerTrimmed.toLowerCase())) {
+        if (quiz.alternative_answers?.some(alt => this.normalizeAnswerText(alt) === this.normalizeAnswerText(userAnswerTrimmed))) {
           return {
             isCorrect: true,
             reasoning: '答案已在系统认可的替代答案中',
