@@ -16,7 +16,7 @@ export class QuizRepository {
   private async logDatabaseInfo() {
     try {
       // Log the database URL (mask password)
-      const dbUrl = process.env.NODE_DATABASE_URL || 'NOT SET';
+      const dbUrl = process.env['NODE_DATABASE_URL'] || 'NOT SET';
       const maskedUrl = dbUrl.replace(/:([^@]+)@/, ':****@');
       this.logger.log(`Database URL: ${maskedUrl}`);
       
