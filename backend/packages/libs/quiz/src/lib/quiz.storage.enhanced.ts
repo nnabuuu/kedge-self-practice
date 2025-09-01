@@ -143,20 +143,40 @@ export class EnhancedQuizStorageService {
     // For now, we'll search for the file in the directory structure
     // In production, this should query the attachments table for the file path
     
+    console.log(`Looking for attachment: ${uuid}.${extension}`);
+    
     try {
-      // Try common year/month combinations (this is temporary)
-      // In production, query the database for the exact path
-      const possiblePaths = [
-        `2025/08/${uuid}.${extension}`,
-        `2025/07/${uuid}.${extension}`,
-        `2024/12/${uuid}.${extension}`,
-        `2024/11/${uuid}.${extension}`,
-      ];
+      // Generate possible paths based on current and recent months
+      // In production, this should query the database for the exact path
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      
+      const possiblePaths: string[] = [];
+      
+      // Add current month and previous 11 months (1 year of history)
+      for (let i = 0; i < 12; i++) {
+        let year = currentYear;
+        let month = currentMonth - i;
+        
+        // Handle year boundary
+        if (month <= 0) {
+          month += 12;
+          year -= 1;
+        }
+        
+        const monthStr = String(month).padStart(2, '0');
+        possiblePaths.push(`${year}/${monthStr}/${uuid}.${extension}`);
+      }
+      
+      console.log(`Searching in ${possiblePaths.length} possible paths...`);
       
       for (const path of possiblePaths) {
         try {
           const fullPath = join(this.root, path);
           const buffer = await fs.readFile(fullPath);
+          
+          console.log(`Found attachment at: ${path}`);
           
           // Get file stats for metadata
           const stats = await fs.stat(fullPath);
@@ -180,6 +200,9 @@ export class EnhancedQuizStorageService {
       }
       
       // If we get here, file wasn't found in any expected location
+      console.error(`Attachment not found in any of the ${possiblePaths.length} paths checked`);
+      console.error(`Storage root: ${this.root}`);
+      console.error(`First few paths checked:`, possiblePaths.slice(0, 3));
       throw new BadRequestException(`Attachment not found: ${uuid}.${extension}`);
     } catch (error) {
       if (error instanceof BadRequestException) {

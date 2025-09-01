@@ -1,0 +1,3 @@
+-- This migration fixes data errors, reverting would restore the errors
+-- So we'll just leave this empty as we don't want to revert to incorrect data
+-- If needed, restore from backup
