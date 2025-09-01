@@ -597,7 +597,7 @@ BEGIN
   SELECT COUNT(*) INTO total_count FROM kedge_practice.knowledge_points;
   RAISE NOTICE 'Total knowledge points after migration: %', total_count;
   
-  IF total_count \!= 505 THEN
+  IF total_count != 505 THEN
     RAISE EXCEPTION 'Expected 505 knowledge points, but got %', total_count;
   END IF;
 END $$;
