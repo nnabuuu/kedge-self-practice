@@ -544,7 +544,7 @@ ${JSON.stringify(item, null, 2)}
             const cleanAnswer = item.answer.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim();
             // Try to find the clean answer in options
             const matchIndex = item.options.findIndex(opt => 
-              opt === cleanAnswer || opt === item.answer.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim()
+              opt === cleanAnswer || (typeof item.answer === 'string' && opt === item.answer.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim())
             );
             if (matchIndex !== -1) {
               item.answer = item.options[matchIndex];
@@ -553,17 +553,25 @@ ${JSON.stringify(item, null, 2)}
             }
           } else if (Array.isArray(item.answer)) {
             // For multiple choice, clean each answer
-            item.answer = item.answer.map(ans => {
+            const cleanedAnswers: string[] = [];
+            for (const ans of item.answer) {
               if (typeof ans === 'string') {
                 const cleanAnswer = ans.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim();
                 // Find matching option
-                const matchIndex = item.options.findIndex(opt => 
+                const matchIndex = item.options?.findIndex(opt => 
                   opt === cleanAnswer || opt === ans.replace(/^[A-Z][\.\．、）)]\s*/i, '').trim()
-                );
-                return matchIndex !== -1 ? item.options[matchIndex] : cleanAnswer;
+                ) ?? -1;
+                if (matchIndex !== -1 && item.options) {
+                  cleanedAnswers.push(item.options[matchIndex]);
+                } else {
+                  cleanedAnswers.push(cleanAnswer);
+                }
+              } else if (typeof ans === 'number' && item.options && item.options[ans]) {
+                // If answer is an index, use the option at that index
+                cleanedAnswers.push(item.options[ans]);
               }
-              return ans;
-            });
+            }
+            item.answer = cleanedAnswers;
           }
         }
       }
