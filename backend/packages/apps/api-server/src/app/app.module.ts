@@ -16,8 +16,10 @@ import { KnowledgePointController } from './controllers/knowledge-point.controll
 import { StatisticsController } from './controllers/statistics.controller';
 import { SubjectsController } from './controllers/subjects.controller';
 import { AdminController } from './controllers/admin.controller';
+import { LeaderboardController } from './controllers/leaderboard.controller';
 import { PracticeModule } from '@kedge/practice';
 import { PersistentModule } from '@kedge/persistent';
+import { LeaderboardModule } from '@kedge/leaderboard';
 
 @Module({
   imports: [
@@ -27,6 +29,7 @@ import { PersistentModule } from '@kedge/persistent';
     QuizParserModule,
     PracticeModule,
     PersistentModule,
+    LeaderboardModule,
   ],
   controllers: [
     AuthController,
@@ -41,6 +44,7 @@ import { PersistentModule } from '@kedge/persistent';
     StatisticsController,
     SubjectsController,
     AdminController,
+    LeaderboardController,
   ],
   providers: [
     {

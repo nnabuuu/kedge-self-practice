@@ -7,4 +7,5 @@ export * from './jwt/jwt.strategy';
 export * from './jwt/teacher.guard';
 export * from './jwt/admin.guard';
 export * from './jwt/jwt-or-query.guard';
+export * from './lib/decorators/current-user.decorator';
 // Use AdminGuard from jwt folder, not lib/guards

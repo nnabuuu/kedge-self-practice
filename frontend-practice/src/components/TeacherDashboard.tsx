@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, BookOpen, FileText, Users, BarChart3, Settings, ExternalLink, Plus, Upload, Download, Cpu } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, Users, BarChart3, Settings, ExternalLink, Plus, Upload, Download, Cpu, Trophy } from 'lucide-react';
 import { Subject, KnowledgePoint, QuizQuestion } from '../types/quiz';
 import { Teacher } from '../types/teacher';
 import { useSubjects, useKnowledgePoints, useQuestionSearch } from '../hooks/useApi';
@@ -11,6 +11,7 @@ import QuizBankManagement from '../pages/teacher/QuizBankManagement';
 import UserManagement from '../pages/teacher/UserManagement';
 import SettingsPage from '../pages/teacher/Settings';
 import AIConfigManagement from '../pages/teacher/AIConfigManagement';
+import Leaderboard from '../pages/teacher/Leaderboard';
 
 interface TeacherDashboardProps {
   teacher: Teacher;
@@ -19,7 +20,7 @@ interface TeacherDashboardProps {
   onBack: () => void;
 }
 
-type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'users' | 'ai-config' | 'analytics' | 'settings';
+type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'users' | 'ai-config' | 'leaderboard' | 'analytics' | 'settings';
 
 interface TeacherStats {
   totalStudents: number;
@@ -291,6 +292,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                 { id: 'overview', label: '概览', icon: BarChart3 },
                 { id: 'knowledge-points', label: '知识点管理', icon: BookOpen },
                 { id: 'questions', label: '题库管理', icon: FileText },
+                { id: 'leaderboard', label: '排行榜', icon: Trophy },
                 ...(isAdmin ? [
                   { id: 'users', label: '用户管理', icon: Users },
                   { id: 'ai-config', label: 'AI配置管理', icon: Cpu }
@@ -344,6 +346,9 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
             )}
             {activeTab === 'ai-config' && isAdmin && (
               <AIConfigManagement />
+            )}
+            {activeTab === 'leaderboard' && (
+              <Leaderboard />
             )}
             {activeTab === 'analytics' && (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">

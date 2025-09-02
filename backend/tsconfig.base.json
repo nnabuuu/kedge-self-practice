@@ -20,12 +20,13 @@
       "@kedge/auth": ["packages/libs/auth/src/index.ts"],
       "@kedge/common": ["packages/libs/common/src/index.ts"],
       "@kedge/configs": ["packages/libs/configs/src/index.ts"],
+      "@kedge/knowledge-point": ["packages/libs/knowledge-point/src/index.ts"],
+      "@kedge/leaderboard": ["libs/leaderboard/src/index.ts"],
       "@kedge/models": ["packages/libs/models/src/index.ts"],
       "@kedge/persistent": ["packages/libs/persistent/src/index.ts"],
-      "@kedge/knowledge-point": ["packages/libs/knowledge-point/src/index.ts"],
+      "@kedge/practice": ["packages/libs/practice/src/index.ts"],
       "@kedge/quiz": ["packages/libs/quiz/src/index.ts"],
-      "@kedge/quiz-parser": ["packages/libs/quiz-parser/src/index.ts"],
-      "@kedge/practice": ["packages/libs/practice/src/index.ts"]
+      "@kedge/quiz-parser": ["packages/libs/quiz-parser/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"],
