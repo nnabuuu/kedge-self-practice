@@ -110,6 +110,8 @@ export class GptService {
     - 选项可能跨多个段落，要完整收集所有选项（如A、B在一个段落，C、D在下一个段落）
     - 去除选项前的字母标号，只保留选项内容
     - 正确答案是高亮的选项内容
+    - **重要**：single-choice题型的answer必须是单个字符串（选项内容），不能是数组
+    - **重要**：multiple-choice题型的answer必须是字符串数组，包含所有正确选项
     
     其他题型：
     - 若原文中未明确列出多个选项，但包含某个高亮词汇，作为"填空题"处理
@@ -122,7 +124,8 @@ export class GptService {
           "type": "single-choice" | "multiple-choice" | "fill-in-the-blank" | "subjective" | "other",
           "question": "题干（包含{{image:uuid}}占位符）",
           "options": ["选项1", "选项2", "选项3", "选项4"],  // 仅选择题需要
-          "answer": "答案" 或 ["答案1", "答案2"] 或 [0] 或 [0, 1]  // 根据题型
+          "answer": "答案"  // single-choice和fill-in-the-blank返回字符串
+                   或 ["答案1", "答案2"]  // multiple-choice返回数组
         }
       ]
     }
@@ -141,7 +144,7 @@ export class GptService {
         "type": "single-choice",
         "question": "以下历史地图能反映出什么时代特点\n{{image:uuid1}}{{image:uuid2}}{{image:uuid3}}\n春秋时期 战国时期 秦朝",
         "options": ["春秋时期大国争霸", "统一趋势不断增强", "战国时期百家争鸣", "战争不止社会倒退"],
-        "answer": [1]
+        "answer": "统一趋势不断增强"
       }]
     }
     

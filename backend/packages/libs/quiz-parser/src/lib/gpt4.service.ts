@@ -31,10 +31,14 @@ export class GPT4Service {
       ? (options.targetTypes as GeneratableQuizType[])
       : ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'];
     
-    // Special handling for fill-in-the-blank only requests
-    if (allowedTypes.length === 1 && allowedTypes[0] === 'fill-in-the-blank') {
-      console.log('Using optimized per-paragraph processing for fill-in-the-blank questions');
-      return this.extractFillInBlankItemsPerParagraph(paragraphs, options);
+    // Special handling for single type requests
+    if (allowedTypes.length === 1) {
+      if (allowedTypes[0] === 'fill-in-the-blank') {
+        console.log('Using optimized per-paragraph processing for fill-in-the-blank questions');
+        return this.extractFillInBlankItemsPerParagraph(paragraphs, options);
+      } else if (allowedTypes[0] === 'single-choice') {
+        console.log('Processing for single-choice questions only');
+      }
     }
     
     const typeDescriptions = allowedTypes.map(type => {
@@ -47,6 +51,11 @@ export class GPT4Service {
       }
     }).join('、');
 
+    let answerFormatInstruction = '';
+    if (allowedTypes.length === 1 && allowedTypes[0] === 'single-choice') {
+      answerFormatInstruction = '\n8. **极其重要**：所有题目的answer字段必须是单个字符串（选项内容），绝对不能是数组！';
+    }
+
     const prompt = `你是一名出题专家，基于提供的文本段落生成中学教育题目。
 
 要求：
@@ -56,7 +65,7 @@ export class GPT4Service {
 4. 确保题目符合中学生的认知水平
 5. 所有题目都必须包含 options 字段（即使是空数组）
 6. 选择题的 options 需要包含选项，填空题和主观题的 options 可以是空数组
-7. 返回 JSON 格式，包含 items 数组
+7. 返回 JSON 格式，包含 items 数组${answerFormatInstruction}
 
 题目组合规则（极其重要）：
 - 题目内容经常跨多个段落，你必须智能组合它们
@@ -74,6 +83,8 @@ export class GPT4Service {
 - 例如：正确的格式是 ["聚族定居", "建立国家", "冶炼青铜", "创造文字"]
 - 错误的格式是 ["A．聚族定居", "B．建立国家", "C．冶炼青铜", "D．创造文字"]
 - answer字段也应该只包含选项内容，如 "聚族定居"，而不是 "A．聚族定居"
+- **重要**：single-choice的answer必须是单个字符串（如："聚族定居"），不能是数组
+- **重要**：multiple-choice的answer必须是字符串数组（如：["聚族定居", "建立国家"]）
 - 例如：
   段落1：九一八事变和华北事变... (高亮: 九一八, 事变)
   段落2：九一八事变和华北事变... (高亮: 华北)

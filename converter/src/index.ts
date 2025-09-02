@@ -224,7 +224,7 @@ async function getFilesToProcess(input: string, recursive: boolean, includeDoc: 
     
     const globPattern = recursive 
       ? `${input}/**/{${patterns.join(',')}}` 
-      : `${input}/{${patterns.join(',')}}`;
+      : `${input}/${patterns.length > 1 ? `{${patterns.join(',')}}` : patterns[0]}`;
     
     return glob.sync(globPattern).map(f => path.resolve(f));
   }
