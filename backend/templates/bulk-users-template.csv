@@ -1,0 +1,6 @@
+account,password,name,role,class
+student001,password123,张三,student,20250101
+student002,password123,李四,student,20250101
+student003,password123,王五,student,20250102
+teacher001,password123,陈老师,teacher,
+admin001,admin123,管理员,admin,

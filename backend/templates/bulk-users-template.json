@@ -1,0 +1,37 @@
+[
+  {
+    "account": "student001",
+    "password": "password123",
+    "name": "张三",
+    "role": "student",
+    "class": "20250101"
+  },
+  {
+    "account": "student002",
+    "password": "password123",
+    "name": "李四",
+    "role": "student",
+    "class": "20250101"
+  },
+  {
+    "account": "student003",
+    "password": "password123",
+    "name": "王五",
+    "role": "student",
+    "class": "20250102"
+  },
+  {
+    "account": "teacher001",
+    "password": "password123",
+    "name": "陈老师",
+    "role": "teacher",
+    "class": null
+  },
+  {
+    "account": "admin001",
+    "password": "admin123",
+    "name": "管理员",
+    "role": "admin",
+    "class": null
+  }
+]

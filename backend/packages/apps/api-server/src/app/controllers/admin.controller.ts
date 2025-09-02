@@ -11,7 +11,8 @@ const CreateUserSchema = z.object({
   account: z.string().min(1), // Account ID can be any non-empty string
   password: z.string().min(6),
   name: z.string().min(1),
-  role: z.enum(['student', 'teacher', 'admin'])
+  role: z.enum(['student', 'teacher', 'admin']),
+  class: z.string().optional() // Class identifier (e.g., '20250101'), required for students
 });
 
 const UpdatePasswordSchema = z.object({
@@ -23,7 +24,8 @@ const BulkCreateUsersSchema = z.array(
     account: z.string().min(1), // Account ID can be any non-empty string
     password: z.string().min(6),
     name: z.string().min(1),
-    role: z.enum(['student', 'teacher'])
+    role: z.enum(['student', 'teacher']),
+    class: z.string().optional() // Class identifier, required for students
   })
 );
 
@@ -102,6 +104,7 @@ export class AdminController {
           account_id as email,
           name,
           role,
+          class,
           is_admin,
           created_at,
           updated_at,
@@ -124,6 +127,7 @@ export class AdminController {
           email: user.email,
           name: user.name,
           role: user.role,
+          class: user.class,
           isAdmin: user.is_admin,
           createdAt: user.created_at,
           updatedAt: user.updated_at,
@@ -155,11 +159,17 @@ export class AdminController {
         account: body.account || body.email,
         password: body.password,
         name: body.name,
-        role: body.role
+        role: body.role,
+        class: body.class || null
       };
       
       // Validate input
       const validatedData = CreateUserSchema.parse(inputData);
+      
+      // Validate that students must have a class
+      if (validatedData.role === 'student' && !validatedData.class) {
+        throw new HttpException('Students must have a class assigned', HttpStatus.BAD_REQUEST);
+      }
       
       // Check if user already exists
       const existingUser = await this.persistentService.pgPool.query(sql.unsafe`
@@ -185,6 +195,7 @@ export class AdminController {
           password_hash,
           salt,
           role,
+          class,
           is_admin,
           preferences,
           created_at,
@@ -195,12 +206,13 @@ export class AdminController {
           ${passwordHash},
           ${salt},
           ${validatedData.role},
+          ${validatedData.class || null},
           ${isAdmin},
           ${sql.json({})},
           NOW(),
           NOW()
         )
-        RETURNING id, account_id as email, name, role, is_admin, created_at
+        RETURNING id, account_id as email, name, role, class, is_admin, created_at
       `);
 
       return {
@@ -210,6 +222,7 @@ export class AdminController {
           email: result.rows[0].email,
           name: result.rows[0].name,
           role: result.rows[0].role,
+          class: result.rows[0].class,
           isAdmin: result.rows[0].is_admin,
           createdAt: result.rows[0].created_at
         },
@@ -358,11 +371,22 @@ export class AdminController {
         account: user.account || user.email,
         password: user.password,
         name: user.name,
-        role: user.role
+        role: user.role,
+        class: user.class || null
       }));
       
       // Validate input
       const validatedData = BulkCreateUsersSchema.parse(inputData);
+      
+      // Validate that all students have a class
+      for (const userData of validatedData) {
+        if (userData.role === 'student' && !userData.class) {
+          throw new HttpException(
+            `Student ${userData.account} must have a class assigned`,
+            HttpStatus.BAD_REQUEST
+          );
+        }
+      }
       
       const results: {
         success: any[];
@@ -399,6 +423,7 @@ export class AdminController {
               password_hash,
               salt,
               role,
+              class,
               is_admin,
               preferences,
               created_at,
@@ -409,19 +434,21 @@ export class AdminController {
               ${passwordHash},
               ${salt},
               ${userData.role},
+              ${userData.class || null},
               ${false},
               ${sql.json({})},
               NOW(),
               NOW()
             )
-            RETURNING id, account_id as email, name, role
+            RETURNING id, account_id as email, name, role, class
           `);
 
           results.success.push({
             id: result.rows[0].id,
             email: result.rows[0].email,
             name: result.rows[0].name,
-            role: result.rows[0].role
+            role: result.rows[0].role,
+            class: result.rows[0].class
           });
         } catch (error) {
           results.failed.push({
