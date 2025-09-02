@@ -29,8 +29,8 @@ fi
 # Change VITE_ORG_NAME to your organization name
 cat > .env.production << EOF
 VITE_ORG_NAME=曹杨二中
-VITE_API_BASE_URL=https://cyez.zhushou.one
-VITE_QUIZ_PARSER_URL=https://cyez.zhushou.one/parser
+VITE_API_BASE_URL=http://34.31.89.197
+VITE_QUIZ_PARSER_URL=http://34.31.89.197/parser
 EOF
 
 # Install and build
@@ -137,8 +137,8 @@ fi
 sudo nginx -t && sudo systemctl reload nginx
 
 echo -e "${GREEN}✅ Setup complete!${NC}"
-echo "Visit: https://cyez.zhushou.one"
-echo "Parser: https://cyez.zhushou.one/parser"
+echo "Visit: http://34.31.89.197"
+echo "Parser: https://34.31.89.197/parser"
 EOF
 
 chmod +x deployment-package/setup-on-vm.sh
