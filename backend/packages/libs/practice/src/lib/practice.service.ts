@@ -364,10 +364,23 @@ export class PracticeService {
       if (!isCorrect) {
         this.logger.log(`Answer did not match all blanks, user can request AI re-evaluation`);
       }
+    } else if (quiz.type === 'single-choice') {
+      // For single-choice, the answer is stored as [index] but user sends "index"
+      const correctAnswerIndex = Array.isArray(quiz.answer) ? quiz.answer[0] : quiz.answer;
+      isCorrect = userAnswer === String(correctAnswerIndex);
+      this.logger.log(`Single-choice validation: user="${userAnswer}" vs correct="${correctAnswerIndex}" -> ${isCorrect}`);
+    } else if (quiz.type === 'multiple-choice') {
+      // For multiple-choice, answer is array of indices
+      const correctIndices = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
+      const userIndices = userAnswer.split(',').map(s => parseInt(s.trim())).sort();
+      const correctIndicesSorted = correctIndices.map(i => parseInt(String(i))).sort();
+      isCorrect = JSON.stringify(userIndices) === JSON.stringify(correctIndicesSorted);
+      this.logger.log(`Multiple-choice validation: user="${userAnswer}" vs correct="${correctIndices}" -> ${isCorrect}`);
     } else {
       // For other question types, use original logic
       const correctAnswer = Array.isArray(quiz.answer) ? quiz.answer.join(',') : quiz.answer;
       isCorrect = userAnswer === String(correctAnswer);
+      this.logger.log(`Other type (${quiz.type}) validation: user="${userAnswer}" vs correct="${correctAnswer}" -> ${isCorrect}`);
     }
 
     // Submit the answer
