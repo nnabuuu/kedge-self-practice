@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, CheckCircle2, XCircle, RotateCcw, Share2, Download, ChevronRight, ChevronDown, Award, Zap, Brain, Star, Sparkles, Gift, MessageSquare, Loader2, Home, History, BarChart3, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, CheckCircle2, XCircle, RotateCcw, ChevronRight, ChevronDown, Award, Zap, Brain, Star, Sparkles, Gift, MessageSquare, Loader2, Home, History, BarChart3, Users } from 'lucide-react';
 import { Subject, PracticeSession, QuizQuestion } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import TimeAnalysisChart from './TimeAnalysisChart';
+import { api } from '../services/backendApi';
 
 interface QuizResultsProps {
   subject: Subject;
@@ -65,9 +66,77 @@ export default function QuizResults({
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'overview' | 'detailed' | 'suggestions'>('overview');
+  const [typeDistribution, setTypeDistribution] = useState<{
+    distribution: Array<{
+      type: string;
+      displayName: string;
+      count: number;
+      percentage: number;
+    }>;
+    total: number;
+  } | null>(null);
+  const [typeDistributionLoading, setTypeDistributionLoading] = useState(false);
 
   // Use API hook to get knowledge points
   const { data: knowledgePoints, loading: knowledgePointsLoading } = useKnowledgePoints(subject.id);
+
+  // Fetch type distribution from backend
+  useEffect(() => {
+    if (session.id) {
+      setTypeDistributionLoading(true);
+      api.practice.getTypeDistribution(session.id)
+        .then(response => {
+          if (response.success && response.data) {
+            setTypeDistribution(response.data);
+          } else {
+            console.error('Failed to fetch type distribution:', response.error);
+            // Fall back to local calculation if backend fails
+            calculateLocalTypeDistribution();
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching type distribution:', error);
+          // Fall back to local calculation if request fails
+          calculateLocalTypeDistribution();
+        })
+        .finally(() => {
+          setTypeDistributionLoading(false);
+        });
+    }
+  }, [session.id]);
+
+  // Local calculation fallback
+  const calculateLocalTypeDistribution = () => {
+    const typeCount = new Map<string, number>();
+    session.questions.forEach(q => {
+      const type = q.type || 'other';
+      typeCount.set(type, (typeCount.get(type) || 0) + 1);
+    });
+
+    const typeDisplayNames: Record<string, string> = {
+      'single-choice': '单选题',
+      'multiple-choice': '多选题',
+      'fill-in-the-blank': '填空题',
+      'essay': '问答题',
+      'subjective': '主观题',
+      'other': '其他'
+    };
+
+    const total = session.questions.length;
+    const distribution = Array.from(typeCount.entries()).map(([type, count]) => ({
+      type,
+      displayName: typeDisplayNames[type] || type,
+      count,
+      percentage: Math.round((count / total) * 100)
+    }));
+
+    distribution.sort((a, b) => b.count - a.count);
+
+    setTypeDistribution({
+      distribution,
+      total
+    });
+  };
 
   // Show loading state while knowledge points are being fetched
   if (knowledgePointsLoading) {
@@ -521,23 +590,6 @@ export default function QuizResults({
               <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
               <span className="font-medium tracking-wide">返回菜单</span>
             </button>
-
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => {/* TODO: 实现分享功能 */}}
-                className="group flex items-center px-4 py-2 text-gray-600 hover:text-blue-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm hover:bg-white/90 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out border border-white/20 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-              >
-                <Share2 className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                <span className="font-medium tracking-wide">分享结果</span>
-              </button>
-              <button
-                onClick={() => {/* TODO: 实现导出功能 */}}
-                className="group flex items-center px-4 py-2 text-gray-600 hover:text-green-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm hover:bg-white/90 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out border border-white/20 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none"
-              >
-                <Download className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                <span className="font-medium tracking-wide">导出报告</span>
-              </button>
-            </div>
           </div>
 
           {/* Title Section - 客观展示结果 */}
@@ -763,32 +815,91 @@ export default function QuizResults({
                   {/* 题型分布 */}
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900 mb-4 tracking-wide">题型分布</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {hasMultipleChoiceQuestions && (
-                        <div className="bg-blue-50 rounded-lg p-4">
-                          <div className="flex items-center mb-2">
-                            <CheckCircle2 className="w-5 h-5 text-blue-600 mr-2" />
-                            <span className="font-medium text-blue-800 tracking-wide">选择题</span>
+                    {typeDistributionLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                        <span className="ml-2 text-gray-600">加载题型分布...</span>
+                      </div>
+                    ) : typeDistribution && typeDistribution.distribution.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        {typeDistribution.distribution.map((item, index) => {
+                          // Choose icon based on type
+                          const Icon = 
+                            item.type === 'single-choice' || item.type === 'multiple-choice' ? CheckCircle2 :
+                            item.type === 'essay' || item.type === 'subjective' ? MessageSquare :
+                            BookOpen;
+                          
+                          // Get style classes based on type
+                          let bgClass, textClass, textBoldClass;
+                          if (item.type === 'single-choice') {
+                            bgClass = 'bg-blue-50';
+                            textClass = 'text-blue-800';
+                            textBoldClass = 'text-blue-600';
+                          } else if (item.type === 'multiple-choice') {
+                            bgClass = 'bg-indigo-50';
+                            textClass = 'text-indigo-800';
+                            textBoldClass = 'text-indigo-600';
+                          } else if (item.type === 'fill-in-the-blank') {
+                            bgClass = 'bg-green-50';
+                            textClass = 'text-green-800';
+                            textBoldClass = 'text-green-600';
+                          } else if (item.type === 'essay' || item.type === 'subjective') {
+                            bgClass = 'bg-purple-50';
+                            textClass = 'text-purple-800';
+                            textBoldClass = 'text-purple-600';
+                          } else {
+                            bgClass = 'bg-gray-50';
+                            textClass = 'text-gray-800';
+                            textBoldClass = 'text-gray-600';
+                          }
+                          
+                          return (
+                            <div key={item.type} className={`${bgClass} rounded-lg p-4`}>
+                              <div className="flex items-center mb-2">
+                                <Icon className={`w-5 h-5 ${textBoldClass} mr-2`} />
+                                <span className={`font-medium ${textClass} tracking-wide`}>
+                                  {item.displayName}
+                                </span>
+                              </div>
+                              <div className={`text-2xl font-bold ${textBoldClass}`}>
+                                {item.count}
+                              </div>
+                              <div className={`text-sm ${textBoldClass}`}>
+                                道题目 ({item.percentage}%)
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      // Fallback to old display if no distribution data
+                      <div className="grid grid-cols-2 gap-4">
+                        {hasMultipleChoiceQuestions && (
+                          <div className="bg-blue-50 rounded-lg p-4">
+                            <div className="flex items-center mb-2">
+                              <CheckCircle2 className="w-5 h-5 text-blue-600 mr-2" />
+                              <span className="font-medium text-blue-800 tracking-wide">选择题</span>
+                            </div>
+                            <div className="text-2xl font-bold text-blue-600">
+                              {session.questions.filter(q => q.type === 'multiple-choice').length}
+                            </div>
+                            <div className="text-sm text-blue-600">道题目</div>
                           </div>
-                          <div className="text-2xl font-bold text-blue-600">
-                            {session.questions.filter(q => q.type === 'multiple-choice').length}
+                        )}
+                        {hasEssayQuestions && (
+                          <div className="bg-purple-50 rounded-lg p-4">
+                            <div className="flex items-center mb-2">
+                              <MessageSquare className="w-5 h-5 text-purple-600 mr-2" />
+                              <span className="font-medium text-purple-800 tracking-wide">问答题</span>
+                            </div>
+                            <div className="text-2xl font-bold text-purple-600">
+                              {session.questions.filter(q => q.type === 'essay').length}
+                            </div>
+                            <div className="text-sm text-purple-600">道题目</div>
                           </div>
-                          <div className="text-sm text-blue-600">道题目</div>
-                        </div>
-                      )}
-                      {hasEssayQuestions && (
-                        <div className="bg-purple-50 rounded-lg p-4">
-                          <div className="flex items-center mb-2">
-                            <MessageSquare className="w-5 h-5 text-purple-600 mr-2" />
-                            <span className="font-medium text-purple-800 tracking-wide">问答题</span>
-                          </div>
-                          <div className="text-2xl font-bold text-purple-600">
-                            {session.questions.filter(q => q.type === 'essay').length}
-                          </div>
-                          <div className="text-sm text-purple-600">道题目</div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Progress Bar - 只在有选择题时显示 */}

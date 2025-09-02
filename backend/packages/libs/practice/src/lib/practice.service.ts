@@ -1156,4 +1156,76 @@ export class PracticeService {
       throw new BadRequestException('AI评估失败，请稍后重试');
     }
   }
+
+  /**
+   * Get quiz type distribution for a practice session
+   * Returns the count and percentage of each question type in the session
+   */
+  async getSessionTypeDistribution(sessionId: string, userId: string): Promise<{
+    distribution: Array<{
+      type: string;
+      displayName: string;
+      count: number;
+      percentage: number;
+    }>;
+    total: number;
+  }> {
+    try {
+      // Get the session
+      const session = await this.practiceRepository.getSession(sessionId, userId);
+      
+      if (!session) {
+        throw new NotFoundException('Practice session not found');
+      }
+
+      // Get all quizzes in the session
+      const quizIds = session.quiz_ids;
+      if (!quizIds || quizIds.length === 0) {
+        return {
+          distribution: [],
+          total: 0
+        };
+      }
+
+      // Get quiz details
+      const quizzes = await this.quizRepository.getQuizzesByIds(quizIds);
+      
+      // Count quiz types
+      const typeCount = new Map<string, number>();
+      for (const quiz of quizzes) {
+        const type = quiz.type || 'other';
+        typeCount.set(type, (typeCount.get(type) || 0) + 1);
+      }
+
+      // Type display name mapping
+      const typeDisplayNames: Record<string, string> = {
+        'single-choice': '单选题',
+        'multiple-choice': '多选题',
+        'fill-in-the-blank': '填空题',
+        'subjective': '主观题',
+        'other': '其他'
+      };
+
+      // Calculate distribution
+      const total = quizzes.length;
+      const distribution = Array.from(typeCount.entries()).map(([type, count]) => ({
+        type,
+        displayName: typeDisplayNames[type] || type,
+        count,
+        percentage: Math.round((count / total) * 100)
+      }));
+
+      // Sort by count (descending)
+      distribution.sort((a, b) => b.count - a.count);
+
+      return {
+        distribution,
+        total
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error getting session type distribution: ${errorMessage}`);
+      throw error;
+    }
+  }
 }

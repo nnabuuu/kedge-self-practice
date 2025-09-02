@@ -500,4 +500,28 @@ export class PracticeController {
       userId
     );
   }
+
+  @Get('sessions/:sessionId/type-distribution')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get quiz type distribution for a practice session' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Quiz type distribution statistics',
+  })
+  async getSessionTypeDistribution(
+    @Request() req: AuthenticatedRequest,
+    @Param('sessionId') sessionId: string
+  ): Promise<{
+    distribution: Array<{
+      type: string;
+      displayName: string;
+      count: number;
+      percentage: number;
+    }>;
+    total: number;
+  }> {
+    const userId = req.user.userId;
+    return await this.practiceService.getSessionTypeDistribution(sessionId, userId);
+  }
 }

@@ -707,6 +707,29 @@ class BackendApiService {
 
     return response;
   }
+
+  // Get quiz type distribution for a session
+  async getSessionTypeDistribution(sessionId: string): Promise<ApiResponse<{
+    distribution: Array<{
+      type: string;
+      displayName: string;
+      count: number;
+      percentage: number;
+    }>;
+    total: number;
+  }>> {
+    const response = await this.makeRequest<{
+      distribution: Array<{
+        type: string;
+        displayName: string;
+        count: number;
+        percentage: number;
+      }>;
+      total: number;
+    }>(`/practice/sessions/${sessionId}/type-distribution`);
+
+    return response;
+  }
 }
 
 // Create and export the service instance
@@ -742,7 +765,8 @@ export const api = {
     getSession: (sessionId: string) => backendApi.getPracticeSession(sessionId),
     submitAnswer: (sessionId: string, questionId: string, answer: string, timeSpent: number) => 
       backendApi.submitPracticeAnswer(sessionId, questionId, answer, timeSpent),
-    completeSession: (sessionId: string) => backendApi.completePracticeSession(sessionId)
+    completeSession: (sessionId: string) => backendApi.completePracticeSession(sessionId),
+    getTypeDistribution: (sessionId: string) => backendApi.getSessionTypeDistribution(sessionId)
   }
 };
 
