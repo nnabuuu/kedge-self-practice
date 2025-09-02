@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { GptParagraphBlock, QuizItem, QuizExtractionResult, QuizExtractionOptions } from '@kedge/models';
 import { getOpenAIConfig, getModelConfig } from '@kedge/configs';
+import { QuizPromptBuilder } from './prompt-builder';
 
 type GeneratableQuizType = 'single-choice' | 'multiple-choice' | 'fill-in-the-blank' | 'subjective';
 
@@ -26,125 +27,17 @@ export class GPT4Service {
     paragraphs: GptParagraphBlock[], 
     options?: QuizExtractionOptions
   ): Promise<QuizItem[]> {
-    // Build allowed types based on options (excluding 'other' type)
-    const allowedTypes: GeneratableQuizType[] = options?.targetTypes && options.targetTypes.length > 0 
-      ? (options.targetTypes as GeneratableQuizType[])
-      : ['single-choice', 'multiple-choice', 'fill-in-the-blank', 'subjective'];
-    
-    // Special handling for single type requests
-    if (allowedTypes.length === 1) {
-      if (allowedTypes[0] === 'fill-in-the-blank') {
-        console.log('Using optimized per-paragraph processing for fill-in-the-blank questions');
-        return this.extractFillInBlankItemsPerParagraph(paragraphs, options);
-      } else if (allowedTypes[0] === 'single-choice') {
-        console.log('Processing for single-choice questions only');
-      }
+    // Special handling for fill-in-the-blank only requests
+    if (options?.targetTypes?.length === 1 && options.targetTypes[0] === 'fill-in-the-blank') {
+      console.log('Using optimized per-paragraph processing for fill-in-the-blank questions');
+      return this.extractFillInBlankItemsPerParagraph(paragraphs, options);
     }
     
-    const typeDescriptions = allowedTypes.map(type => {
-      switch(type) {
-        case 'single-choice': return 'single-choice（单选题）';
-        case 'multiple-choice': return 'multiple-choice（多选题）';
-        case 'fill-in-the-blank': return 'fill-in-the-blank（填空题）';
-        case 'subjective': return 'subjective（主观题）';
-        default: return type;
-      }
-    }).join('、');
+    // Use the prompt builder for clean, conditional prompt generation
+    const promptBuilder = new QuizPromptBuilder(options);
+    const prompt = promptBuilder.buildPrompt();
 
-    let answerFormatInstruction = '';
-    if (allowedTypes.length === 1 && allowedTypes[0] === 'single-choice') {
-      answerFormatInstruction = '\n8. **极其重要**：所有题目的answer字段必须是单个字符串（选项内容），绝对不能是数组！';
-    }
-
-    const prompt = `你是一名出题专家，基于提供的文本段落生成中学教育题目。
-
-要求：
-1. 根据高亮内容生成题目（黄色、绿色等高亮表示重要内容）
-2. 只生成以下题型：${typeDescriptions}
-3. 填空题的空格用至少4个下划线表示（____）
-4. 确保题目符合中学生的认知水平
-5. 所有题目都必须包含 options 字段（即使是空数组）
-6. 选择题的 options 需要包含选项，填空题和主观题的 options 可以是空数组
-7. 返回 JSON 格式，包含 items 数组${answerFormatInstruction}
-
-题目组合规则（极其重要）：
-- 题目内容经常跨多个段落，你必须智能组合它们
-- 典型模式：
-  * 题号和题干（如"1.以下历史地图能反映出什么时代特点"）
-  * 图片段落（只包含{{image:uuid}}占位符）
-  * 图片说明或标签（如"春秋时期 战国时期 秦朝"）
-  * 选项段落（如"A．春秋时期大国争霸B．统一趋势不断增强"）
-- 当看到题干提到"图片"、"地图"、"图表"、"下图"、"上图"、"如图"等词汇时，必须包含相邻的图片占位符段落
-- 图片占位符必须保留在题干中，格式为 {{image:uuid}}
-
-选择题格式说明：
-- options数组中只包含选项的实际内容，不要添加A.、B.、C.、D.等字母前缀
-- 选项可能跨多个段落，要完整收集所有选项（如A、B在一个段落，C、D在下一个段落）
-- 例如：正确的格式是 ["聚族定居", "建立国家", "冶炼青铜", "创造文字"]
-- 错误的格式是 ["A．聚族定居", "B．建立国家", "C．冶炼青铜", "D．创造文字"]
-- answer字段也应该只包含选项内容，如 "聚族定居"，而不是 "A．聚族定居"
-- **重要**：single-choice的answer必须是单个字符串（如："聚族定居"），不能是数组
-- **重要**：multiple-choice的answer必须是字符串数组（如：["聚族定居", "建立国家"]）
-- 例如：
-  段落1：九一八事变和华北事变... (高亮: 九一八, 事变)
-  段落2：九一八事变和华北事变... (高亮: 华北)
-  段落3：1931年9月18日... (高亮: 局部)
-  应该生成3道不同的题目，分别基于各自的高亮内容
-- 绝对不要因为内容相关就合并段落或跳过某些段落
-
-填空题特别说明：
-- 如果高亮的是完整的专有名词（如"神农本草经"），应该把整个名词作为空格
-  正确：东汉时的《____》是中国古代第一部药物学专著。（答案：神农本草经）
-  错误：东汉时的《____本草经》是中国古代第一部药物学专著。（答案：神农）
-- 如果高亮的是短语或概念，应该把核心部分作为空格
-- 空格应该对应完整的、有意义的答案，而不是词语的片段
-
-高亮解析验证：
-- 对于填空题：如果一个段落有多个高亮，且某些高亮覆盖了整个句子或句子的大部分（超过10个字），
-  这很可能是解析错误，应该忽略这些过长的高亮
-- 填空题的高亮应该是关键词、短语或概念（通常2-10个字），而不是整句话
-- 如果所有高亮都过长，从中选择最可能作为考察内容的部分：
-  优先选择：人名、地名、时间、数字、专有名词、关键概念
-  从长句中提取核心词汇作为填空内容`;
-
-    const schema = {
-      name: 'quiz_extraction',
-      description: '题目提取结果',
-      strict: true,
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          items: {
-            type: 'array',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                type: {
-                  type: 'string',
-                  enum: allowedTypes, // Use the filtered types
-                },
-                question: { type: 'string' },
-                options: {
-                  type: 'array',
-                  items: { type: 'string' },
-                },
-                answer: {
-                  anyOf: [
-                    { type: 'string' },
-                    { type: 'array', items: { type: 'string' } },
-                  ],
-                },
-              },
-              // In strict mode, ALL properties must be in required array
-              required: ['type', 'question', 'options', 'answer'],
-            },
-          },
-        },
-        required: ['items'],
-      },
-    } as const;
+    const schema = promptBuilder.getResponseSchema();
 
     const modelConfig = getModelConfig('quizParser');
     const maxTokens = modelConfig.maxTokens || 8000; // Increase default to prevent truncation
