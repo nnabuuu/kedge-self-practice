@@ -29,7 +29,7 @@ fi
 # Change VITE_ORG_NAME to your organization name
 cat > .env.production << EOF
 VITE_ORG_NAME=曹杨二中
-VITE_API_BASE_URL=http://34.31.89.197
+VITE_API_BASE_URL=http://34.31.89.197:8718
 VITE_QUIZ_PARSER_URL=http://34.31.89.197/parser
 EOF
 
