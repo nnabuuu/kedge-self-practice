@@ -555,8 +555,11 @@ function App() {
         ? Math.round((session.answers.filter(a => a !== null).length / totalQuestions) * 100) 
         : 0;
       
-      const duration = session.endTime && session.startTime 
-        ? Math.round((session.endTime.getTime() - session.startTime.getTime()) / (1000 * 60))
+      const startTime = session.startTime instanceof Date ? session.startTime : new Date(session.startTime);
+      const endTime = session.endTime ? (session.endTime instanceof Date ? session.endTime : new Date(session.endTime)) : null;
+      
+      const duration = endTime && startTime 
+        ? Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60))
         : 0;
       
       const historyEntry: PracticeHistory = {

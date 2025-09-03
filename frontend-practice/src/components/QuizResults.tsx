@@ -202,8 +202,11 @@ export default function QuizResults({
   
   const completionRate = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
   
-  const duration = session.endTime && session.startTime 
-    ? Math.round((session.endTime.getTime() - session.startTime.getTime()) / (1000 * 60))
+  const startTime = session.startTime instanceof Date ? session.startTime : new Date(session.startTime);
+  const endTime = session.endTime ? (session.endTime instanceof Date ? session.endTime : new Date(session.endTime)) : null;
+  
+  const duration = endTime && startTime 
+    ? Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60))
     : 0;
   
   const avgTimePerQuestion = answeredQuestions > 0 ? Math.round(duration / answeredQuestions * 10) / 10 : 0;
