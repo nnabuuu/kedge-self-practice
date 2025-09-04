@@ -55,6 +55,15 @@ export default function PracticeHistory({
   const subjectHistory = history.filter(h => h.subjectId === subject.id);
 
   const handleViewSessionDetails = (sessionId: string) => {
+    // Check if this is a valid UUID (backend session) or timestamp (legacy localStorage session)
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
+    
+    if (!isValidUUID) {
+      // This is a legacy session from localStorage (timestamp-based ID)
+      alert('详细查看功能仅支持新的练习记录。\n\n旧的练习记录暂时无法查看详情，请开始新的练习以使用此功能。');
+      return;
+    }
+    
     setSelectedSessionId(sessionId);
     setIsSessionDetailsOpen(true);
   };

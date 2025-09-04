@@ -77,15 +77,29 @@ export default function PracticeSessionDetailsModal({ sessionId, isOpen, onClose
     setLoading(true);
     setError(null);
     
+    // Check if sessionId is a valid UUID
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
+    if (!isValidUUID) {
+      setError('无法加载练习详情：此练习记录格式不支持。请开始新的练习以使用详情功能。');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const response = await backendApi.get<{success: boolean, data: SessionDetails}>(`/leaderboard/session/${sessionId}/details`);
       if (response.success && response.data) {
         const detailsData = response.data.data || response.data;
         setDetails(detailsData as SessionDetails);
+      } else {
+        setError('获取练习详情失败：练习记录未找到或已过期。');
       }
     } catch (err: any) {
-      setError('获取练习详情失败');
       console.error('Failed to fetch session details:', err);
+      if (err.message?.includes('uuid') || err.message?.includes('UUID')) {
+        setError('此练习记录格式不支持详细查看。');
+      } else {
+        setError('获取练习详情失败，请稍后重试。');
+      }
     } finally {
       setLoading(false);
     }
