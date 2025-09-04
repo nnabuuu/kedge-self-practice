@@ -53,7 +53,8 @@ export class LeaderboardService {
             ELSE 0
           END as correct_rate
         FROM kedge_practice.users u
-        LEFT JOIN kedge_practice.practice_answers pa ON u.id = pa.user_id
+        LEFT JOIN kedge_practice.practice_sessions ps ON u.id = ps.user_id
+        LEFT JOIN kedge_practice.practice_answers pa ON ps.id = pa.session_id
         ${whereClause}
         ${classFilter ? sql.fragment`` : sql.fragment`WHERE u.role = 'student'`}
         GROUP BY u.id, u.name, u.account_id, u.class
@@ -116,7 +117,8 @@ export class LeaderboardService {
               ELSE 0
             END as correct_rate
           FROM kedge_practice.users u
-          LEFT JOIN kedge_practice.practice_answers pa ON u.id = pa.user_id
+          LEFT JOIN kedge_practice.practice_sessions ps ON u.id = ps.user_id
+          LEFT JOIN kedge_practice.practice_answers pa ON ps.id = pa.session_id
           ${whereClause}
           GROUP BY u.id, u.name, u.account_id, u.class
           HAVING COUNT(pa.id) >= ${minQuizzes}
@@ -158,7 +160,8 @@ export class LeaderboardService {
           COALESCE(SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END), 0) as total_correct,
           COALESCE(SUM(CASE WHEN NOT pa.is_correct THEN 1 ELSE 0 END), 0) as total_incorrect
         FROM kedge_practice.users u
-        LEFT JOIN kedge_practice.practice_answers pa ON u.id = pa.user_id
+        LEFT JOIN kedge_practice.practice_sessions ps ON u.id = ps.user_id
+        LEFT JOIN kedge_practice.practice_answers pa ON ps.id = pa.session_id
         WHERE u.role = 'student' AND u.class IS NOT NULL
         GROUP BY u.class
         ORDER BY u.class
@@ -211,8 +214,8 @@ export class LeaderboardService {
           COALESCE(AVG(CASE WHEN pa.is_correct THEN 100.0 ELSE 0 END), 0) as overall_correct_rate,
           COUNT(DISTINCT ps.id) as total_sessions
         FROM kedge_practice.users u
-        LEFT JOIN kedge_practice.practice_answers pa ON u.id = pa.user_id
         LEFT JOIN kedge_practice.practice_sessions ps ON u.id = ps.user_id
+        LEFT JOIN kedge_practice.practice_answers pa ON ps.id = pa.session_id
         ${whereClause}
       `;
       
