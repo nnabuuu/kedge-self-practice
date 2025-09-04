@@ -128,7 +128,7 @@ export default function Leaderboard() {
   };
 
   const renderSummary = () => {
-    if (!summaryData) return null;
+    if (!summaryData || !summaryData.statistics) return null;
     
     return (
       <div className="space-y-6">
@@ -137,7 +137,7 @@ export default function Leaderboard() {
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <Users className="w-8 h-8 text-blue-600" />
-              <span className="text-2xl font-bold text-blue-900">{summaryData.statistics.totalStudents}</span>
+              <span className="text-2xl font-bold text-blue-900">{summaryData.statistics.totalStudents || 0}</span>
             </div>
             <p className="text-sm text-blue-700">总学生数</p>
           </div>
@@ -145,7 +145,7 @@ export default function Leaderboard() {
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <Target className="w-8 h-8 text-green-600" />
-              <span className="text-2xl font-bold text-green-900">{summaryData.statistics.totalQuizzesAnswered.toLocaleString()}</span>
+              <span className="text-2xl font-bold text-green-900">{(summaryData.statistics.totalQuizzesAnswered || 0).toLocaleString()}</span>
             </div>
             <p className="text-sm text-green-700">总答题数</p>
           </div>
@@ -153,7 +153,7 @@ export default function Leaderboard() {
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <Award className="w-8 h-8 text-purple-600" />
-              <span className="text-2xl font-bold text-purple-900">{summaryData.statistics.overallCorrectRate.toFixed(1)}%</span>
+              <span className="text-2xl font-bold text-purple-900">{(summaryData.statistics.overallCorrectRate || 0).toFixed(1)}%</span>
             </div>
             <p className="text-sm text-purple-700">整体正确率</p>
           </div>
@@ -161,7 +161,7 @@ export default function Leaderboard() {
           <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <Activity className="w-8 h-8 text-orange-600" />
-              <span className="text-2xl font-bold text-orange-900">{summaryData.statistics.totalSessions}</span>
+              <span className="text-2xl font-bold text-orange-900">{summaryData.statistics.totalSessions || 0}</span>
             </div>
             <p className="text-sm text-orange-700">练习次数</p>
           </div>
