@@ -730,6 +730,19 @@ class BackendApiService {
 
     return response;
   }
+
+  // Generic GET request method for external use
+  async get<T = any>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.makeRequest<T>(endpoint);
+  }
+
+  // Generic POST request method for external use
+  async post<T = any>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
 }
 
 // Create and export the service instance

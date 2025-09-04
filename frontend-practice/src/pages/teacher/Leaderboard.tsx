@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, TrendingUp, TrendingDown, Users, Award, Target, Activity, Filter } from 'lucide-react';
-import { backendApi } from '../../services/backendApi';
+import backendApi from '../../services/backendApi';
 
 interface UserStats {
   userId: string;
@@ -61,9 +61,9 @@ export default function Leaderboard() {
 
   const fetchClasses = async () => {
     try {
-      const response = await backendApi.get('/leaderboard/class-stats');
-      if (response.data.success && response.data.data) {
-        const uniqueClasses = [...new Set(response.data.data.map((item: ClassStats) => item.class))];
+      const response = await backendApi.get<ClassStats[]>('/leaderboard/class-stats');
+      if (response.success && response.data) {
+        const uniqueClasses = [...new Set(response.data.map((item: ClassStats) => item.class))];
         setClasses(uniqueClasses.filter(c => c));
       }
     } catch (err) {
@@ -78,45 +78,44 @@ export default function Leaderboard() {
     try {
       switch (activeTab) {
         case 'summary':
-          const summaryResponse = await backendApi.get('/leaderboard/summary', {
-            params: { class: selectedClass || undefined }
-          });
-          if (summaryResponse.data.success) {
-            setSummaryData(summaryResponse.data.data);
+          const summaryUrl = selectedClass 
+            ? `/leaderboard/summary?class=${encodeURIComponent(selectedClass)}`
+            : '/leaderboard/summary';
+          const summaryResponse = await backendApi.get<LeaderboardSummary>(summaryUrl);
+          if (summaryResponse.success && summaryResponse.data) {
+            setSummaryData(summaryResponse.data);
           }
           break;
           
         case 'practice':
-          const practiceResponse = await backendApi.get('/leaderboard/practice-count', {
-            params: {
-              class: selectedClass || undefined,
-              order: practiceOrder,
-              limit: 50
-            }
-          });
-          if (practiceResponse.data.success) {
-            setPracticeData(practiceResponse.data.data);
+          const practiceParams = new URLSearchParams();
+          if (selectedClass) practiceParams.append('class', selectedClass);
+          practiceParams.append('order', practiceOrder);
+          practiceParams.append('limit', '50');
+          const practiceUrl = `/leaderboard/practice-count?${practiceParams.toString()}`;
+          const practiceResponse = await backendApi.get<UserStats[]>(practiceUrl);
+          if (practiceResponse.success && practiceResponse.data) {
+            setPracticeData(practiceResponse.data);
           }
           break;
           
         case 'accuracy':
-          const accuracyResponse = await backendApi.get('/leaderboard/correct-rate', {
-            params: {
-              class: selectedClass || undefined,
-              order: accuracyOrder,
-              minQuizzes: minQuizzes,
-              limit: 50
-            }
-          });
-          if (accuracyResponse.data.success) {
-            setAccuracyData(accuracyResponse.data.data);
+          const accuracyParams = new URLSearchParams();
+          if (selectedClass) accuracyParams.append('class', selectedClass);
+          accuracyParams.append('order', accuracyOrder);
+          accuracyParams.append('minQuizzes', String(minQuizzes));
+          accuracyParams.append('limit', '50');
+          const accuracyUrl = `/leaderboard/correct-rate?${accuracyParams.toString()}`;
+          const accuracyResponse = await backendApi.get<UserStats[]>(accuracyUrl);
+          if (accuracyResponse.success && accuracyResponse.data) {
+            setAccuracyData(accuracyResponse.data);
           }
           break;
           
         case 'class':
-          const classResponse = await backendApi.get('/leaderboard/class-stats');
-          if (classResponse.data.success) {
-            setClassData(classResponse.data.data);
+          const classResponse = await backendApi.get<ClassStats[]>('/leaderboard/class-stats');
+          if (classResponse.success && classResponse.data) {
+            setClassData(classResponse.data);
           }
           break;
       }
