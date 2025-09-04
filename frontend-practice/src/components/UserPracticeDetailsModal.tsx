@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trophy, Target, Clock, TrendingUp, Book, Calendar, BarChart3, CheckCircle, XCircle } from 'lucide-react';
+import { X, Trophy, Target, Clock, TrendingUp, Book, Calendar, BarChart3, CheckCircle, XCircle, Eye } from 'lucide-react';
 import backendApi from '../services/backendApi';
+import PracticeSessionDetailsModal from './PracticeSessionDetailsModal';
 
 interface UserPracticeDetailsProps {
   userId: string;
@@ -64,12 +65,21 @@ export default function UserPracticeDetailsModal({ userId, userName, isOpen, onC
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'knowledge' | 'sessions'>('overview');
+  
+  // State for session details modal
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [isSessionDetailsOpen, setIsSessionDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen && userId) {
       fetchUserDetails();
     }
   }, [isOpen, userId]);
+
+  const handleViewSessionDetails = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setIsSessionDetailsOpen(true);
+  };
 
   const fetchUserDetails = async () => {
     setLoading(true);
@@ -365,9 +375,18 @@ export default function UserPracticeDetailsModal({ userId, userName, isOpen, onC
                             错误: <span className="font-medium">{session.incorrectCount}</span>
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          <Clock className="w-4 h-4 inline mr-1" />
-                          用时 {formatTime(session.totalTimeSeconds)}
+                        <div className="flex items-center space-x-3">
+                          <div className="text-sm text-gray-600">
+                            <Clock className="w-4 h-4 inline mr-1" />
+                            用时 {formatTime(session.totalTimeSeconds)}
+                          </div>
+                          <button
+                            onClick={() => handleViewSessionDetails(session.sessionId)}
+                            className="inline-flex items-center px-3 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            查看详情
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -378,6 +397,18 @@ export default function UserPracticeDetailsModal({ userId, userName, isOpen, onC
           ) : null}
         </div>
       </div>
+      
+      {/* Practice Session Details Modal */}
+      {selectedSessionId && (
+        <PracticeSessionDetailsModal
+          sessionId={selectedSessionId}
+          isOpen={isSessionDetailsOpen}
+          onClose={() => {
+            setIsSessionDetailsOpen(false);
+            setSelectedSessionId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

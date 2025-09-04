@@ -161,6 +161,38 @@ export class LeaderboardController {
   }
 
   /**
+   * Get detailed information for a specific practice session
+   */
+  @Get('session/:sessionId/details')
+  @ApiOperation({ summary: 'Get detailed practice session information (Teacher/Admin only)' })
+  @ApiParam({ name: 'sessionId', description: 'The ID of the practice session' })
+  @ApiResponse({ status: 200, description: 'Practice session details including all questions and answers' })
+  async getPracticeSessionDetails(
+    @CurrentUser() user: any,
+    @Param('sessionId') sessionId: string,
+  ) {
+    try {
+      // Check if user is teacher or admin
+      if (user.role !== 'teacher' && user.role !== 'admin') {
+        throw new HttpException('Only teachers and admins can view practice session details', HttpStatus.FORBIDDEN);
+      }
+
+      const result = await this.leaderboardService.getPracticeSessionDetails(sessionId);
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      console.error('Error fetching practice session details:', error);
+      throw new HttpException('Failed to fetch practice session details', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
    * Get overall leaderboard summary
    */
   @Get('summary')
