@@ -61,10 +61,15 @@ export default function Leaderboard() {
 
   const fetchClasses = async () => {
     try {
-      const response = await backendApi.get<ClassStats[]>('/leaderboard/class-stats');
+      const response = await backendApi.get<{success: boolean, data: ClassStats[]}>('/leaderboard/class-stats');
       if (response.success && response.data) {
-        const uniqueClasses = [...new Set(response.data.map((item: ClassStats) => item.class))];
-        setClasses(uniqueClasses.filter(c => c));
+        // The backend returns {success: true, data: [...]}
+        // response.data is the nested structure, so we need response.data.data for the actual array
+        const classStats = response.data.data || response.data;
+        if (Array.isArray(classStats)) {
+          const uniqueClasses = [...new Set(classStats.map((item: ClassStats) => item.class))];
+          setClasses(uniqueClasses.filter(c => c));
+        }
       }
     } catch (err) {
       console.error('Failed to fetch classes:', err);
@@ -81,9 +86,11 @@ export default function Leaderboard() {
           const summaryUrl = selectedClass 
             ? `/leaderboard/summary?class=${encodeURIComponent(selectedClass)}`
             : '/leaderboard/summary';
-          const summaryResponse = await backendApi.get<LeaderboardSummary>(summaryUrl);
+          const summaryResponse = await backendApi.get<{success: boolean, data: LeaderboardSummary}>(summaryUrl);
           if (summaryResponse.success && summaryResponse.data) {
-            setSummaryData(summaryResponse.data);
+            // Extract the actual data from the nested structure
+            const summaryData = summaryResponse.data.data || summaryResponse.data;
+            setSummaryData(summaryData as LeaderboardSummary);
           }
           break;
           
@@ -93,9 +100,11 @@ export default function Leaderboard() {
           practiceParams.append('order', practiceOrder);
           practiceParams.append('limit', '50');
           const practiceUrl = `/leaderboard/practice-count?${practiceParams.toString()}`;
-          const practiceResponse = await backendApi.get<UserStats[]>(practiceUrl);
+          const practiceResponse = await backendApi.get<{success: boolean, data: UserStats[]}>(practiceUrl);
           if (practiceResponse.success && practiceResponse.data) {
-            setPracticeData(practiceResponse.data);
+            // Extract the actual data array from the nested structure
+            const practiceData = practiceResponse.data.data || practiceResponse.data;
+            setPracticeData(Array.isArray(practiceData) ? practiceData : []);
           }
           break;
           
@@ -106,16 +115,20 @@ export default function Leaderboard() {
           accuracyParams.append('minQuizzes', String(minQuizzes));
           accuracyParams.append('limit', '50');
           const accuracyUrl = `/leaderboard/correct-rate?${accuracyParams.toString()}`;
-          const accuracyResponse = await backendApi.get<UserStats[]>(accuracyUrl);
+          const accuracyResponse = await backendApi.get<{success: boolean, data: UserStats[]}>(accuracyUrl);
           if (accuracyResponse.success && accuracyResponse.data) {
-            setAccuracyData(accuracyResponse.data);
+            // Extract the actual data array from the nested structure
+            const accuracyData = accuracyResponse.data.data || accuracyResponse.data;
+            setAccuracyData(Array.isArray(accuracyData) ? accuracyData : []);
           }
           break;
           
         case 'class':
-          const classResponse = await backendApi.get<ClassStats[]>('/leaderboard/class-stats');
+          const classResponse = await backendApi.get<{success: boolean, data: ClassStats[]}>('/leaderboard/class-stats');
           if (classResponse.success && classResponse.data) {
-            setClassData(classResponse.data);
+            // Extract the actual data array from the nested structure
+            const classData = classResponse.data.data || classResponse.data;
+            setClassData(Array.isArray(classData) ? classData : []);
           }
           break;
       }
