@@ -1,5 +1,5 @@
-import { Controller, Get, Query, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Query, UseGuards, HttpException, HttpStatus, Param } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@kedge/auth';
 import { LeaderboardService } from '@kedge/leaderboard';
 import { CurrentUser } from '@kedge/auth';
@@ -125,6 +125,38 @@ export class LeaderboardController {
       }
       console.error('Error fetching class statistics:', error);
       throw new HttpException('Failed to fetch class statistics', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Get detailed practice information for a specific user
+   */
+  @Get('user/:userId/practice-details')
+  @ApiOperation({ summary: 'Get detailed practice information for a specific user (Teacher/Admin only)' })
+  @ApiParam({ name: 'userId', description: 'The ID of the user' })
+  @ApiResponse({ status: 200, description: 'User practice details including knowledge point stats and recent sessions' })
+  async getUserPracticeDetails(
+    @CurrentUser() user: any,
+    @Param('userId') userId: string,
+  ) {
+    try {
+      // Check if user is teacher or admin
+      if (user.role !== 'teacher' && user.role !== 'admin') {
+        throw new HttpException('Only teachers and admins can view user practice details', HttpStatus.FORBIDDEN);
+      }
+
+      const result = await this.leaderboardService.getUserPracticeDetails(userId);
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      console.error('Error fetching user practice details:', error);
+      throw new HttpException('Failed to fetch user practice details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

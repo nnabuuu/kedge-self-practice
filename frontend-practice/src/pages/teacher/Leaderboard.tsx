@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, TrendingUp, TrendingDown, Users, Award, Target, Activity, Filter } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Users, Award, Target, Activity, Filter, Eye } from 'lucide-react';
 import backendApi from '../../services/backendApi';
+import UserPracticeDetailsModal from '../../components/UserPracticeDetailsModal';
 
 interface UserStats {
   userId: string;
@@ -48,6 +49,10 @@ export default function Leaderboard() {
   
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Modal state for user details
+  const [selectedUser, setSelectedUser] = useState<{userId: string, userName: string} | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   // Fetch available classes
   useEffect(() => {
@@ -58,6 +63,11 @@ export default function Leaderboard() {
   useEffect(() => {
     fetchData();
   }, [activeTab, selectedClass, practiceOrder, accuracyOrder, minQuizzes]);
+
+  const handleViewUserDetails = (userId: string, userName: string) => {
+    setSelectedUser({ userId, userName });
+    setIsDetailsModalOpen(true);
+  };
 
   const fetchClasses = async () => {
     try {
@@ -189,7 +199,11 @@ export default function Leaderboard() {
             </div>
             <div className="space-y-3">
               {summaryData.topPerformers.map((user, index) => (
-                <div key={user.userId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div 
+                  key={user.userId} 
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                  onClick={() => handleViewUserDetails(user.userId, user.userName)}
+                >
                   <div className="flex items-center">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white
                       ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-600' : 'bg-gray-300'}`}>
@@ -217,7 +231,11 @@ export default function Leaderboard() {
             </div>
             <div className="space-y-3">
               {summaryData.mostActive.map((user, index) => (
-                <div key={user.userId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div 
+                  key={user.userId} 
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                  onClick={() => handleViewUserDetails(user.userId, user.userName)}
+                >
                   <div className="flex items-center">
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600">
                       {index + 1}
@@ -279,6 +297,7 @@ export default function Leaderboard() {
               <th className="text-right py-3 px-4 font-medium text-gray-700">正确数</th>
               <th className="text-right py-3 px-4 font-medium text-gray-700">错误数</th>
               <th className="text-right py-3 px-4 font-medium text-gray-700">正确率</th>
+              <th className="text-center py-3 px-4 font-medium text-gray-700">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -299,6 +318,15 @@ export default function Leaderboard() {
                   <span className={`font-bold ${user.correctRate >= 80 ? 'text-green-600' : user.correctRate >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
                     {user.correctRate.toFixed(1)}%
                   </span>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <button
+                    onClick={() => handleViewUserDetails(user.userId, user.userName)}
+                    className="inline-flex items-center px-2 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    详情
+                  </button>
                 </td>
               </tr>
             ))}
@@ -358,6 +386,7 @@ export default function Leaderboard() {
               <th className="text-right py-3 px-4 font-medium text-gray-700">正确率</th>
               <th className="text-right py-3 px-4 font-medium text-gray-700">练习题数</th>
               <th className="text-right py-3 px-4 font-medium text-gray-700">正确/错误</th>
+              <th className="text-center py-3 px-4 font-medium text-gray-700">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -393,6 +422,15 @@ export default function Leaderboard() {
                   <span className="text-green-600">{user.correctCount}</span>
                   <span className="text-gray-400 mx-1">/</span>
                   <span className="text-red-600">{user.incorrectCount}</span>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <button
+                    onClick={() => handleViewUserDetails(user.userId, user.userName)}
+                    className="inline-flex items-center px-2 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    详情
+                  </button>
                 </td>
               </tr>
             ))}
@@ -542,6 +580,19 @@ export default function Leaderboard() {
           {activeTab === 'accuracy' && renderAccuracyLeaderboard()}
           {activeTab === 'class' && renderClassStatistics()}
         </>
+      )}
+      
+      {/* User Practice Details Modal */}
+      {selectedUser && (
+        <UserPracticeDetailsModal
+          userId={selectedUser.userId}
+          userName={selectedUser.userName}
+          isOpen={isDetailsModalOpen}
+          onClose={() => {
+            setIsDetailsModalOpen(false);
+            setSelectedUser(null);
+          }}
+        />
       )}
     </div>
   );

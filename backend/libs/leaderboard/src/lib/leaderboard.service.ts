@@ -184,6 +184,164 @@ export class LeaderboardService {
   }
 
   /**
+   * Get detailed practice information for a specific user
+   */
+  async getUserPracticeDetails(userId: string) {
+    try {
+      // Get user basic info
+      const userInfoQuery = sql.unsafe`
+        SELECT 
+          u.id,
+          u.name,
+          u.account_id,
+          u.class,
+          u.role
+        FROM kedge_practice.users u
+        WHERE u.id = ${userId}
+      `;
+      
+      const userResult = await this.persistentService.pgPool.query(userInfoQuery);
+      if (userResult.rows.length === 0) {
+        throw new Error('User not found');
+      }
+      
+      const userInfo = userResult.rows[0];
+      
+      // Get practice statistics by knowledge points
+      const knowledgePointStatsQuery = sql.unsafe`
+        SELECT 
+          kp.id as knowledge_point_id,
+          kp.topic,
+          kp.volume,
+          kp.unit,
+          kp.lesson,
+          kp.sub,
+          COUNT(DISTINCT pa.id) as total_questions,
+          SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END) as correct_count,
+          SUM(CASE WHEN NOT pa.is_correct THEN 1 ELSE 0 END) as incorrect_count,
+          CASE 
+            WHEN COUNT(pa.id) > 0 THEN 
+              ROUND((SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END)::NUMERIC / COUNT(pa.id)::NUMERIC) * 100, 2)
+            ELSE 0
+          END as correct_rate,
+          MAX(ps.created_at) as last_practice_time
+        FROM kedge_practice.knowledge_points kp
+        LEFT JOIN kedge_practice.quizzes q ON kp.id = q.knowledge_point_id
+        LEFT JOIN kedge_practice.practice_answers pa ON q.id = pa.quiz_id
+        LEFT JOIN kedge_practice.practice_sessions ps ON pa.session_id = ps.id
+        WHERE ps.user_id = ${userId}
+        GROUP BY kp.id, kp.topic, kp.volume, kp.unit, kp.lesson, kp.sub
+        HAVING COUNT(pa.id) > 0
+        ORDER BY COUNT(pa.id) DESC, kp.topic ASC
+      `;
+      
+      const kpStatsResult = await this.persistentService.pgPool.query(knowledgePointStatsQuery);
+      
+      // Get recent practice sessions
+      const recentSessionsQuery = sql.unsafe`
+        SELECT 
+          ps.id,
+          ps.subject_id,
+          ps.created_at,
+          ps.completed_at,
+          ps.strategy,
+          COUNT(DISTINCT pa.id) as total_questions,
+          SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END) as correct_count,
+          SUM(CASE WHEN NOT pa.is_correct THEN 1 ELSE 0 END) as incorrect_count,
+          CASE 
+            WHEN COUNT(pa.id) > 0 THEN 
+              ROUND((SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END)::NUMERIC / COUNT(pa.id)::NUMERIC) * 100, 2)
+            ELSE 0
+          END as correct_rate,
+          SUM(pa.time_spent_seconds) as total_time_seconds
+        FROM kedge_practice.practice_sessions ps
+        LEFT JOIN kedge_practice.practice_answers pa ON ps.id = pa.session_id
+        WHERE ps.user_id = ${userId}
+        GROUP BY ps.id, ps.subject_id, ps.created_at, ps.completed_at, ps.strategy
+        ORDER BY ps.created_at DESC
+        LIMIT 20
+      `;
+      
+      const sessionsResult = await this.persistentService.pgPool.query(recentSessionsQuery);
+      
+      // Get overall statistics
+      const overallStatsQuery = sql.unsafe`
+        SELECT 
+          COUNT(DISTINCT ps.id) as total_sessions,
+          COUNT(DISTINCT pa.id) as total_questions,
+          SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END) as total_correct,
+          SUM(CASE WHEN NOT pa.is_correct THEN 1 ELSE 0 END) as total_incorrect,
+          CASE 
+            WHEN COUNT(pa.id) > 0 THEN 
+              ROUND((SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END)::NUMERIC / COUNT(pa.id)::NUMERIC) * 100, 2)
+            ELSE 0
+          END as overall_correct_rate,
+          COUNT(DISTINCT kp.id) as knowledge_points_practiced,
+          SUM(pa.time_spent_seconds) as total_time_spent_seconds,
+          MIN(ps.created_at) as first_practice_date,
+          MAX(ps.created_at) as last_practice_date
+        FROM kedge_practice.practice_sessions ps
+        LEFT JOIN kedge_practice.practice_answers pa ON ps.id = pa.session_id
+        LEFT JOIN kedge_practice.quizzes q ON pa.quiz_id = q.id
+        LEFT JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
+        WHERE ps.user_id = ${userId}
+      `;
+      
+      const overallResult = await this.persistentService.pgPool.query(overallStatsQuery);
+      const overallStats = overallResult.rows[0];
+      
+      return {
+        user: {
+          id: userInfo.id,
+          name: userInfo.name,
+          accountId: userInfo.account_id,
+          class: userInfo.class,
+          role: userInfo.role
+        },
+        overallStatistics: {
+          totalSessions: parseInt(overallStats.total_sessions || 0),
+          totalQuestions: parseInt(overallStats.total_questions || 0),
+          totalCorrect: parseInt(overallStats.total_correct || 0),
+          totalIncorrect: parseInt(overallStats.total_incorrect || 0),
+          overallCorrectRate: parseFloat(overallStats.overall_correct_rate || 0),
+          knowledgePointsPracticed: parseInt(overallStats.knowledge_points_practiced || 0),
+          totalTimeSpentSeconds: parseInt(overallStats.total_time_spent_seconds || 0),
+          firstPracticeDate: overallStats.first_practice_date,
+          lastPracticeDate: overallStats.last_practice_date
+        },
+        knowledgePointStats: kpStatsResult.rows.map((row: any) => ({
+          knowledgePointId: row.knowledge_point_id,
+          topic: row.topic,
+          volume: row.volume,
+          unit: row.unit,
+          lesson: row.lesson,
+          sub: row.sub,
+          totalQuestions: parseInt(row.total_questions),
+          correctCount: parseInt(row.correct_count),
+          incorrectCount: parseInt(row.incorrect_count),
+          correctRate: parseFloat(row.correct_rate),
+          lastPracticeTime: row.last_practice_time
+        })),
+        recentSessions: sessionsResult.rows.map((row: any) => ({
+          sessionId: row.id,
+          subjectId: row.subject_id,
+          createdAt: row.created_at,
+          completedAt: row.completed_at,
+          strategy: row.strategy,
+          totalQuestions: parseInt(row.total_questions),
+          correctCount: parseInt(row.correct_count),
+          incorrectCount: parseInt(row.incorrect_count),
+          correctRate: parseFloat(row.correct_rate),
+          totalTimeSeconds: parseInt(row.total_time_seconds || 0)
+        }))
+      };
+    } catch (error) {
+      this.logger.error('Error getting user practice details:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get overall leaderboard data
    */
   async getLeaderboardSummary(classFilter?: string) {
