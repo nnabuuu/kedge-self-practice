@@ -445,73 +445,85 @@ export default function Leaderboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header with filters */}
+      {/* Header */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center">
-            <Trophy className="w-8 h-8 text-yellow-500 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">学习排行榜</h2>
-          </div>
-          
-          {/* Class Filter */}
-          <div className="flex items-center space-x-2">
-            <Filter className="w-5 h-5 text-gray-500" />
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">全部班级</option>
-              {classes.map(cls => (
-                <option key={cls} value={cls}>{cls}</option>
-              ))}
-            </select>
-          </div>
+        <div className="flex items-center mb-6">
+          <Trophy className="w-8 h-8 text-yellow-500 mr-3" />
+          <h2 className="text-2xl font-bold text-gray-900">学习排行榜</h2>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+        <div className="flex flex-wrap sm:flex-nowrap gap-1 bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setActiveTab('summary')}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex-1 min-w-[80px] px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
               activeTab === 'summary'
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
             总览
           </button>
           <button
             onClick={() => setActiveTab('practice')}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex-1 min-w-[80px] px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
               activeTab === 'practice'
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            练习量排行
+            练习量
           </button>
           <button
             onClick={() => setActiveTab('accuracy')}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex-1 min-w-[80px] px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
               activeTab === 'accuracy'
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            正确率排行
+            正确率
           </button>
           <button
             onClick={() => setActiveTab('class')}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex-1 min-w-[80px] px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
               activeTab === 'class'
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            班级统计
+            班级
           </button>
         </div>
+
+        {/* Class Filter - Only show for tabs that need it */}
+        {(activeTab === 'summary' || activeTab === 'practice' || activeTab === 'accuracy') && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-gray-200">
+            <div className="text-sm text-gray-600">
+              {activeTab === 'summary' && '查看特定班级的综合统计'}
+              {activeTab === 'practice' && '按班级筛选练习量排行'}
+              {activeTab === 'accuracy' && '按班级筛选正确率排行'}
+            </div>
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">班级筛选：</label>
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="flex-1 sm:flex-none px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white hover:border-gray-400"
+              >
+                <option value="">全部班级</option>
+                {classes.length === 0 ? (
+                  <option disabled>暂无班级数据</option>
+                ) : (
+                  classes.map(cls => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content */}
