@@ -75,6 +75,7 @@ export class AuthRepository {
                  password_hash,
                  salt,
                  role,
+                 class,
                  created_at,
                  updated_at
           FROM kedge_practice.users
@@ -100,6 +101,7 @@ export class AuthRepository {
                  password_hash,
                  salt,
                  role,
+                 class,
                  created_at,
                  updated_at
           FROM kedge_practice.users
@@ -126,6 +128,7 @@ export class AuthRepository {
                  password_hash,
                  salt,
                  role,
+                 class,
                  created_at,
                  updated_at
           FROM kedge_practice.users

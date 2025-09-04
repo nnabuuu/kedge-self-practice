@@ -136,6 +136,7 @@ export class AuthController {
         name: user.name || user.account_id?.split('@')[0] || 'User',
         email: user.account_id,
         role: user.role || userRole,
+        class: user.class,
         preferences: preferences || {},
         created_at: user.created_at,
         updated_at: user.updated_at,
