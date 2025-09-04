@@ -356,7 +356,6 @@ export class LeaderboardService {
           ps.completed_at,
           ps.strategy,
           ps.time_limit_minutes,
-          ps.question_count,
           u.name as user_name,
           u.account_id,
           u.class as user_class
@@ -457,7 +456,7 @@ export class LeaderboardService {
           completedAt: sessionInfo.completed_at,
           strategy: sessionInfo.strategy,
           timeLimitMinutes: sessionInfo.time_limit_minutes,
-          questionCount: sessionInfo.question_count
+          questionCount: totalQuestions
         },
         statistics: {
           totalQuestions,
