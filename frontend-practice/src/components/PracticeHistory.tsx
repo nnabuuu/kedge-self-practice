@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, RotateCcw, Trash2, ChevronRight, ChevronDown, Layers } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, RotateCcw, Trash2, ChevronRight, ChevronDown, Layers, Eye } from 'lucide-react';
 import { Subject, PracticeHistory as PracticeHistoryType } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
+import PracticeSessionDetailsModal from './PracticeSessionDetailsModal';
 
 interface PracticeHistoryProps {
   subject: Subject;
@@ -43,11 +44,20 @@ export default function PracticeHistory({
   const [expandedVolumes, setExpandedVolumes] = useState<Set<string>>(new Set());
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+  
+  // State for session details modal
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [isSessionDetailsOpen, setIsSessionDetailsOpen] = useState(false);
 
   // Use API hook to get knowledge points
   const { data: knowledgePoints, loading: knowledgePointsLoading } = useKnowledgePoints(subject.id);
 
   const subjectHistory = history.filter(h => h.subjectId === subject.id);
+
+  const handleViewSessionDetails = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setIsSessionDetailsOpen(true);
+  };
 
   const getKnowledgePointById = (pointId: string) => {
     if (!knowledgePoints || !Array.isArray(knowledgePoints)) {
@@ -503,6 +513,13 @@ export default function PracticeHistory({
 
                     <div className="flex items-center space-x-2">
                       <button
+                        onClick={() => handleViewSessionDetails(session.id)}
+                        className="flex items-center px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white text-sm rounded-xl hover:from-green-700 hover:to-teal-700 transition-all duration-300 shadow-lg focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        <span className="font-medium tracking-wide">查看详情</span>
+                      </button>
+                      <button
                         onClick={() => onEnhancementRound(session.knowledgePoints)}
                         className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
                       >
@@ -558,6 +575,18 @@ export default function PracticeHistory({
           </div>
         </div>
       </div>
+      
+      {/* Practice Session Details Modal */}
+      {selectedSessionId && (
+        <PracticeSessionDetailsModal
+          sessionId={selectedSessionId}
+          isOpen={isSessionDetailsOpen}
+          onClose={() => {
+            setIsSessionDetailsOpen(false);
+            setSelectedSessionId(null);
+          }}
+        />
+      )}
     </div>
   );
 }
