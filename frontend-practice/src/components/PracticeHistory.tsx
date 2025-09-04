@@ -543,13 +543,10 @@ export default function PracticeHistory({
                       <div className="flex items-center space-x-2">
                         <Layers className="w-5 h-5 text-blue-600" />
                         <h4 className="font-medium text-gray-900 tracking-wide">知识点练习情况</h4>
-                        <span className="text-xs text-gray-500">
-                          {isExpanded ? '(点击收起所有)' : '(点击展开所有)'}
-                        </span>
                       </div>
                       <div className="flex items-center space-x-1">
                         {!isExpanded && (
-                          <span className="text-xs text-blue-600 mr-2">查看详情</span>
+                          <span className="text-xs text-blue-600 mr-2">展开</span>
                         )}
                         {isExpanded ? (
                           <ChevronDown className="w-5 h-5 text-blue-600" />
