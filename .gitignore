@@ -57,3 +57,5 @@ packages/libs/intent-resolver/assets/*.api-schema-ts
 # Example code and reference materials
 example-gist/
 
+deployment.tar.gz
+deployment-package/
