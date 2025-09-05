@@ -1,0 +1,3 @@
+table:
+  name: practice_sessions
+  schema: kedge_practice

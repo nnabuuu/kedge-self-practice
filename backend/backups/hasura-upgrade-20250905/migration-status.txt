@@ -1,0 +1,24 @@
+{"level":"info","msg":"Fetching migration status...","time":"2025-09-05T23:10:55+08:00"}
+
+Database: kedge_db
+VERSION        NAME                                    SOURCE STATUS  DATABASE STATUS
+1000000000000  initial_schema                          Present        Present
+1000000000001  add_practice_answers_unique_constraint  Present        Present
+1000000000002  add_missing_practice_session_columns    Present        Present
+2000000000003  update_quiz_types                       Present        Present
+2000000000004  add_is_admin_to_users                   Present        Present
+2000000000005  add_demo_users                          Present        Present
+2000000000006  add_demo_accounts                       Present        Present
+2000000000007  add_auto_advance_delay                  Present        Present
+2000000000008  add_alternative_answers_to_quiz         Present        Present
+2000000000009  add_default_quiz_preferences            Present        Present
+2000000000010  add_subject_id_to_sessions              Present        Present
+2000000000011  insert_knowledge_points                 Present        Present
+2000000000012  fix_volume_names                        Present        Present
+2000000000013  fix_knowledge_points_complete           Present        Present
+2000000000014  fix_knowledge_point_errors              Present        Present
+2000000000015  add_class_to_users                      Present        Present
+2000000000016  add_performance_indexes                 Present        Present
+2000000000017  -                                       Not Present    Present
+2000000000018  -                                       Not Present    Present
+2000000000021  add_user_id_and_leaderboard_indexes     Present        Present

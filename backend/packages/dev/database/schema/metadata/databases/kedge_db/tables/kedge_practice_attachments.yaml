@@ -1,0 +1,3 @@
+table:
+  schema: kedge_practice
+  name: attachments
