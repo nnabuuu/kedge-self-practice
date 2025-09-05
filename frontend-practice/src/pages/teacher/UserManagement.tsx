@@ -33,6 +33,7 @@ interface UserFormData {
   name: string;
   password: string;
   role: 'student' | 'teacher';
+  class?: string;
 }
 
 export default function UserManagement() {
@@ -53,7 +54,8 @@ export default function UserManagement() {
     email: '',
     name: '',
     password: '',
-    role: 'student'
+    role: 'student',
+    class: ''
   });
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -101,19 +103,25 @@ export default function UserManagement() {
       return;
     }
 
+    if (formData.role === 'student' && !formData.class) {
+      showMessage('error', '学生必须指定班级');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await authService.register({
         email: formData.email,
         password: formData.password,
         name: formData.name,
-        role: formData.role
+        role: formData.role,
+        class: formData.class
       });
 
       if (response.success) {
         showMessage('success', '用户创建成功');
         setShowAddModal(false);
-        setFormData({ email: '', name: '', password: '', role: 'student' });
+        setFormData({ email: '', name: '', password: '', role: 'student', class: '' });
         fetchUsers();
       } else {
         // Check for specific error messages
@@ -601,6 +609,22 @@ export default function UserManagement() {
                   <option value="student">学生</option>
                   <option value="teacher">教师</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  班级 {formData.role === 'student' && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="text"
+                  value={formData.class}
+                  onChange={(e) => setFormData({ ...formData, class: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder={formData.role === 'student' ? '例如: 七年级1班' : '可选'}
+                />
+                {formData.role === 'student' && (
+                  <p className="text-xs text-gray-500 mt-1">学生必须指定班级</p>
+                )}
               </div>
             </div>
 

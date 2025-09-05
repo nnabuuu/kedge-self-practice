@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Cpu, Info, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+import backendApi from '../../services/backendApi';
 
 interface LLMConfig {
   configuration: {
@@ -32,12 +33,11 @@ export default function AIConfigManagement() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/v1/docx/llm-provider');
-      if (response.ok) {
-        const data = await response.json();
-        setLlmConfig(data);
+      const response = await backendApi.get<LLMConfig>('/docx/llm-provider');
+      if (response.success && response.data) {
+        setLlmConfig(response.data);
       } else {
-        setError('无法获取AI配置信息');
+        setError(response.error || '无法获取AI配置信息');
       }
     } catch (error) {
       console.error('Error fetching LLM config:', error);
@@ -139,7 +139,7 @@ export default function AIConfigManagement() {
             <div className="bg-white rounded-lg p-4 shadow-sm">
               <span className="text-sm font-medium text-gray-600">组织ID</span>
               <p className="text-lg font-semibold text-gray-900 mt-1">
-                {llmConfig.configuration.organization}
+                {llmConfig.configuration.organization === 'not configured' ? '未配置' : llmConfig.configuration.organization}
               </p>
             </div>
           </div>
