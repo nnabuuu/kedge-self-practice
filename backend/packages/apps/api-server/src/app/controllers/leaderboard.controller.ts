@@ -135,6 +135,7 @@ export class LeaderboardController {
   @ApiOperation({ summary: 'Get detailed practice information for a specific user (Teacher/Admin only)' })
   @ApiParam({ name: 'userId', description: 'The ID of the user' })
   @ApiResponse({ status: 200, description: 'User practice details including knowledge point stats and recent sessions' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async getUserPracticeDetails(
     @CurrentUser() user: any,
     @Param('userId') userId: string,
@@ -155,6 +156,14 @@ export class LeaderboardController {
       if (error instanceof HttpException) {
         throw error;
       }
+      
+      // Check for specific error messages
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('User not found')) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      
       console.error('Error fetching user practice details:', error);
       throw new HttpException('Failed to fetch user practice details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -167,6 +176,7 @@ export class LeaderboardController {
   @ApiOperation({ summary: 'Get detailed practice session information (Teacher/Admin only)' })
   @ApiParam({ name: 'sessionId', description: 'The ID of the practice session' })
   @ApiResponse({ status: 200, description: 'Practice session details including all questions and answers' })
+  @ApiResponse({ status: 404, description: 'Practice session not found' })
   async getPracticeSessionDetails(
     @CurrentUser() user: any,
     @Param('sessionId') sessionId: string,
@@ -187,6 +197,18 @@ export class LeaderboardController {
       if (error instanceof HttpException) {
         throw error;
       }
+      
+      // Check for specific error messages
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('Session not found')) {
+        throw new HttpException('Practice session not found', HttpStatus.NOT_FOUND);
+      }
+      
+      if (errorMessage.includes('User not found')) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      
       console.error('Error fetching practice session details:', error);
       throw new HttpException('Failed to fetch practice session details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
