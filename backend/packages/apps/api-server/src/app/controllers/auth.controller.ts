@@ -23,6 +23,7 @@ const SignUpSchema = z.object({
   account_id: z.string().min(1), // Support any non-empty string as account ID
   password: z.string(),
   role: UserRoleSchema,
+  class: z.string().nullable().optional(), // Class is optional (required for students)
 });
 
 export class SignUpDto extends createZodDto(SignUpSchema) {}
@@ -45,7 +46,7 @@ export class AuthController {
   @Post('sign-up')
   @UseGuards(JwtAuthGuard, AdminGuard)
   signUp(@Body() body: SignUpDto): Promise<User> {
-    return this.authService.createUser(body.name || null, body.account_id, body.password, body.role);
+    return this.authService.createUser(body.name || null, body.account_id, body.password, body.role, body.class || null);
   }
 
   @Post('sign-in')
@@ -64,13 +65,14 @@ export class AuthController {
   }
 
   @Post('register')
-  async register(@Body() body: { email: string; password: string; name?: string; role?: UserRole }) {
+  async register(@Body() body: { email: string; password: string; name?: string; role?: UserRole; class?: string }) {
     try {
       const user = await this.authService.createUser(
         body.name || null, // Optional display name
         body.email, // account_id (email)
         body.password,
-        body.role || 'teacher'
+        body.role || 'teacher',
+        body.class || null // Optional class for students
       );
       
       // Generate token for immediate login after registration

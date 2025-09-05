@@ -25,6 +25,7 @@ export class AuthRepository {
     passwordHash: string;
     salt: string;
     role: UserRole;
+    class?: string | null;
   }): Promise<User> {
     try {
       const result = await this.persistentService.pgPool.query(
@@ -35,6 +36,7 @@ export class AuthRepository {
             password_hash,
             salt,
             role,
+            class,
             created_at,
             updated_at
           )
@@ -44,10 +46,11 @@ export class AuthRepository {
             ${data.passwordHash},
             ${data.salt},
             ${data.role},
+            ${data.class || null},
             now(),
             now()
           )
-          RETURNING id, name, account_id, role, created_at, updated_at
+          RETURNING id, name, account_id, role, class, created_at, updated_at
         `,
       );
 

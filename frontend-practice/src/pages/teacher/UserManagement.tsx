@@ -178,8 +178,8 @@ export default function UserManagement() {
 
   const downloadTemplate = () => {
     const template = [
-      { 账号: 'student1', 姓名: '张三', 密码: 'password123', 身份: '学生' },
-      { 账号: 'teacher1', 姓名: '李老师', 密码: 'password456', 身份: '教师' }
+      { 账号: 'student1', 姓名: '张三', 密码: 'password123', 身份: '学生', 班级: '七年级1班' },
+      { 账号: 'teacher1', 姓名: '李老师', 密码: 'password456', 身份: '教师', 班级: '' }
     ];
 
     const ws = XLSX.utils.json_to_sheet(template);
@@ -191,7 +191,8 @@ export default function UserManagement() {
       { wch: 25 }, // Email
       { wch: 15 }, // Name
       { wch: 15 }, // Password
-      { wch: 10 }  // Role
+      { wch: 10 }, // Role
+      { wch: 15 }  // Class
     ];
 
     XLSX.writeFile(wb, '用户导入模板.xlsx');
@@ -210,12 +211,23 @@ export default function UserManagement() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
 
-        const parsedUsers: UserFormData[] = data.map((row: any) => ({
-          email: row['账号'] || row['账号邮箱'] || row['email'] || '',
-          name: row['姓名'] || row['name'] || '',
-          password: row['密码'] || row['password'] || '',
-          role: (row['身份'] === '教师' || row['role'] === 'teacher') ? 'teacher' : 'student'
-        })).filter(u => u.email && u.name && u.password);
+        const parsedUsers: UserFormData[] = data.map((row: any) => {
+          const role = (row['身份'] === '教师' || row['role'] === 'teacher') ? 'teacher' : 'student';
+          const userClass = row['班级'] || row['class'] || '';
+          return {
+            email: row['账号'] || row['账号邮箱'] || row['email'] || '',
+            name: row['姓名'] || row['name'] || '',
+            password: row['密码'] || row['password'] || '',
+            role,
+            class: userClass
+          };
+        }).filter(u => {
+          // Basic validation
+          if (!u.email || !u.name || !u.password) return false;
+          // Students must have a class
+          if (u.role === 'student' && !u.class) return false;
+          return true;
+        });
 
         setBulkUsers(parsedUsers);
         if (parsedUsers.length === 0) {

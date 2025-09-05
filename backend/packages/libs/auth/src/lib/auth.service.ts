@@ -20,6 +20,7 @@ export class DefaultAuthService implements AuthService {
     accountId: string,
     password: string,
     role: UserRole,
+    userClass?: string | null,
   ): Promise<User> {
     const salt = randomBytes(16).toString('hex');
     const passwordHash = pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
@@ -29,6 +30,7 @@ export class DefaultAuthService implements AuthService {
       passwordHash,
       salt,
       role,
+      class: userClass,
     });
   }
 

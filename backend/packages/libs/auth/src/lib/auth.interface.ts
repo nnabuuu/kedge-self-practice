@@ -6,6 +6,7 @@ export abstract class AuthService {
     accountId: string,
     password: string,
     role: UserRole,
+    userClass?: string | null,
   ): Promise<User>;
 
   abstract signIn(
