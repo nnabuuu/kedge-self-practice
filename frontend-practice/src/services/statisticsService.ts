@@ -3,8 +3,10 @@ import { authService } from './authService';
 interface TeacherDashboardStats {
   totalStudents: number;
   activeStudents: number;
+  monthlyActiveStudents: number;
   totalKnowledgePoints: number;
   totalQuizzes: number;
+  totalPracticeSessions: number;
   monthlyPracticeSessions: number;
 }
 
@@ -71,8 +73,10 @@ class StatisticsService {
       return {
         totalStudents: 0,
         activeStudents: 0,
+        monthlyActiveStudents: 0,
         totalKnowledgePoints: 0,
         totalQuizzes: 0,
+        totalPracticeSessions: 0,
         monthlyPracticeSessions: 0,
       };
     }

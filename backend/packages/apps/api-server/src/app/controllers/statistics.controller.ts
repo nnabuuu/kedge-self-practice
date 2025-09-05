@@ -44,6 +44,15 @@ export class StatisticsController {
       );
       const quizCount = parseInt(quizCountResult.rows[0]?.count || '0', 10);
 
+      // Get total practice sessions count (all time)
+      const totalPracticeResult = await this.persistentService.pgPool.query(
+        sql.unsafe`
+          SELECT COUNT(*) as count
+          FROM kedge_practice.practice_sessions
+        `
+      );
+      const totalPracticeCount = parseInt(totalPracticeResult.rows[0]?.count || '0', 10);
+
       // Get this month's practice sessions count
       const currentMonth = new Date();
       const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -53,7 +62,6 @@ export class StatisticsController {
           SELECT COUNT(*) as count
           FROM kedge_practice.practice_sessions
           WHERE created_at >= ${firstDayOfMonth.toISOString()}
-            AND status = 'completed'
         `
       );
       const monthlyPracticeCount = parseInt(monthlyPracticeResult.rows[0]?.count || '0', 10);
@@ -67,17 +75,31 @@ export class StatisticsController {
           SELECT COUNT(DISTINCT user_id) as count
           FROM kedge_practice.practice_sessions
           WHERE created_at >= ${thirtyDaysAgo.toISOString()}
+            AND user_id IN (SELECT id FROM kedge_practice.users WHERE role = 'student')
         `
       );
       const activeStudentCount = parseInt(activeStudentResult.rows[0]?.count || '0', 10);
+
+      // Get monthly active students count (students who practiced this month)
+      const monthlyActiveStudentResult = await this.persistentService.pgPool.query(
+        sql.unsafe`
+          SELECT COUNT(DISTINCT user_id) as count
+          FROM kedge_practice.practice_sessions
+          WHERE created_at >= ${firstDayOfMonth.toISOString()}
+            AND user_id IN (SELECT id FROM kedge_practice.users WHERE role = 'student')
+        `
+      );
+      const monthlyActiveStudentCount = parseInt(monthlyActiveStudentResult.rows[0]?.count || '0', 10);
 
       return {
         success: true,
         data: {
           totalStudents: studentCount,
           activeStudents: activeStudentCount,
+          monthlyActiveStudents: monthlyActiveStudentCount,
           totalKnowledgePoints: knowledgePointCount,
           totalQuizzes: quizCount,
+          totalPracticeSessions: totalPracticeCount,
           monthlyPracticeSessions: monthlyPracticeCount,
         },
         metadata: {

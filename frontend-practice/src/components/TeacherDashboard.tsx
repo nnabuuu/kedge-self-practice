@@ -25,8 +25,10 @@ type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'users' | 'ai-c
 interface TeacherStats {
   totalStudents: number;
   activeStudents: number;
+  monthlyActiveStudents: number;
   totalKnowledgePoints: number;
   totalQuizzes: number;
+  totalPracticeSessions: number;
   monthlyPracticeSessions: number;
 }
 
@@ -68,8 +70,10 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
   const [statistics, setStatistics] = useState<TeacherStats>({
     totalStudents: 0,
     activeStudents: 0,
+    monthlyActiveStudents: 0,
     totalKnowledgePoints: 0,
     totalQuizzes: 0,
+    totalPracticeSessions: 0,
     monthlyPracticeSessions: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
@@ -151,7 +155,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
     ? (selectedSubject.id === 'history' || selectedSubject.name === '历史') 
       ? (knowledgePoints || [])  // Show all knowledge points for history
       : (knowledgePoints || []).filter(kp => kp.subjectId === selectedSubject.id)
-    : [];
+    : (knowledgePoints || []);  // Show all knowledge points when no subject selected (they're all history anyway)
 
   // 获取当前学科的题目 - with null checks
   const currentSubjectQuestions = selectedSubject
@@ -159,7 +163,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
         const kp = (knowledgePoints || []).find(kp => kp.id === q.relatedKnowledgePointId);
         return kp?.subjectId === selectedSubject.id;
       })
-    : [];
+    : (quizQuestions || []);  // Show all questions when no subject selected (they're all history anyway)
 
   // Show loading state while data is being fetched
   if (subjectsLoading || knowledgePointsLoading || questionsLoading) {
@@ -182,33 +186,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
   const renderOverview = () => (
     <div className="space-y-8">
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-blue-600" />
-            </div>
-            <span className="text-sm text-gray-500">知识点</span>
-          </div>
-          <div className="text-2xl font-bold text-gray-900 mb-1">
-            {currentSubjectKnowledgePoints.length}
-          </div>
-          <div className="text-sm text-gray-600">已创建知识点</div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <FileText className="w-6 h-6 text-green-600" />
-            </div>
-            <span className="text-sm text-gray-500">题目</span>
-          </div>
-          <div className="text-2xl font-bold text-gray-900 mb-1">
-            {currentSubjectQuestions.length}
-          </div>
-          <div className="text-sm text-gray-600">已创建题目</div>
-        </div>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -216,10 +194,18 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
             </div>
             <span className="text-sm text-gray-500">学生</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900 mb-1">
-            {statsLoading ? '...' : statistics.activeStudents}
+          <div className="text-3xl font-bold text-gray-900 mb-2">
+            {statsLoading ? '...' : statistics.totalStudents}
           </div>
-          <div className="text-sm text-gray-600">活跃学生数</div>
+          <div className="text-sm text-gray-600 mb-3">总学生数</div>
+          <div className="pt-3 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500">本月活跃</span>
+              <span className="text-lg font-semibold text-purple-600">
+                {statsLoading ? '...' : statistics.monthlyActiveStudents || statistics.activeStudents}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
@@ -229,10 +215,18 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
             </div>
             <span className="text-sm text-gray-500">练习</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900 mb-1">
-            {statsLoading ? '...' : statistics.monthlyPracticeSessions.toLocaleString()}
+          <div className="text-3xl font-bold text-gray-900 mb-2">
+            {statsLoading ? '...' : (statistics.totalPracticeSessions || statistics.monthlyPracticeSessions).toLocaleString()}
           </div>
-          <div className="text-sm text-gray-600">本月练习次数</div>
+          <div className="text-sm text-gray-600 mb-3">总练习次数</div>
+          <div className="pt-3 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500">本月练习</span>
+              <span className="text-lg font-semibold text-orange-600">
+                {statsLoading ? '...' : statistics.monthlyPracticeSessions.toLocaleString()}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
