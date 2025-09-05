@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PersistentService } from '@kedge/persistent';
 import { sql } from 'slonik';
+import { SessionNotFoundException, UserNotFoundException } from './exceptions';
 
 export interface PracticeStats {
   userId: string;
@@ -202,7 +203,7 @@ export class LeaderboardService {
       
       const userResult = await this.persistentService.pgPool.query(userInfoQuery);
       if (userResult.rows.length === 0) {
-        throw new Error('User not found');
+        throw new UserNotFoundException(userId);
       }
       
       const userInfo = userResult.rows[0];
@@ -366,7 +367,7 @@ export class LeaderboardService {
       
       const sessionResult = await this.persistentService.pgPool.query(sessionQuery);
       if (sessionResult.rows.length === 0) {
-        throw new Error('Session not found');
+        throw new SessionNotFoundException(sessionId);
       }
       
       const sessionInfo = sessionResult.rows[0];

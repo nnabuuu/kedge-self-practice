@@ -1,7 +1,7 @@
 import { Controller, Get, Query, UseGuards, HttpException, HttpStatus, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@kedge/auth';
-import { LeaderboardService } from '@kedge/leaderboard';
+import { LeaderboardService, SessionNotFoundException, UserNotFoundException } from '@kedge/leaderboard';
 import { CurrentUser } from '@kedge/auth';
 
 @ApiTags('Leaderboard')
@@ -157,11 +157,8 @@ export class LeaderboardController {
         throw error;
       }
       
-      // Check for specific error messages
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('User not found')) {
-        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      if (error instanceof UserNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
       }
       
       console.error('Error fetching user practice details:', error);
@@ -198,15 +195,12 @@ export class LeaderboardController {
         throw error;
       }
       
-      // Check for specific error messages
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('Session not found')) {
-        throw new HttpException('Practice session not found', HttpStatus.NOT_FOUND);
+      if (error instanceof SessionNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
       }
       
-      if (errorMessage.includes('User not found')) {
-        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      if (error instanceof UserNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
       }
       
       console.error('Error fetching practice session details:', error);
