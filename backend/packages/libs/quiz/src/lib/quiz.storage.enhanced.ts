@@ -4,6 +4,8 @@ import { join, extname, basename } from 'path';
 import { v4 as uuid } from 'uuid';
 import { createHash } from 'crypto';
 import { env } from '../env';
+import { AliyunOSSService } from './storage/oss.service';
+import { HybridStorageService } from './storage/hybrid-storage.service';
 
 export interface AttachmentFile {
   filename: string;
@@ -32,6 +34,12 @@ export interface AttachmentValidationOptions {
 export class EnhancedQuizStorageService {
   private readonly logger = new Logger(EnhancedQuizStorageService.name);
   private readonly root = env().QUIZ_STORAGE_PATH;
+  private readonly hybridStorage: HybridStorageService;
+  
+  constructor() {
+    const ossService = new AliyunOSSService();
+    this.hybridStorage = new HybridStorageService(ossService, this.root);
+  }
   
   // Default validation options
   private readonly defaultValidation: AttachmentValidationOptions = {
@@ -85,8 +93,14 @@ export class EnhancedQuizStorageService {
     // Calculate file hash for deduplication/integrity
     const hash = createHash('sha256').update(file.data).digest('hex');
     
-    // Save file
-    await fs.writeFile(fullPath, file.data);
+    // Save file using hybrid storage (OSS first, fallback to filesystem)
+    const storageResult = await this.hybridStorage.saveFile(relativePath, file.data, {
+      mimetype: file.mimetype || this.getMimeType(ext),
+    });
+    
+    if (!storageResult.success) {
+      throw new Error('Failed to save attachment to storage');
+    }
     
     const metadata: AttachmentMetadata = {
       id: fileId,
@@ -124,16 +138,14 @@ export class EnhancedQuizStorageService {
       throw new BadRequestException('Invalid file path');
     }
     
-    const fullPath = join(this.root, relativePath);
+    // Try hybrid storage (OSS first, then filesystem)
+    const buffer = await this.hybridStorage.getFile(relativePath);
     
-    try {
-      return await fs.readFile(fullPath);
-    } catch (error) {
-      if ((error as any).code === 'ENOENT') {
-        throw new BadRequestException('Attachment not found');
-      }
-      throw error;
+    if (!buffer) {
+      throw new BadRequestException('Attachment not found');
     }
+    
+    return buffer;
   }
 
   /**
@@ -173,26 +185,25 @@ export class EnhancedQuizStorageService {
       
       for (const path of possiblePaths) {
         try {
-          const fullPath = join(this.root, path);
-          const buffer = await fs.readFile(fullPath);
+          // Try to get file from hybrid storage
+          const buffer = await this.hybridStorage.getFile(path);
           
-          console.log(`Found attachment at: ${path}`);
-          
-          // Get file stats for metadata
-          const stats = await fs.stat(fullPath);
-          
-          const metadata: AttachmentMetadata = {
-            id: uuid,
-            originalName: `${uuid}.${extension}`,
-            storedName: `${uuid}.${extension}`,
-            relativePath: path,
-            mimetype: this.getMimeType(`.${extension}`),
-            size: stats.size,
-            hash: '',
-            uploadedAt: stats.birthtime,
-          };
-          
-          return { buffer, metadata };
+          if (buffer) {
+            console.log(`Found attachment at: ${path}`);
+            
+            const metadata: AttachmentMetadata = {
+              id: uuid,
+              originalName: `${uuid}.${extension}`,
+              storedName: `${uuid}.${extension}`,
+              relativePath: path,
+              mimetype: this.getMimeType(`.${extension}`),
+              size: buffer.length,
+              hash: '',
+              uploadedAt: new Date(),
+            };
+            
+            return { buffer, metadata };
+          }
         } catch (error) {
           // File not found in this path, try next
           continue;
@@ -221,17 +232,11 @@ export class EnhancedQuizStorageService {
       throw new BadRequestException('Invalid file path');
     }
     
-    const fullPath = join(this.root, relativePath);
+    // Delete from hybrid storage (both OSS and filesystem if present)
+    const deleted = await this.hybridStorage.deleteFile(relativePath);
     
-    try {
-      await fs.unlink(fullPath);
+    if (deleted) {
       this.logger.log(`Deleted attachment: ${relativePath}`);
-    } catch (error) {
-      if ((error as any).code === 'ENOENT') {
-        // File doesn't exist, consider it already deleted
-        return;
-      }
-      throw error;
     }
   }
 
@@ -251,14 +256,8 @@ export class EnhancedQuizStorageService {
       return false;
     }
     
-    const fullPath = join(this.root, relativePath);
-    
-    try {
-      await fs.access(fullPath);
-      return true;
-    } catch {
-      return false;
-    }
+    // Check in hybrid storage
+    return this.hybridStorage.fileExists(relativePath);
   }
 
   /**
@@ -268,13 +267,22 @@ export class EnhancedQuizStorageService {
     totalFiles: number;
     totalSize: number;
     byMonth: Record<string, { count: number; size: number }>;
+    storage: {
+      oss: { configured: boolean; available: boolean };
+      filesystem: { rootPath: string; totalFiles?: number; totalSize?: number };
+    };
   }> {
+    // Get hybrid storage stats
+    const hybridStats = await this.hybridStorage.getStorageStats();
+    
     const stats = {
-      totalFiles: 0,
-      totalSize: 0,
+      totalFiles: hybridStats.filesystem.totalFiles || 0,
+      totalSize: hybridStats.filesystem.totalSize || 0,
       byMonth: {} as Record<string, { count: number; size: number }>,
+      storage: hybridStats,
     };
     
+    // Get detailed monthly stats from filesystem (if needed)
     try {
       const years = await fs.readdir(this.root);
       
@@ -302,8 +310,6 @@ export class EnhancedQuizStorageService {
             const fileStat = await fs.stat(filePath);
             
             if (fileStat.isFile()) {
-              stats.totalFiles++;
-              stats.totalSize += fileStat.size;
               stats.byMonth[monthKey].count++;
               stats.byMonth[monthKey].size += fileStat.size;
             }
@@ -311,7 +317,7 @@ export class EnhancedQuizStorageService {
         }
       }
     } catch (error) {
-      this.logger.error('Error getting storage stats:', error);
+      this.logger.error('Error getting detailed storage stats:', error);
     }
     
     return stats;
