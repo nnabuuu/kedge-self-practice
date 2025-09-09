@@ -11,6 +11,7 @@ This script migrates quiz attachments from local filesystem storage to Aliyun Ob
 - **Verification Mode**: Verify all files exist in OSS after migration
 - **Error Handling**: Graceful error handling with detailed error reporting
 - **Resume Support**: Skip already uploaded files on subsequent runs
+- **File Filtering**: Automatically skips hidden files (starting with .) and .emf files
 
 ## Prerequisites
 
@@ -194,6 +195,16 @@ bucket-name/
         └── 01/
             └── uuid4.png
 ```
+
+## Skipped Files
+
+The script automatically skips the following files:
+- **Hidden files**: Files starting with `.` (e.g., `.DS_Store`, `.gitignore`)
+- **EMF files**: Enhanced Metafile format files (`.emf`) - these should be converted to PNG during initial upload
+- **WMF files**: Windows Metafile format files (`.wmf`) - these should be converted to PNG during initial upload
+- **System files**: Other system-generated files that start with `.`
+
+Note: EMF/WMF files found in storage indicate failed conversions and should not be migrated to OSS.
 
 ## Error Handling
 

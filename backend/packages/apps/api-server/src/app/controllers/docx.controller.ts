@@ -234,8 +234,10 @@ export class DocxController {
             contentType = 'image/png';
             console.log(`Successfully converted ${docxImage.filename} to PNG`);
           } else {
-            console.warn(`Failed to convert ${filename}: ${conversionResult.error}`);
-            // Continue with original file, but it may not display
+            // Skip this image if conversion fails
+            console.warn(`Failed to convert ${filename}: ${conversionResult.error || 'Unknown error'}`);
+            console.log(`Skipping ${filename} due to conversion failure`);
+            continue; // Skip this image
           }
         }
         

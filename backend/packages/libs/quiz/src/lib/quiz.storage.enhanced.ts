@@ -336,6 +336,13 @@ export class EnhancedQuizStorageService {
     
     // Check extension
     const ext = extname(file.filename).toLowerCase();
+    
+    // Log warning for EMF/WMF files but don't reject them
+    // They should be converted before reaching this point
+    if (ext === '.emf' || ext === '.wmf') {
+      this.logger.warn(`Processing ${ext} file: ${file.filename}. Note: EMF/WMF files should be converted to PNG before storage.`);
+    }
+    
     if (options.allowedExtensions && !options.allowedExtensions.includes(ext)) {
       throw new BadRequestException(
         `File extension ${ext} is not allowed. Allowed: ${options.allowedExtensions.join(', ')}`,
@@ -379,8 +386,8 @@ export class EnhancedQuizStorageService {
       '.webp': 'image/webp',
       '.svg': 'image/svg+xml',
       '.pdf': 'application/pdf',
-      '.emf': 'image/x-emf',
-      '.wmf': 'image/x-wmf',
+      '.emf': 'image/x-emf',  // Keep for reference, but these should be converted to PNG
+      '.wmf': 'image/x-wmf',  // Keep for reference, but these should be converted to PNG
     };
     
     return mimeTypes[ext.toLowerCase()] || 'application/octet-stream';

@@ -168,6 +168,16 @@ class AttachmentMigrator {
         // Skip hidden files and system files
         if (entry.name.startsWith('.')) continue;
         
+        // Skip .emf and .wmf files (Enhanced Metafile/Windows Metafile formats)
+        // These should have been converted to PNG during upload
+        const lowerName = entry.name.toLowerCase();
+        if (lowerName.endsWith('.emf') || lowerName.endsWith('.wmf')) {
+          if (config.verbose) {
+            console.log(`⏭️  Skipping ${lowerName.endsWith('.emf') ? 'EMF' : 'WMF'} file: ${relativePath} (should have been converted during upload)`);
+          }
+          continue;
+        }
+        
         files.push({
           localPath: fullPath,
           relativePath: relativePath.replace(/\\/g, '/'),

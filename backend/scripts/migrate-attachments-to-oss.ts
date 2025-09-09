@@ -165,6 +165,19 @@ class AttachmentMigrator {
       if (entry.isDirectory()) {
         files.push(...await this.getAllFiles(fullPath, baseDir));
       } else if (entry.isFile()) {
+        // Skip hidden files
+        if (entry.name.startsWith('.')) continue;
+        
+        // Skip .emf and .wmf files (Enhanced Metafile/Windows Metafile formats)
+        // These should have been converted to PNG during upload
+        const lowerName = entry.name.toLowerCase();
+        if (lowerName.endsWith('.emf') || lowerName.endsWith('.wmf')) {
+          if (config.verbose) {
+            console.log(`⏭️  Skipping ${lowerName.endsWith('.emf') ? 'EMF' : 'WMF'} file: ${path.relative(baseDir, fullPath)} (should have been converted during upload)`);
+          }
+          continue;
+        }
+        
         const stats = await stat(fullPath);
         const relativePath = path.relative(baseDir, fullPath);
         
