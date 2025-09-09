@@ -168,7 +168,7 @@ export class AdminController {
       
       // Validate that students must have a class
       if (validatedData.role === 'student' && !validatedData.class) {
-        throw new HttpException('Students must have a class assigned', HttpStatus.BAD_REQUEST);
+        throw new HttpException('学生必须分配班级', HttpStatus.BAD_REQUEST);
       }
       
       // Check if user already exists
@@ -177,7 +177,7 @@ export class AdminController {
       `);
 
       if (existingUser.rows.length > 0) {
-        throw new HttpException('User with this account already exists', HttpStatus.CONFLICT);
+        throw new HttpException('该账号已存在，请使用其他账号', HttpStatus.CONFLICT);
       }
 
       // Generate salt and hash password
@@ -231,15 +231,23 @@ export class AdminController {
     } catch (error) {
       if (error instanceof z.ZodError) {
         throw new HttpException(
-          `Validation error: ${error.errors.map(e => e.message).join(', ')}`,
+          `验证错误: ${error.errors.map(e => e.message).join(', ')}`,
           HttpStatus.BAD_REQUEST
         );
       }
       if (error instanceof HttpException) {
         throw error;
       }
-      console.error('Error creating user:', error);
-      throw new HttpException('Failed to create user', HttpStatus.INTERNAL_SERVER_ERROR);
+      
+      // Check for database constraint violations
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error creating user:', errorMessage);
+      
+      if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('violates')) {
+        throw new HttpException('该账号已存在，请使用其他账号', HttpStatus.CONFLICT);
+      }
+      
+      throw new HttpException('创建用户失败', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -451,9 +459,16 @@ export class AdminController {
             class: result.rows[0].class
           });
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          let reason = '创建用户失败';
+          
+          if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('violates')) {
+            reason = '该账号已存在';
+          }
+          
           results.failed.push({
             email: userData.account,
-            reason: 'Failed to create user'
+            reason: reason
           });
         }
       }
