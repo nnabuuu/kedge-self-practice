@@ -368,7 +368,7 @@ function App() {
     navigateToScreen('subject-selection');
   };
 
-  const handleTeacherLogin = () => {
+  const handleManagementCenter = () => {
     // Allow both teachers and students to access the Management Center
     // Teachers and admins get full access, students get limited access
     navigateToScreen('teacher-dashboard');
@@ -711,7 +711,7 @@ function App() {
         return (
           <HomePage 
             onStartPractice={handleStartPractice}
-            onTeacherLogin={handleTeacherLogin} // Allow both teachers and students
+            onManagementCenter={handleManagementCenter} // Allow both teachers and students
             onLogout={handleLogout}
             currentUser={currentUser}
             userType={userType}

@@ -3,7 +3,7 @@ import { GraduationCap, TrendingUp, Award, Sparkles, ArrowRight, Target, Brain, 
 
 interface HomePageProps {
   onStartPractice: () => void;
-  onTeacherLogin?: () => void;
+  onManagementCenter?: () => void;
   onLogout: () => void;
   currentUser: any;
   userType: 'student' | 'teacher' | null;
@@ -11,7 +11,7 @@ interface HomePageProps {
 
 export default function HomePage({ 
   onStartPractice, 
-  onTeacherLogin, 
+  onManagementCenter, 
   onLogout, 
   currentUser, 
   userType 
@@ -52,9 +52,9 @@ export default function HomePage({
               </div>
 
               {/* Management Center Button - Available for both teachers and students */}
-              {onTeacherLogin && (
+              {onManagementCenter && (
                 <button
-                  onClick={onTeacherLogin}
+                  onClick={onManagementCenter}
                   className="group flex items-center px-4 py-2 bg-gradient-to-br from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 ease-out shadow-lg hover:shadow-xl focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none"
                 >
                   <Users className="w-4 h-4 mr-2" />
