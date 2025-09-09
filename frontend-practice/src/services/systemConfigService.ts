@@ -17,7 +17,7 @@ interface ApiResponse<T = any> {
 
 class SystemConfigService {
   private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('jwt_token');
     return {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
@@ -109,6 +109,13 @@ class SystemConfigService {
         }
       );
       
+      // Check if response is ok
+      if (!response.ok) {
+        // If backend is not available or endpoint doesn't exist, default to true
+        console.log('System config endpoint not available, defaulting to show demo accounts');
+        return true;
+      }
+      
       const data: ApiResponse<SystemConfig> = await response.json();
       
       if (data.success && data.data?.value?.enabled !== undefined) {
@@ -117,8 +124,9 @@ class SystemConfigService {
       // Default to true if config not found
       return true;
     } catch (error) {
-      console.error('Failed to check demo accounts visibility:', error);
-      // Default to true on error
+      // Network error or backend not running - default to true
+      console.log('Backend not available, defaulting to show demo accounts');
+      // Default to true on error (for development convenience)
       return true;
     }
   }
