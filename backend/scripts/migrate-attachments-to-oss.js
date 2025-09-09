@@ -20,21 +20,31 @@ const path = require('path');
 const crypto = require('crypto');
 const OSS = require('ali-oss');
 
-// Load environment variables from .envrc
-const envrcPath = path.join(__dirname, '../../.envrc');
-if (fs.existsSync(envrcPath)) {
-  const envContent = fs.readFileSync(envrcPath, 'utf8');
+// Load environment variables from .env file (compiled by direnv)
+const envPath = path.join(__dirname, '../.env');
+
+// Load .env file if it exists
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
   const envLines = envContent.split('\n');
   
   envLines.forEach(line => {
-    const match = line.match(/^export\s+([A-Z_]+)="?([^"]*)"?$/);
+    // Match KEY=value format (with or without quotes)
+    const match = line.match(/^([A-Z_]+)=["']?([^"'#\n]*)["']?/);
     if (match) {
       const [, key, value] = match;
+      // Only set if not already set by system
       if (!process.env[key]) {
-        process.env[key] = value;
+        process.env[key] = value.trim();
       }
     }
   });
+  
+  if (process.argv.includes('--verbose')) {
+    console.log(`📁 Loaded environment from: ${envPath}`);
+  }
+} else if (process.argv.includes('--verbose')) {
+  console.log(`⚠️  No .env file found at: ${envPath}`);
 }
 
 // Configuration
@@ -78,14 +88,33 @@ class AttachmentMigrator {
   }
 
   validateConfig() {
+    // Debug: Show what we have
+    if (config.verbose) {
+      console.log('🔍 Debug - Environment variables detected:');
+      console.log(`   ALIYUN_OSS_ACCESS_KEY_ID: ${process.env.ALIYUN_OSS_ACCESS_KEY_ID ? '✓ Set' : '✗ Not set'}`);
+      console.log(`   ALIYUN_OSS_ACCESS_KEY_SECRET: ${process.env.ALIYUN_OSS_ACCESS_KEY_SECRET ? '✓ Set' : '✗ Not set'}`);
+      console.log(`   ALIYUN_OSS_BUCKET: ${process.env.ALIYUN_OSS_BUCKET ? `✓ ${process.env.ALIYUN_OSS_BUCKET}` : '✗ Not set'}`);
+      console.log(`   ALIYUN_OSS_REGION: ${process.env.ALIYUN_OSS_REGION ? `✓ ${process.env.ALIYUN_OSS_REGION}` : '✗ Not set'}`);
+      console.log('');
+    }
+    
     if (!config.accessKeyId || !config.bucket) {
       console.error('❌ OSS configuration missing. Please set the following environment variables:');
-      console.error('   ALIYUN_OSS_ACCESS_KEY_ID');
-      console.error('   ALIYUN_OSS_ACCESS_KEY_SECRET');
-      console.error('   ALIYUN_OSS_BUCKET');
-      console.error('   ALIYUN_OSS_REGION');
+      if (!config.accessKeyId) console.error('   ALIYUN_OSS_ACCESS_KEY_ID');
+      if (!config.accessKeySecret) console.error('   ALIYUN_OSS_ACCESS_KEY_SECRET');
+      if (!config.bucket) console.error('   ALIYUN_OSS_BUCKET');
+      if (!config.region) console.error('   ALIYUN_OSS_REGION');
       console.error('');
-      console.error('You can set these in backend/.envrc or backend/.envrc.override');
+      console.error('Options to fix this:');
+      console.error('1. If using direnv:');
+      console.error('   - Set variables in .envrc or .envrc.override');
+      console.error('   - Run: direnv allow');
+      console.error('');
+      console.error('2. Or create a .env file with:');
+      console.error('   ALIYUN_OSS_ACCESS_KEY_ID=your-key-id');
+      console.error('   ALIYUN_OSS_ACCESS_KEY_SECRET=your-secret');
+      console.error('   ALIYUN_OSS_BUCKET=your-bucket');
+      console.error('   ALIYUN_OSS_REGION=oss-cn-hangzhou');
       return false;
     }
 

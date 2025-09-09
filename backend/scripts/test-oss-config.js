@@ -28,37 +28,29 @@ function log(message, color = 'reset') {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-// Load environment variables from .envrc
+// Load environment variables from .env (compiled by direnv)
 function loadEnvFile() {
-  const envFiles = [
-    path.join(__dirname, '../.envrc.override'),  // Check override first
-    path.join(__dirname, '../.envrc'),
-  ];
+  const envFile = path.join(__dirname, '../.env');
   
-  let envLoaded = false;
-  for (const envFile of envFiles) {
-    if (fs.existsSync(envFile)) {
-      log(`📁 Loading environment from: ${envFile}`, 'cyan');
-      const envContent = fs.readFileSync(envFile, 'utf8');
-      const envLines = envContent.split('\n');
-      
-      envLines.forEach(line => {
-        // Match export statements
-        const match = line.match(/^export\s+([A-Z_]+)="?([^"#]*)"?/);
-        if (match) {
-          const [, key, value] = match;
-          // Only set if not already set (allows override)
-          if (!process.env[key] && key.includes('OSS')) {
-            process.env[key] = value.trim();
-          }
+  if (fs.existsSync(envFile)) {
+    log(`📁 Loading environment from: ${envFile}`, 'cyan');
+    const envContent = fs.readFileSync(envFile, 'utf8');
+    const envLines = envContent.split('\n');
+    
+    envLines.forEach(line => {
+      // Match KEY=value format (with or without quotes)
+      const match = line.match(/^([A-Z_]+)=["']?([^"'#\n]*)["']?/);
+      if (match) {
+        const [, key, value] = match;
+        // Only set if not already set
+        if (!process.env[key]) {
+          process.env[key] = value.trim();
         }
-      });
-      envLoaded = true;
-    }
-  }
-  
-  if (!envLoaded) {
-    log('⚠️  No .envrc or .envrc.override file found', 'yellow');
+      }
+    });
+  } else {
+    log('⚠️  No .env file found (direnv may not have compiled it yet)', 'yellow');
+    log('   Try running: direnv allow', 'yellow');
   }
 }
 
