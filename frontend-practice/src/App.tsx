@@ -369,10 +369,9 @@ function App() {
   };
 
   const handleTeacherLogin = () => {
-    if (userType === 'teacher') {
-      // Go to teacher dashboard with the last selected subject if available
-      navigateToScreen('teacher-dashboard');
-    }
+    // Allow both teachers and students to access the Management Center
+    // Teachers and admins get full access, students get limited access
+    navigateToScreen('teacher-dashboard');
   };
 
   const handleSelectSubject = (subject: Subject) => {
