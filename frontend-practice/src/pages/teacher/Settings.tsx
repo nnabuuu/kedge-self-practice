@@ -39,6 +39,7 @@ export default function Settings({ onBack }: SettingsProps) {
   
   // System config state (for admins)
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isStudent, setIsStudent] = useState(false);
   const [showDemoAccounts, setShowDemoAccounts] = useState(true);
   const [savingSystemConfig, setSavingSystemConfig] = useState(false);
 
@@ -50,10 +51,12 @@ export default function Settings({ onBack }: SettingsProps) {
     try {
       setLoading(true);
       
-      // Check if user is admin
+      // Check user role
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
       const userIsAdmin = userData.role === 'admin' || userData.isAdmin === true;
+      const userIsStudent = userData.role === 'student';
       setIsAdmin(userIsAdmin);
+      setIsStudent(userIsStudent);
       
       // Load user preferences
       const preferences = await preferencesService.getPreferences();
@@ -175,9 +178,10 @@ export default function Settings({ onBack }: SettingsProps) {
         </div>
       </div>
 
-      {/* Quiz Management Settings */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">题库管理设置</h3>
+      {/* Quiz Management Settings - Only for teachers/admins */}
+      {!isStudent && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">题库管理设置</h3>
         
         <div className="space-y-4">
           {/* Polish Feature Toggle */}
@@ -235,8 +239,9 @@ export default function Settings({ onBack }: SettingsProps) {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Password Reset Section */}
+      {/* Password Reset Section - Available for all users */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -444,9 +449,10 @@ export default function Settings({ onBack }: SettingsProps) {
         </div>
       )}
 
-      {/* Feature Status Summary */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">当前功能状态</h3>
+      {/* Feature Status Summary - Only for teachers/admins */}
+      {!isStudent && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">当前功能状态</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center space-x-2">
@@ -472,9 +478,11 @@ export default function Settings({ onBack }: SettingsProps) {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Action Buttons */}
-      <div className="flex items-center justify-between">
+      {/* Action Buttons - Only for teachers/admins */}
+      {!isStudent && (
+        <div className="flex items-center justify-between">
         <button
           onClick={handleReset}
           className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -500,6 +508,7 @@ export default function Settings({ onBack }: SettingsProps) {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }
