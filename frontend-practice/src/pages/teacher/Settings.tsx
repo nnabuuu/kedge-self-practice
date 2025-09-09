@@ -51,12 +51,14 @@ export default function Settings({ onBack }: SettingsProps) {
     try {
       setLoading(true);
       
-      // Check user role
-      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-      const userIsAdmin = userData.role === 'admin' || userData.isAdmin === true;
-      const userIsStudent = userData.role === 'student';
+      // Check user role using authService
+      const userData = authService.getCurrentUser();
+      const userIsAdmin = userData?.role === 'admin' || userData?.isAdmin === true;
+      const userIsStudent = userData?.role === 'student';
       setIsAdmin(userIsAdmin);
       setIsStudent(userIsStudent);
+      
+      console.log('Settings: User role check', { userData, userIsAdmin, userIsStudent });
       
       // Load user preferences
       const preferences = await preferencesService.getPreferences();
