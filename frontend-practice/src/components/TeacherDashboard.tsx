@@ -306,7 +306,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                   { id: 'ai-config', label: 'AI配置管理', icon: Cpu }
                 ] : []),
                 // { id: 'analytics', label: '数据分析', icon: BarChart3 }, // Hidden for now
-                { id: 'settings', label: '设置', icon: Settings }
+                ...(isTeacher ? [{ id: 'settings', label: '设置', icon: Settings }] : [])
               ].map(tab => {
                 const TabIcon = tab.icon;
                 return (
@@ -347,7 +347,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                 readOnly={isStudent} // Pass read-only flag for students
               />
             )}
-            {activeTab === 'questions' && (
+            {activeTab === 'questions' && !isStudent && (
               <QuizBankManagement 
                 initialFilters={quizBankFilters || undefined}
               />
@@ -367,7 +367,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                 <p className="text-gray-600">数据分析功能开发中...</p>
               </div>
             )}
-            {activeTab === 'settings' && (
+            {activeTab === 'settings' && isTeacher && (
               <SettingsPage />
             )}
           </div>
