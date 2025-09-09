@@ -167,18 +167,6 @@ export default function Settings({ onBack }: SettingsProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-            <SettingsIcon className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">系统设置</h2>
-            <p className="text-sm text-gray-600">配置系统功能和偏好设置</p>
-          </div>
-        </div>
-      </div>
 
       {/* Quiz Management Settings - Only for teachers/admins */}
       {!isStudent && (

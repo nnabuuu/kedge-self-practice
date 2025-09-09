@@ -177,27 +177,27 @@ export class AuthController {
     
     // Validate input
     if (!body.currentPassword || !body.newPassword) {
-      throw new BadRequestException('Current password and new password are required');
+      throw new BadRequestException('请输入当前密码和新密码');
     }
     
     if (body.newPassword.length < 6) {
-      throw new BadRequestException('New password must be at least 6 characters long');
+      throw new BadRequestException('新密码至少需要6个字符');
     }
     
     // Verify current password
     const user = await this.authRepository.findUserById(userId);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('用户不存在');
     }
     
     const isValidPassword = await this.authService.validatePassword(user.account_id, body.currentPassword);
     if (!isValidPassword) {
-      throw new BadRequestException('Current password is incorrect');
+      throw new BadRequestException('当前密码不正确');
     }
     
     // Update password
     await this.authService.updateUserPassword(userId, body.newPassword);
     
-    return { success: true, message: 'Password changed successfully' };
+    return { success: true, message: '密码修改成功' };
   }
 }
