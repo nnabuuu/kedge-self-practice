@@ -28,7 +28,7 @@ const UpdateSystemConfigSchema = z.object({
 type UpdateSystemConfigDto = z.infer<typeof UpdateSystemConfigSchema>;
 
 @ApiTags('System Configuration')
-@Controller('v1/system-config')
+@Controller('system-config')
 export class SystemConfigController {
   constructor(private readonly persistentService: PersistentService) {}
 
