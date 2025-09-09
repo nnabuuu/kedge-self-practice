@@ -1,4 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8718';
+// Use consistent API base URL with other services
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+  ? import.meta.env.VITE_API_BASE_URL
+  : `${import.meta.env.VITE_API_BASE_URL || '/api'}/v1`;
 
 export interface SystemConfig {
   key: string;
@@ -27,7 +30,7 @@ class SystemConfigService {
   async getConfig(key: string): Promise<SystemConfig | null> {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/v1/system-config/${key}`,
+        `${API_BASE_URL}/system-config/${key}`,
         {
           method: 'GET',
           headers: this.getAuthHeaders()
@@ -57,7 +60,7 @@ class SystemConfigService {
   async updateConfig(key: string, value: { enabled: boolean }): Promise<boolean> {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/v1/system-config/${key}`,
+        `${API_BASE_URL}/system-config/${key}`,
         {
           method: 'PUT',
           headers: this.getAuthHeaders(),
@@ -76,7 +79,7 @@ class SystemConfigService {
   async getAllConfigs(): Promise<SystemConfig[]> {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/v1/system-config`,
+        `${API_BASE_URL}/system-config`,
         {
           method: 'GET',
           headers: this.getAuthHeaders()
@@ -100,7 +103,7 @@ class SystemConfigService {
     try {
       // This endpoint doesn't require authentication
       const response = await fetch(
-        `${API_BASE_URL}/v1/system-config/show_demo_accounts`,
+        `${API_BASE_URL}/system-config/show_demo_accounts`,
         {
           method: 'GET',
           headers: {
