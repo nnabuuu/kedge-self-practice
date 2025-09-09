@@ -7,6 +7,7 @@
     "migrate:oss:dry-run": "node scripts/migrate-attachments-to-oss.js --dry-run",
     "migrate:oss:verify": "node scripts/migrate-attachments-to-oss.js --verify",
     "migrate:oss:help": "node scripts/migrate-attachments-to-oss.js --help",
+    "test:oss": "node scripts/test-oss-config.js",
     "postinstall": "patch-package"
   },
   "private": true,

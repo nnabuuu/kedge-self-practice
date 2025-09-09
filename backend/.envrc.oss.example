@@ -1,0 +1,30 @@
+# Aliyun OSS Configuration Template
+# Copy these lines to your .envrc.override file and fill in your actual values
+
+# Required: Your Aliyun OSS Access Key ID
+# Get this from: https://ram.console.aliyun.com/manage/ak
+export ALIYUN_OSS_ACCESS_KEY_ID="your-access-key-id-here"
+
+# Required: Your Aliyun OSS Access Key Secret
+# Get this from: https://ram.console.aliyun.com/manage/ak
+export ALIYUN_OSS_ACCESS_KEY_SECRET="your-access-key-secret-here"
+
+# Required: Your OSS Bucket Name
+# Create bucket at: https://oss.console.aliyun.com/bucket
+export ALIYUN_OSS_BUCKET="your-bucket-name"
+
+# Required: OSS Region (examples: oss-cn-hangzhou, oss-cn-shanghai, oss-cn-beijing)
+# See full list: https://help.aliyun.com/document_detail/31837.html
+export ALIYUN_OSS_REGION="oss-cn-hangzhou"
+
+# Optional: Custom endpoint (leave commented for auto-detection based on region)
+# export ALIYUN_OSS_ENDPOINT="oss-cn-hangzhou.aliyuncs.com"
+
+# Optional: Internal endpoint for ECS instances (faster, no bandwidth charges)
+# export ALIYUN_OSS_INTERNAL_ENDPOINT="oss-cn-hangzhou-internal.aliyuncs.com"
+
+# Optional: Path prefix in bucket (default: quiz-attachments)
+export ALIYUN_OSS_PATH_PREFIX="quiz-attachments"
+
+# Optional: Local storage path for attachments (default: ./quiz-storage)
+export QUIZ_STORAGE_PATH="./quiz-storage"

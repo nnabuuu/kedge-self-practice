@@ -179,7 +179,7 @@ export default function UserManagement() {
   const downloadTemplate = () => {
     const template = [
       { 账号: 'student1', 姓名: '张三', 密码: 'password123', 身份: '学生', 班级: '七年级1班' },
-      { 账号: 'teacher1', 姓名: '李老师', 密码: 'password456', 身份: '教师', 班级: '' }
+      { 账号: 'teacher1', 姓名: '李老师', 密码: '', 身份: '教师', 班级: '' }  // Empty password will use 'teacher1'
     ];
 
     const ws = XLSX.utils.json_to_sheet(template);
@@ -214,16 +214,21 @@ export default function UserManagement() {
         const parsedUsers: UserFormData[] = data.map((row: any) => {
           const role = (row['身份'] === '教师' || row['role'] === 'teacher') ? 'teacher' : 'student';
           const userClass = row['班级'] || row['class'] || '';
+          const account = row['账号'] || row['账号邮箱'] || row['email'] || '';
+          // Use account as password if password is empty
+          const password = row['密码'] || row['password'] || account;
+          
           return {
-            email: row['账号'] || row['账号邮箱'] || row['email'] || '',
+            email: account,
             name: row['姓名'] || row['name'] || '',
-            password: row['密码'] || row['password'] || '',
+            password: password,
             role,
             class: userClass
           };
         }).filter(u => {
           // Basic validation
-          if (!u.email || !u.name || !u.password) return false;
+          if (!u.email || !u.name) return false;
+          // Password will always have a value now (either specified or same as account)
           // Students must have a class
           if (u.role === 'student' && !u.class) return false;
           return true;
@@ -761,9 +766,15 @@ export default function UserManagement() {
               {/* Step 1: Download Template */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-medium text-blue-900 mb-2">步骤 1：下载模板</h4>
-                <p className="text-sm text-blue-700 mb-3">
+                <p className="text-sm text-blue-700 mb-2">
                   下载Excel模板，按照格式填写用户信息
                 </p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-2 mb-3">
+                  <p className="text-xs text-yellow-800">
+                    <strong>注意：</strong>如果密码列为空，系统将自动使用账号作为默认密码。
+                    用户可以在首次登录后修改密码。
+                  </p>
+                </div>
                 <button
                   onClick={downloadTemplate}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
@@ -789,6 +800,9 @@ export default function UserManagement() {
                   <p className="text-sm text-gray-500 mt-2">
                     支持 .xlsx 和 .xls 格式
                   </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    空密码将使用账号作为默认密码
+                  </p>
                 </div>
               </div>
 
@@ -811,7 +825,13 @@ export default function UserManagement() {
                           <tr key={index}>
                             <td className="px-4 py-2">{user.email}</td>
                             <td className="px-4 py-2">{user.name}</td>
-                            <td className="px-4 py-2">********</td>
+                            <td className="px-4 py-2">
+                              {user.password === user.email ? (
+                                <span className="text-yellow-600 text-xs">同账号</span>
+                              ) : (
+                                '********'
+                              )}
+                            </td>
                             <td className="px-4 py-2">
                               {user.role === 'teacher' ? '教师' : '学生'}
                             </td>
