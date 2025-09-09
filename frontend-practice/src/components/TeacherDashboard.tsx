@@ -83,9 +83,15 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
   });
   const [statsLoading, setStatsLoading] = useState(true);
 
-  // Fetch statistics on component mount
+  // Fetch statistics on component mount (only for teachers/admins, not students)
   useEffect(() => {
     const fetchStatistics = async () => {
+      // Skip fetching statistics for students as they don't have permission
+      if (isStudent) {
+        setStatsLoading(false);
+        return;
+      }
+      
       try {
         setStatsLoading(true);
         const stats = await statisticsService.getTeacherDashboardStats();
@@ -99,7 +105,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
     };
 
     fetchStatistics();
-  }, []);
+  }, [isStudent]);
 
   // Set selected subject once subjects data is loaded
   // Remember teacher's last accessed subject preference using backend
