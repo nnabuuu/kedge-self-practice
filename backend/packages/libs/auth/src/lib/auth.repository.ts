@@ -219,4 +219,22 @@ export class AuthRepository {
       throw new Error('Failed to update user preference');
     }
   }
+
+  async updateUserPassword(userId: string, passwordHash: string, salt: string): Promise<void> {
+    try {
+      await this.persistentService.pgPool.query(
+        sql.unsafe`
+          UPDATE kedge_practice.users
+          SET password_hash = ${passwordHash},
+              salt = ${salt},
+              updated_at = now()
+          WHERE id = ${userId}
+        `,
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error updating user password: ${errorMessage}`);
+      throw new Error('Failed to update user password');
+    }
+  }
 }

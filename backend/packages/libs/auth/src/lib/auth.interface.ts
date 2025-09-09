@@ -13,4 +13,14 @@ export abstract class AuthService {
     accountId: string,
     password: string,
   ): Promise<{ accessToken: string; userId: string }>;
+  
+  abstract validatePassword(
+    accountId: string,
+    password: string,
+  ): Promise<boolean>;
+  
+  abstract updateUserPassword(
+    userId: string,
+    newPassword: string,
+  ): Promise<void>;
 }

@@ -370,6 +370,14 @@ class AuthService {
       headers: this.getAuthHeaders()
     });
   }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse> {
+    return this.makeRequest('/auth/change-password', {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+  }
 }
 
 export const authService = new AuthService();

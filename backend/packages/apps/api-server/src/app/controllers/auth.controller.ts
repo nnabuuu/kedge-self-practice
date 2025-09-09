@@ -169,4 +169,35 @@ export class AuthController {
     await this.authRepository.updateUserPreference(userId, key, body.value);
     return { success: true };
   }
+
+  @Put('change-password')
+  @UseGuards(JwtAuthGuard)
+  async changePassword(@Req() req: any, @Body() body: { currentPassword: string; newPassword: string }) {
+    const userId = req.user.sub;
+    
+    // Validate input
+    if (!body.currentPassword || !body.newPassword) {
+      throw new BadRequestException('Current password and new password are required');
+    }
+    
+    if (body.newPassword.length < 6) {
+      throw new BadRequestException('New password must be at least 6 characters long');
+    }
+    
+    // Verify current password
+    const user = await this.authRepository.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    
+    const isValidPassword = await this.authService.validatePassword(user.account_id, body.currentPassword);
+    if (!isValidPassword) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+    
+    // Update password
+    await this.authService.updateUserPassword(userId, body.newPassword);
+    
+    return { success: true, message: 'Password changed successfully' };
+  }
 }

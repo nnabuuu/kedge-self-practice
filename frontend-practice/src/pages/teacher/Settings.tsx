@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Check, X, Save, RotateCcw } from 'lucide-react';
+import { Settings as SettingsIcon, Check, X, Save, RotateCcw, Key, Eye, EyeOff } from 'lucide-react';
 import { preferencesService, UserPreferences } from '../../services/preferencesService';
+import { authService } from '../../services/authService';
 
 interface SettingsProps {
   onBack?: () => void;
@@ -23,6 +24,17 @@ export default function Settings({ onBack }: SettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState('');
+  
+  // Password reset state
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -173,6 +185,169 @@ export default function Settings({ onBack }: SettingsProps) {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Password Reset Section */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+              <Key className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">密码管理</h3>
+              <p className="text-sm text-gray-600">修改您的登录密码</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setShowPasswordReset(!showPasswordReset);
+              if (!showPasswordReset) {
+                // Clear fields when opening
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setPasswordError('');
+                setPasswordSuccess('');
+              }
+            }}
+            className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+          >
+            {showPasswordReset ? '取消' : '修改密码'}
+          </button>
+        </div>
+        
+        {showPasswordReset && (
+          <div className="mt-6 space-y-4 pt-6 border-t border-gray-200">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                当前密码
+              </label>
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    setPasswordError('');
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10"
+                  placeholder="输入当前密码"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                新密码
+              </label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setPasswordError('');
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10"
+                  placeholder="输入新密码（至少6位）"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                确认新密码
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setPasswordError('');
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="再次输入新密码"
+              />
+            </div>
+            
+            {passwordError && (
+              <div className="flex items-center space-x-2 text-red-600 text-sm">
+                <X className="w-4 h-4" />
+                <span>{passwordError}</span>
+              </div>
+            )}
+            
+            {passwordSuccess && (
+              <div className="flex items-center space-x-2 text-green-600 text-sm">
+                <Check className="w-4 h-4" />
+                <span>{passwordSuccess}</span>
+              </div>
+            )}
+            
+            <div className="flex justify-end">
+              <button
+                onClick={async () => {
+                  // Validate inputs
+                  if (!currentPassword || !newPassword || !confirmPassword) {
+                    setPasswordError('请填写所有密码字段');
+                    return;
+                  }
+                  
+                  if (newPassword.length < 6) {
+                    setPasswordError('新密码至少需要6个字符');
+                    return;
+                  }
+                  
+                  if (newPassword !== confirmPassword) {
+                    setPasswordError('两次输入的新密码不一致');
+                    return;
+                  }
+                  
+                  // Call API to change password
+                  setChangingPassword(true);
+                  try {
+                    const response = await authService.changePassword(currentPassword, newPassword);
+                    if (response.success) {
+                      setPasswordSuccess('密码修改成功！');
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setTimeout(() => {
+                        setShowPasswordReset(false);
+                        setPasswordSuccess('');
+                      }, 2000);
+                    } else {
+                      setPasswordError(response.error || '密码修改失败');
+                    }
+                  } catch (error) {
+                    setPasswordError('密码修改失败，请检查当前密码是否正确');
+                  } finally {
+                    setChangingPassword(false);
+                  }
+                }}
+                disabled={changingPassword}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {changingPassword ? '修改中...' : '确认修改'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Feature Status Summary */}

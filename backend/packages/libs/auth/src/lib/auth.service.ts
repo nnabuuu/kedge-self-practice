@@ -53,6 +53,26 @@ export class DefaultAuthService implements AuthService {
       userId: user.id,
     };
   }
+
+  async validatePassword(accountId: string, password: string): Promise<boolean> {
+    try {
+      const user = await this.authRepository.findUserByAccountId(accountId);
+      if (!user) {
+        return false;
+      }
+      const passwordHash = pbkdf2Sync(password, user.salt, 1000, 64, 'sha512').toString('hex');
+      return passwordHash === user.password_hash;
+    } catch (error) {
+      this.logger.error('Error validating password:', error);
+      return false;
+    }
+  }
+
+  async updateUserPassword(userId: string, newPassword: string): Promise<void> {
+    const salt = randomBytes(16).toString('hex');
+    const passwordHash = pbkdf2Sync(newPassword, salt, 1000, 64, 'sha512').toString('hex');
+    await this.authRepository.updateUserPassword(userId, passwordHash, salt);
+  }
 }
 
 export const AuthServiceProvider = {
