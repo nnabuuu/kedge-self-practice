@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "license": "UNLICENSED",
   "scripts": {
+    "migrate:oss": "node scripts/migrate-attachments-to-oss.js",
+    "migrate:oss:dry-run": "node scripts/migrate-attachments-to-oss.js --dry-run",
+    "migrate:oss:verify": "node scripts/migrate-attachments-to-oss.js --verify",
+    "migrate:oss:help": "node scripts/migrate-attachments-to-oss.js --help",
     "postinstall": "patch-package"
   },
   "private": true,
