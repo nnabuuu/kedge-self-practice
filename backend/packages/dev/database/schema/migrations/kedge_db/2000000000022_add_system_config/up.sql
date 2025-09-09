@@ -16,6 +16,8 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Drop trigger if exists and recreate
+DROP TRIGGER IF EXISTS update_system_config_updated_at ON kedge_practice.system_config;
 CREATE TRIGGER update_system_config_updated_at 
     BEFORE UPDATE ON kedge_practice.system_config 
     FOR EACH ROW 
