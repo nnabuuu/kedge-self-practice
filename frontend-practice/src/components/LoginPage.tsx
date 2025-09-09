@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GraduationCap, User, Lock, Eye, EyeOff, BookOpen, Brain, Sparkles } from 'lucide-react';
 import { authService } from '../services/authService';
+import { systemConfigService } from '../services/systemConfigService';
 
 interface LoginPageProps {
   onLogin: (userType: 'student' | 'teacher', userData: any) => void;
@@ -14,6 +15,22 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showDemoAccounts, setShowDemoAccounts] = useState(true);
+
+  useEffect(() => {
+    // Check if demo accounts should be shown
+    const checkDemoAccountsVisibility = async () => {
+      try {
+        const shouldShow = await systemConfigService.shouldShowDemoAccounts();
+        setShowDemoAccounts(shouldShow);
+      } catch (error) {
+        // Default to showing demo accounts if config check fails
+        setShowDemoAccounts(true);
+      }
+    };
+    
+    checkDemoAccountsVisibility();
+  }, []);
 
   // Demo accounts for testing (fallback when backend is not available)
   const demoAccounts = [
@@ -199,38 +216,40 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 </div>
               </div>
 
-              {/* Demo Account Helper */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <div className="space-y-3">
-                  <h4 className="font-medium text-blue-900 mb-2">演示账户</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fillDemoAccount('student')}
-                      className="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg hover:bg-blue-200 transition-colors duration-300"
-                    >
-                      学生账户
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => fillDemoAccount('teacher')}
-                      className="px-3 py-2 bg-indigo-100 text-indigo-800 text-sm rounded-lg hover:bg-indigo-200 transition-colors duration-300"
-                    >
-                      教师账户
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => fillDemoAccount('admin')}
-                      className="px-3 py-2 bg-purple-100 text-purple-800 text-sm rounded-lg hover:bg-purple-200 transition-colors duration-300"
-                    >
-                      管理员
-                    </button>
+              {/* Demo Account Helper - Only show if enabled */}
+              {showDemoAccounts && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-blue-900 mb-2">演示账户</h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fillDemoAccount('student')}
+                        className="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg hover:bg-blue-200 transition-colors duration-300"
+                      >
+                        学生账户
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fillDemoAccount('teacher')}
+                        className="px-3 py-2 bg-indigo-100 text-indigo-800 text-sm rounded-lg hover:bg-indigo-200 transition-colors duration-300"
+                      >
+                        教师账户
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fillDemoAccount('admin')}
+                        className="px-3 py-2 bg-purple-100 text-purple-800 text-sm rounded-lg hover:bg-purple-200 transition-colors duration-300"
+                      >
+                        管理员
+                      </button>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      点击按钮自动填入对应的演示账户信息
+                    </p>
                   </div>
-                  <p className="text-xs text-blue-700">
-                    点击按钮自动填入对应的演示账户信息
-                  </p>
                 </div>
-              </div>
+              )}
 
               {/* Login Button */}
               <button

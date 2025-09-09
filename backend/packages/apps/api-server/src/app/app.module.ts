@@ -17,6 +17,7 @@ import { StatisticsController } from './controllers/statistics.controller';
 import { SubjectsController } from './controllers/subjects.controller';
 import { AdminController } from './controllers/admin.controller';
 import { LeaderboardController } from './controllers/leaderboard.controller';
+import { SystemConfigController } from './controllers/system-config.controller';
 import { PracticeModule } from '@kedge/practice';
 import { PersistentModule } from '@kedge/persistent';
 import { LeaderboardModule } from '@kedge/leaderboard';
@@ -45,6 +46,7 @@ import { LeaderboardModule } from '@kedge/leaderboard';
     SubjectsController,
     AdminController,
     LeaderboardController,
+    SystemConfigController,
   ],
   providers: [
     {

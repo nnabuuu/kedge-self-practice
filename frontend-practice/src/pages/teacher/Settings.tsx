@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Check, X, Save, RotateCcw, Key, Eye, EyeOff } from 'lucide-react';
+import { Settings as SettingsIcon, Check, X, Save, RotateCcw, Key, Eye, EyeOff, Users } from 'lucide-react';
 import { preferencesService, UserPreferences } from '../../services/preferencesService';
 import { authService } from '../../services/authService';
+import { systemConfigService } from '../../services/systemConfigService';
 
 interface SettingsProps {
   onBack?: () => void;
@@ -35,6 +36,11 @@ export default function Settings({ onBack }: SettingsProps) {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  
+  // System config state (for admins)
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showDemoAccounts, setShowDemoAccounts] = useState(true);
+  const [savingSystemConfig, setSavingSystemConfig] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -43,6 +49,13 @@ export default function Settings({ onBack }: SettingsProps) {
   const loadSettings = async () => {
     try {
       setLoading(true);
+      
+      // Check if user is admin
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+      const userIsAdmin = userData.role === 'admin' || userData.isAdmin === true;
+      setIsAdmin(userIsAdmin);
+      
+      // Load user preferences
       const preferences = await preferencesService.getPreferences();
       
       // Merge with default settings
@@ -53,6 +66,14 @@ export default function Settings({ onBack }: SettingsProps) {
           enableQuizTypeAdjustment: preferences.quizManagement?.enableQuizTypeAdjustment ?? true,
         }
       });
+      
+      // Load system config if admin
+      if (userIsAdmin) {
+        const demoConfig = await systemConfigService.getConfig('show_demo_accounts');
+        if (demoConfig) {
+          setShowDemoAccounts(demoConfig.value.enabled);
+        }
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
     } finally {
@@ -98,6 +119,34 @@ export default function Settings({ onBack }: SettingsProps) {
         enableQuizTypeAdjustment: true,
       }
     });
+  };
+  
+  const handleDemoAccountsToggle = async () => {
+    const newValue = !showDemoAccounts;
+    setShowDemoAccounts(newValue);
+    
+    try {
+      setSavingSystemConfig(true);
+      const success = await systemConfigService.updateConfig('show_demo_accounts', { enabled: newValue });
+      
+      if (success) {
+        setSavedMessage('系统配置已更新');
+        setTimeout(() => setSavedMessage(''), 3000);
+      } else {
+        // Revert on failure
+        setShowDemoAccounts(!newValue);
+        setSavedMessage('更新失败');
+        setTimeout(() => setSavedMessage(''), 3000);
+      }
+    } catch (error) {
+      console.error('Failed to update demo accounts config:', error);
+      // Revert on error
+      setShowDemoAccounts(!newValue);
+      setSavedMessage('更新失败');
+      setTimeout(() => setSavedMessage(''), 3000);
+    } finally {
+      setSavingSystemConfig(false);
+    }
   };
 
   if (loading) {
@@ -349,6 +398,51 @@ export default function Settings({ onBack }: SettingsProps) {
           </div>
         )}
       </div>
+
+      {/* System Configuration (Admin Only) */}
+      {isAdmin && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+              <Users className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">系统配置</h3>
+              <p className="text-sm text-gray-600">管理员专属配置</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Demo Accounts Toggle */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">显示演示账号快捷登录</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  在登录页面显示演示账号（学生、教师、管理员）的快速登录按钮
+                </div>
+              </div>
+              <button
+                onClick={handleDemoAccountsToggle}
+                disabled={savingSystemConfig}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  showDemoAccounts 
+                    ? 'bg-purple-600' 
+                    : 'bg-gray-200'
+                } ${savingSystemConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span className="sr-only">显示演示账号</span>
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    showDemoAccounts 
+                      ? 'translate-x-6' 
+                      : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Feature Status Summary */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
