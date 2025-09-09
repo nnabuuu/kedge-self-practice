@@ -33,11 +33,16 @@ interface TeacherStats {
 }
 
 export default function TeacherDashboard({ teacher, selectedSubject: propsSelectedSubject, onSelectSubject, onBack }: TeacherDashboardProps) {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
-  
-  // Check if user is admin
+  // Check user role
   const userData = authService.getCurrentUser();
   const isAdmin = userData?.role === 'admin' || userData?.isAdmin === true;
+  const isStudent = userData?.role === 'student';
+  const isTeacher = userData?.role === 'teacher' || isAdmin;
+  
+  // Set initial tab based on role
+  const [activeTab, setActiveTab] = useState<ActiveTab>(
+    isStudent ? 'knowledge-points' : 'overview'
+  );
   const [quizBankFilters, setQuizBankFilters] = useState<{
     volume?: string;
     unit?: string;
@@ -254,7 +259,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
               </button>
               
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">教师管理中心</h1>
+                <h1 className="text-2xl font-bold text-gray-900">管理中心</h1>
                 <p className="text-gray-600">欢迎回来，{teacher.name}</p>
               </div>
             </div>
@@ -283,10 +288,13 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
           <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 mb-8">
             <div className="flex overflow-x-auto">
               {[
-                { id: 'overview', label: '概览', icon: BarChart3 },
-                { id: 'knowledge-points', label: '知识点管理', icon: BookOpen },
-                { id: 'questions', label: '题库管理', icon: FileText },
-                { id: 'leaderboard', label: '排行榜', icon: Trophy },
+                // Show different tabs based on role
+                ...(isStudent ? [] : [{ id: 'overview', label: '概览', icon: BarChart3 }]),
+                { id: 'knowledge-points', label: isStudent ? '知识点列表' : '知识点管理', icon: BookOpen },
+                ...(isStudent ? [] : [
+                  { id: 'questions', label: '题库管理', icon: FileText },
+                  { id: 'leaderboard', label: '排行榜', icon: Trophy }
+                ]),
                 ...(isAdmin ? [
                   { id: 'users', label: '用户管理', icon: Users },
                   { id: 'ai-config', label: 'AI配置管理', icon: Cpu }
@@ -321,13 +329,16 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
 
           {/* Content Area */}
           <div>
-            {activeTab === 'overview' && renderOverview()}
+            {activeTab === 'overview' && !isStudent && renderOverview()}
             {activeTab === 'knowledge-points' && (
               <KnowledgePointManagement 
                 onNavigateToQuizBank={(filters) => {
-                  setQuizBankFilters(filters);
-                  setActiveTab('questions');
+                  if (!isStudent) {
+                    setQuizBankFilters(filters);
+                    setActiveTab('questions');
+                  }
                 }}
+                readOnly={isStudent} // Pass read-only flag for students
               />
             )}
             {activeTab === 'questions' && (

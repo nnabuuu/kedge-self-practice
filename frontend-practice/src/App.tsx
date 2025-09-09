@@ -712,7 +712,7 @@ function App() {
         return (
           <HomePage 
             onStartPractice={handleStartPractice}
-            onTeacherLogin={userType === 'teacher' ? handleTeacherLogin : undefined}
+            onTeacherLogin={handleTeacherLogin} // Allow both teachers and students
             onLogout={handleLogout}
             currentUser={currentUser}
             userType={userType}
@@ -840,7 +840,7 @@ function App() {
         ) : null;
       
       case 'teacher-dashboard':
-        return userType === 'teacher' && currentUser ? (
+        return currentUser ? ( // Allow both teachers and students
           <TeacherDashboard
             teacher={currentUser}
             selectedSubject={selectedSubject}

@@ -21,6 +21,7 @@ interface KnowledgePointManagementProps {
     lesson: string;
     knowledgePointId: string;
   }) => void;
+  readOnly?: boolean; // For students - hide edit/management features
 }
 
 // Helper function to ensure API URL has /v1 suffix
@@ -29,7 +30,7 @@ const getApiUrl = () => {
   return baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`;
 };
 
-export default function KnowledgePointManagement({ onBack, onNavigateToQuizBank }: KnowledgePointManagementProps) {
+export default function KnowledgePointManagement({ onBack, onNavigateToQuizBank, readOnly = false }: KnowledgePointManagementProps) {
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -345,7 +346,7 @@ export default function KnowledgePointManagement({ onBack, onNavigateToQuizBank 
                             <ChevronDown className="w-5 h-5 text-gray-600" />
                           )}
                         </button>
-                        {getQuizCountForVolume(volumeGroup.volume) > 0 && (
+                        {!readOnly && getQuizCountForVolume(volumeGroup.volume) > 0 && (
                           <button
                             onClick={() => {
                               if (onNavigateToQuizBank) {
@@ -390,7 +391,7 @@ export default function KnowledgePointManagement({ onBack, onNavigateToQuizBank 
                                     <ChevronDown className="w-4 h-4 text-gray-600" />
                                   )}
                                 </button>
-                                {getQuizCountForUnit(volumeGroup.volume, unitGroup.unit) > 0 && (
+                                {!readOnly && getQuizCountForUnit(volumeGroup.volume, unitGroup.unit) > 0 && (
                                   <button
                                     onClick={() => {
                                       if (onNavigateToQuizBank) {
@@ -421,7 +422,7 @@ export default function KnowledgePointManagement({ onBack, onNavigateToQuizBank 
                                             {getQuizCountForLesson(volumeGroup.volume, unitGroup.unit, lessonGroup.lesson)} 题
                                           </span>
                                         </div>
-                                        {getQuizCountForLesson(volumeGroup.volume, unitGroup.unit, lessonGroup.lesson) > 0 && (
+                                        {!readOnly && getQuizCountForLesson(volumeGroup.volume, unitGroup.unit, lessonGroup.lesson) > 0 && (
                                           <button
                                             onClick={() => {
                                               if (onNavigateToQuizBank) {
@@ -453,22 +454,24 @@ export default function KnowledgePointManagement({ onBack, onNavigateToQuizBank 
                                                 {getQuizCountForKnowledgePoint(point.id)} 题
                                               </span>
                                             </div>
-                                            <button 
-                                              onClick={() => {
-                                                if (onNavigateToQuizBank) {
-                                                  onNavigateToQuizBank({
-                                                    volume: point.volume,
-                                                    unit: point.unit,
-                                                    lesson: point.lesson,
-                                                    knowledgePointId: point.id
-                                                  });
-                                                }
-                                              }}
-                                              className="p-1 text-gray-400 hover:text-blue-600 transition-colors duration-300"
-                                              title="查看相关题目"
-                                            >
-                                              <Eye className="w-4 h-4" />
-                                            </button>
+                                            {!readOnly && (
+                                              <button 
+                                                onClick={() => {
+                                                  if (onNavigateToQuizBank) {
+                                                    onNavigateToQuizBank({
+                                                      volume: point.volume,
+                                                      unit: point.unit,
+                                                      lesson: point.lesson,
+                                                      knowledgePointId: point.id
+                                                    });
+                                                  }
+                                                }}
+                                                className="p-1 text-gray-400 hover:text-blue-600 transition-colors duration-300"
+                                                title="查看相关题目"
+                                              >
+                                                <Eye className="w-4 h-4" />
+                                              </button>
+                                            )}
                                           </div>
                                         ))}
                                       </div>
