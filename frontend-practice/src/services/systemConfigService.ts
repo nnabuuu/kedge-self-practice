@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8718';
 
 export interface SystemConfig {
@@ -11,21 +9,35 @@ export interface SystemConfig {
   updatedAt?: string;
 }
 
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 class SystemConfigService {
-  private getAuthHeaders() {
+  private getAuthHeaders(): HeadersInit {
     const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
   }
 
   async getConfig(key: string): Promise<SystemConfig | null> {
     try {
-      const response = await axios.get(
+      const response = await fetch(
         `${API_BASE_URL}/v1/system-config/${key}`,
-        { headers: this.getAuthHeaders() }
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders()
+        }
       );
       
-      if (response.data.success) {
-        return response.data.data;
+      const data: ApiResponse<SystemConfig> = await response.json();
+      
+      if (data.success && data.data) {
+        return data.data;
       }
       return null;
     } catch (error) {
@@ -44,13 +56,17 @@ class SystemConfigService {
 
   async updateConfig(key: string, value: { enabled: boolean }): Promise<boolean> {
     try {
-      const response = await axios.put(
+      const response = await fetch(
         `${API_BASE_URL}/v1/system-config/${key}`,
-        { value },
-        { headers: this.getAuthHeaders() }
+        {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ value })
+        }
       );
       
-      return response.data.success === true;
+      const data: ApiResponse = await response.json();
+      return data.success === true;
     } catch (error) {
       console.error('Failed to update system config:', error);
       return false;
@@ -59,13 +75,18 @@ class SystemConfigService {
 
   async getAllConfigs(): Promise<SystemConfig[]> {
     try {
-      const response = await axios.get(
+      const response = await fetch(
         `${API_BASE_URL}/v1/system-config`,
-        { headers: this.getAuthHeaders() }
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders()
+        }
       );
       
-      if (response.data.success) {
-        return response.data.data;
+      const data: ApiResponse<SystemConfig[]> = await response.json();
+      
+      if (data.success && data.data) {
+        return data.data;
       }
       return [];
     } catch (error) {
@@ -78,12 +99,20 @@ class SystemConfigService {
   async shouldShowDemoAccounts(): Promise<boolean> {
     try {
       // This endpoint doesn't require authentication
-      const response = await axios.get(
-        `${API_BASE_URL}/v1/system-config/show_demo_accounts`
+      const response = await fetch(
+        `${API_BASE_URL}/v1/system-config/show_demo_accounts`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
       
-      if (response.data.success && response.data.data?.value?.enabled !== undefined) {
-        return response.data.data.value.enabled;
+      const data: ApiResponse<SystemConfig> = await response.json();
+      
+      if (data.success && data.data?.value?.enabled !== undefined) {
+        return data.data.value.enabled;
       }
       // Default to true if config not found
       return true;
