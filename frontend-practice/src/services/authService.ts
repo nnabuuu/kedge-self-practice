@@ -321,10 +321,19 @@ class AuthService {
     role: 'student' | 'teacher' | 'admin';
     class?: string;
   }): Promise<ApiResponse<any>> {
+    // Convert email field to account field for backend compatibility
+    const formattedData = {
+      account: String(userData.email), // Backend expects 'account' not 'email'
+      password: String(userData.password),
+      name: String(userData.name),
+      role: userData.role,
+      class: userData.class ? String(userData.class) : undefined
+    };
+    
     // This method does NOT log in as the new user - it just creates them
     return await this.makeRequest('/admin/users', {
       method: 'POST',
-      body: JSON.stringify(userData),
+      body: JSON.stringify(formattedData),
     });
   }
 
@@ -335,10 +344,19 @@ class AuthService {
     role: 'student' | 'teacher' | 'admin';
     class?: string;
   }>): Promise<ApiResponse<any>> {
+    // Convert email field to account field for backend compatibility
+    const formattedUsers = users.map(user => ({
+      account: String(user.email), // Backend expects 'account' not 'email', ensure it's a string
+      password: String(user.password),
+      name: String(user.name),
+      role: user.role,
+      class: user.class ? String(user.class) : undefined
+    }));
+    
     // Bulk create users without changing the current session
     return await this.makeRequest('/admin/users/bulk', {
       method: 'POST',
-      body: JSON.stringify(users),
+      body: JSON.stringify(formattedUsers),
     });
   }
 

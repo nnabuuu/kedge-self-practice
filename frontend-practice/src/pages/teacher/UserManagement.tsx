@@ -48,6 +48,7 @@ export default function UserManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [useBackendSearch, setUseBackendSearch] = useState(false); // Toggle for backend vs frontend search
+  const [isDragging, setIsDragging] = useState(false); // For drag-and-drop state
 
   // Form states
   const [formData, setFormData] = useState<UserFormData>({
@@ -92,9 +93,9 @@ export default function UserManagement() {
     setIsLoading(false);
   };
 
-  const showMessage = (type: 'success' | 'error', text: string) => {
+  const showMessage = (type: 'success' | 'error', text: string, duration: number = 3000) => {
     setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
+    setTimeout(() => setMessage(null), duration);
   };
 
   const handleAddUser = async () => {
@@ -180,7 +181,8 @@ export default function UserManagement() {
   const downloadTemplate = () => {
     const template = [
       { 账号: 'student1', 姓名: '张三', 密码: 'password123', 身份: '学生', 班级: '七年级1班' },
-      { 账号: 'teacher1', 姓名: '李老师', 密码: '', 身份: '教师', 班级: '' }  // Empty password will use 'teacher1'
+      { 账号: '20240001', 姓名: '李四', 密码: '', 身份: '学生', 班级: '20240101' },  // Numeric account and class
+      { 账号: 'teacher1', 姓名: '王老师', 密码: '', 身份: '教师', 班级: '' }  // Empty password will use account as password
     ];
 
     const ws = XLSX.utils.json_to_sheet(template);
@@ -202,6 +204,19 @@ export default function UserManagement() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    processExcelFile(file);
+  };
+
+  const processExcelFile = (file: File) => {
+    // Check file type
+    const validTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    const validExtensions = ['.xls', '.xlsx'];
+    const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    
+    if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
+      showMessage('error', '请上传 Excel 文件（.xls 或 .xlsx）');
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -214,14 +229,17 @@ export default function UserManagement() {
 
         const parsedUsers: UserFormData[] = data.map((row: any) => {
           const role = (row['身份'] === '教师' || row['role'] === 'teacher') ? 'teacher' : 'student';
-          const userClass = row['班级'] || row['class'] || '';
-          const account = row['账号'] || row['账号邮箱'] || row['email'] || '';
+          // Convert all values to strings to ensure proper data types
+          const userClass = String(row['班级'] || row['class'] || '').trim();
+          const account = String(row['账号'] || row['账号邮箱'] || row['email'] || '').trim();
+          const name = String(row['姓名'] || row['name'] || '').trim();
           // Use account as password if password is empty
-          const password = row['密码'] || row['password'] || account;
+          const rawPassword = row['密码'] || row['password'];
+          const password = rawPassword ? String(rawPassword).trim() : account;
           
           return {
             email: account,
-            name: row['姓名'] || row['name'] || '',
+            name: name,
             password: password,
             role,
             class: userClass
@@ -248,6 +266,37 @@ export default function UserManagement() {
     reader.readAsBinaryString(file);
   };
 
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Check if we're leaving the drop zone entirely
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      processExcelFile(file);
+    }
+  };
+
   const handleBulkImport = async () => {
     if (bulkUsers.length === 0) {
       showMessage('error', '没有要导入的用户');
@@ -265,23 +314,51 @@ export default function UserManagement() {
         const successCount = success?.length || 0;
         const failCount = failed?.length || 0;
         
-        let message = `导入完成：成功 ${successCount} 个，失败 ${failCount} 个`;
-        if (failed && failed.length > 0) {
-          const failedList = failed.slice(0, 3).map((f: any) => 
-            f.reason === '该账号已存在' ? `${f.email} (已存在)` : f.email
-          );
-          message += `\n失败用户: ${failedList.join(', ')}${failed.length > 3 ? '...' : ''}`;
+        // Build detailed message
+        let message = `导入完成：成功 ${successCount} 个`;
+        if (failCount > 0) {
+          message += `，失败 ${failCount} 个`;
         }
         
-        showMessage(
-          failCount === 0 ? 'success' : 'error',
-          message
-        );
+        // Add success details if there are both successes and failures
+        if (successCount > 0 && failCount > 0 && success && success.length <= 10) {
+          // Show successful users if not too many
+          const successList = success.slice(0, 5).map((s: any) => 
+            s.name || s.email || s.account
+          );
+          message += `\n✅ 成功: ${successList.join(', ')}${success.length > 5 ? ` 等${success.length}个` : ''}`;
+        }
         
+        // Add failure details
+        if (failCount > 0 && failed && failed.length > 0) {
+          const failedDetails = failed.slice(0, 5).map((f: any) => {
+            const identifier = f.email || f.account;
+            if (f.reason === '该账号已存在' || f.reason === 'User already exists') {
+              return `${identifier} (已存在)`;
+            } else if (f.reason) {
+              return `${identifier} (${f.reason})`;
+            }
+            return identifier;
+          });
+          message += `\n❌ 失败: ${failedDetails.join(', ')}${failed.length > 5 ? ` 等${failed.length}个` : ''}`;
+        }
+        
+        // Handle modal closing and message display
         if (successCount > 0) {
-          fetchUsers();
+          // If any succeeded, close modal and show success
           setShowBulkImportModal(false);
           setBulkUsers([]);
+          setIsDragging(false);
+          
+          // Show appropriate message type based on whether there were failures
+          const messageType = failCount > 0 ? 'error' : 'success'; // Use error color if there were any failures
+          showMessage(messageType, message, 7000); // Longer duration for detailed message
+          
+          // Refresh user list
+          fetchUsers();
+        } else if (successCount === 0 && failCount > 0) {
+          // Only show error if all failed, don't close modal
+          showMessage('error', message, 5000);
         }
       } else {
         showMessage('error', response.error || '批量导入失败');
@@ -347,17 +424,21 @@ export default function UserManagement() {
 
       {/* Message */}
       {message && (
-        <div className={`mb-4 p-4 rounded-lg flex items-center gap-2 ${
+        <div className={`mb-4 p-4 rounded-lg flex items-start gap-2 ${
           message.type === 'success' 
             ? 'bg-green-50 text-green-800 border border-green-200'
             : 'bg-red-50 text-red-800 border border-red-200'
         }`}>
-          {message.type === 'success' ? (
-            <CheckCircle className="w-5 h-5" />
-          ) : (
-            <AlertCircle className="w-5 h-5" />
-          )}
-          <span>{message.text}</span>
+          <div className="flex-shrink-0 mt-0.5">
+            {message.type === 'success' ? (
+              <CheckCircle className="w-5 h-5" />
+            ) : (
+              <AlertCircle className="w-5 h-5" />
+            )}
+          </div>
+          <div className="flex-1 whitespace-pre-line">
+            {message.text}
+          </div>
         </div>
       )}
 
@@ -755,6 +836,7 @@ export default function UserManagement() {
                 onClick={() => {
                   setShowBulkImportModal(false);
                   setBulkUsers([]);
+                  setIsDragging(false);
                 }}
                 className="text-gray-400 hover:text-gray-600"
               >
@@ -785,23 +867,42 @@ export default function UserManagement() {
               </div>
 
               {/* Step 2: Upload File */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+              <div 
+                className={`border-2 border-dashed rounded-lg p-6 transition-all ${
+                  isDragging 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
                 <div className="text-center">
-                  <FileSpreadsheet className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <label className="cursor-pointer">
-                    <span className="text-blue-600 hover:text-blue-700">选择文件</span>
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  <FileSpreadsheet className={`w-12 h-12 mx-auto mb-3 transition-colors ${
+                    isDragging ? 'text-blue-500' : 'text-gray-400'
+                  }`} />
+                  <div className="mb-2">
+                    <label className="cursor-pointer">
+                      <span className="text-blue-600 hover:text-blue-700 font-medium">
+                        点击选择文件
+                      </span>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-gray-500 mx-2">或</span>
+                    <span className="text-gray-600">
+                      拖拽文件到此处
+                    </span>
+                  </div>
                   <p className="text-sm text-gray-500 mt-2">
-                    支持 .xlsx 和 .xls 格式
+                    支持 .xlsx 和 .xls 格式的 Excel 文件
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    空密码将使用账号作为默认密码
+                    提示：密码为空时将自动使用账号作为默认密码
                   </p>
                 </div>
               </div>
@@ -854,6 +955,7 @@ export default function UserManagement() {
                 onClick={() => {
                   setShowBulkImportModal(false);
                   setBulkUsers([]);
+                  setIsDragging(false);
                 }}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
               >
