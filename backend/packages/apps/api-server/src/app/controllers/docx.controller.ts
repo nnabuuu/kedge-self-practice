@@ -201,7 +201,77 @@ export class DocxController {
     
     console.log('=== End DOCX Extraction Debug ===');
     
-    // Save extracted images using the storage service
+    // First, create temporary image mappings without uploading
+    // We'll only upload images that are actually referenced in the parsed content
+    const tempImageIdMap = new Map<string, string>(); // original path → temporary UUID
+    const imageDataMap = new Map<string, any>(); // UUID → image data for later upload
+    
+    // Generate temporary UUIDs for all images
+    allImages.forEach(docxImage => {
+      const tempUuid = `temp_${Math.random().toString(36).substring(2, 15)}`;
+      tempImageIdMap.set(docxImage.id, tempUuid);
+      imageDataMap.set(tempUuid, docxImage);
+    });
+    
+    // Create paragraphs for GPT with temporary UUID placeholders
+    const paragraphsForGPT: GptParagraphBlock[] = paragraphs.map(para => {
+      let processedText = para.paragraph || '';
+      
+      // Replace {{image:original-path}} with {{image:temp-uuid}}
+      tempImageIdMap.forEach((tempUuid, originalPath) => {
+        const originalPlaceholder = `{{image:${originalPath}}}`;
+        const uuidPlaceholder = `{{image:${tempUuid}}}`;
+        processedText = processedText.replace(new RegExp(escapeRegExp(originalPlaceholder), 'g'), uuidPlaceholder);
+      });
+      
+      return {
+        paragraph: processedText,
+        highlighted: Array.isArray(para.highlighted) ? para.highlighted.map(h => ({
+          text: h.text || '',
+          color: h.color || ''
+        })) : [],
+      };
+    });
+    
+    // Debug: Verify paragraphsForGPT doesn't contain Buffer data
+    console.log('=== Verifying paragraphsForGPT ===');
+    const gptDataSize = JSON.stringify(paragraphsForGPT).length;
+    console.log('paragraphsForGPT JSON size:', gptDataSize, 'characters');
+    console.log('paragraphsForGPT estimated tokens:', Math.ceil(gptDataSize / 4));
+    console.log('=== End Verification ===');
+    
+    // Generate quiz items using LLM
+    const quizItems = await this.llmService.extractQuizItems(paragraphsForGPT);
+    
+    // Now identify which images are actually referenced in the quiz items
+    const referencedImageIds = new Set<string>();
+    const imageRegex = /\{\{image:([^}]+)\}\}/g;
+    
+    // Check quiz items for image references
+    quizItems.forEach(item => {
+      // Check question text
+      const questionMatches = (item.question || '').matchAll(imageRegex);
+      for (const match of questionMatches) {
+        referencedImageIds.add(match[1]);
+      }
+      
+      // Check options if they exist
+      if (item.options) {
+        Object.values(item.options).forEach(option => {
+          const optionMatches = (option as string).matchAll(imageRegex);
+          for (const match of optionMatches) {
+            referencedImageIds.add(match[1]);
+          }
+        });
+      }
+      
+      // Note: Quiz items don't have explanation field in current model
+    });
+    
+    console.log(`Found ${referencedImageIds.size} referenced images out of ${allImages.length} total images`);
+    console.log('Referenced image IDs:', Array.from(referencedImageIds));
+    
+    // Now only save the referenced images
     const savedImages: Array<{
       id: string;
       url: string;
@@ -210,11 +280,19 @@ export class DocxController {
       size: number;
       contentType: string;
     }> = [];
-    for (const docxImage of allImages) {
+    
+    const tempToRealUuidMap = new Map<string, string>(); // temp UUID → real saved UUID
+    
+    for (const tempUuid of referencedImageIds) {
+      const docxImage = imageDataMap.get(tempUuid);
+      if (!docxImage) {
+        console.log(`Warning: Referenced image ${tempUuid} not found in image data map`);
+        continue;
+      }
       try {
         // Skip empty images
         if (!docxImage.data || docxImage.data.length === 0) {
-          console.log(`Skipping empty image: ${docxImage.filename} (size: 0 bytes)`);
+          console.log(`Skipping empty referenced image: ${docxImage.filename} (size: 0 bytes)`);
           continue;
         }
         
@@ -259,8 +337,10 @@ export class DocxController {
           continue;
         }
         
-        console.log(`Saved image: ${filename} (size: ${metadata.size} bytes, id: ${metadata.id})`);
+        console.log(`Saved referenced image: ${filename} (size: ${metadata.size} bytes, id: ${metadata.id})`);
         
+        // Map temp UUID to real saved UUID
+        tempToRealUuidMap.set(tempUuid, metadata.id);
         
         savedImages.push({
           id: metadata.id,
@@ -271,77 +351,84 @@ export class DocxController {
           contentType: metadata.mimetype,
         });
       } catch (error) {
-        console.error(`Failed to process image ${docxImage.filename}:`, error);
+        console.error(`Failed to process referenced image ${docxImage.filename}:`, error);
       }
     }
     
-    // Create a mapping of original image paths to saved image UUIDs
-    const imageIdMap = new Map<string, string>();
-    const imageUrlMap = new Map<string, string>();
-    const uuidToUrlMap = new Map<string, string>(); // UUID → URL for frontend
-    allImages.forEach((docxImage, index) => {
-      const savedImage = savedImages.find(img => img.originalDocxId === docxImage.id);
-      if (savedImage) {
-        imageIdMap.set(docxImage.id, savedImage.id); // original path → saved UUID
-        imageUrlMap.set(docxImage.id, savedImage.url); // original path → saved URL  
-        uuidToUrlMap.set(savedImage.id, savedImage.url); // saved UUID → saved URL (for frontend)
+    console.log(`Uploaded ${savedImages.length} images that were referenced in quiz content`);
+    
+    // Now replace temp UUIDs with real UUIDs in quiz items
+    const finalQuizItems = quizItems.map(item => {
+      let updatedItem = { ...item };
+      
+      // Replace temp UUIDs in question
+      if (updatedItem.question) {
+        tempToRealUuidMap.forEach((realUuid, tempUuid) => {
+          updatedItem.question = updatedItem.question.replace(
+            new RegExp(`\\{\\{image:${tempUuid}\\}\\}`, 'g'),
+            `{{image:${realUuid}}}`
+          );
+        });
       }
+      
+      // Replace temp UUIDs in options
+      if (updatedItem.options) {
+        const updatedOptions: any = {};
+        Object.entries(updatedItem.options).forEach(([key, value]) => {
+          let updatedValue = value as string;
+          tempToRealUuidMap.forEach((realUuid, tempUuid) => {
+            updatedValue = updatedValue.replace(
+              new RegExp(`\\{\\{image:${tempUuid}\\}\\}`, 'g'),
+              `{{image:${realUuid}}}`
+            );
+          });
+          updatedOptions[key] = updatedValue;
+        });
+        updatedItem.options = updatedOptions;
+      }
+      
+      // Note: Quiz items don't have explanation field in current model
+      
+      return updatedItem;
     });
     
-    // Create paragraphs for GPT with UUID-based image placeholders
-    const paragraphsForGPT: GptParagraphBlock[] = paragraphs.map(para => {
+    // Create final UUID to URL mapping for frontend
+    const uuidToUrlMap = new Map<string, string>();
+    savedImages.forEach(img => {
+      uuidToUrlMap.set(img.id, img.url);
+    });
+    
+    // Create clean paragraphs for response with real UUIDs
+    const cleanParagraphs = paragraphs.map(para => {
       let processedText = para.paragraph || '';
       
-      // Replace {{image:original-path}} with {{image:uuid}}
-      imageIdMap.forEach((savedUuid, originalPath) => {
+      // First replace original paths with temp UUIDs
+      tempImageIdMap.forEach((tempUuid, originalPath) => {
         const originalPlaceholder = `{{image:${originalPath}}}`;
-        const uuidPlaceholder = `{{image:${savedUuid}}}`;
-        processedText = processedText.replace(new RegExp(escapeRegExp(originalPlaceholder), 'g'), uuidPlaceholder);
+        const tempPlaceholder = `{{image:${tempUuid}}}`;
+        processedText = processedText.replace(
+          new RegExp(escapeRegExp(originalPlaceholder), 'g'),
+          tempPlaceholder
+        );
+      });
+      
+      // Then replace temp UUIDs with real UUIDs (only for referenced images)
+      tempToRealUuidMap.forEach((realUuid, tempUuid) => {
+        processedText = processedText.replace(
+          new RegExp(`\\{\\{image:${tempUuid}\\}\\}`, 'g'),
+          `{{image:${realUuid}}}`
+        );
       });
       
       return {
         paragraph: processedText,
-        highlighted: Array.isArray(para.highlighted) ? para.highlighted.map(h => ({
-          text: h.text || '',
-          color: h.color || ''
-        })) : [],
-      };
-    });
-    
-    // Debug: Verify paragraphsForGPT doesn't contain Buffer data
-    console.log('=== Verifying paragraphsForGPT ===');
-    const gptDataSize = JSON.stringify(paragraphsForGPT).length;
-    console.log('paragraphsForGPT JSON size:', gptDataSize, 'characters');
-    console.log('paragraphsForGPT estimated tokens:', Math.ceil(gptDataSize / 4));
-    
-    // paragraphsForGPT should never have images (GptParagraphBlock type doesn't include images)
-    console.log('paragraphsForGPT uses GptParagraphBlock type (no images by design)');
-    console.log('=== End Verification ===');
-    
-    // Create clean paragraphs for response - NO image data, just text and highlights
-    const cleanParagraphs = paragraphs.map(para => {
-      let processedText = para.paragraph || '';
-      
-      // Replace {{image:original-path}} with {{image:uuid}} in the response paragraphs too
-      imageIdMap.forEach((savedUuid, originalPath) => {
-        const originalPlaceholder = `{{image:${originalPath}}}`;
-        const uuidPlaceholder = `{{image:${savedUuid}}}`;
-        processedText = processedText.replace(new RegExp(escapeRegExp(originalPlaceholder), 'g'), uuidPlaceholder);
-      });
-      
-      // Return ONLY paragraph and highlighted - no images property
-      return {
-        paragraph: processedText, // Use the UUID-processed text
         highlighted: para.highlighted || []
       };
     });
     
-    // Generate quiz items using configured LLM (OpenAI or DeepSeek) with placeholder paragraphs (no image data)
-    const quizItems = await this.llmService.extractQuizItems(paragraphsForGPT);
-    
     return {
       success: true,
-      quizItems,
+      quizItems: finalQuizItems, // Use quiz items with real UUIDs
       extractedImages: savedImages,
       paragraphs: cleanParagraphs, // Use clean paragraphs without image data
       imageMapping: Object.fromEntries(uuidToUrlMap),
