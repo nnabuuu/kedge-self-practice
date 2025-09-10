@@ -110,7 +110,8 @@ export default function UserManagement() {
 
     setIsLoading(true);
     try {
-      const response = await authService.register({
+      // Use admin-specific create user method that doesn't change the current session
+      const response = await authService.adminCreateUser({
         email: formData.email,
         password: formData.password,
         name: formData.name,

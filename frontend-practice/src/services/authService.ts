@@ -314,6 +314,20 @@ class AuthService {
   }
 
   // Admin user management methods
+  async adminCreateUser(userData: {
+    email: string;
+    password: string;
+    name: string;
+    role: 'student' | 'teacher' | 'admin';
+    class?: string;
+  }): Promise<ApiResponse<any>> {
+    // This method does NOT log in as the new user - it just creates them
+    return await this.makeRequest('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
   async getAllUsers(params?: { 
     search?: string; 
     role?: string; 
