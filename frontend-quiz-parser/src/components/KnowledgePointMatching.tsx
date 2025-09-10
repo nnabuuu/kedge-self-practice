@@ -22,6 +22,13 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
   const [isCompleted, setIsCompleted] = useState(false);
   const [expandedCandidates, setExpandedCandidates] = useState<{[key: number]: boolean}>({});
   const [editingKnowledgePoint, setEditingKnowledgePoint] = useState<{[key: number]: boolean}>({});
+  const [browsingAllKnowledgePoints, setBrowsingAllKnowledgePoints] = useState<{[key: number]: boolean}>({});
+  const [searchQuery, setSearchQuery] = useState<{[key: number]: string}>({});
+  const [selectedFilters, setSelectedFilters] = useState<{[key: number]: {
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+  }}>({});
   const [targetHints, setTargetHints] = useState<{[key: number]: {
     volume?: string;
     unit?: string;
@@ -545,6 +552,79 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
       ...prev,
       [quizIndex]: !prev[quizIndex]
     }));
+    // Close browsing mode when opening editing mode
+    if (!editingKnowledgePoint[quizIndex]) {
+      setBrowsingAllKnowledgePoints(prev => ({ ...prev, [quizIndex]: false }));
+    }
+  };
+
+  const toggleBrowseAllMode = (quizIndex: number) => {
+    setBrowsingAllKnowledgePoints(prev => ({
+      ...prev,
+      [quizIndex]: !prev[quizIndex]
+    }));
+    // Close editing mode when opening browse all mode
+    if (!browsingAllKnowledgePoints[quizIndex]) {
+      setEditingKnowledgePoint(prev => ({ ...prev, [quizIndex]: false }));
+    }
+    // Initialize search and filters
+    if (!browsingAllKnowledgePoints[quizIndex]) {
+      setSearchQuery(prev => ({ ...prev, [quizIndex]: '' }));
+      setSelectedFilters(prev => ({ ...prev, [quizIndex]: {} }));
+    }
+  };
+
+  const getFilteredKnowledgePoints = (quizIndex: number) => {
+    let filtered = [...allKnowledgePoints];
+    
+    const query = searchQuery[quizIndex] || '';
+    const filters = selectedFilters[quizIndex] || {};
+    
+    // Apply search query
+    if (query) {
+      const lowerQuery = query.toLowerCase();
+      filtered = filtered.filter(kp => 
+        kp.topic?.toLowerCase().includes(lowerQuery) ||
+        kp.volume?.toLowerCase().includes(lowerQuery) ||
+        kp.unit?.toLowerCase().includes(lowerQuery) ||
+        kp.lesson?.toLowerCase().includes(lowerQuery) ||
+        kp.sub?.toLowerCase().includes(lowerQuery)
+      );
+    }
+    
+    // Apply filters
+    if (filters.volume) {
+      filtered = filtered.filter(kp => kp.volume === filters.volume);
+    }
+    if (filters.unit) {
+      filtered = filtered.filter(kp => kp.unit === filters.unit);
+    }
+    if (filters.lesson) {
+      filtered = filtered.filter(kp => kp.lesson === filters.lesson);
+    }
+    
+    return filtered;
+  };
+
+  const handleSelectKnowledgePoint = (quizIndex: number, knowledgePoint: KnowledgePoint) => {
+    const updatedItems = [...quizWithKnowledgePoints];
+    updatedItems[quizIndex] = {
+      ...updatedItems[quizIndex],
+      knowledgePoint: knowledgePoint,
+      matchingResult: {
+        matched: knowledgePoint,
+        candidates: [],
+        keywords: [],
+        country: '',
+        dynasty: ''
+      },
+      matchingStatus: 'success'
+    };
+    setQuizWithKnowledgePoints(updatedItems);
+    // Close browse mode after selection
+    setBrowsingAllKnowledgePoints(prev => ({ ...prev, [quizIndex]: false }));
+    setSearchQuery(prev => ({ ...prev, [quizIndex]: '' }));
+    setSelectedFilters(prev => ({ ...prev, [quizIndex]: {} }));
   };
 
   const renderQuizContent = (item: QuizWithKnowledgePoint) => {
@@ -998,6 +1078,13 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                                 <Search className="w-3 h-3 mr-1" />
                                 {editingKnowledgePoint[index] ? '取消选择' : '手动选择'}
                               </button>
+                              <button
+                                onClick={() => toggleBrowseAllMode(index)}
+                                className="inline-flex items-center px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+                              >
+                                <Globe className="w-3 h-3 mr-1" />
+                                {browsingAllKnowledgePoints[index] ? '关闭浏览' : '浏览全部'}
+                              </button>
                             </>
                           )}
                         </div>
@@ -1348,6 +1435,127 @@ export const KnowledgePointMatching: React.FC<KnowledgePointMatchingProps> = ({
                             取消
                           </button>
                         </div>
+                      </div>
+                    )}
+                    
+                    {/* Browse All Knowledge Points Interface */}
+                    {browsingAllKnowledgePoints[index] && (
+                      <div className="bg-purple-50 rounded-lg border border-purple-200 p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-2">
+                            <Globe className="w-5 h-5 text-purple-600" />
+                            <span className="font-medium text-purple-700">浏览所有知识点</span>
+                          </div>
+                          <button
+                            onClick={() => toggleBrowseAllMode(index)}
+                            className="text-gray-500 hover:text-gray-700"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                        
+                        {/* Search and Filter Controls */}
+                        <div className="space-y-3 mb-4">
+                          <div>
+                            <input
+                              type="text"
+                              placeholder="搜索知识点..."
+                              value={searchQuery[index] || ''}
+                              onChange={(e) => setSearchQuery(prev => ({ ...prev, [index]: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            />
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-2">
+                            <select
+                              value={selectedFilters[index]?.volume || ''}
+                              onChange={(e) => setSelectedFilters(prev => ({
+                                ...prev,
+                                [index]: { ...prev[index], volume: e.target.value, unit: '', lesson: '' }
+                              }))}
+                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">全部分册</option>
+                              {getLocalHierarchyOptions().volumes.map(vol => (
+                                <option key={vol} value={vol}>{vol}</option>
+                              ))}
+                            </select>
+                            
+                            <select
+                              value={selectedFilters[index]?.unit || ''}
+                              onChange={(e) => setSelectedFilters(prev => ({
+                                ...prev,
+                                [index]: { ...prev[index], unit: e.target.value, lesson: '' }
+                              }))}
+                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-purple-500"
+                              disabled={!selectedFilters[index]?.volume}
+                            >
+                              <option value="">全部单元</option>
+                              {getLocalHierarchyOptions({ volume: selectedFilters[index]?.volume }).units.map(u => (
+                                <option key={u} value={u}>{u}</option>
+                              ))}
+                            </select>
+                            
+                            <select
+                              value={selectedFilters[index]?.lesson || ''}
+                              onChange={(e) => setSelectedFilters(prev => ({
+                                ...prev,
+                                [index]: { ...prev[index], lesson: e.target.value }
+                              }))}
+                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-purple-500"
+                              disabled={!selectedFilters[index]?.unit}
+                            >
+                              <option value="">全部课程</option>
+                              {getLocalHierarchyOptions({ 
+                                volume: selectedFilters[index]?.volume,
+                                unit: selectedFilters[index]?.unit 
+                              }).lessons.map(l => (
+                                <option key={l} value={l}>{l}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        
+                        {/* Knowledge Points List */}
+                        <div className="max-h-96 overflow-y-auto space-y-2 mb-4">
+                          {(() => {
+                            const filtered = getFilteredKnowledgePoints(index);
+                            if (filtered.length === 0) {
+                              return (
+                                <div className="text-center py-8 text-gray-500">
+                                  <Search className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                                  <p>没有找到匹配的知识点</p>
+                                </div>
+                              );
+                            }
+                            return filtered.slice(0, 50).map((kp, kpIdx) => (
+                              <div
+                                key={kpIdx}
+                                className="bg-white rounded border border-gray-200 p-3 hover:border-purple-300 transition-colors cursor-pointer"
+                                onClick={() => handleSelectKnowledgePoint(index, kp)}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="grid grid-cols-2 gap-2 text-xs mb-1">
+                                      <div><span className="text-gray-500">分册:</span> <span className="text-gray-700">{kp.volume}</span></div>
+                                      <div><span className="text-gray-500">单元:</span> <span className="text-gray-700">{kp.unit}</span></div>
+                                      <div><span className="text-gray-500">课程:</span> <span className="text-gray-700">{kp.lesson}</span></div>
+                                      <div><span className="text-gray-500">子目:</span> <span className="text-gray-700">{kp.sub}</span></div>
+                                    </div>
+                                    <div className="text-sm font-medium text-gray-800">{kp.topic}</div>
+                                  </div>
+                                  <Check className="w-4 h-4 text-purple-600 opacity-0 hover:opacity-100" />
+                                </div>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                        
+                        {getFilteredKnowledgePoints(index).length > 50 && (
+                          <div className="text-center text-sm text-gray-500">
+                            仅显示前50个结果，请使用筛选器缩小范围
+                          </div>
+                        )}
                       </div>
                     )}
                     
