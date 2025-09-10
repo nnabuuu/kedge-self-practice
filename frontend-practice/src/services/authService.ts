@@ -328,6 +328,20 @@ class AuthService {
     });
   }
 
+  async adminBulkCreateUsers(users: Array<{
+    email: string;
+    password: string;
+    name: string;
+    role: 'student' | 'teacher' | 'admin';
+    class?: string;
+  }>): Promise<ApiResponse<any>> {
+    // Bulk create users without changing the current session
+    return await this.makeRequest('/admin/users/bulk', {
+      method: 'POST',
+      body: JSON.stringify(users),
+    });
+  }
+
   async getAllUsers(params?: { 
     search?: string; 
     role?: string; 

@@ -255,44 +255,43 @@ export default function UserManagement() {
     }
 
     setIsLoading(true);
-    let successCount = 0;
-    let failCount = 0;
-    const failedUsers: string[] = [];
-
-    for (const user of bulkUsers) {
-      try {
-        const response = await authService.register(user);
-        if (response.success) {
-          successCount++;
-        } else {
-          failCount++;
-          if (response.error?.includes('already exists')) {
-            failedUsers.push(`${user.email} (已存在)`);
-          } else {
-            failedUsers.push(user.email);
-          }
+    
+    try {
+      // Use admin bulk create method that doesn't change the current session
+      const response = await authService.adminBulkCreateUsers(bulkUsers);
+      
+      if (response.success && response.data) {
+        const { success, failed } = response.data;
+        const successCount = success?.length || 0;
+        const failCount = failed?.length || 0;
+        
+        let message = `导入完成：成功 ${successCount} 个，失败 ${failCount} 个`;
+        if (failed && failed.length > 0) {
+          const failedList = failed.slice(0, 3).map((f: any) => 
+            f.reason === '该账号已存在' ? `${f.email} (已存在)` : f.email
+          );
+          message += `\n失败用户: ${failedList.join(', ')}${failed.length > 3 ? '...' : ''}`;
         }
-      } catch (error) {
-        failCount++;
-        failedUsers.push(user.email);
+        
+        showMessage(
+          failCount === 0 ? 'success' : 'error',
+          message
+        );
+        
+        if (successCount > 0) {
+          fetchUsers();
+          setShowBulkImportModal(false);
+          setBulkUsers([]);
+        }
+      } else {
+        showMessage('error', response.error || '批量导入失败');
       }
+    } catch (error) {
+      console.error('Bulk import error:', error);
+      showMessage('error', '批量导入失败');
     }
-
+    
     setIsLoading(false);
-    let message = `导入完成：成功 ${successCount} 个，失败 ${failCount} 个`;
-    if (failedUsers.length > 0) {
-      message += `\n失败用户: ${failedUsers.slice(0, 3).join(', ')}${failedUsers.length > 3 ? '...' : ''}`;
-    }
-    showMessage(
-      failCount === 0 ? 'success' : 'error',
-      message
-    );
-
-    if (successCount > 0) {
-      fetchUsers();
-      setShowBulkImportModal(false);
-      setBulkUsers([]);
-    }
   };
 
   // Handle search with backend
