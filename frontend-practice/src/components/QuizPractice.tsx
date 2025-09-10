@@ -233,7 +233,7 @@ export default function QuizPractice({
         }
       } else {
         // It's a UUID - use the new simplified format
-        const remoteServerUrl = 'http://35.213.100.193:8718';
+        const remoteServerUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718';
         
         // The new format is: /v1/attachments/uuid.ext
         // Default to png extension if not specified
