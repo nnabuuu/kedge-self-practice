@@ -292,7 +292,7 @@ class AuthService {
     const token = this.getToken();
     const userData = this.getCurrentUser();
     
-    if (token && userData?.role === 'teacher') {
+    if (token && (userData?.role === 'teacher' || userData?.role === 'admin')) {
       this.shareTokenWithQuizParser();
       
       // Open quiz parser in new tab with token and user data parameters

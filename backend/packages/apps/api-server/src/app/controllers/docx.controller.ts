@@ -212,6 +212,12 @@ export class DocxController {
     }> = [];
     for (const docxImage of allImages) {
       try {
+        // Skip empty images
+        if (!docxImage.data || docxImage.data.length === 0) {
+          console.log(`Skipping empty image: ${docxImage.filename} (size: 0 bytes)`);
+          continue;
+        }
+        
         let imageData = docxImage.data;
         let filename = docxImage.filename;
         let contentType = docxImage.contentType;
@@ -246,6 +252,15 @@ export class DocxController {
           data: imageData,
           mimetype: contentType,
         });
+        
+        // Skip if metadata is null (empty file)
+        if (!metadata) {
+          console.log(`Skipped saving empty attachment: ${filename} (returned null from storage)`);
+          continue;
+        }
+        
+        console.log(`Saved image: ${filename} (size: ${metadata.size} bytes, id: ${metadata.id})`);
+        
         
         savedImages.push({
           id: metadata.id,

@@ -67,8 +67,14 @@ export class EnhancedQuizStorageService {
   async saveAttachment(
     file: AttachmentFile,
     options: AttachmentValidationOptions = {},
-  ): Promise<AttachmentMetadata> {
+  ): Promise<AttachmentMetadata | null> {
     const validation = { ...this.defaultValidation, ...options };
+    
+    // Skip empty files (size 0)
+    if (!file.data || file.data.length === 0) {
+      this.logger.warn(`Skipping empty attachment: ${file.filename} (size: 0 bytes)`);
+      return null;
+    }
     
     // Validate file
     this.validateFile(file, validation);
@@ -113,7 +119,7 @@ export class EnhancedQuizStorageService {
       uploadedAt: now,
     };
     
-    this.logger.log(`Saved attachment: ${metadata.id} (${metadata.originalName})`);
+    this.logger.log(`Saved attachment: ${metadata.id} (${metadata.originalName}, size: ${metadata.size} bytes)`);
     
     return metadata;
   }
@@ -126,7 +132,9 @@ export class EnhancedQuizStorageService {
     options: AttachmentValidationOptions = {},
   ): Promise<AttachmentMetadata[]> {
     const savePromises = files.map(file => this.saveAttachment(file, options));
-    return Promise.all(savePromises);
+    const results = await Promise.all(savePromises);
+    // Filter out null results from empty files and assert type
+    return results.filter((result): result is AttachmentMetadata => result !== null);
   }
 
   /**
