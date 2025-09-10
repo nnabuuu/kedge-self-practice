@@ -29,8 +29,8 @@ fi
 # Change VITE_ORG_NAME to your organization name
 cat > .env.production << EOF
 VITE_ORG_NAME=曹杨二中
-VITE_API_BASE_URL=http://34.31.89.197:8718
-VITE_QUIZ_PARSER_URL=http://34.31.89.197/parser
+VITE_API_BASE_URL=https://cyez.jiaoshi.one
+VITE_QUIZ_PARSER_URL=https://cyez.jiaoshi.one/parser
 EOF
 
 # Install and build
@@ -54,7 +54,7 @@ if [ ! -f "package.json" ]; then
 fi
 
 # Create production env file
-echo "VITE_API_BASE_URL=https://cyez.zhushou.one" > .env.production
+echo "VITE_API_BASE_URL=https://cyez.jiaoshi.one" > .env.production
 
 # Install and build with /parser base path
 npm install
@@ -137,8 +137,8 @@ fi
 sudo nginx -t && sudo systemctl reload nginx
 
 echo -e "${GREEN}✅ Setup complete!${NC}"
-echo "Visit: http://34.31.89.197"
-echo "Parser: https://34.31.89.197/parser"
+echo "Visit: https://cyez.jiaoshi.one"
+echo "Parser: https://cyez.jiaoshi.one"
 EOF
 
 chmod +x deployment-package/setup-on-vm.sh
