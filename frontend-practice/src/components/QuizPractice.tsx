@@ -1298,11 +1298,61 @@ export default function QuizPractice({
     } else if (isFillInBlank) {
       // Check if all blanks are filled correctly
       if (Array.isArray(currentQuestion?.answer)) {
-        return fillInBlankAnswers.every((answer, index) => 
-          answer.trim().toLowerCase() === String(currentQuestion.answer[index]).trim().toLowerCase()
-        );
+        return fillInBlankAnswers.every((answer, index) => {
+          const userAnswer = answer.trim().toLowerCase();
+          const correctAnswer = String(currentQuestion.answer[index]).trim().toLowerCase();
+          
+          // Check exact match first
+          if (userAnswer === correctAnswer) {
+            return true;
+          }
+          
+          // Check alternative answers if available
+          if (currentQuestion.alternative_answers && currentQuestion.alternative_answers.length > 0) {
+            // Check for blank-specific alternatives (format: "[index]alternative")
+            const blankSpecific = currentQuestion.alternative_answers
+              .filter(alt => alt.startsWith(`[${index}]`))
+              .map(alt => alt.replace(`[${index}]`, '').trim().toLowerCase());
+            
+            if (blankSpecific.some(alt => alt === userAnswer)) {
+              return true;
+            }
+            
+            // For single blank, also check unprefixed alternatives
+            if (!Array.isArray(currentQuestion.answer) || currentQuestion.answer.length === 1) {
+              const unprefixed = currentQuestion.alternative_answers
+                .filter(alt => !alt.includes('['))
+                .map(alt => alt.trim().toLowerCase());
+              
+              if (unprefixed.some(alt => alt === userAnswer)) {
+                return true;
+              }
+            }
+          }
+          
+          return false;
+        });
       }
-      return fillInBlankAnswers[0]?.trim().toLowerCase() === String(currentQuestion?.answer).trim().toLowerCase();
+      
+      // Single answer (not array)
+      const userAnswer = fillInBlankAnswers[0]?.trim().toLowerCase();
+      const correctAnswer = String(currentQuestion?.answer).trim().toLowerCase();
+      
+      // Check exact match
+      if (userAnswer === correctAnswer) {
+        return true;
+      }
+      
+      // Check alternative answers
+      if (currentQuestion?.alternative_answers && currentQuestion.alternative_answers.length > 0) {
+        const alternatives = currentQuestion.alternative_answers
+          .filter(alt => !alt.includes('['))
+          .map(alt => alt.trim().toLowerCase());
+        
+        return alternatives.some(alt => alt === userAnswer);
+      }
+      
+      return false;
     }
     return false;
   };

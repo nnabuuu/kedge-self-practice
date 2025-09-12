@@ -33,6 +33,7 @@ export interface QuizQuestion {
     [key: string]: string; // 评价维度和说明
   };
   images?: string[]; // Image URLs or paths
+  alternative_answers?: string[]; // Alternative correct answers for fill-in-the-blank questions
   knowledgePoint?: { // Full knowledge point data from backend
     id: string;
     subjectId: string;
