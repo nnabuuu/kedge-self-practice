@@ -168,8 +168,8 @@ export default function Settings({ onBack }: SettingsProps) {
   return (
     <div className="space-y-6">
 
-      {/* Quiz Management Settings - Only for teachers/admins */}
-      {!isStudent && (
+      {/* Quiz Management Settings - Only for admins */}
+      {isAdmin && (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">题库管理设置</h3>
         
@@ -439,8 +439,8 @@ export default function Settings({ onBack }: SettingsProps) {
         </div>
       )}
 
-      {/* Feature Status Summary - Only for teachers/admins */}
-      {!isStudent && (
+      {/* Feature Status Summary - Only for admins */}
+      {isAdmin && (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">当前功能状态</h3>
         
@@ -470,8 +470,8 @@ export default function Settings({ onBack }: SettingsProps) {
       </div>
       )}
 
-      {/* Action Buttons - Only for teachers/admins */}
-      {!isStudent && (
+      {/* Action Buttons - Only for admins */}
+      {isAdmin && (
         <div className="flex items-center justify-between">
         <button
           onClick={handleReset}
