@@ -9,10 +9,10 @@ import { sql } from 'slonik';
 // Validation schemas
 const CreateUserSchema = z.object({
   account: z.string().min(1), // Account ID can be any non-empty string
-  password: z.string().min(6),
+  password: z.string().min(1).nullable().optional(), // Will be set to account ID if not provided
   name: z.string().min(1),
   role: z.enum(['student', 'teacher', 'admin']),
-  class: z.string().optional() // Class identifier (e.g., '20250101'), required for students
+  class: z.string().nullable().optional() // Class identifier (e.g., '20250101'), required for students
 });
 
 const UpdatePasswordSchema = z.object({
@@ -21,11 +21,11 @@ const UpdatePasswordSchema = z.object({
 
 const BulkCreateUsersSchema = z.array(
   z.object({
-    account: z.string().min(1), // Account ID can be any non-empty string
-    password: z.string().min(6),
-    name: z.string().min(1),
+    account: z.string().min(1, 'Account ID is required'), // Account ID can be any non-empty string
+    password: z.string().min(1).nullable().optional(), // Will be set to account ID if not provided
+    name: z.string().min(1, 'Name is required'),
     role: z.enum(['student', 'teacher']),
-    class: z.string().optional() // Class identifier, required for students
+    class: z.string().nullable().optional() // Class identifier, optional for teachers
   })
 );
 
@@ -180,9 +180,12 @@ export class AdminController {
         throw new HttpException('该账号已存在，请使用其他账号', HttpStatus.CONFLICT);
       }
 
+      // Use account ID as password if password is not provided
+      const finalPassword = validatedData.password || validatedData.account;
+      
       // Generate salt and hash password
       const salt = randomBytes(16).toString('hex');
-      const passwordHash = this.hashPassword(validatedData.password, salt);
+      const passwordHash = this.hashPassword(finalPassword, salt);
       
       // Determine is_admin flag
       const isAdmin = validatedData.role === 'admin';
@@ -374,14 +377,32 @@ export class AdminController {
   @ApiResponse({ status: 201, description: 'Users created successfully' })
   async bulkCreateUsers(@Body() body: any) {
     try {
+      // Ensure body is an array
+      if (!Array.isArray(body)) {
+        throw new HttpException(
+          'Request body must be an array of users',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+      
       // Support both 'account' and 'email' field names for backward compatibility
-      const inputData = body.map((user: any) => ({
-        account: user.account || user.email,
-        password: user.password,
-        name: user.name,
-        role: user.role,
-        class: user.class || null
-      }));
+      const inputData = body.map((user: any, index: number) => {
+        // Check for required fields
+        if (!user.account && !user.email) {
+          throw new HttpException(
+            `User at index ${index}: Account ID is required`,
+            HttpStatus.BAD_REQUEST
+          );
+        }
+        
+        return {
+          account: user.account || user.email,
+          password: user.password || null, // Allow null, will be auto-generated
+          name: user.name || '',
+          role: user.role || 'student',
+          class: user.class || null
+        };
+      });
       
       // Validate input
       const validatedData = BulkCreateUsersSchema.parse(inputData);
@@ -419,9 +440,12 @@ export class AdminController {
             continue;
           }
 
+          // Use account ID as password if password is not provided
+          const finalPassword = userData.password || userData.account;
+          
           // Generate salt and hash password
           const salt = randomBytes(16).toString('hex');
-          const passwordHash = this.hashPassword(userData.password, salt);
+          const passwordHash = this.hashPassword(finalPassword, salt);
           
           // Insert new user
           const result = await this.persistentService.pgPool.query(sql.unsafe`
