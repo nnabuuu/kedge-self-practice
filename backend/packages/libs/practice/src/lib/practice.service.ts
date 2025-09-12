@@ -365,10 +365,23 @@ export class PracticeService {
         this.logger.log(`Answer did not match all blanks, user can request AI re-evaluation`);
       }
     } else if (quiz.type === 'single-choice') {
-      // For single-choice, the answer is stored as [index] but user sends "index"
-      const correctAnswerIndex = Array.isArray(quiz.answer) ? quiz.answer[0] : quiz.answer;
-      isCorrect = userAnswer === String(correctAnswerIndex);
-      this.logger.log(`Single-choice validation: user="${userAnswer}" vs correct="${correctAnswerIndex}" -> ${isCorrect}`);
+      // Handle both text answers and index answers
+      const correctAnswerValue = Array.isArray(quiz.answer) ? quiz.answer[0] : quiz.answer;
+      
+      // Check if the answer is stored as text (matches one of the options)
+      let correctIndex: number | string = String(correctAnswerValue);
+      if (quiz.options && Array.isArray(quiz.options)) {
+        // Find the index of the correct answer in the options array
+        const textIndex = quiz.options.findIndex(option => option === correctAnswerValue);
+        if (textIndex !== -1) {
+          correctIndex = textIndex;
+          this.logger.log(`Converted text answer "${correctAnswerValue}" to index ${correctIndex}`);
+        }
+      }
+      
+      // Compare as strings to handle both number and string indices
+      isCorrect = userAnswer === String(correctIndex);
+      this.logger.log(`Single-choice validation: user="${userAnswer}" vs correct="${correctIndex}" (original: "${correctAnswerValue}") -> ${isCorrect}`);
     } else if (quiz.type === 'multiple-choice') {
       // For multiple-choice, answer is array of indices
       const correctIndices = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];

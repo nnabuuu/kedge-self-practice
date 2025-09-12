@@ -198,6 +198,35 @@ export default function QuizPractice({
     );
   };
 
+  // Helper function to get the correct answer letter for single choice
+  // Handles both text answers (matching option values) and index answers
+  const getCorrectAnswerLetter = (question: any): string | null => {
+    if (!question || !question.answer) return null;
+    const answerValue = Array.isArray(question.answer) ? question.answer[0] : question.answer;
+    
+    // First check if answer is stored as text that matches one of the options
+    if (question.options) {
+      for (const [key, value] of Object.entries(question.options)) {
+        if (value === answerValue) {
+          return key; // Return the option letter (A, B, C, D)
+        }
+      }
+    }
+    
+    // If not found in options, treat as index
+    const answerIndex = parseInt(String(answerValue));
+    if (!isNaN(answerIndex) && answerIndex >= 0 && answerIndex <= 3) {
+      return String.fromCharCode('A'.charCodeAt(0) + answerIndex);
+    }
+    
+    // If answer is already a letter, return as is
+    if (['A', 'B', 'C', 'D'].includes(String(answerValue))) {
+      return String(answerValue);
+    }
+    
+    return null;
+  };
+
   const renderQuestionWithImages = (questionText: string, imageUrls?: string[]) => {
     // Handle undefined or null questionText
     if (!questionText) {
@@ -628,7 +657,7 @@ export default function QuizPractice({
     // Get the current question to check if answer is correct
     const question = questions[currentQuestionIndex];
     // If the answer is correct, automatically move to next question with countdown
-    const correctLetter = convertAnswerToLetter(question?.answer);
+    const correctLetter = getCorrectAnswerLetter(question);
     if (question && answer === correctLetter && (config.autoAdvanceDelay ?? 0) > 0) {
       startAutoAdvanceCountdown();
     }
@@ -1273,23 +1302,12 @@ export default function QuizPractice({
     onEndPractice(session);
   };
 
-  // Helper function to convert answer index to letter for single choice
-  const convertAnswerToLetter = (answer: any): string | null => {
-    if (answer === undefined || answer === null) return null;
-    const answerValue = Array.isArray(answer) ? answer[0] : answer;
-    const answerIndex = parseInt(String(answerValue));
-    if (!isNaN(answerIndex) && answerIndex >= 0 && answerIndex <= 3) {
-      return String.fromCharCode('A'.charCodeAt(0) + answerIndex);
-    }
-    // If answer is already a letter, return as is
-    return String(answerValue);
-  };
 
   // 判断答案是否正确
   const isAnswerCorrect = () => {
     if (isSingleChoice) {
-      // Convert backend answer format (index) to frontend format (letter)
-      const correctLetter = convertAnswerToLetter(currentQuestion?.answer);
+      // Get the correct answer letter (handles both text and index formats)
+      const correctLetter = getCorrectAnswerLetter(currentQuestion);
       return selectedAnswer === correctLetter;
     } else if (isMultipleChoice && Array.isArray(currentQuestion?.answer)) {
       const correctAnswers = currentQuestion.answer.sort();
@@ -1592,9 +1610,9 @@ export default function QuizPractice({
                     disabled={showResult}
                     className={`w-full p-4 text-left rounded-xl border-2 transition-all duration-300 ease-out ${
                       showResult
-                        ? key === convertAnswerToLetter(currentQuestion.answer)
+                        ? key === getCorrectAnswerLetter(currentQuestion)
                           ? 'border-green-500 bg-green-50 text-green-800 shadow-lg shadow-green-500/25'
-                          : key === selectedAnswer && key !== convertAnswerToLetter(currentQuestion.answer)
+                          : key === selectedAnswer && key !== getCorrectAnswerLetter(currentQuestion)
                           ? 'border-red-500 bg-red-50 text-red-800 shadow-lg shadow-red-500/25'
                           : 'border-gray-200 bg-gray-50 text-gray-500'
                         : selectedAnswer === key
@@ -1604,10 +1622,10 @@ export default function QuizPractice({
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium tracking-wide">{key}. {option}</span>
-                      {showResult && key === convertAnswerToLetter(currentQuestion.answer) && (
+                      {showResult && key === getCorrectAnswerLetter(currentQuestion) && (
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
                       )}
-                      {showResult && key === selectedAnswer && key !== convertAnswerToLetter(currentQuestion.answer) && (
+                      {showResult && key === selectedAnswer && key !== getCorrectAnswerLetter(currentQuestion) && (
                         <XCircle className="w-5 h-5 text-red-600" />
                       )}
                     </div>
