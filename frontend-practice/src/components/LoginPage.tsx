@@ -171,19 +171,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email Input */}
+              {/* Account Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 tracking-wide">
-                  邮箱地址
+                  账号
                 </label>
                 <div className="relative">
                   <User className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                   <input
-                    type="email"
+                    type="text"
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    placeholder="请输入邮箱地址"
+                    placeholder="请输入账号"
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/70 backdrop-blur-sm"
                     required
                   />
