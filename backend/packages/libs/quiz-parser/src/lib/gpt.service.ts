@@ -575,8 +575,22 @@ ${context ? `题目背景：${context}` : ''}
 请提供你的判断结果和理由。`;
 
       const modelConfig = getModelConfig('answerValidator');
+      const provider = getLLMProvider('answerValidator');
+      
+      // Check if provider supports structured output
+      const supportsStructuredOutput = provider === 'openai' && supportsJsonSchema(modelConfig.model);
+      
+      // Adjust prompt for non-structured output providers
+      const finalPrompt = supportsStructuredOutput ? prompt : `${prompt}
+
+请以JSON格式返回，格式如下：
+{
+  "isCorrect": true或false,
+  "reasoning": "判断理由"
+}`;
+
       const completionParams = createChatCompletionParams({
-        model: modelConfig.model, // Use gpt-4o-mini for better structured output support
+        model: modelConfig.model,
         messages: [
           {
             role: 'system',
@@ -584,28 +598,48 @@ ${context ? `题目背景：${context}` : ''}
           },
           {
             role: 'user',
-            content: prompt,
+            content: finalPrompt,
           },
         ],
-        temperature: modelConfig.temperature || 0.3, // Use config or default to lower temperature
-        response_format: responseSchema as any, // Use structured output with JSON schema
+        temperature: modelConfig.temperature || 0.3,
+        // Only use structured output if supported
+        ...(supportsStructuredOutput ? { response_format: responseSchema as any } : {}),
       }, modelConfig.maxTokens || 200);
+      
       const response = await this.openai.chat.completions.create(completionParams);
 
       const content = response.choices[0].message?.content?.trim() || '{}';
       
-      // Parse the JSON response (guaranteed to be valid JSON with response_format)
-      const result = JSON.parse(content);
+      // Try to parse JSON response
+      let result;
+      try {
+        // For DeepSeek or other providers, extract JSON from response
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : content;
+        result = JSON.parse(jsonStr);
+      } catch (parseError) {
+        console.error('Failed to parse AI response as JSON:', content);
+        // Fallback: try to extract boolean from response
+        const isCorrectMatch = content.toLowerCase().includes('正确') || 
+                               content.toLowerCase().includes('true') ||
+                               content.toLowerCase().includes('correct');
+        return {
+          isCorrect: isCorrectMatch,
+          reasoning: content.substring(0, 200), // Use first 200 chars as reasoning
+        };
+      }
+      
       return {
         isCorrect: result.isCorrect || false,
         reasoning: result.reasoning || '无法判断',
       };
     } catch (error) {
-      console.error('Error validating answer with GPT:', error);
-      // On error, be conservative and return false
+      console.error('Error validating answer with AI:', error);
+      // More informative error message
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         isCorrect: false,
-        reasoning: 'GPT验证失败，无法确认答案正确性',
+        reasoning: `AI验证失败: ${errorMessage.substring(0, 100)}`,
       };
     }
   }
