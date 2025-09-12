@@ -152,6 +152,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
               {!disabled && (
                 <div className="text-xs text-gray-400 space-y-1">
                   <p>支持格式：.docx (Word 2007 及以上版本)</p>
+                  <p>文件大小限制：10MB</p>
                   <p className="text-amber-600">注意：不支持 .doc 格式，请先转换为 .docx</p>
                 </div>
               )}
@@ -179,6 +180,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               上传其他文件
+            </button>
+          )}
+          
+          {uploadStatus.status === 'error' && (
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            >
+              重新上传
             </button>
           )}
         </div>

@@ -14,7 +14,7 @@ import { LLMService } from './llm.service';
     GptService,  // Legacy, will be removed
     GPT4Service, // For GPT-4, GPT-4o models with json_schema
     GPT5Service, // For O1, newer models with limited params
-    DeepSeekService, 
+    DeepSeekService, // Clean modular implementation
     LLMService
   ],
   exports: [
@@ -23,7 +23,7 @@ import { LLMService } from './llm.service';
     GptService,  // Keep for backward compatibility
     GPT4Service,
     GPT5Service,
-    DeepSeekService, 
+    DeepSeekService,
     LLMService
   ],
 })

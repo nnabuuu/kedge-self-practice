@@ -117,6 +117,17 @@ function App() {
       return;
     }
 
+    // Check file size (limit to 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+      setUploadStatus({
+        status: 'error',
+        progress: 0,
+        message: `文件太大（${(file.size / 1024 / 1024).toFixed(2)}MB）！请限制在10MB以内`,
+      });
+      return;
+    }
+
     setIsProcessing(true);
     setProcessingMessage('正在上传并处理文档...');
     
@@ -160,10 +171,25 @@ function App() {
       setCurrentStep('parse');
     } catch (error) {
       console.error('Upload error:', error);
+      let errorMessage = '上传失败';
+      
+      if (error instanceof Error) {
+        // Check for common error patterns
+        if (error.message.includes('413') || error.message.includes('too large') || error.message.includes('Request Entity Too Large')) {
+          errorMessage = '文件太大！请尝试缩小文档内容或分成多个文件上传';
+        } else if (error.message.includes('timeout')) {
+          errorMessage = '上传超时，请检查网络连接后重试';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = '网络错误，请检查网络连接后重试';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setUploadStatus({
         status: 'error',
         progress: 0,
-        message: error instanceof Error ? error.message : '上传失败',
+        message: errorMessage,
       });
     } finally {
       setIsProcessing(false);
@@ -291,6 +317,8 @@ function App() {
     setQuizItems([]);
     setQuizWithKnowledgePoints([]);
     setCurrentStep('upload');
+    setIsProcessing(false);
+    setProcessingMessage('');
   };
 
   const handleExportToExcel = () => {
