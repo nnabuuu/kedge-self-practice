@@ -36,6 +36,8 @@ export const QuizItemSchema = z.object({
   knowledge_point_id: z.string().nullable().optional(),
   // Alternative correct answers for fill-in-the-blank questions
   alternative_answers: z.array(z.string()).optional().default([]),
+  // Educational explanation shown when student answers incorrectly
+  explanation: z.string().optional().nullable(),
   // Full knowledge point information (populated when joining with knowledge_points table)
   knowledgePoint: z.object({
     id: z.string(),

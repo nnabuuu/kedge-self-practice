@@ -20,6 +20,17 @@ This is a self-practice learning platform designed for middle school students to
 - **TypeScript** with strict typing
 - **OpenAI GPT** integration for intelligent quiz generation
 
+## Project Management Practices
+
+### Linear Integration
+When working on features or tasks:
+1. **Create Linear issues** for tracking major features
+2. **Create sub-issues** for each implementation step/todo item
+3. **Update issue status** as work progresses (Todo → In Progress → Done)
+4. **Link related documentation** to issues for context
+
+This helps maintain project visibility and progress tracking across the team.
+
 ## Core Commands
 
 ### Development

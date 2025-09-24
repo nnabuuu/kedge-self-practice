@@ -6,3 +6,6 @@ export * from './docx.schema';
 
 // Quiz item types
 export * from './quiz-item.schema';
+
+// Quiz report types
+export * from './quiz-report.schema';

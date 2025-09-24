@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, CheckCircle2, CheckCircle, XCircle, ArrowRight, RotateCcw, BookOpen, Brain, Sparkles, MessageSquare, Mic, MicOff, Volume2, Loader2, ChevronLeft, ChevronRight, Home } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CheckCircle, XCircle, ArrowRight, RotateCcw, BookOpen, Brain, Sparkles, MessageSquare, Mic, MicOff, Volume2, Loader2, ChevronLeft, ChevronRight, Home, Flag } from 'lucide-react';
 import { Subject, QuizQuestion, PracticeSession, AIEvaluation } from '../types/quiz';
 import { usePracticeSession, useKnowledgePoints } from '../hooks/useApi';
 import { api } from '../services/api';
+import ReportModal, { QuizReportData } from './ReportModal';
+import MyReports from './MyReports';
 
 interface QuizConfig {
   questionType: 'new' | 'with-wrong' | 'wrong-only';
@@ -92,6 +94,10 @@ export default function QuizPractice({
   const [speechSupported, setSpeechSupported] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
+  
+  // Report modal states
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showMyReports, setShowMyReports] = useState(false);
 
   // Function to parse and render question text with images
   // Render fill-in-the-blank question with inline input fields
@@ -1232,6 +1238,21 @@ export default function QuizPractice({
     }
   };
 
+  const handleReportSubmit = async (report: QuizReportData) => {
+    try {
+      const response = await api.submitQuizReport(report);
+      if (response.success) {
+        // Report submitted successfully
+        console.log('Report submitted:', response.data);
+      } else {
+        throw new Error(response.error || 'Failed to submit report');
+      }
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      throw error;
+    }
+  };
+
   const handleEndPractice = async () => {
     // 确保最后一题的用时被记录
     if (!questionDurations[currentQuestionIndex] && questionStartTimes[currentQuestionIndex]) {
@@ -1569,6 +1590,42 @@ export default function QuizPractice({
           </div>
 
           <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20">
+            {/* Question header with report button */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium text-gray-500">
+                    第 {currentQuestionIndex + 1} 题 / 共 {questions.length} 题
+                  </span>
+                  <span className="text-sm text-gray-400">•</span>
+                  <span className="text-sm text-gray-500">
+                    {currentQuestion.type === 'single-choice' && '单选题'}
+                    {currentQuestion.type === 'multiple-choice' && '多选题'}
+                    {currentQuestion.type === 'fill-in-the-blank' && '填空题'}
+                    {currentQuestion.type === 'subjective' && '问答题'}
+                    {currentQuestion.type === 'other' && '其他'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="报告问题"
+                >
+                  <Flag className="w-4 h-4" />
+                  <span className="hidden sm:inline">报告问题</span>
+                </button>
+                <button
+                  onClick={() => setShowMyReports(true)}
+                  className="flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="我的报告"
+                >
+                  <span className="hidden sm:inline">我的报告</span>
+                </button>
+              </div>
+            </div>
+            
             {/* Render question - special handling for fill-in-the-blank */}
             {isFillInBlank ? (
               <div className="mb-6">
@@ -1632,6 +1689,19 @@ export default function QuizPractice({
                   </button>
                 ))}
               </div>
+              
+              {/* 单选题解析 - 仅在答错时显示 */}
+              {showResult && !isAnswerCorrect() && currentQuestion.explanation && (
+                <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="flex items-center mb-2">
+                    <BookOpen className="w-5 h-5 text-blue-600 mr-2" />
+                    <span className="font-semibold text-blue-800">💡 题目解析</span>
+                  </div>
+                  <p className="text-blue-700 leading-relaxed">
+                    {currentQuestion.explanation}
+                  </p>
+                </div>
+              )}
             )}
 
             {/* 多选题选项 */}
@@ -1684,6 +1754,19 @@ export default function QuizPractice({
                   );
                 })}
               </div>
+              
+              {/* 多选题解析 - 仅在答错时显示 */}
+              {showResult && !isAnswerCorrect() && currentQuestion.explanation && (
+                <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="flex items-center mb-2">
+                    <BookOpen className="w-5 h-5 text-blue-600 mr-2" />
+                    <span className="font-semibold text-blue-800">💡 题目解析</span>
+                  </div>
+                  <p className="text-blue-700 leading-relaxed">
+                    {currentQuestion.explanation}
+                  </p>
+                </div>
+              )}
             )}
 
             {/* 问答题输入框 */}
@@ -1878,6 +1961,19 @@ export default function QuizPractice({
                         )}
                       </div>
                     </div>
+                  </div>
+                )}
+                
+                {/* 题目解析 - 仅在答错时显示 */}
+                {!isAnswerCorrect() && currentQuestion.explanation && (
+                  <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+                    <div className="flex items-center mb-2">
+                      <BookOpen className="w-5 h-5 text-blue-600 mr-2" />
+                      <span className="font-semibold text-blue-800">💡 题目解析</span>
+                    </div>
+                    <p className="text-blue-700 leading-relaxed">
+                      {currentQuestion.explanation}
+                    </p>
                   </div>
                 )}
                 
@@ -2098,6 +2194,19 @@ export default function QuizPractice({
                   </div>
                 ) : null}
               </div>
+              
+              {/* 问答题解析 - 显示在AI评价后 */}
+              {currentQuestion.explanation && (
+                <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="flex items-center mb-2">
+                    <BookOpen className="w-5 h-5 text-blue-600 mr-2" />
+                    <span className="font-semibold text-blue-800">💡 题目解析</span>
+                  </div>
+                  <p className="text-blue-700 leading-relaxed">
+                    {currentQuestion.explanation}
+                  </p>
+                </div>
+              )}
             )}
 
             <div className="flex justify-between">
@@ -2202,6 +2311,29 @@ export default function QuizPractice({
           </div>
         </div>
       </div>
+      
+      {/* Report Modal */}
+      {showReportModal && currentQuestion && (
+        <ReportModal
+          quiz={currentQuestion}
+          sessionId={currentSessionId}
+          userAnswer={
+            isSingleChoice ? selectedAnswer :
+            isMultipleChoice ? selectedMultipleAnswers :
+            isFillInBlank ? fillInBlankAnswers.join(',') :
+            essayAnswer
+          }
+          onSubmit={handleReportSubmit}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
+      
+      {/* My Reports Modal */}
+      {showMyReports && (
+        <MyReports
+          onClose={() => setShowMyReports(false)}
+        />
+      )}
     </div>
   );
 }

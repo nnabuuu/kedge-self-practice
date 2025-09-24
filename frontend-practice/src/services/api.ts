@@ -508,6 +508,128 @@ export class ApiService {
   static async analyzeQuestionWithAI(question: string): Promise<ApiResponse<any>> {
     return createApiResponse(null, false, undefined, 'AI analysis not available in backend yet');
   }
+
+  // Submit quiz report
+  static async submitQuizReport(report: {
+    quiz_id: string;
+    report_type: 'display_error' | 'wrong_answer' | 'wrong_association' | 'duplicate' | 'unclear_wording' | 'other';
+    reason?: string;
+    user_answer?: string;
+    session_id?: string;
+  }): Promise<ApiResponse<any>> {
+    try {
+      const token = localStorage.getItem('jwt_token');
+      
+      if (!token) {
+        return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
+      }
+      
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const url = `${apiBaseUrl}/quiz/report`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(report)
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return createApiResponse(null, false, undefined, data.error?.message || 'Failed to submit report');
+      }
+
+      return createApiResponse(data.data, true, data.data?.message);
+    } catch (error) {
+      console.error('Error submitting quiz report:', error);
+      return createApiResponse(null, false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
+
+  // Get user's reports
+  static async getMyReports(params?: {
+    status?: 'pending' | 'reviewing' | 'resolved' | 'dismissed';
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<any[]>> {
+    try {
+      const token = localStorage.getItem('jwt_token');
+      
+      if (!token) {
+        return createApiResponse([], false, undefined, 'Authentication required. Please login to use this feature.');
+      }
+      
+      const queryParams = new URLSearchParams();
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.offset) queryParams.append('offset', params.offset.toString());
+      
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const url = `${apiBaseUrl}/quiz/report/my-reports?${queryParams}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return createApiResponse([], false, undefined, errorData.message || 'Failed to fetch reports');
+      }
+
+      const data = await response.json();
+      return createApiResponse(data.data || [], true);
+    } catch (error) {
+      console.error('Error fetching user reports:', error);
+      return createApiResponse([], false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
+
+  // Update user's report
+  static async updateMyReport(reportId: string, updates: {
+    reason?: string;
+    report_type?: 'display_error' | 'wrong_answer' | 'wrong_association' | 'duplicate' | 'unclear_wording' | 'other';
+  }): Promise<ApiResponse<any>> {
+    try {
+      const token = localStorage.getItem('jwt_token');
+      
+      if (!token) {
+        return createApiResponse(null, false, undefined, 'Authentication required. Please login to use this feature.');
+      }
+      
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+        ? import.meta.env.VITE_API_BASE_URL
+        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+      const url = `${apiBaseUrl}/quiz/report/${reportId}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return createApiResponse(null, false, undefined, errorData.message || 'Failed to update report');
+      }
+
+      const data = await response.json();
+      return createApiResponse(data.data, true);
+    } catch (error) {
+      console.error('Error updating report:', error);
+      return createApiResponse(null, false, undefined, error instanceof Error ? error.message : 'Network error');
+    }
+  }
 }
 
 // Export convenience API functions
@@ -548,7 +670,16 @@ export const api = {
   },
   stats: {
     get: (subjectId?: string) => ApiService.getStatistics(subjectId)
-  }
+  },
+  reports: {
+    submit: (report: Parameters<typeof ApiService.submitQuizReport>[0]) => ApiService.submitQuizReport(report),
+    getMyReports: (params?: Parameters<typeof ApiService.getMyReports>[0]) => ApiService.getMyReports(params),
+    updateMyReport: (reportId: string, updates: Parameters<typeof ApiService.updateMyReport>[1]) => ApiService.updateMyReport(reportId, updates)
+  },
+  // Convenience methods for reports (to match expected API in components)
+  submitQuizReport: (report: Parameters<typeof ApiService.submitQuizReport>[0]) => ApiService.submitQuizReport(report),
+  getMyReports: (params?: Parameters<typeof ApiService.getMyReports>[0]) => ApiService.getMyReports(params),
+  updateMyReport: (reportId: string, updates: Parameters<typeof ApiService.updateMyReport>[1]) => ApiService.updateMyReport(reportId, updates)
 };
 
 // Default export
