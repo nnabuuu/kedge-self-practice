@@ -166,6 +166,7 @@ class BackendApiService {
       standardAnswer: type === 'essay' ? backendQuiz.answer : undefined,
       relatedKnowledgePointId,
       images: backendQuiz.images || [],
+      hints: backendQuiz.hints || undefined, // Include hints for fill-in-the-blank questions
       // Store the full knowledge point data if available
       knowledgePoint: backendQuiz.knowledgePoint
     };

@@ -1,0 +1,5 @@
+Database Records Containing Character ①
+Generated: 2025年 9月12日 星期五 15时27分21秒 CST
+Database: kedge_db
+========================================
+

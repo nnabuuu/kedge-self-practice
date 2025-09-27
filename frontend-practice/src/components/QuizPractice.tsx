@@ -67,6 +67,11 @@ export default function QuizPractice({
   const [fillInBlankAnswer, setFillInBlankAnswer] = useState<string>('');
   const [fillInBlankAnswers, setFillInBlankAnswers] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false);
+  const [showHints, setShowHints] = useState<boolean>(() => {
+    // Load hint preference from localStorage
+    const savedPreference = localStorage.getItem('showHints');
+    return savedPreference !== null ? JSON.parse(savedPreference) : true;
+  });
   const [answers, setAnswers] = useState<(string | string[] | null)[]>(savedProgress?.answers || []);
   const [questionStartTimes, setQuestionStartTimes] = useState<Date[]>(
     savedProgress?.questionStartTimes?.map((t: string | null) => t ? new Date(t) : null) || []
@@ -101,10 +106,21 @@ export default function QuizPractice({
 
   // Function to parse and render question text with images
   // Render fill-in-the-blank question with inline input fields
+  // Toggle hint visibility and save preference
+  const toggleHints = () => {
+    const newValue = !showHints;
+    setShowHints(newValue);
+    localStorage.setItem('showHints', JSON.stringify(newValue));
+  };
+
   const renderFillInBlankQuestion = (questionText: string) => {
     // Split the question by blanks (______)
     const parts = questionText.split(/_{2,}/g);
     const blanksCount = parts.length - 1;
+    
+    // Get hints for current question
+    const currentQuestion = questions[currentQuestionIndex];
+    const hints = currentQuestion?.hints || [];
     
     // Initialize answers array if needed
     // If there are no blanks, create a single blank for the user to answer
@@ -154,15 +170,16 @@ export default function QuizPractice({
           <React.Fragment key={index}>
             <span>{part}</span>
             {index < parts.length - 1 && (
-              <input
-                type="text"
-                value={fillInBlankAnswers[index] || ''}
-                onChange={(e) => {
-                  const newAnswers = [...fillInBlankAnswers];
-                  newAnswers[index] = e.target.value;
-                  setFillInBlankAnswers(newAnswers);
-                }}
-                onKeyDown={(e) => {
+              <span className="inline-flex items-center gap-1">
+                <input
+                  type="text"
+                  value={fillInBlankAnswers[index] || ''}
+                  onChange={(e) => {
+                    const newAnswers = [...fillInBlankAnswers];
+                    newAnswers[index] = e.target.value;
+                    setFillInBlankAnswers(newAnswers);
+                  }}
+                  onKeyDown={(e) => {
                   if (e.key === 'Tab' && !e.shiftKey && index < blanksCount - 1) {
                     e.preventDefault();
                     // Focus next input
@@ -196,7 +213,13 @@ export default function QuizPractice({
                   }
                   transition-all duration-200`}
                 style={{ width: `${Math.max(100, (fillInBlankAnswers[index]?.length || 3) * 12)}px` }}
-              />
+                />
+                {showHints && hints[index] && hints[index] !== null && (
+                  <span className="text-sm text-gray-500 font-normal">
+                    ({hints[index]})
+                  </span>
+                )}
+              </span>
             )}
           </React.Fragment>
         ))}
@@ -1629,6 +1652,25 @@ export default function QuizPractice({
             {/* Render question - special handling for fill-in-the-blank */}
             {isFillInBlank ? (
               <div className="mb-6">
+                {/* Hint toggle button for fill-in-blank questions */}
+                {currentQuestion.hints && currentQuestion.hints.length > 0 && currentQuestion.hints.some(h => h !== null) && (
+                  <div className="mb-3 flex justify-end">
+                    <button
+                      onClick={toggleHints}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <span>{showHints ? '隐藏' : '显示'}提示</span>
+                      <svg 
+                        className={`w-4 h-4 transition-transform ${showHints ? 'rotate-180' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
                 {renderFillInBlankQuestion(currentQuestion.question)}
                 {currentQuestion.images && currentQuestion.images.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-4">

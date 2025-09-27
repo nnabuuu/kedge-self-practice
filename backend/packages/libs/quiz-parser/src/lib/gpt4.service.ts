@@ -185,18 +185,27 @@ ${JSON.stringify(context.next, null, 2)}` : ''}
 3. 高亮验证：忽略超过10个字的高亮（可能是解析错误）
 4. 如果所有高亮都过长，提取其中的关键概念（人名、地名、时间、数字、专有名词）
 5. 确保答案对应完整、有意义的内容
-6. 返回 JSON 格式
+6. 为每个空格提供一个简洁的提示词（2-4个字）
+
+提示词类别（历史题目）：
+- 时间类：年份、朝代、世纪、时期、年代
+- 人物类：人名、皇帝、领袖、思想家、将领
+- 地理类：地名、国家、都城、地区、关隘
+- 事件类：战争、事件、条约、改革、起义
+- 文化类：著作、发明、制度、学派、文物
+- 其他类：数字、称号、民族、王朝、组织
 
 填空题示例：
 - 如果高亮是"神农本草经"，正确：东汉时的《____》是中国古代第一部药物学专著。
-- 答案应该是完整的"神农本草经"，而不是"神农"
+- 答案："神农本草经"，提示：["著作"]
 
 必须返回以下 JSON 格式：
 {
   "type": "fill-in-the-blank",
   "question": "题目内容，包含____空格",
   "options": [],
-  "answer": "答案" 或 ["答案1", "答案2"]
+  "answer": "答案" 或 ["答案1", "答案2"],
+  "hints": ["提示1"] 或 ["提示1", "提示2"]
 }
 
 注意：这是第 ${paragraphNumber} 段，共 ${totalParagraphs} 段。必须为这个段落生成题目，不要跳过。`;
@@ -224,8 +233,18 @@ ${JSON.stringify(context.next, null, 2)}` : ''}
               { type: 'array', items: { type: 'string' } },
             ],
           },
+          hints: {
+            type: 'array',
+            items: {
+              anyOf: [
+                { type: 'string' },
+                { type: 'null' }
+              ]
+            },
+            description: '提示词数组'
+          },
         },
-        required: ['type', 'question', 'options', 'answer'],
+        required: ['type', 'question', 'options', 'answer', 'hints'],
       },
     } as const;
 

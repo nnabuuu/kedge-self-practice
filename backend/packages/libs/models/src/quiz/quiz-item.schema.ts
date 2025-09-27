@@ -38,6 +38,8 @@ export const QuizItemSchema = z.object({
   alternative_answers: z.array(z.string()).optional().default([]),
   // Educational explanation shown when student answers incorrectly
   explanation: z.string().optional().nullable(),
+  // Hints for fill-in-the-blank questions (e.g., ["人名", "朝代", null])
+  hints: z.array(z.string().nullable()).optional(),
   // Full knowledge point information (populated when joining with knowledge_points table)
   knowledgePoint: z.object({
     id: z.string(),

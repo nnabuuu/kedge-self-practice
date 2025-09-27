@@ -122,7 +122,24 @@ ${answerFormat}`;
   错误：东汉时的《____本草经》是中国古代第一部药物学专著。（答案：神农）
 - 空格应该对应完整的、有意义的答案，而不是词语的片段
 - 高亮验证：忽略超过10个字的高亮（可能是解析错误）
-- **答案格式**：使用字符串，如 "神农本草经"`;
+
+填空题提示词（hints）说明：
+- 为每个空格提供一个简洁的提示词（2-4个字），描述答案的类型
+- 提示词应该帮助学生理解需要填写什么类型的内容，但不能透露答案
+- 如果答案从上下文很明显，可以不提供提示（使用null）
+- 历史题目常用提示词：
+  * 时间类：年份、朝代、世纪、时期、年代
+  * 人物类：人名、皇帝、领袖、思想家、将领
+  * 地理类：地名、国家、都城、地区、关隘
+  * 事件类：战争、事件、条约、改革、起义
+  * 文化类：著作、发明、制度、学派、文物
+  * 其他类：数字、称号、民族、王朝、组织
+
+格式要求：
+- **答案格式**：
+  * 单个空格：answer: "答案", hints: ["提示"]
+  * 多个空格：answer: ["答案1", "答案2"], hints: ["提示1", "提示2"]
+  * 不需要提示的空格用null：hints: [null, "提示2"]`;
   }
 
   private getSubjectiveInstructions(): string {
@@ -132,6 +149,7 @@ ${answerFormat}`;
   }
 
   private getFormatInstructions(): string {
+    const includeHints = this.allowedTypes.includes('fill-in-the-blank');
     return `返回的 JSON 格式必须完全符合以下结构：
 {
   "items": [
@@ -139,7 +157,7 @@ ${answerFormat}`;
       "type": "${this.allowedTypes.join(' | ')}",
       "question": "题干（包含{{image:uuid}}占位符）",
       "options": ["选项1", "选项2", ...],  // 选择题必需，其他题型为空数组
-      "answer": ${this.getAnswerFormatDescription()}
+      "answer": ${this.getAnswerFormatDescription()}${includeHints ? ',\n      "hints": ["提示1", null, "提示3"]  // 填空题必需，每个空格对应一个提示（可为null）' : ''}
     }
   ]
 }`;
@@ -221,7 +239,7 @@ ${examples.join('\n\n')}`;
   }
 
   private getFillInBlankExample(): string {
-    return `填空题示例：
+    return `填空题示例1（单个空格）：
 输入：
 - "东汉时的《神农本草经》是中国古代第一部药物学专著" (高亮: 神农本草经)
 
@@ -231,7 +249,23 @@ ${examples.join('\n\n')}`;
     "type": "fill-in-the-blank",
     "question": "东汉时的《____》是中国古代第一部药物学专著",
     "options": [],
-    "answer": "神农本草经"
+    "answer": "神农本草经",
+    "hints": ["著作"]
+  }]
+}
+
+填空题示例2（多个空格）：
+输入：
+- "1949年10月1日，毛泽东在北京宣布中华人民共和国成立" (高亮: 1949, 毛泽东)
+
+输出：
+{
+  "items": [{
+    "type": "fill-in-the-blank",
+    "question": "____年10月1日，____在北京宣布中华人民共和国成立",
+    "options": [],
+    "answer": ["1949", "毛泽东"],
+    "hints": ["年份", "领袖"]
   }]
 }`;
   }
@@ -269,6 +303,16 @@ ${examples.join('\n\n')}`;
                 },
                 answer: {
                   anyOf: this.getAnswerSchemaTypes(),
+                },
+                hints: {
+                  type: 'array',
+                  items: {
+                    anyOf: [
+                      { type: 'string' },
+                      { type: 'null' }
+                    ]
+                  },
+                  description: '填空题的提示词数组，每个空格对应一个提示'
                 },
               },
               required: ['type', 'question', 'options', 'answer'],

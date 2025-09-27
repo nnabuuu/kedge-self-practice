@@ -1,0 +1,42 @@
+================================================================================
+Choice Questions (Single/Multiple) with Empty/Invalid Options
+Generated: 2025年 9月15日 星期一 00时55分29秒 CST
+Database: kedge_db
+================================================================================
+
+SUMMARY
+-------
+Single-choice with NULL options: 0
+Single-choice with empty array []: 0
+Multiple-choice with NULL options: 0
+Multiple-choice with empty array []: 0
+Choice questions with only empty strings: 1
+Choice questions with at least one empty option: 1
+Total problematic CHOICE questions: 1
+
+================================================================================
+DETAILED RECORDS
+================================================================================
+
+
+================================================================================
+【1】 ID: a13abbe2-d0e3-4c1d-a509-09cce6b2c321
+Type: single-choice | Knowledge Point: kp_38 | Date: 2025-09-12
+--------------------------------------------------------------------------------
+Options Status: Array with 4 elements
+Raw Options: ["", "", "", ""]
+
+题目:
+某同学对公元3-10世纪中国历史朝代更替进行整理，图中空白处应填的是{{image:9a3d3f70-3273-4af7-b17e-14cfaa77887a}}
+
+答案: []
+选项详情:
+  [0] "" (length: 0, trimmed: 0)
+  [1] "" (length: 0, trimmed: 0)
+  [2] "" (length: 0, trimmed: 0)
+  [3] "" (length: 0, trimmed: 0)
+
+
+=================================================================================
+End of Report
+=================================================================================

@@ -13,13 +13,34 @@ export class DefaultQuizService implements QuizService {
     private readonly knowledgePointStorage: KnowledgePointStorage,
   ) {}
 
+  /**
+   * Normalizes hint array by converting empty strings to null
+   */
+  private normalizeHints(hints?: (string | null)[]): (string | null)[] | undefined {
+    if (!hints) return undefined;
+    
+    return hints.map(hint => {
+      if (typeof hint === 'string' && hint.trim() === '') {
+        return null;
+      }
+      return hint;
+    });
+  }
+
   async createQuiz(item: QuizItem, images: QuizImageFile[] = []): Promise<QuizItem> {
     const paths: string[] = [];
     for (const image of images) {
       const p = await this.storage.saveImage(image);
       paths.push(p);
     }
-    return this.repository.createQuiz({ ...item, images: paths });
+    
+    // Normalize hints for fill-in-the-blank questions
+    const normalizedItem = { ...item };
+    if (item.type === 'fill-in-the-blank' && item.hints) {
+      normalizedItem.hints = this.normalizeHints(item.hints);
+    }
+    
+    return this.repository.createQuiz({ ...normalizedItem, images: paths });
   }
 
   findQuizById(id: string): Promise<QuizItem | null> {
@@ -55,7 +76,13 @@ export class DefaultQuizService implements QuizService {
   }
 
   updateQuiz(id: string, updates: Partial<QuizItem>): Promise<QuizItem | null> {
-    return this.repository.updateQuiz(id, updates);
+    // Normalize hints if provided
+    const normalizedUpdates = { ...updates };
+    if (updates.hints) {
+      normalizedUpdates.hints = this.normalizeHints(updates.hints);
+    }
+    
+    return this.repository.updateQuiz(id, normalizedUpdates);
   }
 
   searchQuizzesByTags(tags: string[]): Promise<QuizItem[]> {

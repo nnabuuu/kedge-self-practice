@@ -1,0 +1,23 @@
+================================================================================
+Quiz Records with Empty/Invalid Options
+Generated: 2025年 9月15日 星期一 00时53分14秒 CST
+Database: kedge_db
+================================================================================
+
+SUMMARY
+-------
+Records with NULL options: 0
+Records with empty array []: 1151
+Records with only empty strings: 1
+Records with null values in array: 0
+Records with at least one empty option: 1
+Total problematic records: 1152
+
+================================================================================
+DETAILED RECORDS
+================================================================================
+
+
+=================================================================================
+End of Report
+=================================================================================
