@@ -732,6 +732,46 @@ class BackendApiService {
     return response;
   }
 
+  // Report Management Methods for Teachers/Admins
+  async getReportsForManagement(params?: {
+    status?: 'pending' | 'reviewing' | 'resolved' | 'dismissed';
+    sort?: 'created_at' | 'report_count' | 'pending_count';
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<any>> {
+    const queryString = params ? new URLSearchParams(params as any).toString() : '';
+    return this.makeRequest(`/quiz/report/management${queryString ? '?' + queryString : ''}`);
+  }
+
+  async updateReportStatus(
+    reportId: string,
+    data: {
+      status: 'pending' | 'reviewing' | 'resolved' | 'dismissed';
+      resolution_note?: string;
+    }
+  ): Promise<ApiResponse<any>> {
+    return this.makeRequest(`/quiz/report/${reportId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async bulkUpdateReports(data: {
+    report_ids: string[];
+    status: 'pending' | 'reviewing' | 'resolved' | 'dismissed';
+    resolution_note?: string;
+  }): Promise<ApiResponse<any>> {
+    return this.makeRequest('/quiz/report/bulk-update', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async getReportAnalytics(period?: string): Promise<ApiResponse<any>> {
+    const queryString = period ? `?period=${period}` : '';
+    return this.makeRequest(`/quiz/report/analytics${queryString}`);
+  }
+
   // Generic GET request method for external use
   async get<T = any>(endpoint: string): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint);
@@ -781,6 +821,12 @@ export const api = {
       backendApi.submitPracticeAnswer(sessionId, questionId, answer, timeSpent),
     completeSession: (sessionId: string) => backendApi.completePracticeSession(sessionId),
     getTypeDistribution: (sessionId: string) => backendApi.getSessionTypeDistribution(sessionId)
+  },
+  reports: {
+    getManagementReports: (params?: any) => backendApi.getReportsForManagement(params),
+    updateStatus: (reportId: string, data: any) => backendApi.updateReportStatus(reportId, data),
+    bulkUpdate: (data: any) => backendApi.bulkUpdateReports(data),
+    getAnalytics: (period?: string) => backendApi.getReportAnalytics(period)
   }
 };
 

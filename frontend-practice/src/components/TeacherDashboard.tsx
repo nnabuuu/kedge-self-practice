@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, BookOpen, FileText, Users, BarChart3, Settings, ExternalLink, Plus, Upload, Download, Cpu, Trophy } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, Users, BarChart3, Settings, ExternalLink, Plus, Upload, Download, Cpu, Trophy, Flag } from 'lucide-react';
 import { Subject, KnowledgePoint, QuizQuestion } from '../types/quiz';
 import { Teacher } from '../types/teacher';
 import { useSubjects, useKnowledgePoints, useQuestionSearch } from '../hooks/useApi';
@@ -12,6 +12,7 @@ import UserManagement from '../pages/teacher/UserManagement';
 import SettingsPage from '../pages/teacher/Settings';
 import AIConfigManagement from '../pages/teacher/AIConfigManagement';
 import Leaderboard from '../pages/teacher/Leaderboard';
+import ReportManagement from '../pages/teacher/ReportManagement';
 
 interface TeacherDashboardProps {
   teacher: Teacher;
@@ -20,7 +21,7 @@ interface TeacherDashboardProps {
   onBack: () => void;
 }
 
-type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'users' | 'ai-config' | 'leaderboard' | 'analytics' | 'settings';
+type ActiveTab = 'overview' | 'knowledge-points' | 'questions' | 'users' | 'ai-config' | 'leaderboard' | 'reports' | 'analytics' | 'settings';
 
 interface TeacherStats {
   totalStudents: number;
@@ -299,6 +300,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                 { id: 'knowledge-points', label: isStudent ? '知识点列表' : '知识点管理', icon: BookOpen },
                 ...(isStudent ? [] : [
                   { id: 'questions', label: '题库管理', icon: FileText },
+                  { id: 'reports', label: '问题报告', icon: Flag },
                   { id: 'leaderboard', label: '排行榜', icon: Trophy }
                 ]),
                 ...(isAdmin ? [
@@ -357,6 +359,9 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
             )}
             {activeTab === 'ai-config' && isAdmin && (
               <AIConfigManagement />
+            )}
+            {activeTab === 'reports' && !isStudent && (
+              <ReportManagement />
             )}
             {activeTab === 'leaderboard' && (
               <Leaderboard />
