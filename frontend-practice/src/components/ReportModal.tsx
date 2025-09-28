@@ -79,7 +79,9 @@ export default function ReportModal({
       report_type: reportType,
       reason: reason || undefined,
       session_id: sessionId,
-      user_answer: Array.isArray(userAnswer) ? userAnswer.join(',') : userAnswer
+      user_answer: Array.isArray(userAnswer) 
+        ? userAnswer.join(',') 
+        : (userAnswer || '')  // Provide empty string if no answer
     };
 
     try {
@@ -108,9 +110,9 @@ export default function ReportModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between">
+        <div className="px-6 py-3 border-b flex items-center justify-between flex-shrink-0">
           <h3 className="text-lg font-semibold">报告问题</h3>
           <button
             onClick={onClose}
@@ -121,53 +123,48 @@ export default function ReportModal({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 overflow-y-auto flex-1">
           {/* Question Preview */}
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <div className="flex items-start gap-2">
-              <Info className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
-              <div className="flex-1">
+              <Info className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm text-gray-600">当前题目：</p>
-                  <span className="text-xs text-gray-500 font-mono bg-white px-2 py-1 rounded">
+                  <p className="text-xs text-gray-600">当前题目：</p>
+                  <span className="text-xs text-gray-500 font-mono bg-white px-1.5 py-0.5 rounded">
                     ID: {quiz.id}
                   </span>
                 </div>
-                <p className="text-gray-800 line-clamp-3">
-                  {quiz.question.substring(0, 150)}
-                  {quiz.question.length > 150 && '...'}
+                <p className="text-sm text-gray-800 line-clamp-2">
+                  {quiz.question.substring(0, 100)}
+                  {quiz.question.length > 100 && '...'}
                 </p>
               </div>
             </div>
           </div>
 
           {/* Report Type Selection */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               请选择问题类型 <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {reportTypes.map((type) => (
                 <button
                   key={type.value}
                   onClick={() => setReportType(type.value)}
                   className={`
-                    p-3 border rounded-lg text-left transition-all
+                    p-2 border rounded-lg text-left transition-all text-sm
                     ${reportType === type.value
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }
                   `}
                 >
-                  <div className="flex items-start gap-2">
-                    <span className="text-xl">{type.icon}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">{type.icon}</span>
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">{type.label}</div>
-                      {type.description && (
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {type.description}
-                        </div>
-                      )}
+                      <div className="font-medium text-gray-900 text-sm">{type.label}</div>
                     </div>
                   </div>
                 </button>
@@ -176,8 +173,8 @@ export default function ReportModal({
           </div>
 
           {/* Optional Details */}
-          <div className="mb-6">
-            <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-4">
+            <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-1.5">
               问题描述（选填）
             </label>
             <textarea
@@ -186,7 +183,7 @@ export default function ReportModal({
               onChange={(e) => setReason(e.target.value)}
               placeholder="请简要描述您遇到的问题..."
               maxLength={500}
-              rows={4}
+              rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <div className="mt-1 text-xs text-gray-500 text-right">
@@ -196,12 +193,12 @@ export default function ReportModal({
 
           {/* Your Answer (if provided) */}
           {userAnswer && (
-            <div className="mb-6 p-4 bg-yellow-50 rounded-lg">
+            <div className="mb-4 p-3 bg-yellow-50 rounded-lg">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-yellow-800 mb-1">您的答案</p>
-                  <p className="text-sm text-yellow-700">
+                  <p className="text-xs font-medium text-yellow-800 mb-0.5">您的答案</p>
+                  <p className="text-xs text-yellow-700">
                     {Array.isArray(userAnswer) ? userAnswer.join(', ') : userAnswer}
                   </p>
                 </div>
@@ -211,7 +208,7 @@ export default function ReportModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t flex items-center justify-end gap-3">
+        <div className="px-6 py-3 border-t flex items-center justify-end gap-3 flex-shrink-0">
           <button
             onClick={onClose}
             disabled={isSubmitting}

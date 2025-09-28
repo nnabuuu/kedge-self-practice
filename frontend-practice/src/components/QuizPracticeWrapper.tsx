@@ -5,7 +5,7 @@ import QuizPracticeMain from './QuizPracticeMain';
 
 interface QuizPracticeWrapperProps {
   subject: Subject;
-  selectedKnowledgePoints: KnowledgePoint[];
+  selectedKnowledgePoints: string[];  // Array of knowledge point IDs
   config: {
     questionType: 'new' | 'with-wrong' | 'wrong-only';
     questionCount: 'unlimited' | number;
@@ -29,68 +29,130 @@ export default function QuizPracticeWrapper({
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(practiceSessionId);
+  
+  console.log('QuizPracticeWrapper render - questions:', questions, 'loading:', loading, 'error:', error);
 
   useEffect(() => {
-    fetchQuestions();
-  }, [subject, selectedKnowledgePoints, config]);
+    if (practiceSessionId) {
+      fetchSessionQuestions();
+    } else {
+      createAndFetchSession();
+    }
+  }, [practiceSessionId]);
 
-  const fetchQuestions = async () => {
+  const fetchSessionQuestions = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      // If there's a practice session ID, fetch the session questions
-      if (practiceSessionId) {
-        const sessionResponse = await api.practice.getSession(practiceSessionId);
-        if (sessionResponse.success && sessionResponse.data) {
-          const sessionQuestions = sessionResponse.data.questions || sessionResponse.data.quiz_ids || [];
+      
+      console.log('Fetching session with ID:', practiceSessionId);
+      const sessionResponse = await api.practice.getSession(practiceSessionId);
+      console.log('Session response:', sessionResponse);
+      
+      if (sessionResponse.success && sessionResponse.data) {
+        // Check if response has session object or direct quiz_ids
+        const session = sessionResponse.data.session || sessionResponse.data;
+        const sessionQuizIds = session.quiz_ids || [];
+        console.log('Session quiz IDs:', sessionQuizIds);
+        
+        // Fetch the actual questions using the quiz IDs
+        if (sessionQuizIds.length > 0) {
+          console.log('Fetching batch questions for IDs:', sessionQuizIds);
+          const questionsResponse = await api.questions.getBatch(sessionQuizIds);
+          console.log('Batch questions response:', questionsResponse);
           
-          // If we have quiz IDs, fetch the actual questions
-          if (sessionQuestions.length > 0 && typeof sessionQuestions[0] === 'string') {
-            const questionsResponse = await api.questions.getBatch(sessionQuestions);
-            if (questionsResponse.success && questionsResponse.data) {
-              setQuestions(questionsResponse.data);
-            } else {
-              setError('Failed to load practice questions');
-            }
-          } else if (sessionQuestions.length > 0) {
-            // If we already have question objects
-            setQuestions(sessionQuestions);
+          if (questionsResponse.success && questionsResponse.data) {
+            console.log('Setting questions:', questionsResponse.data);
+            setQuestions(questionsResponse.data);
           } else {
-            setError('No questions found in practice session');
+            console.error('Failed to load questions:', questionsResponse);
+            setError('Failed to load practice questions');
           }
         } else {
-          setError('Failed to load practice session');
+          console.error('No quiz IDs found in session');
+          setError('No questions found in practice session');
         }
       } else {
-        // Fetch questions based on knowledge points
-        const knowledgePointIds = selectedKnowledgePoints.map(kp => kp.id);
-        const response = await api.questions.getByKnowledgePoints(knowledgePointIds);
+        setError('Failed to load practice session');
+      }
+    } catch (err) {
+      console.error('Error loading session questions:', err);
+      setError('Failed to load practice session');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createAndFetchSession = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Creating new session with config:', {
+        selectedKnowledgePoints,
+        config
+      });
+
+      // Use the knowledge point IDs directly (already strings)
+      const knowledgePointIds = selectedKnowledgePoints.filter(id => id && id.length > 0);
+      
+      console.log('Valid knowledge point IDs:', knowledgePointIds);
+
+      // Create session configuration
+      const sessionConfig = {
+        subject_id: subject?.id,
+        knowledge_point_ids: knowledgePointIds,
+        question_count: config.questionCount === 'unlimited' ? 50 : config.questionCount,
+        quiz_types: config.selectedQuestionTypes || [],
+        shuffle_questions: config.shuffleQuestions,
+        time_limit_minutes: config.timeLimit,
+        question_type: config.questionType === 'new' ? 'new-only' : 
+                      config.questionType === 'wrong-only' ? 'wrong-only' : 'with-wrong'
+      };
+
+      console.log('Creating session with config:', sessionConfig);
+      
+      // Create the session
+      const createResponse = await api.practice.createSession(sessionConfig);
+      console.log('Create session response:', createResponse);
+      
+      if (createResponse.success && createResponse.data) {
+        // The response contains a 'session' object with the session details
+        const session = createResponse.data.session;
+        const sessionId = session?.id;
         
-        if (response.success && response.data) {
-          let fetchedQuestions = response.data;
-          
-          // Filter by question types if specified
-          if (config.selectedQuestionTypes && config.selectedQuestionTypes.length > 0) {
-            fetchedQuestions = fetchedQuestions.filter(q => 
-              config.selectedQuestionTypes?.includes(q.type)
-            );
-          }
-          
-          // Shuffle if needed
-          if (config.shuffleQuestions) {
-            fetchedQuestions = [...fetchedQuestions].sort(() => Math.random() - 0.5);
-          }
-          
-          // Limit the number of questions
-          if (config.questionCount !== 'unlimited' && typeof config.questionCount === 'number') {
-            fetchedQuestions = fetchedQuestions.slice(0, config.questionCount);
-          }
-          
-          setQuestions(fetchedQuestions);
-        } else {
-          setError('Failed to load questions');
+        if (!sessionId) {
+          console.error('No session ID in create response:', createResponse.data);
+          setError('Failed to create practice session - no session ID');
+          return;
         }
+        
+        console.log('Created session with ID:', sessionId);
+        setCurrentSessionId(sessionId); // Save the session ID
+        
+        // The create response already includes the quizzes
+        const quizzes = createResponse.data.quizzes || [];
+        console.log('Session created with quizzes:', quizzes);
+        
+        if (quizzes.length > 0) {
+          // Start the session
+          const startResponse = await api.practice.startSession(sessionId);
+          console.log('Start session response:', startResponse);
+          
+          if (startResponse.success) {
+            // Set the questions directly from the create response
+            setQuestions(quizzes);
+          } else {
+            console.error('Failed to start session:', startResponse.error);
+            setError('Failed to start practice session');
+          }
+        } else {
+          console.log('No questions found for the selected criteria');
+          setError('没有找到符合条件的题目');
+        }
+      } else {
+        setError('Failed to create practice session');
       }
     } catch (err) {
       console.error('Error loading questions:', err);
@@ -130,6 +192,7 @@ export default function QuizPracticeWrapper({
   return (
     <QuizPracticeMain
       questions={questions}
+      sessionId={currentSessionId}
       onEnd={onEndPractice}
       onBack={onBack}
     />

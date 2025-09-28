@@ -1,13 +1,13 @@
 import React from 'react';
 import { CheckCircle2, XCircle, BookOpen } from 'lucide-react';
-import { Question } from '../../types/quiz';
+import { QuizQuestion } from '../../types/quiz';
 
 interface SingleChoiceQuestionProps {
-  question: Question;
+  question: QuizQuestion;
   selectedAnswer: string | null;
   showResult: boolean;
   onAnswerSelect: (answer: string) => void;
-  getCorrectAnswerLetter: (question: Question) => string;
+  getCorrectAnswerLetter: (question: QuizQuestion) => string;
   isAnswerCorrect: () => boolean;
 }
 

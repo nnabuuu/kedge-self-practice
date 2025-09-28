@@ -1,5 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Question, PracticeConfig } from '../types/quiz';
+import { QuizQuestion } from '../types/quiz';
+import { api } from '../services/api';
+import ReportModal from './ReportModal';
+import MyReports from './MyReports';
 
 import {
   SingleChoiceQuestion,
@@ -10,14 +13,15 @@ import {
 } from './QuizPractice';
 
 interface QuizPracticeProps {
-  questions: Question[];
-  config: PracticeConfig;
+  questions: QuizQuestion[];
+  sessionId?: string;
   onEnd: (results: any) => void;
   onBack: () => void;
 }
 
 export default function QuizPractice({
   questions,
+  sessionId,
   onEnd,
   onBack
 }: QuizPracticeProps) {
@@ -135,7 +139,7 @@ export default function QuizPractice({
   };
 
   // Get correct answer letter for single choice
-  const getCorrectAnswerLetter = (question: Question) => {
+  const getCorrectAnswerLetter = (question: QuizQuestion) => {
     if (typeof question.answer === 'string') {
       return question.answer;
     }
@@ -253,6 +257,22 @@ export default function QuizPractice({
 
   const startTime = useRef(Date.now());
 
+  // Handle report submission
+  const handleReportSubmit = async (report: any) => {
+    try {
+      const response = await api.submitQuizReport(report);
+      if (response.success) {
+        alert('问题已报告，感谢您的反馈！');
+        setShowReportModal(false);
+      } else {
+        alert('报告提交失败，请稍后重试');
+      }
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      alert('报告提交失败，请稍后重试');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 relative">
       {/* Background decorations */}
@@ -360,6 +380,29 @@ export default function QuizPractice({
           </div>
         </div>
       </div>
+      
+      {/* Report Modal */}
+      {showReportModal && currentQuestion && (
+        <ReportModal
+          quiz={currentQuestion}
+          sessionId={sessionId}
+          userAnswer={
+            isSingleChoice ? (selectedAnswer || '') : 
+            isMultipleChoice ? (selectedMultipleAnswers.length > 0 ? selectedMultipleAnswers.join(',') : '') :
+            isFillInBlank ? (fillInBlankAnswers.length > 0 ? fillInBlankAnswers.join(',') : '') :
+            (essayAnswer || '')
+          }
+          onSubmit={handleReportSubmit}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
+      
+      {/* My Reports Modal */}
+      {showMyReports && (
+        <MyReports
+          onClose={() => setShowMyReports(false)}
+        />
+      )}
     </div>
   );
 };

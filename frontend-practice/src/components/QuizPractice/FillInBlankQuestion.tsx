@@ -1,8 +1,8 @@
 import React from 'react';
-import { Question } from '../../types/quiz';
+import { QuizQuestion } from '../../types/quiz';
 
 interface FillInBlankQuestionProps {
-  question: Question;
+  question: QuizQuestion;
   answers: string[];
   showHints: boolean;
   onAnswerChange: (index: number, value: string) => void;

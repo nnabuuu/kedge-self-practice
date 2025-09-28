@@ -62,7 +62,7 @@ export class QuizReportController {
     @Body(new ZodValidationPipe(SubmitQuizReportSchema)) data: SubmitQuizReportDto
   ) {
     try {
-      const report = await this.reportService.submitReport(req.user.id, data);
+      const report = await this.reportService.submitReport(req.user.userId, data);
       return {
         success: true,
         data: {
@@ -97,7 +97,7 @@ export class QuizReportController {
     @Request() req: any,
     @Query(new ZodValidationPipe(GetReportsQuerySchema)) query: GetReportsQueryDto
   ) {
-    const reports = await this.reportService.getUserReports(req.user.id, query);
+    const reports = await this.reportService.getUserReports(req.user.userId, query);
     return {
       success: true,
       data: reports
@@ -116,7 +116,7 @@ export class QuizReportController {
   ) {
     try {
       const report = await this.reportService.updateUserReport(
-        req.user.id,
+        req.user.userId,
         reportId,
         data
       );
@@ -169,13 +169,13 @@ export class QuizReportController {
     try {
       const report = await this.reportService.updateReportStatus(
         reportId,
-        req.user.id,
+        req.user.userId,
         data
       );
       
       // Get resolver info
       const resolverInfo = report.resolved_by ? {
-        id: req.user.id,
+        id: req.user.userId,
         name: req.user.name || 'Teacher'
       } : null;
 
@@ -205,7 +205,7 @@ export class QuizReportController {
     @Request() req: any,
     @Body(new ZodValidationPipe(BulkUpdateReportsSchema)) data: BulkUpdateReportsDto
   ) {
-    const result = await this.reportService.bulkUpdateReports(req.user.id, data);
+    const result = await this.reportService.bulkUpdateReports(req.user.userId, data);
     return {
       success: true,
       data: {

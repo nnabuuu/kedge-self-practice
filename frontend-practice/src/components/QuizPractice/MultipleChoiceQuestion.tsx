@@ -1,9 +1,9 @@
 import React from 'react';
 import { CheckCircle2, XCircle, BookOpen } from 'lucide-react';
-import { Question } from '../../types/quiz';
+import { QuizQuestion } from '../../types/quiz';
 
 interface MultipleChoiceQuestionProps {
-  question: Question;
+  question: QuizQuestion;
   selectedAnswers: string[];
   showResult: boolean;
   onAnswerToggle: (answer: string) => void;

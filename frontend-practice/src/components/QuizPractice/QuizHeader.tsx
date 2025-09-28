@@ -1,13 +1,13 @@
 import React from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Home, CheckCircle, Volume2, Flag } from 'lucide-react';
-import { Question } from '../../types/quiz';
+import { QuizQuestion } from '../../types/quiz';
 
 interface QuizHeaderProps {
   currentQuestionIndex: number;
   viewingQuestionIndex: number;
   workingQuestionIndex: number;
   totalQuestions: number;
-  currentQuestion: Question;
+  currentQuestion: QuizQuestion;
   answers: any[];
   isEssay: boolean;
   onBack: () => void;
