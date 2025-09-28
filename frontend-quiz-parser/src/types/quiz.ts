@@ -16,6 +16,7 @@ export interface QuizItem {
   originalParagraph?: string;
   images?: string[]; // URLs or base64 encoded images
   attachments?: string[]; // Server attachment URLs
+  hints?: (string | null)[]; // Hints for fill-in-the-blank questions, e.g., ["人名", "朝代", null]
 }
 
 export interface GPTQuizResponse {

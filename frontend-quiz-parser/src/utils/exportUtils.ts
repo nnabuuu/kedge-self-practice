@@ -44,6 +44,14 @@ export const exportToExcel = (quizWithKnowledgePoints: QuizWithKnowledgePoint[])
                    String(item.answer);
     }
 
+    // Format hints for fill-in-the-blank questions
+    let hintsText = '';
+    if (item.type === 'fill-in-the-blank' && item.hints && Array.isArray(item.hints)) {
+      hintsText = item.hints.map((hint, idx) => 
+        hint && hint !== null ? `空格${idx + 1}: ${hint}` : `空格${idx + 1}: 无提示`
+      ).join('\n');
+    }
+
     // Format knowledge point
     const knowledgePointTopic = item.knowledgePoint?.topic || '未匹配';
     
@@ -58,6 +66,7 @@ export const exportToExcel = (quizWithKnowledgePoints: QuizWithKnowledgePoint[])
       '题干': item.question,
       '选项': optionsText,
       '答案': answerText,
+      '提示词': hintsText,
       '题型': getQuestionTypeLabel(item.type),
       '知识点': knowledgePointTopic,
       '知识点全部信息': knowledgePointFull
@@ -74,6 +83,7 @@ export const exportToExcel = (quizWithKnowledgePoints: QuizWithKnowledgePoint[])
     { wch: 50 },  // 题干
     { wch: 40 },  // 选项
     { wch: 30 },  // 答案
+    { wch: 20 },  // 提示词
     { wch: 10 },  // 题型
     { wch: 30 },  // 知识点
     { wch: 60 }   // 知识点全部信息

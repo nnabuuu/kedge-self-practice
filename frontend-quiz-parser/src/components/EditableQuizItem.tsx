@@ -48,13 +48,17 @@ export const EditableQuizItem: React.FC<EditableQuizItemProps> = ({ item, onSave
       const count = matches ? matches.length : 0;
       setBlanksCount(count);
       
-      // Update answer array to match blanks count
+      // Update answer and hints arrays to match blanks count
       if (count > 0) {
         const currentAnswers = Array.isArray(editedItem.answer) 
           ? editedItem.answer 
           : typeof editedItem.answer === 'string' 
             ? [editedItem.answer]
             : [];
+        
+        const currentHints = Array.isArray(editedItem.hints)
+          ? editedItem.hints
+          : [];
         
         // Adjust answer array length
         if (currentAnswers.length !== count) {
@@ -65,7 +69,19 @@ export const EditableQuizItem: React.FC<EditableQuizItemProps> = ({ item, onSave
           while (newAnswers.length > count) {
             newAnswers.pop();
           }
-          setEditedItem({ ...editedItem, answer: newAnswers });
+          setEditedItem(prev => ({ ...prev, answer: newAnswers }));
+        }
+        
+        // Adjust hints array length
+        if (currentHints.length !== count) {
+          const newHints = [...currentHints];
+          while (newHints.length < count) {
+            newHints.push(null);
+          }
+          while (newHints.length > count) {
+            newHints.pop();
+          }
+          setEditedItem(prev => ({ ...prev, hints: newHints }));
         }
       }
     }
@@ -175,6 +191,13 @@ export const EditableQuizItem: React.FC<EditableQuizItemProps> = ({ item, onSave
     const answers = Array.isArray(editedItem.answer) ? [...editedItem.answer] : [];
     answers[index] = value;
     setEditedItem({ ...editedItem, answer: answers });
+  };
+
+  const handleHintChange = (index: number, value: string) => {
+    const hints = Array.isArray(editedItem.hints) ? [...editedItem.hints] : [];
+    // Empty string or null are both treated as no hint
+    hints[index] = value.trim() === '' ? null : value;
+    setEditedItem({ ...editedItem, hints });
   };
 
   const handleChoiceAnswerToggle = (optionIndex: number) => {
@@ -502,33 +525,76 @@ export const EditableQuizItem: React.FC<EditableQuizItemProps> = ({ item, onSave
         </div>
       )}
 
-      {/* Edit Answers for Fill-in-the-blank */}
+      {/* Edit Answers and Hints for Fill-in-the-blank */}
       {editedItem.type === 'fill-in-the-blank' && blanksCount > 0 && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            答案 (对应每个空格)
-          </label>
-          <div className="space-y-2">
-            {Array.from({ length: blanksCount }).map((_, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <span className="flex-shrink-0 text-sm text-gray-600">
-                  空格 {index + 1}:
-                </span>
-                <input
-                  type="text"
-                  value={
-                    Array.isArray(editedItem.answer) 
-                      ? editedItem.answer[index] || ''
-                      : index === 0 ? String(editedItem.answer || '') : ''
-                  }
-                  onChange={(e) => handleFillInBlankAnswerChange(index, e.target.value)}
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder={`第 ${index + 1} 个空格的答案`}
-                />
-              </div>
-            ))}
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              答案 (对应每个空格)
+            </label>
+            <div className="space-y-2">
+              {Array.from({ length: blanksCount }).map((_, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="flex-shrink-0 text-sm text-gray-600">
+                    空格 {index + 1}:
+                  </span>
+                  <input
+                    type="text"
+                    value={
+                      Array.isArray(editedItem.answer) 
+                        ? editedItem.answer[index] || ''
+                        : index === 0 ? String(editedItem.answer || '') : ''
+                    }
+                    onChange={(e) => handleFillInBlankAnswerChange(index, e.target.value)}
+                    className="flex-1 px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={`第 ${index + 1} 个空格的答案`}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              提示词 (可选，帮助学生理解需要填写的内容类型)
+              <Info className="w-3 h-3 inline ml-1 text-gray-500" />
+            </label>
+            <div className="space-y-2">
+              {Array.from({ length: blanksCount }).map((_, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="flex-shrink-0 text-sm text-gray-600">
+                    空格 {index + 1}:
+                  </span>
+                  <input
+                    type="text"
+                    value={
+                      Array.isArray(editedItem.hints)
+                        ? editedItem.hints[index] || ''
+                        : ''
+                    }
+                    onChange={(e) => handleHintChange(index, e.target.value)}
+                    className="flex-1 px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="如：人名、朝代、年份、地名等"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+              <div className="font-medium mb-1">常用提示词参考：</div>
+              <div className="space-y-0.5">
+                <div><span className="font-medium">时间类：</span>年份、朝代、世纪、时期、年代</div>
+                <div><span className="font-medium">人物类：</span>人名、皇帝、领袖、思想家、将领</div>
+                <div><span className="font-medium">地理类：</span>地名、国家、都城、地区、关隘</div>
+                <div><span className="font-medium">事件类：</span>战争、事件、条约、改革、起义</div>
+                <div><span className="font-medium">文化类：</span>著作、发明、制度、学派、文物</div>
+                <div><span className="font-medium">其他类：</span>数字、称号、民族、王朝、组织</div>
+              </div>
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              提示词会在练习时显示在空格后，如"____（人名）"
+            </div>
+          </div>
+        </>
       )}
 
       {/* Edit Answer for Subjective Questions */}

@@ -290,8 +290,20 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
 
   const renderFillInBlankQuestion = (item: QuizItem, index: number) => {
     const { icon: Icon, label, colorClasses } = getQuestionTypeInfo(item.type);
-    const answer = typeof item.answer === 'string' ? item.answer : Array.isArray(item.answer) ? item.answer.join(', ') : '';
+    const answers = Array.isArray(item.answer) ? item.answer : [item.answer];
+    const hints = Array.isArray(item.hints) ? item.hints : [];
     const globalIndex = quizItems.findIndex(q => q === item);
+    
+    // Format question with hints
+    let questionWithHints = item.question;
+    if (hints.length > 0) {
+      let blankIndex = 0;
+      questionWithHints = item.question.replace(/_{4,}/g, (match) => {
+        const hint = hints[blankIndex];
+        blankIndex++;
+        return hint && hint !== null ? `${match}（${hint}）` : match;
+      });
+    }
     
     return (
       <div key={index} className="relative bg-white rounded-lg shadow-md border border-gray-200 p-6">
@@ -313,7 +325,7 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
         
         <div className="mb-4">
           <QuizImageDisplay 
-            content={item.question}
+            content={questionWithHints}
             images={item.images}
             imageMapping={imageMapping}
             className="text-gray-700 text-base leading-relaxed"
@@ -321,10 +333,24 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
         </div>
         
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-          <div className="flex items-center space-x-2">
-            <CheckCircle className="w-5 h-5 text-emerald-500" />
-            <span className="text-sm font-medium text-emerald-700">正确答案:</span>
-            <span className="text-emerald-800 font-semibold">{answer}</span>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
+              <span className="text-sm font-medium text-emerald-700">正确答案:</span>
+            </div>
+            <div className="ml-7 space-y-1">
+              {answers.map((ans, idx) => (
+                <div key={idx} className="flex items-center space-x-2">
+                  <span className="text-sm text-emerald-600">空格 {idx + 1}:</span>
+                  <span className="text-emerald-800 font-semibold">{ans}</span>
+                  {hints[idx] && hints[idx] !== null && (
+                    <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
+                      提示：{hints[idx]}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         

@@ -12,6 +12,7 @@ interface Quiz {
   options?: string[];
   answer: string | string[] | number | number[];
   alternative_answers?: string[]; // Alternative correct answers for fill-in-the-blank
+  hints?: (string | null)[]; // Hints for fill-in-the-blank questions
   difficulty?: 'easy' | 'medium' | 'hard';
   knowledgePointId?: string;
   knowledge_point_id?: string; // Backend field name
@@ -67,6 +68,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const [isComposing, setIsComposing] = useState(false); // Track IME composition state
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [selectedHintsFilter, setSelectedHintsFilter] = useState<string>('all'); // 'all', 'with-hints', 'without-hints'
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -153,7 +155,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedType, selectedDifficulty, selectedTags, selectedKnowledgePointId, selectedVolume, selectedUnit, selectedLesson]);
+  }, [searchTerm, selectedType, selectedDifficulty, selectedHintsFilter, selectedTags, selectedKnowledgePointId, selectedVolume, selectedUnit, selectedLesson]);
 
   const fetchQuizzes = async () => {
     try {
@@ -1040,6 +1042,21 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                   <option value="hard">困难</option>
                 </select>
               </div>
+              
+              {/* Hints Filter - Only show for fill-in-the-blank */}
+              {(selectedType === 'fill-in-the-blank' || selectedType === 'all') && (
+                <div className="lg:col-span-2">
+                  <select
+                    value={selectedHintsFilter}
+                    onChange={(e) => setSelectedHintsFilter(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">全部题目</option>
+                    <option value="with-hints">有提示词</option>
+                    <option value="without-hints">无提示词</option>
+                  </select>
+                </div>
+              )}
 
               {/* Tags Filter */}
               <div className="lg:col-span-3">
@@ -1187,6 +1204,15 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                   filteredQuizzes = filteredQuizzes.filter(quiz => quiz.type === selectedType);
                 }
 
+                // Filter by hints (only for fill-in-the-blank questions)
+                if (selectedHintsFilter !== 'all') {
+                  filteredQuizzes = filteredQuizzes.filter(quiz => {
+                    if (quiz.type !== 'fill-in-the-blank') return false;
+                    const hasHints = quiz.hints && quiz.hints.filter(h => h !== null).length > 0;
+                    return selectedHintsFilter === 'with-hints' ? hasHints : !hasHints;
+                  });
+                }
+
                 // Filter by difficulty
                 if (selectedDifficulty !== 'all') {
                   filteredQuizzes = filteredQuizzes.filter(quiz => quiz.difficulty === selectedDifficulty);
@@ -1293,6 +1319,11 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                                 {quiz.alternative_answers.length} 个替代答案
                               </span>
                             )}
+                            {quiz.type === 'fill-in-the-blank' && quiz.hints && quiz.hints.filter(h => h !== null).length > 0 && (
+                              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                                {quiz.hints.filter(h => h !== null).length} 个提示词
+                              </span>
+                            )}
                             {quiz.difficulty && (
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(quiz.difficulty)}`}>
                                 {getDifficultyLabel(quiz.difficulty)}
@@ -1337,6 +1368,16 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                                   {Array.isArray(quiz.answer) ? quiz.answer.join(', ') : quiz.answer}
                                 </span>
                               </div>
+                              {quiz.hints && quiz.hints.filter(h => h !== null).length > 0 && (
+                                <div className="mt-1 text-sm">
+                                  <span className="font-medium text-purple-900">提示词：</span>
+                                  <span className="text-purple-700 ml-1">
+                                    {quiz.hints.map((hint, idx) => 
+                                      hint ? `空格${idx + 1}: ${hint}` : null
+                                    ).filter(Boolean).join(', ')}
+                                  </span>
+                                </div>
+                              )}
                               {quiz.alternative_answers && quiz.alternative_answers.length > 0 && (
                                 <div className="mt-1 text-sm">
                                   <span className="font-medium text-green-900">替代答案：</span>
@@ -1932,6 +1973,71 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                   
                   <p className="mt-2 text-xs text-gray-500">
                     💡 提示：当学生提交的答案被 AI 验证为正确时，系统会自动添加到替代答案列表中
+                  </p>
+                </div>
+              )}
+              
+              {/* Hints for Fill-in-the-blank */}
+              {editingQuiz.type === 'fill-in-the-blank' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    提示词 <span className="text-xs text-gray-500">(帮助学生理解需要填写的内容类型)</span>
+                  </label>
+                  
+                  {(() => {
+                    const blanksCount = (editingQuiz.question.match(/_{2,}/g) || []).length;
+                    const currentHints = editingQuiz.hints || [];
+                    
+                    if (blanksCount > 0) {
+                      return (
+                        <div className="space-y-2">
+                          {Array.from({ length: blanksCount }, (_, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <span className="text-sm text-gray-600 w-20">
+                                空格 {index + 1}:
+                              </span>
+                              <input
+                                type="text"
+                                value={currentHints[index] || ''}
+                                onChange={(e) => {
+                                  const newHints = [...currentHints];
+                                  // Ensure the array is long enough
+                                  while (newHints.length <= index) {
+                                    newHints.push(null);
+                                  }
+                                  // Set the value, treating empty string as null
+                                  newHints[index] = e.target.value.trim() === '' ? null : e.target.value;
+                                  setEditingQuiz({
+                                    ...editingQuiz,
+                                    hints: newHints
+                                  });
+                                }}
+                                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                placeholder="如：人名、朝代、年份、地名等"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <p className="text-sm text-gray-500">请先在题目中添加空格（使用至少2个下划线 __）</p>
+                      );
+                    }
+                  })()}
+                  
+                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                    <div className="font-medium mb-1">常用提示词参考：</div>
+                    <div className="grid grid-cols-2 gap-1">
+                      <div><span className="font-medium">时间类：</span>年份、朝代、世纪、时期</div>
+                      <div><span className="font-medium">人物类：</span>人名、皇帝、领袖、将领</div>
+                      <div><span className="font-medium">地理类：</span>地名、国家、都城、地区</div>
+                      <div><span className="font-medium">事件类：</span>战争、事件、条约、改革</div>
+                    </div>
+                  </div>
+                  
+                  <p className="mt-2 text-xs text-gray-500">
+                    💡 提示词会在练习时显示在空格后，如"____（人名）"
                   </p>
                 </div>
               )}
