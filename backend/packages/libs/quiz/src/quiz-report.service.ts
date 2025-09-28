@@ -220,7 +220,8 @@ export class QuizReportService {
       SELECT 
         rs.*,
         kp.topic as knowledge_point_topic,
-        kp.subject as knowledge_point_subject
+        kp.volume as knowledge_point_volume,
+        kp.unit as knowledge_point_unit
       FROM report_summary rs
       LEFT JOIN kedge_practice.knowledge_points kp ON rs.knowledge_point_id = kp.id
       ${summaryWhere}
