@@ -52,6 +52,7 @@ export default function ReportManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [resolutionNote, setResolutionNote] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [backendReady, setBackendReady] = useState(true);
 
   useEffect(() => {
     fetchReports();
@@ -94,6 +95,11 @@ export default function ReportManagement() {
         }));
         
         setReports(transformedReports);
+      } else if (response.statusCode === 404) {
+        // Backend endpoint not deployed yet - show message
+        console.log('Report management endpoint not available yet');
+        setBackendReady(false);
+        setReports([]);
       } else {
         console.error('Failed to fetch reports:', response);
         setReports([]);
@@ -243,6 +249,12 @@ export default function ReportManagement() {
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <p className="mt-2 text-gray-600">加载中...</p>
+        </div>
+      ) : !backendReady ? (
+        <div className="text-center py-12">
+          <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-3" />
+          <p className="text-gray-700 font-medium">报告功能正在部署中</p>
+          <p className="text-gray-500 text-sm mt-2">此功能即将上线，请稍后再试</p>
         </div>
       ) : filteredReports.length === 0 ? (
         <div className="text-center py-12">
