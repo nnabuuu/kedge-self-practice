@@ -12,7 +12,7 @@ import HomePage from './components/HomePage';
 import SubjectSelection from './components/SubjectSelection';
 import PracticeMenu from './components/PracticeMenu';
 import KnowledgePointSelection from './components/KnowledgePointSelection';
-import QuizPractice from './components/QuizPractice';
+import QuizPractice from './components/QuizPracticeMain';
 import QuizResults from './components/QuizResults';
 import KnowledgeAnalysis from './components/KnowledgeAnalysis';
 import PracticeHistoryComponent from './components/PracticeHistory';

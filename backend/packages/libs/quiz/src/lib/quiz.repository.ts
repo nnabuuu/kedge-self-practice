@@ -91,7 +91,7 @@ export class QuizRepository {
           SELECT id, type, question, options, answer, 
                  original_paragraph as "originalParagraph", 
                  images, tags, knowledge_point_id,
-                 alternative_answers,
+                 alternative_answers, hints,
                  NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           WHERE id = ${id}
@@ -122,7 +122,7 @@ export class QuizRepository {
           SELECT id, type, question, options, answer, 
                  original_paragraph as "originalParagraph", 
                  images, tags, knowledge_point_id,
-                 alternative_answers,
+                 alternative_answers, hints,
                  NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           ORDER BY id DESC
@@ -187,11 +187,14 @@ export class QuizRepository {
               images = ${sql.json(updatedQuiz.images ?? [])},
               tags = ${sql.json(updatedQuiz.tags ?? [])},
               knowledge_point_id = ${updatedQuiz.knowledge_point_id ?? null},
+              alternative_answers = ${sql.json(updatedQuiz.alternative_answers ?? [])},
+              hints = ${sql.json(updatedQuiz.hints ?? null)},
               updated_at = now()
           WHERE id = ${id}
           RETURNING id, type, question, options, answer, 
                     original_paragraph as "originalParagraph", 
                     images, tags, knowledge_point_id,
+                    alternative_answers, hints,
                     NULL as "knowledgePoint"
         `,
       );
@@ -215,6 +218,7 @@ export class QuizRepository {
           SELECT id, type, question, options, answer, 
                  original_paragraph as "originalParagraph", 
                  images, tags, knowledge_point_id,
+                 alternative_answers, hints,
                  NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           WHERE tags ?| ${sql.array(tags, 'text')}

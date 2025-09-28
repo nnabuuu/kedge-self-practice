@@ -79,6 +79,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const [showKnowledgePointPicker, setShowKnowledgePointPicker] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [newAlternativeAnswer, setNewAlternativeAnswer] = useState('');
+  const [activeBlankTab, setActiveBlankTab] = useState(0);
   const [showPolishModal, setShowPolishModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [showRematchModal, setShowRematchModal] = useState(false);
@@ -198,14 +199,38 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
         console.log('First quiz raw from API:', data.data?.[0]);
         // Check if we actually got quiz data
         if (data.data && data.data.length > 0) {
-          // Ensure each quiz has an id field
-          const quizzesWithIds = data.data.map((quiz: any, index: number) => {
+          // Check localStorage for any updates
+          const cachedQuizzes = localStorage.getItem('cached_quizzes');
+          let quizzesWithIds = data.data.map((quiz: any, index: number) => {
             console.log(`Quiz ${index}:`, quiz, 'has ID:', quiz.id);
             return {
               ...quiz,
               id: quiz.id || quiz._id || `quiz-${index}` // Fallback to generated ID if missing
             };
           });
+          
+          // Merge with cached updates if available
+          if (cachedQuizzes) {
+            try {
+              const parsedCache = JSON.parse(cachedQuizzes);
+              const cacheMap = new Map(parsedCache.map((q: Quiz) => [q.id, q]));
+              quizzesWithIds = quizzesWithIds.map((quiz: Quiz) => {
+                const cached = cacheMap.get(quiz.id);
+                if (cached && cached.hints) {
+                  // Preserve hints and other updated fields from cache
+                  return { ...quiz, ...cached };
+                }
+                return quiz;
+              });
+              console.log('Merged with cached updates');
+            } catch (e) {
+              console.error('Failed to parse cached quizzes:', e);
+            }
+          }
+          
+          // Save to localStorage for future use
+          localStorage.setItem('cached_quizzes', JSON.stringify(quizzesWithIds));
+          
           console.log('Processed quizzes:', quizzesWithIds);
           setQuizzes(quizzesWithIds);
           setTotalPages(Math.ceil((data.count || data.data.length) / itemsPerPage));
@@ -564,6 +589,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
     setEditingQuiz(quiz);
     setNewTag(''); // Clear the new tag input
     setNewAlternativeAnswer(''); // Clear the new alternative answer input
+    setActiveBlankTab(0); // Reset active tab
     setShowEditModal(true);
     // Fetch knowledge points for selection
     if (knowledgePoints.length === 0) {
@@ -600,6 +626,21 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       console.error('Failed to update quiz:', error);
       // Update local state anyway for demo purposes
       setQuizzes(prev => prev.map(q => q.id === updatedQuiz.id ? updatedQuiz : q));
+    }
+    
+    // Also persist to localStorage for mock data scenario
+    const storedQuizzes = localStorage.getItem('cached_quizzes');
+    if (storedQuizzes) {
+      try {
+        const parsedQuizzes = JSON.parse(storedQuizzes);
+        const updatedQuizzes = parsedQuizzes.map((q: Quiz) => 
+          q.id === updatedQuiz.id ? updatedQuiz : q
+        );
+        localStorage.setItem('cached_quizzes', JSON.stringify(updatedQuizzes));
+        console.log('Updated quiz saved to localStorage');
+      } catch (e) {
+        console.error('Failed to update localStorage:', e);
+      }
     }
     
     setShowEditModal(false);
@@ -1361,69 +1402,83 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                           
                           {/* Answer for fill-in-the-blank */}
                           {quiz.type === 'fill-in-the-blank' && (
-                            <div className="mb-3 p-2 bg-blue-50 rounded-lg">
-                              <div className="text-sm">
-                                <span className="font-medium text-blue-900">标准答案：</span>
-                                <span className="text-blue-700 ml-1">
-                                  {Array.isArray(quiz.answer) ? quiz.answer.join(', ') : quiz.answer}
-                                </span>
-                              </div>
-                              {quiz.hints && quiz.hints.filter(h => h !== null).length > 0 && (
-                                <div className="mt-1 text-sm">
-                                  <span className="font-medium text-purple-900">提示词：</span>
-                                  <span className="text-purple-700 ml-1">
-                                    {quiz.hints.map((hint, idx) => 
-                                      hint ? `空格${idx + 1}: ${hint}` : null
-                                    ).filter(Boolean).join(', ')}
-                                  </span>
-                                </div>
-                              )}
-                              {quiz.alternative_answers && quiz.alternative_answers.length > 0 && (
-                                <div className="mt-1 text-sm">
-                                  <span className="font-medium text-green-900">替代答案：</span>
-                                  {(() => {
-                                    const blanksCount = (quiz.question.match(/_{2,}/g) || []).length;
-                                    if (blanksCount > 1) {
-                                      // Group alternative answers by blank index
-                                      const groupedAnswers: { [key: number]: string[] } = {};
-                                      quiz.alternative_answers.forEach(answer => {
-                                        const match = answer.match(/^\[(\d+)\](.+)/);
-                                        if (match) {
-                                          const blankIndex = parseInt(match[1]);
-                                          const answerText = match[2];
-                                          if (!groupedAnswers[blankIndex]) {
-                                            groupedAnswers[blankIndex] = [];
-                                          }
-                                          groupedAnswers[blankIndex].push(answerText);
-                                        } else {
-                                          // Legacy format - treat as for first blank
-                                          if (!groupedAnswers[0]) {
-                                            groupedAnswers[0] = [];
-                                          }
-                                          groupedAnswers[0].push(answer);
-                                        }
-                                      });
-                                      
-                                      return (
-                                        <span className="text-green-700 ml-1">
-                                          {Object.entries(groupedAnswers).map(([idx, answers]) => (
-                                            <span key={idx}>
-                                              空格{parseInt(idx) + 1}: {answers.join(', ')}
-                                              {parseInt(idx) < Object.keys(groupedAnswers).length - 1 && ' | '}
-                                            </span>
-                                          ))}
+                            <div className="mb-3">
+                              {(() => {
+                                const blanksCount = (quiz.question.match(/_{2,}/g) || []).length;
+                                const standardAnswers = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
+                                const hints = quiz.hints || [];
+                                
+                                if (blanksCount > 1) {
+                                  // Multiple blanks - show in table format
+                                  return (
+                                    <div className="bg-gray-50 rounded-lg p-2">
+                                      <table className="w-full text-sm">
+                                        <thead>
+                                          <tr className="text-xs text-gray-600 border-b border-gray-200">
+                                            <th className="text-left font-medium py-1 px-2 w-16">空格</th>
+                                            <th className="text-left font-medium py-1 px-2">标准答案</th>
+                                            {hints.some(h => h !== null) && (
+                                              <th className="text-left font-medium py-1 px-2">提示词</th>
+                                            )}
+                                            {quiz.alternative_answers && quiz.alternative_answers.length > 0 && (
+                                              <th className="text-left font-medium py-1 px-2">替代答案</th>
+                                            )}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {Array.from({ length: blanksCount }, (_, idx) => {
+                                            // Get alternative answers for this blank
+                                            const altAnswers = (quiz.alternative_answers || [])
+                                              .filter(a => a.startsWith(`[${idx}]`))
+                                              .map(a => a.replace(`[${idx}]`, ''));
+                                            
+                                            return (
+                                              <tr key={idx} className="border-t border-gray-200">
+                                                <td className="py-1 px-2 text-gray-600 font-medium">{idx + 1}</td>
+                                                <td className="py-1 px-2 text-blue-700 font-medium">
+                                                  {standardAnswers[idx] || '-'}
+                                                </td>
+                                                {hints.some(h => h !== null) && (
+                                                  <td className="py-1 px-2 text-purple-600">
+                                                    {hints[idx] || '-'}
+                                                  </td>
+                                                )}
+                                                {quiz.alternative_answers && quiz.alternative_answers.length > 0 && (
+                                                  <td className="py-1 px-2 text-green-600 text-xs">
+                                                    {altAnswers.length > 0 ? altAnswers.join(', ') : '-'}
+                                                  </td>
+                                                )}
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  );
+                                } else {
+                                  // Single blank - inline display with badges
+                                  return (
+                                    <div className="flex flex-wrap gap-2">
+                                      <span className="inline-flex items-center px-2 py-1 bg-blue-50 rounded text-xs">
+                                        <span className="font-medium text-blue-900 mr-1">答案:</span>
+                                        <span className="text-blue-700">{standardAnswers[0]}</span>
+                                      </span>
+                                      {hints[0] && (
+                                        <span className="inline-flex items-center px-2 py-1 bg-purple-50 rounded text-xs">
+                                          <span className="font-medium text-purple-900 mr-1">提示:</span>
+                                          <span className="text-purple-700">{hints[0]}</span>
                                         </span>
-                                      );
-                                    } else {
-                                      return (
-                                        <span className="text-green-700 ml-1">
-                                          {quiz.alternative_answers.join(', ')}
+                                      )}
+                                      {quiz.alternative_answers && quiz.alternative_answers.length > 0 && (
+                                        <span className="inline-flex items-center px-2 py-1 bg-green-50 rounded text-xs">
+                                          <span className="font-medium text-green-900 mr-1">替代:</span>
+                                          <span className="text-green-700">{quiz.alternative_answers.join(', ')}</span>
                                         </span>
-                                      );
-                                    }
-                                  })()}
-                                </div>
-                              )}
+                                      )}
+                                    </div>
+                                  );
+                                }
+                              })()}
                             </div>
                           )}
                           
@@ -1814,67 +1869,123 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                 )}
               </div>
 
-              {/* Alternative Answers for Fill-in-the-blank */}
+              {/* Combined Answer Management for Fill-in-the-blank */}
               {editingQuiz.type === 'fill-in-the-blank' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    替代答案 <span className="text-xs text-gray-500">(系统会接受这些答案为正确)</span>
+                    答案管理
                   </label>
                   
                   {(() => {
                     const blanksCount = (editingQuiz.question.match(/_{2,}/g) || []).length;
                     const standardAnswers = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [editingQuiz.answer];
+                    const currentHints = editingQuiz.hints || [];
                     
                     if (blanksCount > 1) {
-                      // Multiple blanks - show answers for each blank separately
+                      // Multiple blanks - use tabbed interface
                       return (
-                        <div className="space-y-3">
-                          {Array.from({ length: blanksCount }, (_, blankIndex) => (
-                            <div key={blankIndex} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium text-gray-700">
-                                  空格 {blankIndex + 1}
-                                </span>
-                                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                  标准答案: {standardAnswers[blankIndex] || '未设置'}
-                                </span>
-                              </div>
-                              
-                              {/* Alternative answers for this blank */}
-                              <div className="flex flex-wrap gap-1 mb-2 min-h-[2rem]">
-                                {(editingQuiz.alternative_answers || [])
-                                  .filter(answer => answer.startsWith(`[${blankIndex}]`))
-                                  .map((answer, idx) => (
-                                    <span
-                                      key={idx}
-                                      className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
-                                    >
-                                      {answer.replace(`[${blankIndex}]`, '')}
-                                      <button
-                                        onClick={() => {
-                                          const newAlternatives = (editingQuiz.alternative_answers || []).filter(a => a !== answer);
-                                          setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
-                                        }}
-                                        className="ml-1 text-green-600 hover:text-green-800"
-                                      >
-                                        ×
-                                      </button>
-                                    </span>
-                                  ))}
-                                {!editingQuiz.alternative_answers?.some(a => a.startsWith(`[${blankIndex}]`)) && (
-                                  <span className="text-gray-400 text-xs">暂无替代答案</span>
+                        <div>
+                          {/* Tab headers */}
+                          <div className="flex border-b border-gray-200 mb-4">
+                            {Array.from({ length: blanksCount }, (_, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setActiveBlankTab(index)}
+                                className={`px-4 py-2 font-medium text-sm transition-colors relative ${
+                                  activeBlankTab === index
+                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                              >
+                                空格 {index + 1}
+                                {currentHints[index] && (
+                                  <span className="ml-2 text-xs text-purple-600">有提示</span>
                                 )}
+                              </button>
+                            ))}
+                          </div>
+                          
+                          {/* Tab content */}
+                          {Array.from({ length: blanksCount }, (_, blankIndex) => (
+                            <div
+                              key={blankIndex}
+                              className={`space-y-2 ${activeBlankTab === blankIndex ? 'block' : 'hidden'}`}
+                            >
+                              {/* Standard Answer */}
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-blue-900 w-20">标准答案</span>
+                                  <input
+                                    type="text"
+                                    value={standardAnswers[blankIndex] || ''}
+                                    onChange={(e) => {
+                                      const newAnswers = [...standardAnswers];
+                                      newAnswers[blankIndex] = e.target.value;
+                                      setEditingQuiz({ ...editingQuiz, answer: newAnswers });
+                                    }}
+                                    className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    placeholder="输入标准答案"
+                                  />
+                                </div>
                               </div>
                               
-                              {/* Add alternative answer for this blank */}
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  placeholder={`为空格 ${blankIndex + 1} 添加替代答案`}
-                                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                  onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
-                                      const input = e.target as HTMLInputElement;
+                              {/* Alternative Answers */}
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-sm font-medium text-green-900 w-20 pt-1">替代答案</span>
+                                  <div className="flex-1">
+                                    <div className="flex flex-wrap gap-1 mb-1 min-h-[1.5rem]">
+                                  {(editingQuiz.alternative_answers || [])
+                                    .filter(answer => answer.startsWith(`[${blankIndex}]`))
+                                    .map((answer, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
+                                      >
+                                        {answer.replace(`[${blankIndex}]`, '')}
+                                        <button
+                                          onClick={() => {
+                                            const newAlternatives = (editingQuiz.alternative_answers || []).filter(a => a !== answer);
+                                            setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
+                                          }}
+                                          className="ml-1 text-green-600 hover:text-green-800"
+                                        >
+                                          ×
+                                        </button>
+                                      </span>
+                                    ))}
+                                      {!editingQuiz.alternative_answers?.some(a => a.startsWith(`[${blankIndex}]`)) && (
+                                        <span className="text-gray-400 text-xs">暂无替代答案</span>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Add alternative answer for this blank */}
+                                    <div className="flex gap-1">
+                                      <input
+                                        type="text"
+                                        placeholder={`添加替代答案`}
+                                        className="flex-1 px-2 py-1 text-xs border border-green-300 rounded focus:ring-2 focus:ring-green-500"
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const input = e.target as HTMLInputElement;
+                                        const value = input.value.trim();
+                                        if (value) {
+                                          const newAnswer = `[${blankIndex}]${value}`;
+                                          const currentAlternatives = editingQuiz.alternative_answers || [];
+                                          if (!currentAlternatives.includes(newAnswer)) {
+                                            setEditingQuiz({
+                                              ...editingQuiz,
+                                              alternative_answers: [...currentAlternatives, newAnswer]
+                                            });
+                                          }
+                                          input.value = '';
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    onClick={(e) => {
+                                      const input = e.currentTarget.previousElementSibling as HTMLInputElement;
                                       const value = input.value.trim();
                                       if (value) {
                                         const newAnswer = `[${blankIndex}]${value}`;
@@ -1887,136 +1998,170 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                                         }
                                         input.value = '';
                                       }
-                                    }
-                                  }}
-                                />
-                                <button
-                                  onClick={(e) => {
-                                    const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                                    const value = input.value.trim();
-                                    if (value) {
-                                      const newAnswer = `[${blankIndex}]${value}`;
-                                      const currentAlternatives = editingQuiz.alternative_answers || [];
-                                      if (!currentAlternatives.includes(newAnswer)) {
-                                        setEditingQuiz({
-                                          ...editingQuiz,
-                                          alternative_answers: [...currentAlternatives, newAnswer]
-                                        });
+                                    }}
+                                        className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                                      >
+                                        添加
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Hint */}
+                              <div className="bg-purple-50 border border-purple-200 rounded-lg p-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-purple-900 w-20">提示词</span>
+                                  <input
+                                    type="text"
+                                    value={currentHints[blankIndex] || ''}
+                                    onChange={(e) => {
+                                      const newHints = [...currentHints];
+                                      while (newHints.length <= blankIndex) {
+                                        newHints.push(null);
                                       }
-                                      input.value = '';
-                                    }
-                                  }}
-                                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors duration-200"
-                                >
-                                  添加
-                                </button>
+                                      newHints[blankIndex] = e.target.value.trim() === '' ? null : e.target.value;
+                                      setEditingQuiz({
+                                        ...editingQuiz,
+                                        hints: newHints
+                                      });
+                                    }}
+                                    className="flex-1 px-2 py-1 text-sm border border-purple-300 rounded focus:ring-2 focus:ring-purple-500"
+                                    placeholder="如：人名、朝代、年份、地名等"
+                                  />
+                                  {/* Info icon with tooltip */}
+                                  <div className="relative group">
+                                    <svg className="w-4 h-4 text-purple-600 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                    <div className="absolute right-0 top-6 w-64 p-2 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                      <div className="text-xs text-gray-700">
+                                        <div className="font-medium mb-1">常用提示词：</div>
+                                        <div className="space-y-0.5">
+                                          <div><span className="font-medium">时间：</span>年份、朝代、世纪</div>
+                                          <div><span className="font-medium">人物：</span>人名、皇帝、将领</div>
+                                          <div><span className="font-medium">地理：</span>地名、国家、都城</div>
+                                          <div><span className="font-medium">事件：</span>战争、条约、改革</div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           ))}
                         </div>
                       );
-                    } else {
-                      // Single blank - use the original UI
-                      return (
-                        <>
-                          {/* Current alternative answers display */}
-                          <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border border-gray-300 rounded-lg bg-gray-50 mb-2">
-                            {(editingQuiz.alternative_answers || []).map((answer, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-md"
-                              >
-                                {answer}
-                                <button
-                                  onClick={() => {
-                                    const newAlternatives = (editingQuiz.alternative_answers || []).filter((_, i) => i !== index);
-                                    setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
-                                  }}
-                                  className="ml-2 text-green-600 hover:text-green-800"
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            ))}
-                            {(!editingQuiz.alternative_answers || editingQuiz.alternative_answers.length === 0) && (
-                              <span className="text-gray-400 text-sm">暂无替代答案</span>
-                            )}
-                          </div>
-                          
-                          {/* Add new alternative answer input */}
-                          <div className="flex space-x-2">
-                            <input
-                              type="text"
-                              value={newAlternativeAnswer}
-                              onChange={(e) => setNewAlternativeAnswer(e.target.value)}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleAddAlternativeAnswer();
-                                }
-                              }}
-                              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                              placeholder="输入替代答案，按回车添加"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleAddAlternativeAnswer}
-                              className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                            >
-                              添加
-                            </button>
-                          </div>
-                        </>
-                      );
-                    }
-                  })()}
-                  
-                  <p className="mt-2 text-xs text-gray-500">
-                    💡 提示：当学生提交的答案被 AI 验证为正确时，系统会自动添加到替代答案列表中
-                  </p>
-                </div>
-              )}
-              
-              {/* Hints for Fill-in-the-blank */}
-              {editingQuiz.type === 'fill-in-the-blank' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    提示词 <span className="text-xs text-gray-500">(帮助学生理解需要填写的内容类型)</span>
-                  </label>
-                  
-                  {(() => {
-                    const blanksCount = (editingQuiz.question.match(/_{2,}/g) || []).length;
-                    const currentHints = editingQuiz.hints || [];
-                    
-                    if (blanksCount > 0) {
+                    } else if (blanksCount === 1) {
+                      // Single blank - use a cleaner layout
                       return (
                         <div className="space-y-2">
-                          {Array.from({ length: blanksCount }, (_, index) => (
-                            <div key={index} className="flex items-center gap-2">
-                              <span className="text-sm text-gray-600 w-20">
-                                空格 {index + 1}:
-                              </span>
+                          {/* Standard Answer */}
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-blue-900 w-20">标准答案</span>
                               <input
                                 type="text"
-                                value={currentHints[index] || ''}
+                                value={Array.isArray(editingQuiz.answer) ? editingQuiz.answer[0] : editingQuiz.answer || ''}
                                 onChange={(e) => {
-                                  const newHints = [...currentHints];
-                                  // Ensure the array is long enough
-                                  while (newHints.length <= index) {
-                                    newHints.push(null);
-                                  }
-                                  // Set the value, treating empty string as null
-                                  newHints[index] = e.target.value.trim() === '' ? null : e.target.value;
+                                  setEditingQuiz({ ...editingQuiz, answer: e.target.value });
+                                }}
+                                className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500"
+                                placeholder="输入标准答案"
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Alternative Answers */}
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                            <div className="flex items-start gap-2">
+                              <span className="text-sm font-medium text-green-900 w-20 pt-1">替代答案</span>
+                              <div className="flex-1">
+                                <div className="flex flex-wrap gap-1 mb-1 min-h-[1.5rem]">
+                              {(editingQuiz.alternative_answers || []).map((answer, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
+                                >
+                                  {answer}
+                                  <button
+                                    onClick={() => {
+                                      const newAlternatives = (editingQuiz.alternative_answers || []).filter((_, i) => i !== index);
+                                      setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
+                                    }}
+                                    className="ml-1 text-green-600 hover:text-green-800"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                                  {(!editingQuiz.alternative_answers || editingQuiz.alternative_answers.length === 0) && (
+                                    <span className="text-gray-400 text-xs">暂无替代答案</span>
+                                  )}
+                                </div>
+                                
+                                <div className="flex gap-1">
+                                  <input
+                                    type="text"
+                                    value={newAlternativeAnswer}
+                                    onChange={(e) => setNewAlternativeAnswer(e.target.value)}
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddAlternativeAnswer();
+                                      }
+                                    }}
+                                    className="flex-1 px-2 py-1 text-xs border border-green-300 rounded focus:ring-2 focus:ring-green-500"
+                                    placeholder="添加替代答案"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleAddAlternativeAnswer}
+                                    className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                                  >
+                                    添加
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Hint */}
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-purple-900 w-20">提示词</span>
+                              <input
+                                type="text"
+                                value={currentHints[0] || ''}
+                                onChange={(e) => {
+                                  const newHints = [e.target.value.trim() === '' ? null : e.target.value];
                                   setEditingQuiz({
                                     ...editingQuiz,
                                     hints: newHints
                                   });
                                 }}
-                                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                className="flex-1 px-2 py-1 text-sm border border-purple-300 rounded focus:ring-2 focus:ring-purple-500"
                                 placeholder="如：人名、朝代、年份、地名等"
                               />
+                              {/* Info icon with tooltip */}
+                              <div className="relative group">
+                                <svg className="w-4 h-4 text-purple-600 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                                <div className="absolute right-0 top-6 w-64 p-2 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                  <div className="text-xs text-gray-700">
+                                    <div className="font-medium mb-1">常用提示词：</div>
+                                    <div className="space-y-0.5">
+                                      <div><span className="font-medium">时间：</span>年份、朝代、世纪</div>
+                                      <div><span className="font-medium">人物：</span>人名、皇帝、将领</div>
+                                      <div><span className="font-medium">地理：</span>地名、国家、都城</div>
+                                      <div><span className="font-medium">事件：</span>战争、条约、改革</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          ))}
+                          </div>
                         </div>
                       );
                     } else {
@@ -2026,18 +2171,8 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                     }
                   })()}
                   
-                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
-                    <div className="font-medium mb-1">常用提示词参考：</div>
-                    <div className="grid grid-cols-2 gap-1">
-                      <div><span className="font-medium">时间类：</span>年份、朝代、世纪、时期</div>
-                      <div><span className="font-medium">人物类：</span>人名、皇帝、领袖、将领</div>
-                      <div><span className="font-medium">地理类：</span>地名、国家、都城、地区</div>
-                      <div><span className="font-medium">事件类：</span>战争、事件、条约、改革</div>
-                    </div>
-                  </div>
-                  
                   <p className="mt-2 text-xs text-gray-500">
-                    💡 提示词会在练习时显示在空格后，如"____（人名）"
+                    💡 提示：学生提交的答案被 AI 验证正确后会自动添加到替代答案列表
                   </p>
                 </div>
               )}
