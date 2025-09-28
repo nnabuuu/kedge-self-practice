@@ -70,6 +70,8 @@ class BackendApiService {
         return {
           success: false,
           error: data.message || data.error || `HTTP ${response.status}: ${response.statusText}`,
+          statusCode: response.status,
+          ...data
         };
       }
 

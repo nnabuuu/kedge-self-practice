@@ -40,7 +40,7 @@ import {
 import { ZodValidationPipe } from 'nestjs-zod';
 
 @ApiTags('Quiz Reports')
-@Controller('v1/quiz/report')
+@Controller('quiz/report')
 export class QuizReportController {
   constructor(private readonly reportService: QuizReportService) {}
 
