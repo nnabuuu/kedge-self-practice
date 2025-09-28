@@ -1352,6 +1352,9 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                         <div className="flex-1">
                           {/* Tags and Labels */}
                           <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs font-mono">
+                              ID: {quiz.id}
+                            </span>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getQuizTypeColor(quiz.type)}`}>
                               {getQuizTypeLabel(quiz.type)}
                             </span>
@@ -1746,7 +1749,12 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">编辑题目</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-bold text-gray-900">编辑题目</h2>
+                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm font-mono">
+                    ID: {editingQuiz.id}
+                  </span>
+                </div>
                 <button
                   onClick={() => {
                     setShowEditModal(false);

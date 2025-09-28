@@ -275,6 +275,9 @@ export default function ReportManagement() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
+                      <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs font-mono">
+                        题目ID: {report.quiz_id}
+                      </span>
                       <span className={`px-2 py-1 rounded text-xs font-medium ${typeConfig.color}`}>
                         {typeConfig.icon} {typeConfig.label}
                       </span>
@@ -335,7 +338,12 @@ export default function ReportManagement() {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">题目</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">题目</label>
+                    <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
+                      ID: {selectedReport.quiz_id}
+                    </span>
+                  </div>
                   <div className="p-3 bg-gray-50 rounded-lg text-sm">
                     {selectedReport.quiz?.question}
                   </div>

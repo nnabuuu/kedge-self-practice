@@ -206,6 +206,9 @@ export default function MyReports({ onClose }: MyReportsProps) {
                         <div className="flex-1">
                           {/* Status and Type */}
                           <div className="flex items-center gap-3 mb-2">
+                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-mono">
+                              ID: {report.quiz_id}
+                            </span>
                             <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${statusConfig[report.status].color}`}>
                               <StatusIcon className="w-3 h-3" />
                               {statusConfig[report.status].label}
