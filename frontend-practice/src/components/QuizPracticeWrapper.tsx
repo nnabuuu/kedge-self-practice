@@ -189,11 +189,124 @@ export default function QuizPracticeWrapper({
     );
   }
 
+  const handleQuizEnd = async (results: any) => {
+    // Transform the simple results into a PracticeSession object
+    const practiceSession = {
+      id: currentSessionId || `temp-${Date.now()}`,
+      subjectId: subject.id,
+      knowledgePoints: selectedKnowledgePoints,
+      questions: questions,
+      answers: results.answers,
+      questionDurations: results.questionDurations,
+      startTime: new Date(Date.now() - results.totalTime),
+      endTime: new Date(),
+      completed: true,
+      // Calculate statistics
+      correctAnswers: results.answers.filter(
+        (answer: any, index: number) => {
+          const question = questions[index];
+          if (!question) return false;
+          
+          // Check if answer is correct based on question type
+          if (question.type === 'single-choice') {
+            return answer === question.answer;
+          } else if (question.type === 'multiple-choice') {
+            const correctAnswers = Array.isArray(question.answer) ? question.answer : [];
+            return Array.isArray(answer) && 
+              answer.length === correctAnswers.length &&
+              answer.every((a: string) => correctAnswers.includes(a));
+          } else if (question.type === 'fill-in-the-blank') {
+            // For fill-in-blank, need to check against answer and alternatives
+            const correctAnswers = Array.isArray(question.answer) ? question.answer : [question.answer];
+            const alternativeAnswers = question.alternative_answers || [];
+            
+            if (!Array.isArray(answer)) return false;
+            
+            return answer.every((userAns: string, idx: number) => {
+              const normalizedUserAns = userAns?.trim().toLowerCase() || '';
+              const normalizedCorrectAns = String(correctAnswers[idx]).trim().toLowerCase();
+              
+              if (normalizedUserAns === normalizedCorrectAns) return true;
+              
+              // Check alternatives
+              const positionSpecific = alternativeAnswers
+                .filter((alt: string) => alt.startsWith(`[${idx}]`))
+                .map((alt: string) => alt.replace(`[${idx}]`, '').trim().toLowerCase());
+              
+              const general = alternativeAnswers
+                .filter((alt: string) => !alt.includes('['))
+                .map((alt: string) => alt.trim().toLowerCase());
+              
+              return positionSpecific.includes(normalizedUserAns) || general.includes(normalizedUserAns);
+            });
+          }
+          return false;
+        }
+      ).length,
+      incorrectAnswers: results.completedCount - results.answers.filter(
+        (answer: any, index: number) => {
+          const question = questions[index];
+          if (!question || answer === null) return false;
+          
+          // Same logic as above for checking correctness
+          if (question.type === 'single-choice') {
+            return answer === question.answer;
+          } else if (question.type === 'multiple-choice') {
+            const correctAnswers = Array.isArray(question.answer) ? question.answer : [];
+            return Array.isArray(answer) && 
+              answer.length === correctAnswers.length &&
+              answer.every((a: string) => correctAnswers.includes(a));
+          } else if (question.type === 'fill-in-the-blank') {
+            const correctAnswers = Array.isArray(question.answer) ? question.answer : [question.answer];
+            const alternativeAnswers = question.alternative_answers || [];
+            
+            if (!Array.isArray(answer)) return false;
+            
+            return answer.every((userAns: string, idx: number) => {
+              const normalizedUserAns = userAns?.trim().toLowerCase() || '';
+              const normalizedCorrectAns = String(correctAnswers[idx]).trim().toLowerCase();
+              
+              if (normalizedUserAns === normalizedCorrectAns) return true;
+              
+              const positionSpecific = alternativeAnswers
+                .filter((alt: string) => alt.startsWith(`[${idx}]`))
+                .map((alt: string) => alt.replace(`[${idx}]`, '').trim().toLowerCase());
+              
+              const general = alternativeAnswers
+                .filter((alt: string) => !alt.includes('['))
+                .map((alt: string) => alt.trim().toLowerCase());
+              
+              return positionSpecific.includes(normalizedUserAns) || general.includes(normalizedUserAns);
+            });
+          }
+          return false;
+        }
+      ).length,
+      totalTime: results.totalTime,
+      averageAnswerTime: results.totalTime / questions.length,
+      completedQuestions: results.completedCount
+    };
+    
+    // Complete the session on backend if we have a session ID
+    if (currentSessionId) {
+      try {
+        await api.practice.completeSession(currentSessionId, {
+          completed: true
+        });
+      } catch (error) {
+        console.error('Failed to complete session on backend:', error);
+      }
+    }
+    
+    // Pass the transformed session to the parent handler
+    onEndPractice(practiceSession);
+  };
+
   return (
     <QuizPracticeMain
       questions={questions}
       sessionId={currentSessionId}
-      onEnd={onEndPractice}
+      onEnd={handleQuizEnd}
       onBack={onBack}
     />
   );
