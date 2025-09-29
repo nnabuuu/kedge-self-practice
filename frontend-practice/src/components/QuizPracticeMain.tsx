@@ -75,9 +75,16 @@ export default function QuizPractice({
     }
   }, [currentQuestionIndex, isFillInBlank]);
 
-  // Handle single choice selection
+  // Handle single choice selection with auto-submit
   const handleSingleChoiceSelect = (key: string) => {
     setSelectedAnswer(key);
+    // Auto-submit for single-choice questions
+    if (!showResult) {
+      // Small delay to show selection before submitting
+      setTimeout(() => {
+        handleSubmitAnswer(key);
+      }, 200);
+    }
   };
 
   // Handle multiple choice toggle
@@ -176,11 +183,12 @@ export default function QuizPractice({
     return true;
   };
 
-  // Submit answer
-  const handleSubmitAnswer = () => {
+  // Submit answer (with optional answer for auto-submit)
+  const handleSubmitAnswer = (autoSubmitAnswer?: string) => {
     let answer = null;
     if (isSingleChoice) {
-      answer = selectedAnswer;
+      // Use auto-submit answer if provided, otherwise use selected
+      answer = autoSubmitAnswer || selectedAnswer;
     } else if (isMultipleChoice) {
       answer = selectedMultipleAnswers;
     } else if (isFillInBlank) {
@@ -362,18 +370,25 @@ export default function QuizPractice({
             {/* Submit/Continue buttons */}
             <div className="flex justify-between mt-6">
               {!showResult ? (
-                <button
-                  onClick={handleSubmitAnswer}
-                  disabled={
-                    (isSingleChoice && !selectedAnswer) ||
-                    (isMultipleChoice && selectedMultipleAnswers.length === 0) ||
-                    (isFillInBlank && (fillInBlankAnswers.length === 0 || fillInBlankAnswers.some(a => !a || a.trim() === ''))) ||
-                    (isEssay && !essayAnswer.trim())
-                  }
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  提交答案
-                </button>
+                // Only show submit button for non-single-choice questions
+                !isSingleChoice ? (
+                  <button
+                    onClick={() => handleSubmitAnswer()}
+                    disabled={
+                      (isMultipleChoice && selectedMultipleAnswers.length === 0) ||
+                      (isFillInBlank && (fillInBlankAnswers.length === 0 || fillInBlankAnswers.some(a => !a || a.trim() === ''))) ||
+                      (isEssay && !essayAnswer.trim())
+                    }
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    提交答案
+                  </button>
+                ) : (
+                  // For single-choice, show hint text
+                  <div className="text-sm text-gray-500 italic">
+                    点击选项即可查看答案
+                  </div>
+                )
               ) : (
                 <button
                   onClick={handleContinue}
