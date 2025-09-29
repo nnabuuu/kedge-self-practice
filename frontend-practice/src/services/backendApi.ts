@@ -110,49 +110,42 @@ class BackendApiService {
 
   // Convert backend quiz to frontend format
   private convertQuiz(backendQuiz: any): QuizQuestion {
-    // Determine quiz type
+    // Determine quiz type - use the backend type directly if it matches our types
     let type: QuizQuestion['type'] = 'single-choice';
-    if (backendQuiz.type === 'multiple-choice') {
-      type = 'multiple-choice';
-    } else if (backendQuiz.type === 'essay') {
-      type = 'essay';
-    } else if (backendQuiz.type === 'fill-in-the-blank') {
-      type = 'fill-in-the-blank';
-    } else if (backendQuiz.type === 'subjective') {
-      type = 'subjective';
-    } else if (backendQuiz.type === 'other') {
-      type = 'other';
+    if (backendQuiz.type === 'single-choice' || backendQuiz.type === 'multiple-choice' || 
+        backendQuiz.type === 'essay' || backendQuiz.type === 'fill-in-the-blank' ||
+        backendQuiz.type === 'subjective' || backendQuiz.type === 'other') {
+      type = backendQuiz.type;
     }
 
-    // Parse answer options - convert array to object with A, B, C, D keys
-    let options: QuizQuestion['options'] | undefined;
-    if (Array.isArray(backendQuiz.options)) {
+    // Keep options in their original format (object or array)
+    let options = backendQuiz.options;
+    
+    // If options is an array and we need object format for compatibility
+    if (Array.isArray(backendQuiz.options) && (type === 'single-choice' || type === 'multiple-choice')) {
       options = {};
       const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
       backendQuiz.options.forEach((option: string, index: number) => {
-        if (index < keys.length && options) {
+        if (index < keys.length) {
           options[keys[index]] = option;
         }
       });
     }
 
-    // Parse correct answer - convert indices to letters for choices
-    let answer: string | string[] | undefined;
-    if (Array.isArray(backendQuiz.answer)) {
+    // Keep answer in its original format
+    let answer = backendQuiz.answer;
+    
+    // Convert numeric indices to letters for display if needed
+    if ((type === 'single-choice' || type === 'multiple-choice') && typeof answer === 'number') {
       const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
-      if (backendQuiz.answer.length === 1) {
-        // Single choice
-        answer = keys[backendQuiz.answer[0]] || String(backendQuiz.answer[0]);
-      } else {
-        // Multiple choice
-        answer = backendQuiz.answer.map((idx: number) => keys[idx] || String(idx));
-      }
-    } else {
-      answer = backendQuiz.answer;
+      answer = keys[answer] || String(answer);
+    } else if ((type === 'single-choice' || type === 'multiple-choice') && Array.isArray(answer) && answer.length > 0 && typeof answer[0] === 'number') {
+      const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
+      answer = answer.map((idx: number) => keys[idx] || String(idx));
     }
 
     // Determine the knowledge point ID to use
-    let relatedKnowledgePointId = backendQuiz.knowledge_point_id;
+    let relatedKnowledgePointId = backendQuiz.knowledge_point_id || backendQuiz.knowledgePointId;
     
     // If backend provides knowledgePoint object, use its ID
     if (backendQuiz.knowledgePoint && backendQuiz.knowledgePoint.id) {
@@ -167,8 +160,12 @@ class BackendApiService {
       answer,
       standardAnswer: type === 'essay' ? backendQuiz.answer : undefined,
       relatedKnowledgePointId,
+      knowledge_point_id: relatedKnowledgePointId, // Include both forms
       images: backendQuiz.images || [],
-      hints: backendQuiz.hints || undefined, // Include hints for fill-in-the-blank questions
+      hints: backendQuiz.hints || undefined,
+      alternative_answers: backendQuiz.alternative_answers || undefined,
+      tags: backendQuiz.tags || [], // Include tags
+      difficulty: backendQuiz.difficulty,
       // Store the full knowledge point data if available
       knowledgePoint: backendQuiz.knowledgePoint
     };
@@ -358,10 +355,21 @@ class BackendApiService {
 
   // Get quiz by ID
   async getQuizById(id: string): Promise<ApiResponse<QuizQuestion | null>> {
-    const response = await this.makeRequest<BackendQuiz>(`/quiz/${id}`);
+    const response = await this.makeRequest<any>(`/quiz/${id}`);
 
     if (response.success && response.data) {
-      const quiz = this.convertQuiz(response.data);
+      // Check if data is nested (some endpoints return data.data)
+      const backendQuiz = response.data.data || response.data;
+      
+      if (!backendQuiz || !backendQuiz.id) {
+        return {
+          success: false,
+          data: null,
+          error: 'Invalid quiz data received'
+        };
+      }
+      
+      const quiz = this.convertQuiz(backendQuiz);
       return {
         success: true,
         data: quiz
@@ -402,26 +410,55 @@ class BackendApiService {
   }
 
   // Update a quiz
-  async updateQuiz(id: string, updates: Partial<QuizQuestion>): Promise<ApiResponse<QuizQuestion | null>> {
+  async updateQuiz(id: string, updates: Partial<any>): Promise<ApiResponse<QuizQuestion | null>> {
+    // Convert frontend quiz format to backend format
     const backendUpdates: any = {};
     
+    // Handle basic fields
     if (updates.question !== undefined) {
-      backendUpdates.question_text = updates.question;
-    }
-    if (updates.options !== undefined) {
-      backendUpdates.answer_options = JSON.stringify(updates.options);
-    }
-    if (updates.answer !== undefined) {
-      backendUpdates.correct_answer = updates.type === 'multiple-choice'
-        ? JSON.stringify(updates.answer)
-        : String(updates.answer);
+      backendUpdates.question = updates.question;
     }
     if (updates.type !== undefined) {
-      backendUpdates.quiz_type = updates.type === 'multiple-choice' ? '多选题' :
-                                 updates.type === 'essay' ? '问答题' : '单选题';
+      backendUpdates.type = updates.type;
     }
-    if (updates.relatedKnowledgePointId !== undefined) {
-      backendUpdates.knowledge_point_id = this.extractNumericKnowledgePointId(updates.relatedKnowledgePointId);
+    if (updates.difficulty !== undefined) {
+      backendUpdates.difficulty = updates.difficulty;
+    }
+    
+    // Handle options - keep as object or array based on what was provided
+    if (updates.options !== undefined) {
+      backendUpdates.options = updates.options;
+    }
+    
+    // Handle answer - keep as is (string, number, or array)
+    if (updates.answer !== undefined) {
+      backendUpdates.answer = updates.answer;
+    }
+    
+    // Handle knowledge point ID
+    if (updates.knowledgePointId !== undefined || updates.knowledge_point_id !== undefined) {
+      const kpId = updates.knowledgePointId || updates.knowledge_point_id;
+      // Extract numeric part if it has kp_ prefix
+      if (typeof kpId === 'string' && kpId.startsWith('kp_')) {
+        backendUpdates.knowledge_point_id = parseInt(kpId.substring(3));
+      } else {
+        backendUpdates.knowledge_point_id = parseInt(kpId);
+      }
+    }
+    
+    // Handle tags array
+    if (updates.tags !== undefined) {
+      backendUpdates.tags = updates.tags;
+    }
+    
+    // Handle hints array
+    if (updates.hints !== undefined) {
+      backendUpdates.hints = updates.hints;
+    }
+    
+    // Handle alternative answers
+    if (updates.alternative_answers !== undefined) {
+      backendUpdates.alternative_answers = updates.alternative_answers;
     }
 
     const response = await this.makeRequest<BackendQuiz>(`/quiz/${id}`, {

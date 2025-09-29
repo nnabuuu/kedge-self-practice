@@ -4,6 +4,8 @@ import { authService } from '../../services/authService';
 import { preferencesService } from '../../services/preferencesService';
 import { ApiService } from '../../services/api';
 import KnowledgePointPicker from '../../components/KnowledgePointPicker';
+import QuizDetailModal from '../../components/QuizDetailModal';
+import QuizEditModal from '../../components/QuizEditModal';
 
 interface Quiz {
   id: string;
@@ -39,6 +41,7 @@ interface KnowledgePoint {
 interface QuizBankManagementProps {
   onBack?: () => void;
   initialKnowledgePointId?: string;
+  initialQuizId?: string;  // Add this to automatically open a specific quiz for editing
   initialFilters?: {
     volume?: string;
     unit?: string;
@@ -53,7 +56,7 @@ const getApiUrl = () => {
   return baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`;
 };
 
-export default function QuizBankManagement({ onBack, initialKnowledgePointId, initialFilters }: QuizBankManagementProps) {
+export default function QuizBankManagement({ onBack, initialKnowledgePointId, initialQuizId, initialFilters }: QuizBankManagementProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
@@ -76,6 +79,8 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const [selectedQuizzes, setSelectedQuizzes] = useState<Set<string>>(new Set());
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [viewingQuiz, setViewingQuiz] = useState<Quiz | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [showKnowledgePointPicker, setShowKnowledgePointPicker] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [newAlternativeAnswer, setNewAlternativeAnswer] = useState('');
@@ -116,7 +121,57 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   useEffect(() => {
     fetchKnowledgePoints();
     loadSettings();
+    
+    // If initialQuizId is provided, load that specific quiz for editing
+    if (initialQuizId) {
+      loadQuizForEditing(initialQuizId);
+    }
   }, []);
+  
+  // Load a specific quiz and open it for editing
+  const loadQuizForEditing = async (quizId: string) => {
+    try {
+      console.log('Loading quiz for editing:', quizId);
+      const token = authService.getToken();
+      if (!token) return;
+      
+      const response = await fetch(`${getApiUrl()}/quiz/${quizId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          const quiz = data.data;
+          
+          // Convert backend format to frontend format
+          const formattedQuiz: Quiz = {
+            id: String(quiz.id),
+            type: quiz.type || 'single-choice',
+            question: quiz.question,
+            options: quiz.options || [],
+            answer: quiz.answer,
+            hints: quiz.hints,
+            difficulty: quiz.difficulty,
+            knowledgePointId: quiz.knowledge_point_id,
+            knowledgePoint: quiz.knowledgePoint,
+            tags: quiz.tags || [],
+            images: quiz.images || []
+          };
+          
+          console.log('Quiz loaded for editing:', formattedQuiz);
+          
+          // Set the quiz for editing and open the modal
+          setEditingQuiz(formattedQuiz);
+          setShowEditModal(true);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load quiz for editing:', error);
+    }
+  };
   
   const loadSettings = async () => {
     try {
@@ -1744,584 +1799,22 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       </div>
 
       {/* Edit Modal */}
-      {showEditModal && editingQuiz && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-2xl font-bold text-gray-900">编辑题目</h2>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm font-mono">
-                    ID: {editingQuiz.id}
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setEditingQuiz(null);
-                  }}
-                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              {/* Question Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">题目类型</label>
-                <select
-                  value={editingQuiz.type}
-                  onChange={(e) => setEditingQuiz({...editingQuiz, type: e.target.value as Quiz['type']})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="single-choice">单选题</option>
-                  <option value="multiple-choice">多选题</option>
-                  <option value="fill-in-the-blank">填空题</option>
-                  <option value="subjective">主观题</option>
-                  <option value="other">其他</option>
-                </select>
-              </div>
-
-              {/* Question */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">题目内容</label>
-                <textarea
-                  value={editingQuiz.question}
-                  onChange={(e) => setEditingQuiz({...editingQuiz, question: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={3}
-                />
-                {/* Preview with images */}
-                {editingQuiz.question && editingQuiz.question.includes('{{') && (
-                  <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-2">预览:</p>
-                    {renderQuestionWithImages(editingQuiz.question, editingQuiz.images as string[])}
-                  </div>
-                )}
-              </div>
-
-              {/* Options for choice questions */}
-              {(editingQuiz.type === 'single-choice' || editingQuiz.type === 'multiple-choice') && editingQuiz.options && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">选项</label>
-                  {editingQuiz.options.map((option, index) => (
-                    <div key={index} className="flex items-center space-x-2 mb-2">
-                      <span className="text-sm font-medium text-gray-600">{String.fromCharCode(65 + index)}.</span>
-                      <input
-                        type="text"
-                        value={option}
-                        onChange={(e) => {
-                          const newOptions = [...editingQuiz.options!];
-                          newOptions[index] = e.target.value;
-                          setEditingQuiz({...editingQuiz, options: newOptions});
-                        }}
-                        className="flex-1 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => setEditingQuiz({...editingQuiz, options: [...(editingQuiz.options || []), '']})}
-                    className="mt-2 px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                  >
-                    + 添加选项
-                  </button>
-                </div>
-              )}
-
-              {/* Answer */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">答案</label>
-                {editingQuiz.type === 'single-choice' && editingQuiz.options ? (
-                  <select
-                    value={typeof editingQuiz.answer === 'number' ? editingQuiz.answer : 0}
-                    onChange={(e) => setEditingQuiz({...editingQuiz, answer: parseInt(e.target.value)})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {editingQuiz.options.map((_, index) => (
-                      <option key={index} value={index}>
-                        {String.fromCharCode(65 + index)}
-                      </option>
-                    ))}
-                  </select>
-                ) : editingQuiz.type === 'multiple-choice' && editingQuiz.options ? (
-                  <div className="space-y-2">
-                    {editingQuiz.options.map((_, index) => (
-                      <label key={index} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={Array.isArray(editingQuiz.answer) ? editingQuiz.answer.includes(index) : false}
-                          onChange={(e) => {
-                            const currentAnswers = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [];
-                            if (e.target.checked) {
-                              setEditingQuiz({...editingQuiz, answer: [...currentAnswers, index]});
-                            } else {
-                              setEditingQuiz({...editingQuiz, answer: currentAnswers.filter(a => a !== index)});
-                            }
-                          }}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <span>{String.fromCharCode(65 + index)}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={Array.isArray(editingQuiz.answer) ? editingQuiz.answer.join(', ') : editingQuiz.answer}
-                    onChange={(e) => setEditingQuiz({...editingQuiz, answer: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder={editingQuiz.type === 'fill-in-the-blank' ? '多个答案用逗号分隔' : '输入答案'}
-                  />
-                )}
-              </div>
-
-              {/* Combined Answer Management for Fill-in-the-blank */}
-              {editingQuiz.type === 'fill-in-the-blank' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    答案管理
-                  </label>
-                  
-                  {(() => {
-                    const blanksCount = (editingQuiz.question.match(/_{2,}/g) || []).length;
-                    const standardAnswers = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [editingQuiz.answer];
-                    const currentHints = editingQuiz.hints || [];
-                    
-                    if (blanksCount > 1) {
-                      // Multiple blanks - use tabbed interface
-                      return (
-                        <div>
-                          {/* Tab headers */}
-                          <div className="flex border-b border-gray-200 mb-4">
-                            {Array.from({ length: blanksCount }, (_, index) => (
-                              <button
-                                key={index}
-                                onClick={() => setActiveBlankTab(index)}
-                                className={`px-4 py-2 font-medium text-sm transition-colors relative ${
-                                  activeBlankTab === index
-                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                                    : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                              >
-                                空格 {index + 1}
-                                {currentHints[index] && (
-                                  <span className="ml-2 text-xs text-purple-600">有提示</span>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                          
-                          {/* Tab content */}
-                          {Array.from({ length: blanksCount }, (_, blankIndex) => (
-                            <div
-                              key={blankIndex}
-                              className={`space-y-2 ${activeBlankTab === blankIndex ? 'block' : 'hidden'}`}
-                            >
-                              {/* Standard Answer */}
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-blue-900 w-20">标准答案</span>
-                                  <input
-                                    type="text"
-                                    value={standardAnswers[blankIndex] || ''}
-                                    onChange={(e) => {
-                                      const newAnswers = [...standardAnswers];
-                                      newAnswers[blankIndex] = e.target.value;
-                                      setEditingQuiz({ ...editingQuiz, answer: newAnswers });
-                                    }}
-                                    className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500"
-                                    placeholder="输入标准答案"
-                                  />
-                                </div>
-                              </div>
-                              
-                              {/* Alternative Answers */}
-                              <div className="bg-green-50 border border-green-200 rounded-lg p-2">
-                                <div className="flex items-start gap-2">
-                                  <span className="text-sm font-medium text-green-900 w-20 pt-1">替代答案</span>
-                                  <div className="flex-1">
-                                    <div className="flex flex-wrap gap-1 mb-1 min-h-[1.5rem]">
-                                  {(editingQuiz.alternative_answers || [])
-                                    .filter(answer => answer.startsWith(`[${blankIndex}]`))
-                                    .map((answer, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
-                                      >
-                                        {answer.replace(`[${blankIndex}]`, '')}
-                                        <button
-                                          onClick={() => {
-                                            const newAlternatives = (editingQuiz.alternative_answers || []).filter(a => a !== answer);
-                                            setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
-                                          }}
-                                          className="ml-1 text-green-600 hover:text-green-800"
-                                        >
-                                          ×
-                                        </button>
-                                      </span>
-                                    ))}
-                                      {!editingQuiz.alternative_answers?.some(a => a.startsWith(`[${blankIndex}]`)) && (
-                                        <span className="text-gray-400 text-xs">暂无替代答案</span>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Add alternative answer for this blank */}
-                                    <div className="flex gap-1">
-                                      <input
-                                        type="text"
-                                        placeholder={`添加替代答案`}
-                                        className="flex-1 px-2 py-1 text-xs border border-green-300 rounded focus:ring-2 focus:ring-green-500"
-                                    onKeyPress={(e) => {
-                                      if (e.key === 'Enter') {
-                                        const input = e.target as HTMLInputElement;
-                                        const value = input.value.trim();
-                                        if (value) {
-                                          const newAnswer = `[${blankIndex}]${value}`;
-                                          const currentAlternatives = editingQuiz.alternative_answers || [];
-                                          if (!currentAlternatives.includes(newAnswer)) {
-                                            setEditingQuiz({
-                                              ...editingQuiz,
-                                              alternative_answers: [...currentAlternatives, newAnswer]
-                                            });
-                                          }
-                                          input.value = '';
-                                        }
-                                      }
-                                    }}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                                      const value = input.value.trim();
-                                      if (value) {
-                                        const newAnswer = `[${blankIndex}]${value}`;
-                                        const currentAlternatives = editingQuiz.alternative_answers || [];
-                                        if (!currentAlternatives.includes(newAnswer)) {
-                                          setEditingQuiz({
-                                            ...editingQuiz,
-                                            alternative_answers: [...currentAlternatives, newAnswer]
-                                          });
-                                        }
-                                        input.value = '';
-                                      }
-                                    }}
-                                        className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                                      >
-                                        添加
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Hint */}
-                              <div className="bg-purple-50 border border-purple-200 rounded-lg p-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-purple-900 w-20">提示词</span>
-                                  <input
-                                    type="text"
-                                    value={currentHints[blankIndex] || ''}
-                                    onChange={(e) => {
-                                      const newHints = [...currentHints];
-                                      while (newHints.length <= blankIndex) {
-                                        newHints.push(null);
-                                      }
-                                      newHints[blankIndex] = e.target.value.trim() === '' ? null : e.target.value;
-                                      setEditingQuiz({
-                                        ...editingQuiz,
-                                        hints: newHints
-                                      });
-                                    }}
-                                    className="flex-1 px-2 py-1 text-sm border border-purple-300 rounded focus:ring-2 focus:ring-purple-500"
-                                    placeholder="如：人名、朝代、年份、地名等"
-                                  />
-                                  {/* Info icon with tooltip */}
-                                  <div className="relative group">
-                                    <svg className="w-4 h-4 text-purple-600 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                    </svg>
-                                    <div className="absolute right-0 top-6 w-64 p-2 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                      <div className="text-xs text-gray-700">
-                                        <div className="font-medium mb-1">常用提示词：</div>
-                                        <div className="space-y-0.5">
-                                          <div><span className="font-medium">时间：</span>年份、朝代、世纪</div>
-                                          <div><span className="font-medium">人物：</span>人名、皇帝、将领</div>
-                                          <div><span className="font-medium">地理：</span>地名、国家、都城</div>
-                                          <div><span className="font-medium">事件：</span>战争、条约、改革</div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    } else if (blanksCount === 1) {
-                      // Single blank - use a cleaner layout
-                      return (
-                        <div className="space-y-2">
-                          {/* Standard Answer */}
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-blue-900 w-20">标准答案</span>
-                              <input
-                                type="text"
-                                value={Array.isArray(editingQuiz.answer) ? editingQuiz.answer[0] : editingQuiz.answer || ''}
-                                onChange={(e) => {
-                                  setEditingQuiz({ ...editingQuiz, answer: e.target.value });
-                                }}
-                                className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500"
-                                placeholder="输入标准答案"
-                              />
-                            </div>
-                          </div>
-                          
-                          {/* Alternative Answers */}
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-2">
-                            <div className="flex items-start gap-2">
-                              <span className="text-sm font-medium text-green-900 w-20 pt-1">替代答案</span>
-                              <div className="flex-1">
-                                <div className="flex flex-wrap gap-1 mb-1 min-h-[1.5rem]">
-                              {(editingQuiz.alternative_answers || []).map((answer, index) => (
-                                <span
-                                  key={index}
-                                  className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded"
-                                >
-                                  {answer}
-                                  <button
-                                    onClick={() => {
-                                      const newAlternatives = (editingQuiz.alternative_answers || []).filter((_, i) => i !== index);
-                                      setEditingQuiz({...editingQuiz, alternative_answers: newAlternatives});
-                                    }}
-                                    className="ml-1 text-green-600 hover:text-green-800"
-                                  >
-                                    ×
-                                  </button>
-                                </span>
-                              ))}
-                                  {(!editingQuiz.alternative_answers || editingQuiz.alternative_answers.length === 0) && (
-                                    <span className="text-gray-400 text-xs">暂无替代答案</span>
-                                  )}
-                                </div>
-                                
-                                <div className="flex gap-1">
-                                  <input
-                                    type="text"
-                                    value={newAlternativeAnswer}
-                                    onChange={(e) => setNewAlternativeAnswer(e.target.value)}
-                                    onKeyPress={(e) => {
-                                      if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleAddAlternativeAnswer();
-                                      }
-                                    }}
-                                    className="flex-1 px-2 py-1 text-xs border border-green-300 rounded focus:ring-2 focus:ring-green-500"
-                                    placeholder="添加替代答案"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={handleAddAlternativeAnswer}
-                                    className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                                  >
-                                    添加
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Hint */}
-                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-purple-900 w-20">提示词</span>
-                              <input
-                                type="text"
-                                value={currentHints[0] || ''}
-                                onChange={(e) => {
-                                  const newHints = [e.target.value.trim() === '' ? null : e.target.value];
-                                  setEditingQuiz({
-                                    ...editingQuiz,
-                                    hints: newHints
-                                  });
-                                }}
-                                className="flex-1 px-2 py-1 text-sm border border-purple-300 rounded focus:ring-2 focus:ring-purple-500"
-                                placeholder="如：人名、朝代、年份、地名等"
-                              />
-                              {/* Info icon with tooltip */}
-                              <div className="relative group">
-                                <svg className="w-4 h-4 text-purple-600 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
-                                <div className="absolute right-0 top-6 w-64 p-2 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                  <div className="text-xs text-gray-700">
-                                    <div className="font-medium mb-1">常用提示词：</div>
-                                    <div className="space-y-0.5">
-                                      <div><span className="font-medium">时间：</span>年份、朝代、世纪</div>
-                                      <div><span className="font-medium">人物：</span>人名、皇帝、将领</div>
-                                      <div><span className="font-medium">地理：</span>地名、国家、都城</div>
-                                      <div><span className="font-medium">事件：</span>战争、条约、改革</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <p className="text-sm text-gray-500">请先在题目中添加空格（使用至少2个下划线 __）</p>
-                      );
-                    }
-                  })()}
-                  
-                  <p className="mt-2 text-xs text-gray-500">
-                    💡 提示：学生提交的答案被 AI 验证正确后会自动添加到替代答案列表
-                  </p>
-                </div>
-              )}
-
-              {/* Difficulty */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">难度</label>
-                <select
-                  value={editingQuiz.difficulty || 'medium'}
-                  onChange={(e) => setEditingQuiz({...editingQuiz, difficulty: e.target.value as Quiz['difficulty']})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="easy">简单</option>
-                  <option value="medium">中等</option>
-                  <option value="hard">困难</option>
-                </select>
-              </div>
-
-              {/* Knowledge Point Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">知识点</label>
-                {editingQuiz.knowledgePoint ? (
-                  <div className="space-y-3">
-                    {/* Current Knowledge Point Display */}
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="text-sm font-medium text-blue-800">当前知识点:</div>
-                      <div className="text-sm text-blue-700">
-                        {editingQuiz.knowledgePoint.volume} → {editingQuiz.knowledgePoint.unit} → {editingQuiz.knowledgePoint.lesson} → {editingQuiz.knowledgePoint.topic}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowKnowledgePointPicker(true)}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <MapPin className="w-4 h-4 inline mr-2" />
-                        更改知识点
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingQuiz({
-                            ...editingQuiz,
-                            knowledgePointId: undefined,
-                            knowledge_point_id: undefined,
-                            knowledgePoint: undefined
-                          });
-                        }}
-                        className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-                      >
-                        清除
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowKnowledgePointPicker(true)}
-                    className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors flex items-center justify-center text-gray-600 hover:text-blue-600"
-                  >
-                    <MapPin className="w-5 h-5 mr-2" />
-                    点击选择知识点
-                  </button>
-                )}
-              </div>
-
-              {/* Tags */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">标签</label>
-                <div className="space-y-2">
-                  {/* Current tags display */}
-                  <div className="flex flex-wrap gap-2 min-h-[2rem] p-2 border border-gray-300 rounded-lg bg-gray-50">
-                    {(editingQuiz.tags || []).map((tag, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md"
-                      >
-                        {tag}
-                        <button
-                          onClick={() => {
-                            const newTags = (editingQuiz.tags || []).filter((_, i) => i !== index);
-                            setEditingQuiz({...editingQuiz, tags: newTags});
-                          }}
-                          className="ml-1 text-blue-600 hover:text-blue-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    {(!editingQuiz.tags || editingQuiz.tags.length === 0) && (
-                      <span className="text-gray-400 text-sm">暂无标签</span>
-                    )}
-                  </div>
-                  
-                  {/* Add new tag input */}
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddTag();
-                        }
-                      }}
-                      placeholder="输入新标签"
-                      className="flex-1 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                    <button
-                      onClick={handleAddTag}
-                      className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      添加
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setEditingQuiz(null);
-                }}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => handleSaveQuiz(editingQuiz)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                保存修改
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuizEditModal
+        quiz={editingQuiz}
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingQuiz(null);
+        }}
+        onSave={handleSaveQuiz}
+        onDelete={(quizId: string) => {
+          // Delete the quiz from local state
+          setQuizzes(prev => prev.filter(q => q.id !== quizId));
+          setShowEditModal(false);
+          setEditingQuiz(null);
+          console.log('Quiz deleted:', quizId);
+        }}
+      />
 
       {/* Polish Modal */}
       {showPolishModal && polishingQuiz && (

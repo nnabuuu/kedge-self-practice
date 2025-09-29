@@ -181,16 +181,25 @@ export class QuizReportService {
     total: number;
   }> {
     // Get aggregated quiz report data
-    const summaryConditions = [];
+    const summaryConditions: any[] = [];
+    const havingConditions: any[] = [];
+    
+    // Status filter should be in HAVING clause since we're grouping
     if (query.status) {
-      summaryConditions.push(sql.unsafe`EXISTS (
-        SELECT 1 FROM kedge_practice.quiz_reports 
-        WHERE quiz_id = q.id AND status = ${query.status}
-      )`);
+      havingConditions.push(sql.unsafe`COUNT(CASE WHEN r.status = ${query.status} THEN 1 END) > 0`);
+    }
+    
+    // Report type filter should also be in HAVING clause
+    if (query.report_type) {
+      havingConditions.push(sql.unsafe`COUNT(CASE WHEN r.report_type = ${query.report_type} THEN 1 END) > 0`);
     }
 
     const summaryWhere = summaryConditions.length > 0
       ? sql.unsafe`WHERE ${sql.join(summaryConditions, sql.unsafe` AND `)}`
+      : sql.unsafe``;
+    
+    const havingClause = havingConditions.length > 0
+      ? sql.unsafe`HAVING ${sql.join(havingConditions, sql.unsafe` AND `)}`
       : sql.unsafe``;
 
     const orderByClause = query.sort === 'report_count'
@@ -215,7 +224,9 @@ export class QuizReportService {
           MAX(r.resolved_at) as last_resolved_at
         FROM kedge_practice.quizzes q
         INNER JOIN kedge_practice.quiz_reports r ON q.id = r.quiz_id
+        ${summaryWhere}
         GROUP BY q.id, q.question, q.type, q.knowledge_point_id
+        ${havingClause}
       )
       SELECT 
         rs.*,
@@ -224,17 +235,28 @@ export class QuizReportService {
         kp.unit as knowledge_point_unit
       FROM report_summary rs
       LEFT JOIN kedge_practice.knowledge_points kp ON rs.knowledge_point_id = kp.id
-      ${summaryWhere}
       ${orderByClause}
       LIMIT ${query.limit}
       OFFSET ${query.offset}
     `);
 
-    // Get total count
+    // Get total count - need to match the same filtering logic
+    const countConditions: any[] = [];
+    if (query.status) {
+      countConditions.push(sql.unsafe`status = ${query.status}`);
+    }
+    if (query.report_type) {
+      countConditions.push(sql.unsafe`report_type = ${query.report_type}`);
+    }
+    
+    const countWhere = countConditions.length > 0
+      ? sql.unsafe`WHERE ${sql.join(countConditions, sql.unsafe` AND `)}`
+      : sql.unsafe``;
+    
     const countResult = await this.persistentService.pgPool.query(sql.unsafe`
       SELECT COUNT(DISTINCT quiz_id) as count
       FROM kedge_practice.quiz_reports
-      ${query.status ? sql.unsafe`WHERE status = ${query.status}` : sql.unsafe``}
+      ${countWhere}
     `);
 
     // Get detailed reports for each quiz

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Flag, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, Eye, MessageSquare, User, Calendar } from 'lucide-react';
+import { Flag, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, Eye, MessageSquare, User, Calendar, Edit } from 'lucide-react';
 import { api } from '../../services/backendApi';
+import QuizEditModal from '../../components/QuizEditModal';
 
 interface QuizReport {
   id: string;
@@ -53,6 +54,8 @@ export default function ReportManagement() {
   const [resolutionNote, setResolutionNote] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [backendReady, setBackendReady] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingQuiz, setEditingQuiz] = useState<any>(null);
 
   useEffect(() => {
     fetchReports();
@@ -70,29 +73,41 @@ export default function ReportManagement() {
       
       const response = await api.reports.getManagementReports(params);
       
-      if (response.success && response.data) {
-        // Transform the data to match our component's interface
-        const transformedReports: QuizReport[] = response.data.map((item: any) => ({
-          id: item.id,
-          quiz_id: item.quiz_id,
-          user_id: item.user_id,
-          user_name: item.user_name || item.student_name,
-          report_type: item.report_type,
-          reason: item.reason,
-          user_answer: item.user_answer,
-          status: item.status,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-          resolution_note: item.resolution_note,
-          quiz: item.quiz ? {
-            id: item.quiz.id,
-            question: item.quiz.question,
-            type: item.quiz.type,
-            answer: item.quiz.answer,
-            knowledge_point: item.quiz.knowledge_point
-          } : undefined,
-          resolver: item.resolver
-        }));
+      if (response.success && response.data && response.data.data) {
+        // The actual data is nested: response.data.data
+        const actualData = response.data.data;
+        
+        // Transform the nested data structure to flat array of reports
+        const transformedReports: QuizReport[] = [];
+        
+        actualData.forEach((quizData: any) => {
+          // Each quizData contains a reports array
+          if (quizData.reports && Array.isArray(quizData.reports)) {
+            quizData.reports.forEach((report: any) => {
+              const finalQuizId = report.quiz_id || quizData.quiz_id;
+              transformedReports.push({
+                id: report.id,
+                quiz_id: finalQuizId,
+                user_id: report.user_id,
+                user_name: report.reporter?.name || 'Unknown User',
+                report_type: report.report_type,
+                reason: report.reason,
+                user_answer: report.user_answer,
+                status: report.status,
+                created_at: report.created_at,
+                updated_at: report.updated_at,
+                resolution_note: report.resolution_note,
+                quiz: {
+                  id: quizData.quiz_id,
+                  question: quizData.question,
+                  type: quizData.quiz_type,
+                  knowledge_point: quizData.knowledge_point?.topic
+                },
+                resolver: report.resolver
+              });
+            });
+          }
+        });
         
         setReports(transformedReports);
       } else if (response.statusCode === 404) {
@@ -102,6 +117,8 @@ export default function ReportManagement() {
         setReports([]);
       } else {
         console.error('Failed to fetch reports:', response);
+        console.log('Response status code:', response.statusCode);
+        console.log('Response error:', response.error);
         setReports([]);
       }
     } catch (error) {
@@ -143,12 +160,68 @@ export default function ReportManagement() {
     setShowDetailModal(true);
   };
 
+  const handleEditQuiz = async (report: QuizReport | null) => {
+    if (!report || !report.quiz_id) {
+      alert('无法获取题目ID');
+      return;
+    }
+    
+    try {
+      // Fetch the full quiz details
+      const response = await api.questions.getById(report.quiz_id);
+      
+      if (response.success && response.data && response.data.id) {
+        setEditingQuiz(response.data);
+        setShowEditModal(true);
+        // Keep the detail modal open in the background
+      } else {
+        alert(`加载题目详情失败: ${response.error || '数据格式错误'}`);
+      }
+    } catch (error) {
+      console.error('Error loading quiz:', error);
+      alert('加载题目详情时发生错误');
+    }
+  };
+
+  const handleSaveQuiz = (updatedQuiz: any) => {
+    // Quiz saved successfully
+    console.log('Quiz updated:', updatedQuiz);
+    setShowEditModal(false);
+    setEditingQuiz(null);
+    
+    // Optionally refresh the reports to show updated quiz content
+    fetchReports();
+    
+    // Show success message
+    alert('题目已更新，您现在可以标记报告为已解决');
+  };
+
+  const handleDeleteQuiz = async (quizId: string) => {
+    // Quiz deleted successfully
+    console.log('Quiz deleted:', quizId);
+    setShowEditModal(false);
+    setEditingQuiz(null);
+    
+    // If the current report is open and it's for the deleted quiz, also close the detail modal
+    if (selectedReport && selectedReport.quiz_id === quizId) {
+      // Mark the report as resolved since the duplicate quiz was deleted
+      await handleStatusChange(selectedReport.id, 'resolved');
+    }
+    
+    // Refresh the reports
+    fetchReports();
+    
+    // Show success message
+    alert('题目已删除，相关报告已自动标记为已解决');
+  };
+
   const filteredReports = reports.filter(report => {
     if (searchTerm && !report.quiz?.question.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
     return true;
   });
+
 
   const pendingCount = reports.filter(r => r.status === 'pending').length;
   const reviewingCount = reports.filter(r => r.status === 'reviewing').length;
@@ -260,6 +333,12 @@ export default function ReportManagement() {
         <div className="text-center py-12">
           <Flag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">暂无报告</p>
+          <div className="mt-4 text-xs text-gray-400">
+            <p>Debug info:</p>
+            <p>Reports count: {reports.length}</p>
+            <p>Loading: {loading.toString()}</p>
+            <p>Backend ready: {backendReady.toString()}</p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -341,7 +420,7 @@ export default function ReportManagement() {
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-sm font-medium text-gray-700">题目</label>
                     <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
-                      ID: {selectedReport.quiz_id}
+                      ID: {selectedReport.quiz_id || '未知'}
                     </span>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-lg text-sm">
@@ -381,37 +460,59 @@ export default function ReportManagement() {
                   />
                 </div>
                 
-                <div className="flex justify-end gap-3 pt-4 border-t">
+                <div className="flex justify-between pt-4 border-t">
                   <button
-                    onClick={() => setShowDetailModal(false)}
-                    className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+                    onClick={() => handleEditQuiz(selectedReport)}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
                   >
-                    取消
+                    <Edit className="w-4 h-4 mr-2" />
+                    编辑题目
                   </button>
-                  <button
-                    onClick={() => handleStatusChange(selectedReport.id, 'dismissed')}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    忽略
-                  </button>
-                  <button
-                    onClick={() => handleStatusChange(selectedReport.id, 'reviewing')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    标记处理中
-                  </button>
-                  <button
-                    onClick={() => handleStatusChange(selectedReport.id, 'resolved')}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    标记已解决
-                  </button>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowDetailModal(false)}
+                      className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(selectedReport.id, 'dismissed')}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      忽略
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(selectedReport.id, 'reviewing')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      标记处理中
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(selectedReport.id, 'resolved')}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      标记已解决
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Quiz Edit Modal */}
+      <QuizEditModal
+        quiz={editingQuiz}
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingQuiz(null);
+        }}
+        onSave={handleSaveQuiz}
+        onDelete={handleDeleteQuiz}
+      />
     </div>
   );
 }
