@@ -8,6 +8,7 @@ import { practiceAnalysisApi } from './services/practiceAnalysisApi';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ConnectionError, useConnectionStatus } from './components/ConnectionError';
 import LoginPage from './components/LoginPage';
+import { useToast, ToastContainer } from './components/Toast';
 import HomePage from './components/HomePage';
 import SubjectSelection from './components/SubjectSelection';
 import PracticeMenu from './components/PracticeMenu';
@@ -44,6 +45,7 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userType, setUserType] = useState<'student' | 'teacher' | null>(null);
+  const { success, error, warning, info, toasts, removeToast } = useToast();
   // Load saved subject from localStorage on init
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(() => {
     const saved = localStorage.getItem('lastSelectedSubject');
@@ -460,7 +462,7 @@ function App() {
       navigateToScreen('quiz-practice');
     } catch (error) {
       console.error('Failed to start quick practice session:', error);
-      alert('启动快速练习失败，请重试。');
+      error('启动快速练习失败，请重试。');
     }
   };
   
@@ -471,7 +473,7 @@ function App() {
       navigateToScreen('quiz-practice');
     } catch (error) {
       console.error('Failed to start weak points session:', error);
-      alert('启动薄弱知识点练习失败，请重试。');
+      error('启动薄弱知识点练习失败，请重试。');
     }
   };
   
@@ -481,7 +483,7 @@ function App() {
       // Check if user is logged in
       const token = localStorage.getItem('jwt_token');
       if (!token) {
-        alert('请先登录后再使用错题练习功能。');
+        warning('请先登录后再使用错题练习功能。');
         navigateToScreen('login');
         return;
       }
@@ -499,7 +501,7 @@ function App() {
       });
       
       if (!response.success && response.error?.includes('Authentication required')) {
-        alert('请先登录后再使用错题练习功能。');
+        warning('请先登录后再使用错题练习功能。');
         navigateToScreen('login');
         return;
       }
@@ -508,7 +510,7 @@ function App() {
         const { session, quizzes } = response.data;
         
         if (quizzes.length === 0) {
-          alert('暂无错题记录。请先完成几次练习后再使用此功能。');
+          info('暂无错题记录。请先完成几次练习后再使用此功能。');
           return;
         }
         
@@ -517,11 +519,11 @@ function App() {
         navigateToScreen('quiz-practice');
       } else {
         // If no wrong questions found or error occurred
-        alert(response.error || '暂无错题记录。请先完成几次练习后再使用此功能。');
+        info(response.error || '暂无错题记录。请先完成几次练习后再使用此功能。');
       }
     } catch (error) {
       console.error('Failed to create wrong questions session:', error);
-      alert('创建错题练习失败，请稍后重试。');
+      error('创建错题练习失败，请稍后重试。');
     }
   };
 
@@ -906,6 +908,7 @@ function App() {
     <ErrorBoundary>
       <div className="App">
         {renderScreen()}
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
       </div>
     </ErrorBoundary>
   );

@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import ReportModal from './ReportModal';
 import MyReports from './MyReports';
 import { Eye } from 'lucide-react';
+import { useToast, ToastContainer } from './Toast';
 
 import {
   SingleChoiceQuestion,
@@ -58,6 +59,7 @@ export default function QuizPractice({
   const [showReportModal, setShowReportModal] = useState(false);
   const [showMyReports, setShowMyReports] = useState(false);
   const [userGaveUp, setUserGaveUp] = useState(false); // Track if user clicked "直接看答案"
+  const { success, error, toasts, removeToast } = useToast();
 
   const currentQuestion = questions[currentQuestionIndex];
   const isSingleChoice = currentQuestion?.type === 'single-choice';
@@ -356,10 +358,10 @@ export default function QuizPractice({
     try {
       const response = await api.submitQuizReport(report);
       if (response.success) {
-        alert('问题已报告，感谢您的反馈！');
+        success('问题已报告，感谢您的反馈！');
         setShowReportModal(false);
       } else {
-        alert('报告提交失败，请稍后重试');
+        error('报告提交失败，请稍后重试');
       }
     } catch (error) {
       console.error('Failed to submit report:', error);
@@ -537,6 +539,9 @@ export default function QuizPractice({
           onClose={() => setShowMyReports(false)}
         />
       )}
+      
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };

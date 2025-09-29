@@ -3,6 +3,7 @@ import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, RotateCcw, Trash2, C
 import { Subject, PracticeHistory as PracticeHistoryType } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import PracticeSessionDetailsModal from './PracticeSessionDetailsModal';
+import { useToast } from './Toast';
 
 interface PracticeHistoryProps {
   subject: Subject;
@@ -44,6 +45,7 @@ export default function PracticeHistory({
   const [expandedVolumes, setExpandedVolumes] = useState<Set<string>>(new Set());
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+  const { info } = useToast();
   
   // State for session details modal
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export default function PracticeHistory({
     
     if (!isValidUUID) {
       // This is a legacy session from localStorage (timestamp-based ID)
-      alert('详细查看功能仅支持新的练习记录。\n\n旧的练习记录暂时无法查看详情，请开始新的练习以使用此功能。');
+      info('详细查看功能仅支持新的练习记录。旧的练习记录暂时无法查看详情，请开始新的练习以使用此功能。');
       return;
     }
     

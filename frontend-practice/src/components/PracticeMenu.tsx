@@ -4,6 +4,7 @@ import { Subject, PracticeHistory } from '../types/quiz';
 import { useSubjects } from '../hooks/useApi';
 import { api } from '../services/api';
 import { authService } from '../services/authService';
+import { useToast } from './Toast';
 
 interface PracticeMenuProps {
   subject: Subject;
@@ -38,6 +39,7 @@ export default function PracticeMenu({
   // State for showing tooltips
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+  const { success, error, warning, info } = useToast();
   const [quickOptionsAvailability, setQuickOptionsAvailability] = useState<{
     quick_practice?: { available: boolean; message: string };
     weak_points?: { available: boolean; message: string };
@@ -126,7 +128,7 @@ export default function PracticeMenu({
         const { session, quizzes } = response.data;
         
         if (quizzes.length === 0) {
-          alert('暂无题目可用。请先添加题目后再使用快速练习功能。');
+          info('暂无题目可用。请先添加题目后再使用快速练习功能。');
           return;
         }
         
@@ -134,11 +136,11 @@ export default function PracticeMenu({
         onQuickPracticeSession?.(session.id);
       } else {
         // Fallback error handling
-        alert(response.error || '创建快速练习失败，请重试。');
+        error(response.error || '创建快速练习失败，请重试。');
       }
     } catch (error) {
       console.error('Failed to create quick practice session:', error);
-      alert('创建快速练习失败，请重试。');
+      error('创建快速练习失败，请重试。');
     }
   };
   
@@ -166,7 +168,7 @@ export default function PracticeMenu({
         const { session, quizzes } = response.data;
         
         if (quizzes.length === 0) {
-          alert('暂无薄弱知识点题目。请先完成几次练习后再使用此功能。');
+          info('暂无薄弱知识点题目。请先完成几次练习后再使用此功能。');
           return;
         }
         
@@ -174,11 +176,11 @@ export default function PracticeMenu({
         onWeakPointsSession?.(session.id);
       } else {
         // Fallback error handling
-        alert(response.error || '创建薄弱知识点练习失败，请重试。');
+        error(response.error || '创建薄弱知识点练习失败，请重试。');
       }
     } catch (error) {
       console.error('Failed to create weak points session:', error);
-      alert('创建薄弱知识点练习失败，请重试。');
+      error('创建薄弱知识点练习失败，请重试。');
     }
   };
   
