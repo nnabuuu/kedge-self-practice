@@ -11,9 +11,13 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 - **Single Blank**: Simple text input field embedded within the question text
 - **Multiple Blanks**: Multiple input fields seamlessly integrated into the question narrative
 - **Keyboard Navigation**: 
+  - `Enter` key to submit answers (when at least one blank is filled)
   - `Tab` key to move to the next blank
   - `Shift+Tab` to return to the previous blank
-  - `Enter` key to submit all answers
+- **Smart Submission**:
+  - Requires at least one non-empty blank to submit via Enter key
+  - Prevents accidental submission with all empty blanks
+  - Works from any input field, no need to click submit button
 
 #### 2. **Visual Feedback System**
 - **During Answer Entry**:
@@ -118,11 +122,11 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
    - Visual feedback confirms input
 
 3. **Submission Options**
-   - Click "提交答案" button to submit filled answers
-   - Click "不知道，直接看答案" to reveal answers without attempting
-   - Press Enter key for quick submission
-   - Answers sent to backend for validation
-   - Immediate feedback displayed
+   - **Enter Key**: Press Enter from any input field for quick submission (requires at least one filled blank)
+   - **Submit Button**: Click "提交答案" button to submit filled answers
+   - **Give Up Option**: Click "不知道，直接看答案" to reveal answers without attempting (AI evaluation disabled)
+   - **Backend Integration**: Answers automatically sent to backend for validation and tracking
+   - **Immediate Feedback**: Instant visual feedback after submission
 
 4. **Result Review**
    - Correct/incorrect status clearly shown
@@ -154,9 +158,14 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 - **Real-time Validation**: Backend validates each submission
 - **Session Tracking**: All attempts linked to practice sessions
 - **Progress Persistence**: Answers saved for review
+- **Smart Submission Logic**: Validates non-empty content before allowing Enter key submission
 
 ### Accessibility
-- **Keyboard Navigation**: Full keyboard support
+- **Keyboard Navigation**: 
+  - Full keyboard support for all interactions
+  - Enter key for quick submission
+  - Tab/Shift+Tab for field navigation
+  - No mouse required for complete interaction
 - **Screen Reader Compatible**: Proper ARIA labels
 - **Mobile Responsive**: Touch-friendly input fields
 - **Clear Visual Indicators**: High contrast feedback
@@ -171,9 +180,13 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 
 ### For Student Success
 1. **Try Without Hints First**: Build confidence and recall
-2. **Review Mistakes**: Learn from incorrect answers
-3. **Use Keyboard Shortcuts**: Improve answer speed
+2. **Use Keyboard Shortcuts**: 
+   - Enter to submit quickly
+   - Tab/Shift+Tab for navigation
+   - Improves answer speed and flow
+3. **Review Mistakes**: Learn from incorrect answers
 4. **Read Explanations**: Understand the why behind answers
+5. **Leverage AI Evaluation**: Get second opinion on alternative phrasings
 
 ## Educational Value
 

@@ -293,6 +293,29 @@ export default function QuizPractice({
                   type="text"
                   value={fillInBlankAnswers[index] || ''}
                   onChange={(e) => handleFillInBlankChange(index, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !showResult) {
+                      e.preventDefault();
+                      // Check if at least one blank has content
+                      if (fillInBlankAnswers.some(a => a && a.trim())) {
+                        handleSubmitAnswer();
+                      }
+                    } else if (e.key === 'Tab' && !e.shiftKey && index < parts.length - 2) {
+                      // Tab to next blank (if not the last one)
+                      e.preventDefault();
+                      const nextInput = e.currentTarget.parentElement?.parentElement?.querySelectorAll('input')[index + 1];
+                      if (nextInput instanceof HTMLInputElement) {
+                        nextInput.focus();
+                      }
+                    } else if (e.key === 'Tab' && e.shiftKey && index > 0) {
+                      // Shift+Tab to previous blank (if not the first one)
+                      e.preventDefault();
+                      const prevInput = e.currentTarget.parentElement?.parentElement?.querySelectorAll('input')[index - 1];
+                      if (prevInput instanceof HTMLInputElement) {
+                        prevInput.focus();
+                      }
+                    }
+                  }}
                   disabled={showResult}
                   className="mx-2 px-3 py-1 border-b-2 border-blue-500 text-center min-w-[100px] focus:outline-none focus:border-blue-700"
                   placeholder={showHints && hints[index] ? hints[index] : ''}
