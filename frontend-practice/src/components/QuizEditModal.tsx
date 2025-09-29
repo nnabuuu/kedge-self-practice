@@ -423,12 +423,12 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
           )}
 
           {/* Question Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">题目类型</label>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">题目类型:</label>
             <select
               value={editingQuiz.type}
               onChange={(e) => setEditingQuiz({ ...editingQuiz, type: e.target.value as Quiz['type'] })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               {typeOptions.map(option => (
                 <option key={option.value} value={option.value}>
