@@ -404,9 +404,9 @@ export class QuizController {
   @ApiOperation({ summary: 'Update a quiz by ID' })
   @ApiResponse({ status: 200, description: 'Quiz updated successfully' })
   @ApiResponse({ status: 404, description: 'Quiz not found' })
-  async updateQuiz(@Param('id') id: string, @Body() body: { quiz: Partial<QuizItem> }) {
+  async updateQuiz(@Param('id') id: string, @Body() body: Partial<QuizItem>) {
     try {
-      const validatedQuiz = QuizItemSchema.partial().parse(body.quiz);
+      const validatedQuiz = QuizItemSchema.partial().parse(body);
       const updatedQuiz = await this.quizService.updateQuiz(id, validatedQuiz);
       
       if (!updatedQuiz) {

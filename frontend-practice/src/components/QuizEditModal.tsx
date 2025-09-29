@@ -110,7 +110,7 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
     
     // Initialize hints for fill-in-the-blank
     if (cloned.type === 'fill-in-the-blank' && !cloned.hints) {
-      const blanksCount = (cloned.question?.match(/___/g) || []).length;
+      const blanksCount = (cloned.question?.match(/____/g) || []).length;
       cloned.hints = new Array(blanksCount).fill('');
     }
     
@@ -153,6 +153,25 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
   const handleSave = async () => {
     if (!editingQuiz) return;
     
+    // Validate fill-in-the-blank answers
+    if (editingQuiz.type === 'fill-in-the-blank') {
+      const blanksCount = (editingQuiz.question?.match(/____/g) || []).length;
+      if (blanksCount > 0) {
+        const answers = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [editingQuiz.answer || ''];
+        
+        // Check if all required answers are filled
+        for (let i = 0; i < blanksCount; i++) {
+          if (!answers[i] || !answers[i].trim()) {
+            setError(`请填写第 ${i + 1} 个空格的正确答案`);
+            return;
+          }
+        }
+      } else {
+        setError('填空题必须包含至少一个空格（使用四个下划线 ____ 标记）');
+        return;
+      }
+    }
+    
     setSaving(true);
     setError(null);
     
@@ -177,6 +196,25 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
         });
         dataToSave.options = optionsObj;
       }
+      
+      // Ensure answer is an array for fill-in-the-blank questions
+      if (dataToSave.type === 'fill-in-the-blank') {
+        if (!Array.isArray(dataToSave.answer)) {
+          dataToSave.answer = [dataToSave.answer || ''];
+        }
+        // Clean up empty trailing elements in arrays
+        if (dataToSave.alternative_answers) {
+          dataToSave.alternative_answers = dataToSave.alternative_answers.filter((a: string) => a && a.trim());
+        }
+        if (dataToSave.hints) {
+          // Keep hints array size matching answer array, but allow empty hints
+          const answerCount = dataToSave.answer.length;
+          dataToSave.hints = dataToSave.hints.slice(0, answerCount);
+        }
+      }
+      
+      // Log the data being sent for debugging
+      console.log('Sending quiz update:', JSON.stringify(dataToSave, null, 2));
       
       // Update the quiz
       const response = await api.questions.update(editingQuiz.id, dataToSave);
@@ -238,27 +276,6 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
     setEditingQuiz({ ...editingQuiz, tags: tags.filter(tag => tag !== tagToRemove) });
   };
 
-  const handleAddHint = () => {
-    if (!editingQuiz) return;
-    
-    const hints = editingQuiz.hints || [];
-    setEditingQuiz({ ...editingQuiz, hints: [...hints, ''] });
-  };
-
-  const handleHintChange = (index: number, value: string) => {
-    if (!editingQuiz) return;
-    
-    const hints = [...(editingQuiz.hints || [])];
-    hints[index] = value;
-    setEditingQuiz({ ...editingQuiz, hints });
-  };
-
-  const handleRemoveHint = (index: number) => {
-    if (!editingQuiz) return;
-    
-    const hints = editingQuiz.hints || [];
-    setEditingQuiz({ ...editingQuiz, hints: hints.filter((_, i) => i !== index) });
-  };
 
   const handleAddOption = () => {
     if (!editingQuiz || !Array.isArray(editingQuiz.options)) return;
@@ -490,6 +507,145 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
             </div>
           )}
 
+          {/* Fill-in-the-blank Answer Management Table */}
+          {editingQuiz.type === 'fill-in-the-blank' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">答案管理</label>
+              {(() => {
+                // Detect number of blanks from question text (exactly 4 underscores)
+                const blanksCount = (editingQuiz.question?.match(/____/g) || []).length;
+                
+                if (blanksCount === 0) {
+                  return (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        请在题目中使用四个下划线 (____) 来标记填空位置
+                      </p>
+                    </div>
+                  );
+                }
+                
+                // Ensure answers array matches blanks count
+                const currentAnswers = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [editingQuiz.answer || ''];
+                const answers = [...currentAnswers];
+                while (answers.length < blanksCount) {
+                  answers.push('');
+                }
+                if (answers.length > blanksCount) {
+                  answers.splice(blanksCount);
+                }
+                
+                // Sync other arrays
+                const hints = [...(editingQuiz.hints || [])];
+                while (hints.length < blanksCount) {
+                  hints.push('');
+                }
+                if (hints.length > blanksCount) {
+                  hints.splice(blanksCount);
+                }
+                
+                const altAnswers = [...(editingQuiz.alternative_answers || [])];
+                
+                return (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse bg-white rounded-lg overflow-hidden">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200">
+                            <th className="text-left px-4 py-2 text-sm font-medium text-gray-700 w-16">空格</th>
+                            <th className="text-left px-4 py-2 text-sm font-medium text-gray-700">
+                              正确答案 <span className="text-red-500">*</span>
+                            </th>
+                            <th className="text-left px-4 py-2 text-sm font-medium text-gray-700">备选答案</th>
+                            <th className="text-left px-4 py-2 text-sm font-medium text-gray-700">提示</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: blanksCount }, (_, index) => (
+                            <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm font-medium text-gray-600">
+                                {index + 1}
+                              </td>
+                              <td className="px-4 py-3">
+                                <input
+                                  type="text"
+                                  value={answers[index] || ''}
+                                  onChange={(e) => {
+                                    const newAnswers = [...answers];
+                                    newAnswers[index] = e.target.value;
+                                    
+                                    // Update quiz with properly sized arrays
+                                    setEditingQuiz({ 
+                                      ...editingQuiz, 
+                                      answer: newAnswers,
+                                      hints: hints
+                                    });
+                                  }}
+                                  className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-blue-500 ${
+                                    !answers[index] ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                  }`}
+                                  placeholder="必填"
+                                  required
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <input
+                                  type="text"
+                                  value={altAnswers[index] || ''}
+                                  onChange={(e) => {
+                                    const newAltAnswers = [...altAnswers];
+                                    while (newAltAnswers.length <= index) {
+                                      newAltAnswers.push('');
+                                    }
+                                    newAltAnswers[index] = e.target.value;
+                                    setEditingQuiz({ ...editingQuiz, alternative_answers: newAltAnswers });
+                                  }}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                  placeholder="可选"
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <input
+                                  type="text"
+                                  value={hints[index] || ''}
+                                  onChange={(e) => {
+                                    const newHints = [...hints];
+                                    newHints[index] = e.target.value;
+                                    setEditingQuiz({ ...editingQuiz, hints: newHints });
+                                  }}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                  placeholder="如：人名、地名"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-gray-500">
+                        检测到 {blanksCount} 个空格，请为每个空格填写正确答案
+                      </p>
+                      {answers.some(a => !a) && (
+                        <p className="text-xs text-red-600">
+                          ⚠️ 请填写所有空格的正确答案
+                        </p>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Answer (hidden for fill-in-the-blank as it's managed in the table above) */}
+          {editingQuiz.type !== 'fill-in-the-blank' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">正确答案</label>
+              {renderAnswerInput()}
+            </div>
+          )}
+
           {/* Knowledge Point */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -563,111 +719,6 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* Hints (for fill-in-the-blank) */}
-          {editingQuiz.type === 'fill-in-the-blank' && (
-            <>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">填空提示</label>
-                  <button
-                    type="button"
-                    onClick={handleAddHint}
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center gap-1"
-                  >
-                    <Plus className="w-4 h-4" />
-                    添加提示
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {editingQuiz.hints?.map((hint, index) => {
-                    const answers = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [editingQuiz.answer || ''];
-                    const correctAnswer = answers[index] || '';
-                    
-                    return (
-                      <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-700 mb-1">
-                              空格 {index + 1}
-                            </div>
-                            <div className="text-sm text-green-600 font-medium mb-2">
-                              正确答案: {correctAnswer || '(未设置)'}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <label className="text-sm text-gray-600">提示:</label>
-                              <input
-                                type="text"
-                                value={hint || ''}
-                                onChange={(e) => handleHintChange(index, e.target.value)}
-                                className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                placeholder="输入提示词，如：人名、地名、朝代等"
-                              />
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveHint(index)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              
-              {/* Alternative Answers */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">备选答案</label>
-                <div className="space-y-2">
-                  {editingQuiz.alternative_answers?.map((altAnswer, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={altAnswer || ''}
-                        onChange={(e) => {
-                          const newAltAnswers = [...(editingQuiz.alternative_answers || [])];
-                          newAltAnswers[index] = e.target.value;
-                          setEditingQuiz({ ...editingQuiz, alternative_answers: newAltAnswers });
-                        }}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="备选答案"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newAltAnswers = (editingQuiz.alternative_answers || []).filter((_, i) => i !== index);
-                          setEditingQuiz({ ...editingQuiz, alternative_answers: newAltAnswers });
-                        }}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const altAnswers = editingQuiz.alternative_answers || [];
-                      setEditingQuiz({ ...editingQuiz, alternative_answers: [...altAnswers, ''] });
-                    }}
-                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                  >
-                    添加备选答案
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Answer */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">正确答案</label>
-            {renderAnswerInput()}
           </div>
         </div>
 

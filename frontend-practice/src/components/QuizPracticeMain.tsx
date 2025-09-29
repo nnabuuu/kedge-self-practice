@@ -284,7 +284,7 @@ export default function QuizPractice({
 
   // Render question with blanks for fill-in-blank
   const renderFillInBlankQuestion = (text: string) => {
-    const parts = text.split(/_{2,}/g);
+    const parts = text.split(/____/);
     const hints = currentQuestion.hints || [];
 
     return (

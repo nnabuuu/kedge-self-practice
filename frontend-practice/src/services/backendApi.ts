@@ -504,6 +504,8 @@ class BackendApiService {
       backendUpdates.alternative_answers = updates.alternative_answers;
     }
 
+    console.log('Backend updates being sent:', JSON.stringify(backendUpdates, null, 2));
+    
     const response = await this.makeRequest<BackendQuiz>(`/quiz/${id}`, {
       method: 'PUT',
       body: JSON.stringify(backendUpdates)

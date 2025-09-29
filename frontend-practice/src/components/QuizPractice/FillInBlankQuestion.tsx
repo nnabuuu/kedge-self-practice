@@ -30,7 +30,7 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   onAiApproved,
   renderQuestionWithBlanks
 }) => {
-  const blanksCount = question.question.split(/_{2,}/g).length - 1;
+  const blanksCount = (question.question.match(/____/g) || []).length;
   
   // Debug logging for hints
   React.useEffect(() => {
