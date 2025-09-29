@@ -366,9 +366,18 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
                 onChange={(e) => {
                   const newAnswers = [...answers];
                   newAnswers[index] = e.target.value;
-                  setEditingQuiz({ ...editingQuiz, answer: newAnswers });
+                  
+                  // Auto-sync hints array size with answers
+                  const currentHints = editingQuiz.hints || [];
+                  const newHints = [...currentHints];
+                  while (newHints.length < newAnswers.length) {
+                    newHints.push(null);
+                  }
+                  
+                  setEditingQuiz({ ...editingQuiz, answer: newAnswers, hints: newHints });
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="输入正确答案"
               />
             </div>
           ))}
@@ -587,26 +596,43 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
                     添加提示
                   </button>
                 </div>
-                <div className="space-y-2">
-                  {editingQuiz.hints?.map((hint, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">空格 {index + 1}:</span>
-                      <input
-                        type="text"
-                        value={hint || ''}
-                        onChange={(e) => handleHintChange(index, e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder={`空格 ${index + 1} 的提示`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveHint(index)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  {editingQuiz.hints?.map((hint, index) => {
+                    const answers = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [editingQuiz.answer || ''];
+                    const correctAnswer = answers[index] || '';
+                    
+                    return (
+                      <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-700 mb-1">
+                              空格 {index + 1}
+                            </div>
+                            <div className="text-sm text-green-600 font-medium mb-2">
+                              正确答案: {correctAnswer || '(未设置)'}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-sm text-gray-600">提示:</label>
+                              <input
+                                type="text"
+                                value={hint || ''}
+                                onChange={(e) => handleHintChange(index, e.target.value)}
+                                className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                placeholder="输入提示词，如：人名、地名、朝代等"
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveHint(index)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               

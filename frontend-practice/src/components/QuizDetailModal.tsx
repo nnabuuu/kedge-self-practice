@@ -164,13 +164,28 @@ export default function QuizDetailModal({
 
   const renderHints = () => {
     if (!quiz.hints || quiz.hints.length === 0) return null;
+    
+    const answers = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer || ''];
 
-    return quiz.hints.map((hint, index) => (
-      <div key={index} className="flex items-center gap-2 p-2 bg-blue-50 rounded">
-        <span className="text-sm font-medium text-blue-600">空格 {index + 1}:</span>
-        <span className="text-blue-800">{hint || '无提示'}</span>
-      </div>
-    ));
+    return quiz.hints.map((hint, index) => {
+      const correctAnswer = answers[index] || '';
+      
+      return (
+        <div key={index} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="text-sm font-medium text-gray-700 mb-1">空格 {index + 1}</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <span className="text-xs text-gray-600">正确答案:</span>
+              <div className="text-sm font-medium text-green-600">{correctAnswer || '(未设置)'}</div>
+            </div>
+            <div>
+              <span className="text-xs text-gray-600">提示:</span>
+              <div className="text-sm text-blue-800">{hint || '(无提示)'}</div>
+            </div>
+          </div>
+        </div>
+      );
+    });
   };
 
   const renderQuestionWithImages = (text: string | undefined) => {
