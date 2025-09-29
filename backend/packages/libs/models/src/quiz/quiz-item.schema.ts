@@ -26,6 +26,8 @@ export const QuizItemSchema = z.object({
     z.array(z.string()),
     z.array(z.number())
   ]).optional(),
+  // Answer indices (0-based) for quick matching without text comparison
+  answer_index: z.array(z.number()).nullable().optional(),
   // Image placeholders in the question text (e.g., "{{img:1}}")
   images: z.array(z.string()).optional(),
   // Original paragraph text from which this quiz was extracted

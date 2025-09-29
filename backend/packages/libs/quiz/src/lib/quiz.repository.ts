@@ -56,6 +56,7 @@ export class QuizRepository {
             question,
             options,
             answer,
+            answer_index,
             original_paragraph,
             images,
             tags,
@@ -67,13 +68,14 @@ export class QuizRepository {
             ${item.question},
             ${sql.json(item.options)},
             ${sql.json(item.answer)},
+            ${item.answer_index ? sql.array(item.answer_index, 'int4') : null},
             ${item.originalParagraph ?? null},
             ${sql.json(item.images ?? [])},
             ${sql.json(item.tags ?? [])},
             ${item.knowledge_point_id ?? null},
             ${sql.array(item.alternative_answers ?? [], 'text')}
           )
-          RETURNING id, type, question, options, answer, original_paragraph, images, tags, knowledge_point_id, alternative_answers, NULL as "knowledgePoint"
+          RETURNING id, type, question, options, answer, answer_index, original_paragraph, images, tags, knowledge_point_id, alternative_answers, NULL as "knowledgePoint"
         `,
       );
       return result.rows[0];
@@ -88,7 +90,7 @@ export class QuizRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, 
+          SELECT id, type, question, options, answer, answer_index,
                  original_paragraph as "originalParagraph", 
                  images, tags, knowledge_point_id,
                  alternative_answers, 
@@ -120,7 +122,7 @@ export class QuizRepository {
       // Use type-safe query with proper schema
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, 
+          SELECT id, type, question, options, answer, answer_index,
                  original_paragraph as "originalParagraph", 
                  images, tags, knowledge_point_id,
                  alternative_answers, 
@@ -185,6 +187,7 @@ export class QuizRepository {
               question = ${updatedQuiz.question},
               options = ${sql.json(updatedQuiz.options)},
               answer = ${sql.json(updatedQuiz.answer)},
+              answer_index = ${updatedQuiz.answer_index ? sql.array(updatedQuiz.answer_index, 'int4') : null},
               original_paragraph = ${updatedQuiz.originalParagraph ?? null},
               images = ${sql.json(updatedQuiz.images ?? [])},
               tags = ${sql.json(updatedQuiz.tags ?? [])},
@@ -193,7 +196,7 @@ export class QuizRepository {
               hints = ${sql.json(updatedQuiz.hints ?? null)},
               updated_at = now()
           WHERE id = ${id}
-          RETURNING id, type, question, options, answer, 
+          RETURNING id, type, question, options, answer, answer_index,
                     original_paragraph as "originalParagraph", 
                     images, tags, knowledge_point_id,
                     alternative_answers, 
@@ -218,7 +221,7 @@ export class QuizRepository {
 
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
-          SELECT id, type, question, options, answer, 
+          SELECT id, type, question, options, answer, answer_index,
                  original_paragraph as "originalParagraph", 
                  images, tags, knowledge_point_id,
                  alternative_answers, 

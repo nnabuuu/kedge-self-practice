@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { QuizQuestion } from '../types/quiz';
 import { api } from '../services/api';
 import ReportModal from './ReportModal';
@@ -64,6 +64,16 @@ export default function QuizPractice({
   const isEssay = currentQuestion?.type === 'subjective';
 
   const speechSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+
+  // Initialize fill-in-blank answers when question changes
+  useEffect(() => {
+    if (isFillInBlank && currentQuestion) {
+      const blanksCount = (currentQuestion.question.match(/_{2,}/g) || []).length;
+      if (fillInBlankAnswers.length !== blanksCount) {
+        setFillInBlankAnswers(new Array(blanksCount).fill(''));
+      }
+    }
+  }, [currentQuestionIndex, isFillInBlank]);
 
   // Handle single choice selection
   const handleSingleChoiceSelect = (key: string) => {
@@ -211,7 +221,6 @@ export default function QuizPractice({
   const renderFillInBlankQuestion = (text: string) => {
     const parts = text.split(/_{2,}/g);
     const hints = currentQuestion.hints || [];
-    let blankIndex = 0;
 
     return (
       <div className="mb-4">
@@ -220,17 +229,14 @@ export default function QuizPractice({
             <React.Fragment key={index}>
               <span>{part}</span>
               {index < parts.length - 1 && (
-                <>
-                  <input
-                    type="text"
-                    value={fillInBlankAnswers[blankIndex] || ''}
-                    onChange={(e) => handleFillInBlankChange(blankIndex, e.target.value)}
-                    disabled={showResult}
-                    className="mx-2 px-3 py-1 border-b-2 border-blue-500 text-center min-w-[100px] focus:outline-none focus:border-blue-700"
-                    placeholder={showHints && hints[blankIndex] ? hints[blankIndex] : ''}
-                  />
-                  {(() => { blankIndex++; return null; })()}
-                </>
+                <input
+                  type="text"
+                  value={fillInBlankAnswers[index] || ''}
+                  onChange={(e) => handleFillInBlankChange(index, e.target.value)}
+                  disabled={showResult}
+                  className="mx-2 px-3 py-1 border-b-2 border-blue-500 text-center min-w-[100px] focus:outline-none focus:border-blue-700"
+                  placeholder={showHints && hints[index] ? hints[index] : ''}
+                />
               )}
             </React.Fragment>
           ))}
@@ -361,7 +367,7 @@ export default function QuizPractice({
                   disabled={
                     (isSingleChoice && !selectedAnswer) ||
                     (isMultipleChoice && selectedMultipleAnswers.length === 0) ||
-                    (isFillInBlank && fillInBlankAnswers.some(a => !a)) ||
+                    (isFillInBlank && (fillInBlankAnswers.length === 0 || fillInBlankAnswers.some(a => !a || a.trim() === ''))) ||
                     (isEssay && !essayAnswer.trim())
                   }
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

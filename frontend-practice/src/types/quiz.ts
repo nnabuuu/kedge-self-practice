@@ -26,6 +26,7 @@ export interface QuizQuestion {
     D: string;
   };
   answer?: string | string[]; // 单选题为string，多选题为string[]，填空题可能是string[]
+  answer_index?: number[]; // Answer indices (0-based) for quick matching
   standardAnswer?: string; // 用于问答题的标准答案
   standardStructure?: string; // 标准答案的结构和逻辑说明
   explanation?: string; // 题目解析，帮助学生理解答案

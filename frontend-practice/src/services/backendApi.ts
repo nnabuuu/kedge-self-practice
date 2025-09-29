@@ -132,16 +132,58 @@ class BackendApiService {
       });
     }
 
-    // Keep answer in its original format
+    // Convert answer format from backend
     let answer = backendQuiz.answer;
+    let answer_index = backendQuiz.answer_index;
     
-    // Convert numeric indices to letters for display if needed
-    if ((type === 'single-choice' || type === 'multiple-choice') && typeof answer === 'number') {
+    if ((type === 'single-choice' || type === 'multiple-choice')) {
       const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
-      answer = keys[answer] || String(answer);
-    } else if ((type === 'single-choice' || type === 'multiple-choice') && Array.isArray(answer) && answer.length > 0 && typeof answer[0] === 'number') {
-      const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
-      answer = answer.map((idx: number) => keys[idx] || String(idx));
+      
+      // Prefer answer_index if available
+      if (answer_index && Array.isArray(answer_index) && answer_index.length > 0) {
+        // Use answer_index directly - it's the most reliable
+        if (type === 'single-choice') {
+          answer = keys[answer_index[0]] || String(answer_index[0]);
+        } else {
+          answer = answer_index.map((idx: number) => keys[idx] || String(idx));
+        }
+      } else {
+        // Fallback to old logic for backward compatibility
+        if (typeof answer === 'number') {
+          // Answer is already a numeric index (0, 1, 2, 3)
+          answer = keys[answer] || String(answer);
+        } else if (typeof answer === 'string' && /^\d+$/.test(answer)) {
+          // Answer is a string number like "0", "1", "2"
+          const index = parseInt(answer, 10);
+          answer = keys[index] || answer;
+        } else if (Array.isArray(answer) && answer.length > 0) {
+          // Answer is an array - need to handle based on content
+          if (typeof answer[0] === 'string' && !keys.includes(answer[0])) {
+            // Answer contains actual text values (e.g., ["冯子材"])
+            // Find the index of each answer in the options array
+            if (Array.isArray(backendQuiz.options)) {
+              answer = answer.map((answerText: string) => {
+                const index = backendQuiz.options.indexOf(answerText);
+                return index !== -1 ? keys[index] : answerText;
+              });
+            }
+          } else if (typeof answer[0] === 'number') {
+            // Answer contains numeric indices
+            answer = answer.map((idx: number) => keys[idx] || String(idx));
+          }
+          
+          // For single-choice, extract just the first answer
+          if (type === 'single-choice' && Array.isArray(answer)) {
+            answer = answer[0];
+          }
+        } else if (typeof answer === 'string' && Array.isArray(backendQuiz.options)) {
+          // Single answer text - find its index in options
+          const index = backendQuiz.options.indexOf(answer);
+          if (index !== -1) {
+            answer = keys[index];
+          }
+        }
+      }
     }
 
     // Determine the knowledge point ID to use

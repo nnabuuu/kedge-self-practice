@@ -27,6 +27,98 @@ export class DefaultQuizService implements QuizService {
     });
   }
 
+  /**
+   * Process answer_index field to ensure consistency with answer field
+   * Auto-fills missing fields and validates conflicts
+   */
+  private processAnswerIndex(item: QuizItem): QuizItem {
+    // Skip processing for non-choice questions
+    if (item.type !== 'single-choice' && item.type !== 'multiple-choice') {
+      return item;
+    }
+
+    // If no options, can't process indices
+    if (!item.options || !Array.isArray(item.options)) {
+      return item;
+    }
+
+    const hasAnswer = item.answer !== undefined && item.answer !== null;
+    const hasAnswerIndex = item.answer_index !== undefined && item.answer_index !== null;
+
+    // Case 1: Both exist - validate consistency
+    if (hasAnswer && hasAnswerIndex && item.answer_index) {
+      const derivedIndex = this.deriveAnswerIndex(item);
+      if (derivedIndex && JSON.stringify(derivedIndex.sort()) !== JSON.stringify(item.answer_index.sort())) {
+        throw new Error(
+          `Answer index mismatch. Answer "${item.answer}" maps to indices [${derivedIndex}] but answer_index is [${item.answer_index}]`
+        );
+      }
+      return item;
+    }
+
+    // Case 2: Only answer exists - derive answer_index
+    if (hasAnswer && !hasAnswerIndex) {
+      const derivedIndex = this.deriveAnswerIndex(item);
+      return { ...item, answer_index: derivedIndex };
+    }
+
+    // Case 3: Only answer_index exists - derive answer
+    if (!hasAnswer && hasAnswerIndex) {
+      const derivedAnswer = this.deriveAnswer(item);
+      return { ...item, answer: derivedAnswer };
+    }
+
+    // Case 4: Neither exists - return as is (will fail validation later)
+    return item;
+  }
+
+  /**
+   * Derive answer_index from answer text
+   */
+  private deriveAnswerIndex(item: QuizItem): number[] | null {
+    if (!item.answer || !item.options) return null;
+
+    const options = item.options;
+    const indices: number[] = [];
+
+    // Handle single answer (string or single-element array)
+    if (typeof item.answer === 'string') {
+      const index = options.indexOf(item.answer);
+      if (index !== -1) {
+        indices.push(index);
+      }
+    } else if (Array.isArray(item.answer)) {
+      for (const ans of item.answer) {
+        if (typeof ans === 'string') {
+          const index = options.indexOf(ans);
+          if (index !== -1) {
+            indices.push(index);
+          }
+        } else if (typeof ans === 'number') {
+          // Already an index
+          indices.push(ans);
+        }
+      }
+    }
+
+    return indices.length > 0 ? indices.sort() : null;
+  }
+
+  /**
+   * Derive answer from answer_index
+   */
+  private deriveAnswer(item: QuizItem): string | string[] | undefined {
+    if (!item.answer_index || !item.options) return undefined;
+
+    const answers = item.answer_index.map(idx => item.options![idx]).filter(Boolean);
+    
+    if (item.type === 'single-choice') {
+      return answers.length > 0 ? answers[0] : undefined;
+    } else {
+      return answers.length > 0 ? answers : undefined;
+    }
+  }
+
   async createQuiz(item: QuizItem, images: QuizImageFile[] = []): Promise<QuizItem> {
     const paths: string[] = [];
     for (const image of images) {
@@ -40,7 +132,10 @@ export class DefaultQuizService implements QuizService {
       normalizedItem.hints = this.normalizeHints(item.hints);
     }
     
-    return this.repository.createQuiz({ ...normalizedItem, images: paths });
+    // Process answer_index for choice questions
+    const processedItem = this.processAnswerIndex(normalizedItem);
+    
+    return this.repository.createQuiz({ ...processedItem, images: paths });
   }
 
   findQuizById(id: string): Promise<QuizItem | null> {
@@ -75,14 +170,36 @@ export class DefaultQuizService implements QuizService {
     return this.repository.deleteQuiz(id);
   }
 
-  updateQuiz(id: string, updates: Partial<QuizItem>): Promise<QuizItem | null> {
-    // Normalize hints if provided
-    const normalizedUpdates = { ...updates };
-    if (updates.hints) {
-      normalizedUpdates.hints = this.normalizeHints(updates.hints);
+  async updateQuiz(id: string, updates: Partial<QuizItem>): Promise<QuizItem | null> {
+    // Get the existing quiz first
+    const existingQuiz = await this.repository.findQuizById(id);
+    if (!existingQuiz) {
+      return null;
     }
     
-    return this.repository.updateQuiz(id, normalizedUpdates);
+    // Merge with existing data for validation
+    const mergedQuiz = { ...existingQuiz, ...updates };
+    
+    // Normalize hints if provided
+    if (updates.hints) {
+      mergedQuiz.hints = this.normalizeHints(updates.hints);
+    }
+    
+    // Process answer_index for choice questions
+    const processedQuiz = this.processAnswerIndex(mergedQuiz);
+    
+    // Extract only the updated fields
+    const finalUpdates: Partial<QuizItem> = {};
+    for (const key in updates) {
+      finalUpdates[key as keyof QuizItem] = processedQuiz[key as keyof QuizItem] as any;
+    }
+    
+    // Also include answer_index if it was derived
+    if (processedQuiz.answer_index !== undefined && updates.answer_index === undefined) {
+      finalUpdates.answer_index = processedQuiz.answer_index;
+    }
+    
+    return this.repository.updateQuiz(id, finalUpdates);
   }
 
   searchQuizzesByTags(tags: string[]): Promise<QuizItem[]> {
