@@ -438,22 +438,6 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
             </select>
           </div>
 
-          {/* Difficulty */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">难度</label>
-            <select
-              value={editingQuiz.difficulty || 'medium'}
-              onChange={(e) => setEditingQuiz({ ...editingQuiz, difficulty: e.target.value as Quiz['difficulty'] })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              {difficultyOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Question */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">题目内容</label>
