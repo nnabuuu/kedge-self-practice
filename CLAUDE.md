@@ -20,6 +20,32 @@ This is a self-practice learning platform designed for middle school students to
 - **TypeScript** with strict typing
 - **OpenAI GPT** integration for intelligent quiz generation
 
+## Documentation Best Practices
+
+### Frontend Feature Documentation
+When working on frontend features, ALWAYS follow these documentation practices:
+
+1. **Before Implementation**:
+   - Check if `/docs/pages/[feature-name].md` exists
+   - Read existing product documentation to understand feature requirements
+   - If no documentation exists, create it BEFORE implementing
+
+2. **Documentation Structure** (`/docs/pages/`):
+   - **Product-Oriented**: Focus on user experience, not technical implementation
+   - **Include**: Overview, Key Features (for Students/Teachers), User Journey, Educational Value
+   - **Avoid**: Code snippets, technical architecture, implementation details
+   - **Example**: See `/docs/pages/fill-in-blank-question-feature.md`
+
+3. **After Implementation**:
+   - Update the feature documentation with any new capabilities
+   - Document any limitations or known issues
+   - Add to feature index if creating new documentation
+
+4. **Documentation Locations**:
+   - `/docs/pages/` - Product feature documentation (user-facing)
+   - `/docs/technical/` - Technical implementation guides
+   - Component-level JSDoc comments - Code documentation
+
 ## Project Management Practices
 
 ### Linear Integration
