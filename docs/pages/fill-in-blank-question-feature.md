@@ -39,12 +39,26 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
   - Includes eye icon for visual clarity
   - Still tracks as incorrect attempt for analytics
 
-#### 4. **Hint System**
+#### 4. **AI-Powered Re-evaluation**
+- **"让AI重新评估我的答案" Button**:
+  - Available when answer is marked incorrect
+  - Sends student's answer to AI for semantic evaluation
+  - Considers context and meaning, not just exact matching
+  - Provides detailed reasoning for the evaluation
+  - May accept alternative phrasings or synonyms
+- **AI Evaluation Results**:
+  - **Green indicator**: Answer is acceptable
+  - **Yellow indicator**: Answer needs improvement
+  - **Detailed feedback**: Explains why answer is acceptable or not
+  - **Loading state**: Shows progress during evaluation
+  - Helps students understand nuanced answers
+
+#### 5. **Hint System**
 - **Optional Hints**: Teachers can provide contextual hints for each blank
 - **Toggle Visibility**: Students can choose to show/hide hints
 - **Strategic Learning**: Encourages students to attempt without hints first
 
-#### 5. **Answer Validation**
+#### 6. **Answer Validation**
 - **Flexible Matching**:
   - Case-insensitive comparison
   - Automatic trimming of extra spaces
@@ -101,6 +115,9 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 
 4. **Result Review**
    - Correct/incorrect status clearly shown
+   - Side-by-side answer comparison
+   - Option to request AI re-evaluation if incorrect
+   - AI provides detailed feedback and reasoning
    - Correct answers revealed for learning
    - Explanation provided if available
    - Option to continue to next question
@@ -161,6 +178,22 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 - **Reduced Guessing**: Unlike multiple choice
 - **Deeper Understanding**: Tests actual knowledge vs recognition
 
+## AI Integration Features
+
+### Semantic Understanding
+The AI re-evaluation feature leverages advanced language models to:
+- **Understand Context**: Evaluates answers within the question's context
+- **Accept Variations**: Recognizes synonyms and alternative phrasings
+- **Provide Explanations**: Offers detailed reasoning for acceptance/rejection
+- **Support Learning**: Helps students understand why answers work or don't
+
+### Use Cases for AI Evaluation
+1. **Historical Names**: Different romanizations or transliterations
+2. **Scientific Terms**: Alternative naming conventions
+3. **Mathematical Expressions**: Different but equivalent forms
+4. **Language Learning**: Acceptable variations in expression
+5. **Open-ended Concepts**: Multiple valid interpretations
+
 ## Future Enhancements
 
 ### Planned Features
@@ -169,6 +202,7 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 - **Voice Input**: Speech-to-text for accessibility
 - **Auto-complete**: Intelligent suggestions based on context
 - **Collaborative Mode**: Peer learning through shared attempts
+- **Enhanced AI Feedback**: More detailed learning suggestions
 
 ### Analytics Expansion
 - **Learning Curves**: Track improvement over time

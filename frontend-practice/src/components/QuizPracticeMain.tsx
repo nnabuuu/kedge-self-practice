@@ -352,6 +352,7 @@ export default function QuizPractice({
                 showHints={showHints}
                 showResult={showResult}
                 isAnswerCorrect={isAnswerCorrect}
+                sessionId={sessionId}
                 onAnswerChange={handleFillInBlankChange}
                 onToggleHints={() => setShowHints(!showHints)}
                 renderQuestionWithBlanks={renderFillInBlankQuestion}
