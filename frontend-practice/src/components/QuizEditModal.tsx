@@ -63,6 +63,11 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
     // Clone the quiz for editing
     const cloned = JSON.parse(JSON.stringify(quiz));
     
+    // Debug log to see what we're receiving
+    console.log('Original quiz data:', quiz);
+    console.log('Cloned quiz knowledge_point_id:', cloned.knowledge_point_id, 'type:', typeof cloned.knowledge_point_id);
+    console.log('Cloned quiz knowledgePointId:', cloned.knowledgePointId, 'type:', typeof cloned.knowledgePointId);
+    
     // Ensure options is an array for editing
     if (cloned.options && !Array.isArray(cloned.options)) {
       const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -185,16 +190,21 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
         dataToSave.knowledge_point_id = selectedKnowledgePoint.id;
       }
       
-      // Convert options array back to object format if needed
-      if (Array.isArray(dataToSave.options)) {
-        const optionsObj: { [key: string]: string } = {};
-        const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
-        dataToSave.options.forEach((option: string, index: number) => {
-          if (index < keys.length && option) {
-            optionsObj[keys[index]] = option;
-          }
-        });
-        dataToSave.options = optionsObj;
+      // Convert options array back to object format if needed (only for choice questions)
+      if (dataToSave.type === 'single-choice' || dataToSave.type === 'multiple-choice') {
+        if (Array.isArray(dataToSave.options)) {
+          const optionsObj: { [key: string]: string } = {};
+          const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
+          dataToSave.options.forEach((option: string, index: number) => {
+            if (index < keys.length && option) {
+              optionsObj[keys[index]] = option;
+            }
+          });
+          dataToSave.options = optionsObj;
+        }
+      } else {
+        // For non-choice questions, ensure options is empty or undefined
+        delete dataToSave.options;
       }
       
       // Ensure answer is an array for fill-in-the-blank questions

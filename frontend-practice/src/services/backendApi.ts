@@ -468,9 +468,23 @@ class BackendApiService {
       backendUpdates.difficulty = updates.difficulty;
     }
     
-    // Handle options - keep as object or array based on what was provided
+    // Handle options - convert object to array if needed
     if (updates.options !== undefined) {
-      backendUpdates.options = updates.options;
+      if (Array.isArray(updates.options)) {
+        backendUpdates.options = updates.options;
+      } else if (typeof updates.options === 'object' && updates.options !== null) {
+        // Convert object {A: "...", B: "..."} to array ["...", "..."]
+        const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const optionsArray: string[] = [];
+        for (const key of keys) {
+          if ((updates.options as any)[key]) {
+            optionsArray.push((updates.options as any)[key]);
+          }
+        }
+        backendUpdates.options = optionsArray;
+      } else {
+        backendUpdates.options = [];
+      }
     }
     
     // Handle answer - keep as is (string, number, or array)
@@ -478,15 +492,9 @@ class BackendApiService {
       backendUpdates.answer = updates.answer;
     }
     
-    // Handle knowledge point ID
+    // Handle knowledge point ID - pass through as-is
     if (updates.knowledgePointId !== undefined || updates.knowledge_point_id !== undefined) {
-      const kpId = updates.knowledgePointId || updates.knowledge_point_id;
-      // Extract numeric part if it has kp_ prefix
-      if (typeof kpId === 'string' && kpId.startsWith('kp_')) {
-        backendUpdates.knowledge_point_id = parseInt(kpId.substring(3));
-      } else {
-        backendUpdates.knowledge_point_id = parseInt(kpId);
-      }
+      backendUpdates.knowledge_point_id = updates.knowledgePointId || updates.knowledge_point_id;
     }
     
     // Handle tags array
