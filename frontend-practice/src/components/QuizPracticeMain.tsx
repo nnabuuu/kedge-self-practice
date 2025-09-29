@@ -184,17 +184,44 @@ export default function QuizPractice({
   };
 
   // Submit answer (with optional answer for auto-submit)
-  const handleSubmitAnswer = (autoSubmitAnswer?: string) => {
+  const handleSubmitAnswer = async (autoSubmitAnswer?: string) => {
     let answer = null;
+    let answerString = '';
+    
     if (isSingleChoice) {
       // Use auto-submit answer if provided, otherwise use selected
       answer = autoSubmitAnswer || selectedAnswer;
+      answerString = answer || '';
     } else if (isMultipleChoice) {
       answer = selectedMultipleAnswers;
+      answerString = selectedMultipleAnswers.join(',');
     } else if (isFillInBlank) {
       answer = fillInBlankAnswers;
+      // Join fill-in-blank answers with ||| separator
+      answerString = fillInBlankAnswers.join('|||');
     } else if (isEssay) {
       answer = essayAnswer;
+      answerString = essayAnswer;
+    }
+
+    // Submit to backend if we have a session
+    if (sessionId && currentQuestion) {
+      try {
+        const timeSpent = Math.floor((Date.now() - startTime.current) / 1000);
+        const response = await api.practice.submitAnswer(
+          sessionId,
+          currentQuestion.id,
+          answerString,
+          timeSpent
+        );
+        
+        // Store the result from backend
+        if (response.success) {
+          console.log('Answer submitted, is correct:', response.data?.isCorrect);
+        }
+      } catch (error) {
+        console.error('Failed to submit answer to backend:', error);
+      }
     }
 
     const newAnswers = [...answers];
@@ -322,6 +349,8 @@ export default function QuizPractice({
                 question={currentQuestion}
                 answers={fillInBlankAnswers}
                 showHints={showHints}
+                showResult={showResult}
+                isAnswerCorrect={isAnswerCorrect}
                 onAnswerChange={handleFillInBlankChange}
                 onToggleHints={() => setShowHints(!showHints)}
                 renderQuestionWithBlanks={renderFillInBlankQuestion}
