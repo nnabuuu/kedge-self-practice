@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QuizQuestion } from '../../types/quiz';
-import { CheckCircle2, XCircle, BookOpen, Brain } from 'lucide-react';
+import { CheckCircle2, XCircle, BookOpen, Brain, Lightbulb } from 'lucide-react';
 import { api } from '../../services/api';
 
 interface FillInBlankQuestionProps {
@@ -31,6 +31,13 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   renderQuestionWithBlanks
 }) => {
   const blanksCount = question.question.split(/_{2,}/g).length - 1;
+  
+  // Debug logging for hints
+  React.useEffect(() => {
+    if (question.hints) {
+      console.log('Fill-in-blank question hints:', question.hints);
+    }
+  }, [question]);
   const [aiEvaluation, setAiEvaluation] = useState<{
     isCorrect: boolean;
     reasoning: string;
@@ -92,17 +99,15 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
         <div className="mb-3 flex justify-end">
           <button
             onClick={onToggleHints}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+              showHints 
+                ? 'text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100' 
+                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+            }`}
           >
-            <span>{showHints ? '隐藏' : '显示'}提示</span>
-            <svg 
-              className={`w-4 h-4 transition-transform ${showHints ? 'rotate-180' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            <Lightbulb className={`w-4 h-4 ${showHints ? 'fill-current' : ''}`} />
+            <span>{showHints ? '隐藏提示' : '显示提示'}</span>
+            <span className="text-xs text-gray-500">({question.hints.filter(h => h !== null).length})</span>
           </button>
         </div>
       )}

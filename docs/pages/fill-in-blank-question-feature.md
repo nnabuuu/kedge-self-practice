@@ -59,7 +59,12 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 
 #### 5. **Hint System**
 - **Optional Hints**: Teachers can provide contextual hints for each blank
-- **Toggle Visibility**: Students can choose to show/hide hints
+- **Toggle Visibility**: Students can choose to show/hide hints with a lightbulb button
+- **Visual Indicators**: 
+  - Lightbulb icon shows hint availability
+  - Count badge shows number of hints available
+  - Blue highlight when hints are shown
+  - Hints appear as placeholder text in input fields
 - **Strategic Learning**: Encourages students to attempt without hints first
 
 #### 6. **Answer Validation**

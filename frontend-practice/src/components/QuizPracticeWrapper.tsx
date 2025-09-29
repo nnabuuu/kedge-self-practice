@@ -64,6 +64,12 @@ export default function QuizPracticeWrapper({
           
           if (questionsResponse.success && questionsResponse.data) {
             console.log('Setting questions:', questionsResponse.data);
+            // Log questions with hints for debugging
+            questionsResponse.data.forEach((q: any, idx: number) => {
+              if (q.type === 'fill-in-the-blank' && q.hints) {
+                console.log(`Question ${idx} hints:`, q.hints);
+              }
+            });
             setQuestions(questionsResponse.data);
           } else {
             console.error('Failed to load questions:', questionsResponse);

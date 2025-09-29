@@ -415,11 +415,14 @@ export class QuizRepository {
             q.type, 
             q.question, 
             q.options, 
-            q.answer, 
+            q.answer,
+            q.answer_index,
             q.original_paragraph as "originalParagraph", 
             q.images, 
             q.tags, 
             q.knowledge_point_id,
+            q.alternative_answers,
+            COALESCE(q.hints, '[]'::jsonb) as hints,
             CASE 
               WHEN kp.id IS NOT NULL THEN 
                 json_build_object(
