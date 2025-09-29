@@ -333,12 +333,6 @@ export default function ReportManagement() {
         <div className="text-center py-12">
           <Flag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">暂无报告</p>
-          <div className="mt-4 text-xs text-gray-400">
-            <p>Debug info:</p>
-            <p>Reports count: {reports.length}</p>
-            <p>Loading: {loading.toString()}</p>
-            <p>Backend ready: {backendReady.toString()}</p>
-          </div>
         </div>
       ) : (
         <div className="space-y-4">
