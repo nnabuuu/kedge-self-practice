@@ -6,6 +6,7 @@ import { ApiService } from '../../services/api';
 import KnowledgePointPicker from '../../components/KnowledgePointPicker';
 import QuizDetailModal from '../../components/QuizDetailModal';
 import QuizEditModal from '../../components/QuizEditModal';
+import { useToast, ToastContainer } from '../../components/Toast';
 
 interface Quiz {
   id: string;
@@ -61,6 +62,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   const [loading, setLoading] = useState(true);
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
   const [loadingKnowledgePoints, setLoadingKnowledgePoints] = useState(false);
+  const { success, error, warning, info, toasts, removeToast } = useToast();
   const [selectedVolume, setSelectedVolume] = useState<string>(initialFilters?.volume || '');
   const [selectedUnit, setSelectedUnit] = useState<string>(initialFilters?.unit || '');
   const [selectedLesson, setSelectedLesson] = useState<string>(initialFilters?.lesson || '');
@@ -429,7 +431,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
 
   const handleBatchDelete = async () => {
     if (selectedQuizzes.size === 0) {
-      alert('请先选择要删除的题目');
+      warning('请先选择要删除的题目');
       return;
     }
     
@@ -478,7 +480,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       
       if (failed.length > 0) {
         console.error('Failed deletions:', failed);
-        alert(`删除完成：${successful.length} 道题目删除成功，${failed.length} 道题目删除失败。请检查网络连接或权限。`);
+        warning(`删除完成：${successful.length} 道题目删除成功，${failed.length} 道题目删除失败。请检查网络连接或权限。`);
       } else {
         console.log('All quizzes deleted successfully');
       }
@@ -493,7 +495,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       
     } catch (error) {
       console.error('Batch delete error:', error);
-      alert('批量删除操作失败，请检查网络连接并重试。');
+      error('批量删除操作失败，请检查网络连接并重试。');
       
     }
     
@@ -510,7 +512,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
     
     if (!quizId) {
       console.error('Cannot delete quiz: ID is undefined');
-      alert('无法删除题目：题目ID无效');
+      error('无法删除题目：题目ID无效');
       return;
     }
     
@@ -844,11 +846,11 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
         setRematchingQuiz(null);
         setRematchHints({});
       } else {
-        alert('未找到匹配的知识点，请调整筛选条件重试');
+        warning('未找到匹配的知识点，请调整筛选条件重试');
       }
     } catch (error) {
       console.error('Failed to rematch knowledge point:', error);
-      alert('重新匹配失败，请稍后重试');
+      error('重新匹配失败，请稍后重试');
     } finally {
       setIsRematching(false);
     }
@@ -2200,6 +2202,9 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
         } : undefined}
         knowledgePoints={knowledgePoints}
       />
+      
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

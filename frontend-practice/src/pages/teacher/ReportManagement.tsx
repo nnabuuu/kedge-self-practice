@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Flag, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, Eye, MessageSquare, User, Calendar, Edit } from 'lucide-react';
 import { api } from '../../services/backendApi';
 import QuizEditModal from '../../components/QuizEditModal';
+import { useToast, ToastContainer } from '../../components/Toast';
 
 interface QuizReport {
   id: string;
@@ -56,6 +57,7 @@ export default function ReportManagement() {
   const [backendReady, setBackendReady] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<any>(null);
+  const { success, error, warning, info, toasts, removeToast } = useToast();
 
   useEffect(() => {
     fetchReports();
@@ -162,7 +164,7 @@ export default function ReportManagement() {
 
   const handleEditQuiz = async (report: QuizReport | null) => {
     if (!report || !report.quiz_id) {
-      alert('无法获取题目ID');
+      error('无法获取题目ID');
       return;
     }
     
@@ -175,11 +177,11 @@ export default function ReportManagement() {
         setShowEditModal(true);
         // Keep the detail modal open in the background
       } else {
-        alert(`加载题目详情失败: ${response.error || '数据格式错误'}`);
+        error(`加载题目详情失败: ${response.error || '数据格式错误'}`);
       }
     } catch (error) {
       console.error('Error loading quiz:', error);
-      alert('加载题目详情时发生错误');
+      error('加载题目详情时发生错误');
     }
   };
 
@@ -193,7 +195,7 @@ export default function ReportManagement() {
     fetchReports();
     
     // Show success message
-    alert('题目已更新，您现在可以标记报告为已解决');
+    success('题目已更新，您现在可以标记报告为已解决');
   };
 
   const handleDeleteQuiz = async (quizId: string) => {
@@ -212,7 +214,7 @@ export default function ReportManagement() {
     fetchReports();
     
     // Show success message
-    alert('题目已删除，相关报告已自动标记为已解决');
+    success('题目已删除，相关报告已自动标记为已解决');
   };
 
   const filteredReports = reports.filter(report => {
@@ -507,6 +509,9 @@ export default function ReportManagement() {
         onSave={handleSaveQuiz}
         onDelete={handleDeleteQuiz}
       />
+      
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
