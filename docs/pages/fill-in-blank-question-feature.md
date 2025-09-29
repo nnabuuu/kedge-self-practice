@@ -62,12 +62,23 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 - **Flexible Matching**:
   - Case-insensitive comparison
   - Automatic trimming of extra spaces
-  - Support for alternative correct answers
+  - **Alternative Answers Support**:
+    - System checks main answer first
+    - Then checks position-specific alternatives (e.g., `[0]alternative`)
+    - Finally checks general alternatives (apply to any position)
+    - Teachers can pre-define alternatives
+    - AI-approved answers automatically added as alternatives
   
 - **Multiple Blank Handling**:
   - Position-specific validation (Blank 1, Blank 2, etc.)
   - Order-independent matching when applicable
+  - Each blank validated independently
   - Partial credit tracking for multiple blanks
+
+- **Dynamic Learning**:
+  - AI-approved answers saved for future students
+  - Alternative answers accumulate over time
+  - System becomes smarter with usage
 
 ### For Teachers
 
@@ -186,6 +197,14 @@ The AI re-evaluation feature leverages advanced language models to:
 - **Accept Variations**: Recognizes synonyms and alternative phrasings
 - **Provide Explanations**: Offers detailed reasoning for acceptance/rejection
 - **Support Learning**: Helps students understand why answers work or don't
+- **Build Knowledge Base**: Automatically saves approved answers as alternatives
+
+### Alternative Answer System
+- **Automatic Expansion**: AI-approved answers become alternatives for future students
+- **Position-Specific**: Support different alternatives for each blank
+- **Persistent Storage**: Alternative answers saved in database
+- **Immediate Recognition**: Once added, alternatives are instantly recognized
+- **Teacher Override**: Teachers can manually add/remove alternatives
 
 ### Use Cases for AI Evaluation
 1. **Historical Names**: Different romanizations or transliterations

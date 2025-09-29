@@ -12,6 +12,7 @@ interface FillInBlankQuestionProps {
   sessionId?: string;
   onAnswerChange: (index: number, value: string) => void;
   onToggleHints: () => void;
+  onAiApproved?: (userAnswer: string) => void;
   renderQuestionWithBlanks: (text: string) => React.ReactNode;
 }
 
@@ -24,12 +25,14 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   sessionId,
   onAnswerChange,
   onToggleHints,
+  onAiApproved,
   renderQuestionWithBlanks
 }) => {
   const blanksCount = question.question.split(/_{2,}/g).length - 1;
   const [aiEvaluation, setAiEvaluation] = useState<{
     isCorrect: boolean;
     reasoning: string;
+    message?: string;
     loading: boolean;
   } | null>(null);
 
@@ -55,8 +58,14 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
         setAiEvaluation({
           isCorrect: response.data.isCorrect,
           reasoning: response.data.reasoning,
+          message: response.data.message,
           loading: false
         });
+        
+        // If AI approved the answer, notify parent to update alternative answers
+        if (response.data.isCorrect && onAiApproved) {
+          onAiApproved(userAnswer);
+        }
       } else {
         setAiEvaluation({
           isCorrect: false,
@@ -181,6 +190,11 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
                       }`}>
                         {aiEvaluation.reasoning}
                       </p>
+                      {aiEvaluation.message && (
+                        <p className="text-xs mt-2 text-gray-600 italic">
+                          💡 {aiEvaluation.message}
+                        </p>
+                      )}
                     </>
                   )}
                 </div>

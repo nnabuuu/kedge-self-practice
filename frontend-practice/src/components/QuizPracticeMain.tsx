@@ -179,7 +179,29 @@ export default function QuizPractice({
     }
     if (isFillInBlank) {
       const correctAnswers = Array.isArray(currentQuestion.answer) ? currentQuestion.answer : [currentQuestion.answer];
-      return fillInBlankAnswers.every((ans, idx) => ans === correctAnswers[idx]);
+      const alternativeAnswers = currentQuestion.alternative_answers || [];
+      
+      return fillInBlankAnswers.every((userAns, idx) => {
+        const normalizedUserAns = userAns.trim().toLowerCase();
+        const normalizedCorrectAns = String(correctAnswers[idx]).trim().toLowerCase();
+        
+        // Check main answer
+        if (normalizedUserAns === normalizedCorrectAns) {
+          return true;
+        }
+        
+        // Check alternative answers for this blank position
+        // Format: "[0]answer" for position-specific or just "answer" for any position
+        const positionSpecific = alternativeAnswers
+          .filter(alt => alt.startsWith(`[${idx}]`))
+          .map(alt => alt.replace(`[${idx}]`, '').trim().toLowerCase());
+        
+        const general = alternativeAnswers
+          .filter(alt => !alt.includes('['))
+          .map(alt => alt.trim().toLowerCase());
+        
+        return positionSpecific.includes(normalizedUserAns) || general.includes(normalizedUserAns);
+      });
     }
     return true;
   };
@@ -355,6 +377,15 @@ export default function QuizPractice({
                 sessionId={sessionId}
                 onAnswerChange={handleFillInBlankChange}
                 onToggleHints={() => setShowHints(!showHints)}
+                onAiApproved={(userAnswer) => {
+                  // Add the AI-approved answer to the question's alternative answers
+                  if (currentQuestion.alternative_answers) {
+                    currentQuestion.alternative_answers.push(userAnswer);
+                  } else {
+                    currentQuestion.alternative_answers = [userAnswer];
+                  }
+                  console.log('AI-approved answer added to alternatives:', userAnswer);
+                }}
                 renderQuestionWithBlanks={renderFillInBlankQuestion}
               />
             ) : (
