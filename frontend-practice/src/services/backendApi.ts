@@ -1,6 +1,7 @@
 // Backend API Service - Real backend connection
 import { Subject, KnowledgePoint, QuizQuestion, PracticeSession } from '../types/quiz';
 import { authService } from './authService';
+import { letterToIndex } from '../utils/answerConversion';
 
 // Direct connection to backend - add /v1 if not already present
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
@@ -763,12 +764,12 @@ class BackendApiService {
     return response;
   }
 
-  async submitPracticeAnswer(sessionId: string, questionId: string, answer: string, timeSpent: number): Promise<ApiResponse<{isCorrect: boolean}>> {
+  async submitPracticeAnswer(sessionId: string, questionId: string, answer: string | number, timeSpent: number): Promise<ApiResponse<{isCorrect: boolean}>> {
     
     const answerData = {
       session_id: sessionId,
       question_id: questionId,
-      answer: answer,
+      answer: String(answer), // Convert to string as backend expects string
       time_spent_seconds: timeSpent
     };
 
@@ -898,8 +899,29 @@ export const api = {
     createSession: (config: any) => backendApi.createPracticeSession(config),
     startSession: (sessionId: string) => backendApi.startPracticeSession(sessionId),
     getSession: (sessionId: string) => backendApi.getPracticeSession(sessionId),
-    submitAnswer: (sessionId: string, questionId: string, answer: string, timeSpent: number) => 
-      backendApi.submitPracticeAnswer(sessionId, questionId, answer, timeSpent),
+    submitAnswer: (sessionId: string, questionId: string, answer: string, timeSpent: number) => {
+      // Convert letter answers to indices for more efficient backend processing
+      // The backend expects indices as strings for single-choice questions
+      let convertedAnswer = answer;
+      
+      // Check if this looks like a single letter answer (A, B, C, D, etc.)
+      if (answer && answer.length === 1 && /^[A-F]$/i.test(answer)) {
+        const index = letterToIndex(answer);
+        if (typeof index === 'number') {
+          convertedAnswer = String(index);
+        }
+      } else if (answer && answer.includes(',')) {
+        // Multiple choice: convert comma-separated letters to indices
+        const letters = answer.split(',').map(s => s.trim());
+        const indices = letters.map(letter => {
+          const index = letterToIndex(letter);
+          return typeof index === 'number' ? index : letter;
+        });
+        convertedAnswer = indices.join(',');
+      }
+      
+      return backendApi.submitPracticeAnswer(sessionId, questionId, convertedAnswer, timeSpent);
+    },
     completeSession: (sessionId: string) => backendApi.completePracticeSession(sessionId),
     getTypeDistribution: (sessionId: string) => backendApi.getSessionTypeDistribution(sessionId)
   },
