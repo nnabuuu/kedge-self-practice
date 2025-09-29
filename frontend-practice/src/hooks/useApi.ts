@@ -345,7 +345,9 @@ export function usePracticeSession(config: {
   // Use refs to prevent duplicate session creation
   const isCreatingRef = useRef(false);
   const lastConfigKeyRef = useRef<string>('');
+  const sessionIdRef = useRef<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const createSession = useCallback(async () => {
     if (!config || config.knowledge_point_ids.length === 0) {
       setState({
@@ -374,7 +376,7 @@ export function usePracticeSession(config: {
     }
 
     // Skip if we already have a session with the same config
-    if (state.sessionId && lastConfigKeyRef.current === configKey) {
+    if (sessionIdRef.current && lastConfigKeyRef.current === configKey) {
       console.log('Session already exists for this config, skipping creation');
       return;
     }
@@ -393,6 +395,7 @@ export function usePracticeSession(config: {
         
         if (startResponse.success && startResponse.data) {
           console.log('Start session response:', startResponse.data);
+          sessionIdRef.current = startResponse.data.session.id; // Update ref
           setState({
             session: startResponse.data.session,
             questions: startResponse.data.quizzes, // Backend returns 'quizzes', not 'questions'
@@ -426,7 +429,7 @@ export function usePracticeSession(config: {
     } finally {
       isCreatingRef.current = false;
     }
-  }, [config, state.sessionId]);
+  }, []); // Empty dependencies - we use refs and config keys to prevent duplicates
 
   const submitAnswer = useCallback(async (questionId: string, answer: string, timeSpent: number) => {
     if (!state.sessionId) {
@@ -452,7 +455,7 @@ export function usePracticeSession(config: {
     if (config && config.knowledge_point_ids.length > 0) {
       createSession();
     }
-  }, [createSession]);
+  }, [config?.knowledge_point_ids?.join(','), config?.quiz_types?.join(','), config?.question_count, config?.subject_id]); // Use stable dependencies instead of createSession
 
   return {
     ...state,

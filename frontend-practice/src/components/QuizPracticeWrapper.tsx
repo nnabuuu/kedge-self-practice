@@ -11,7 +11,7 @@ interface QuizPracticeWrapperProps {
     questionCount: 'unlimited' | number;
     timeLimit?: number;
     shuffleQuestions: boolean;
-    selectedQuestionTypes?: string[];
+    quizTypes?: string[];  // Changed from selectedQuestionTypes to match what's passed
   };
   practiceSessionId?: string;
   onEndPractice: (results: any) => void;
@@ -104,7 +104,7 @@ export default function QuizPracticeWrapper({
         subject_id: subject?.id,
         knowledge_point_ids: knowledgePointIds,
         question_count: config.questionCount === 'unlimited' ? 50 : config.questionCount,
-        quiz_types: config.selectedQuestionTypes || [],
+        quiz_types: config.quizTypes || [],  // Fixed: use quizTypes instead of selectedQuestionTypes
         shuffle_questions: config.shuffleQuestions,
         time_limit_minutes: config.timeLimit,
         question_type: config.questionType === 'new' ? 'new-only' : 
