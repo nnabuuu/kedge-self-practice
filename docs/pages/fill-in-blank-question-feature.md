@@ -24,17 +24,27 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 - **After Submission**:
   - ✅ Green highlight with checkmark for correct answers
   - ❌ Red highlight with X mark for incorrect answers
-  - Side-by-side comparison showing:
-    - User's submitted answer
-    - Correct answer(s)
-    - Position-specific feedback for multiple blanks
+  - **Side-by-side Answer Comparison**:
+    - "你的答案" (Your Answer) column
+    - "正确答案" (Correct Answer) column
+    - Shows "(未填写)" for empty blanks
+    - Position-specific feedback for each blank
+    - Clean grid layout for easy comparison
 
-#### 3. **Hint System**
+#### 3. **Quick Answer Reveal**
+- **"不知道，直接看答案" Button**: 
+  - Allows students to immediately see correct answers
+  - Submits all blanks as empty
+  - Useful when stuck or for review purposes
+  - Includes eye icon for visual clarity
+  - Still tracks as incorrect attempt for analytics
+
+#### 4. **Hint System**
 - **Optional Hints**: Teachers can provide contextual hints for each blank
 - **Toggle Visibility**: Students can choose to show/hide hints
 - **Strategic Learning**: Encourages students to attempt without hints first
 
-#### 4. **Answer Validation**
+#### 5. **Answer Validation**
 - **Flexible Matching**:
   - Case-insensitive comparison
   - Automatic trimming of extra spaces
@@ -82,9 +92,11 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
    - Navigate between blanks using Tab key
    - Visual feedback confirms input
 
-3. **Submission**
-   - Click "Submit Answer" button or press Enter
-   - Answer sent to backend for validation
+3. **Submission Options**
+   - Click "提交答案" button to submit filled answers
+   - Click "不知道，直接看答案" to reveal answers without attempting
+   - Press Enter key for quick submission
+   - Answers sent to backend for validation
    - Immediate feedback displayed
 
 4. **Result Review**

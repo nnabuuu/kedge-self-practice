@@ -87,22 +87,47 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
             )}
           </div>
           
-          {/* Show correct answers */}
+          {/* Show answer comparison */}
           {!isAnswerCorrect() && (
-            <div className="mt-3 text-sm">
-              <div className="font-medium text-gray-700 mb-2">正确答案：</div>
-              <div className="space-y-1">
+            <div className="mt-3">
+              <div className="space-y-2">
                 {Array.isArray(question.answer) ? (
-                  question.answer.map((ans, idx) => (
-                    <div key={idx} className="text-gray-600">
-                      空格 {idx + 1}: <span className="font-medium text-green-700">{ans}</span>
-                      {answers[idx] && answers[idx] !== ans && (
-                        <span className="ml-2 text-red-600">(你的答案: {answers[idx]})</span>
-                      )}
+                  question.answer.map((correctAns, idx) => (
+                    <div key={idx} className="bg-white rounded-lg p-3 border border-gray-200">
+                      <div className="text-xs text-gray-500 mb-1">空格 {idx + 1}</div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-xs font-medium text-gray-600 mb-1">你的答案</div>
+                          <div className={`font-medium ${answers[idx] ? 'text-red-600' : 'text-gray-400'}`}>
+                            {answers[idx] || '(未填写)'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium text-gray-600 mb-1">正确答案</div>
+                          <div className="font-medium text-green-600">
+                            {correctAns}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <div className="text-green-700 font-medium">{question.answer}</div>
+                  <div className="bg-white rounded-lg p-3 border border-gray-200">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-xs font-medium text-gray-600 mb-1">你的答案</div>
+                        <div className={`font-medium ${answers[0] ? 'text-red-600' : 'text-gray-400'}`}>
+                          {answers[0] || '(未填写)'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium text-gray-600 mb-1">正确答案</div>
+                        <div className="font-medium text-green-600">
+                          {question.answer}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

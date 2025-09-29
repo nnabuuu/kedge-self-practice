@@ -3,6 +3,7 @@ import { QuizQuestion } from '../types/quiz';
 import { api } from '../services/api';
 import ReportModal from './ReportModal';
 import MyReports from './MyReports';
+import { Eye } from 'lucide-react';
 
 import {
   SingleChoiceQuestion,
@@ -401,17 +402,36 @@ export default function QuizPractice({
               {!showResult ? (
                 // Only show submit button for non-single-choice questions
                 !isSingleChoice ? (
-                  <button
-                    onClick={() => handleSubmitAnswer()}
-                    disabled={
-                      (isMultipleChoice && selectedMultipleAnswers.length === 0) ||
-                      (isFillInBlank && (fillInBlankAnswers.length === 0 || fillInBlankAnswers.some(a => !a || a.trim() === ''))) ||
-                      (isEssay && !essayAnswer.trim())
-                    }
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    提交答案
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleSubmitAnswer()}
+                      disabled={
+                        (isMultipleChoice && selectedMultipleAnswers.length === 0) ||
+                        (isFillInBlank && (fillInBlankAnswers.length === 0 || fillInBlankAnswers.every(a => !a || a.trim() === ''))) ||
+                        (isEssay && !essayAnswer.trim())
+                      }
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      提交答案
+                    </button>
+                    {/* Show "Don't know" button for fill-in-blank questions */}
+                    {isFillInBlank && (
+                      <button
+                        onClick={() => {
+                          // Submit with empty answers to see the correct answers
+                          const emptyAnswers = new Array(
+                            (currentQuestion.question.match(/_{2,}/g) || []).length
+                          ).fill('');
+                          setFillInBlankAnswers(emptyAnswers);
+                          handleSubmitAnswer();
+                        }}
+                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" />
+                        不知道，直接看答案
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   // For single-choice, show hint text
                   <div className="text-sm text-gray-500 italic">
