@@ -57,6 +57,7 @@ export default function QuizPractice({
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
   const [showMyReports, setShowMyReports] = useState(false);
+  const [userGaveUp, setUserGaveUp] = useState(false); // Track if user clicked "直接看答案"
 
   const currentQuestion = questions[currentQuestionIndex];
   const isSingleChoice = currentQuestion?.type === 'single-choice';
@@ -273,6 +274,7 @@ export default function QuizPractice({
     setFillInBlankAnswers([]);
     setShowResult(false);
     setShowHints(false);
+    setUserGaveUp(false); // Reset the gave up flag
   };
 
   // Render question with blanks for fill-in-blank
@@ -375,6 +377,7 @@ export default function QuizPractice({
                 showResult={showResult}
                 isAnswerCorrect={isAnswerCorrect}
                 sessionId={sessionId}
+                userGaveUp={userGaveUp}
                 onAnswerChange={handleFillInBlankChange}
                 onToggleHints={() => setShowHints(!showHints)}
                 onAiApproved={(userAnswer) => {
@@ -455,6 +458,7 @@ export default function QuizPractice({
                             (currentQuestion.question.match(/_{2,}/g) || []).length
                           ).fill('');
                           setFillInBlankAnswers(emptyAnswers);
+                          setUserGaveUp(true); // Mark that user gave up
                           handleSubmitAnswer();
                         }}
                         className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2"

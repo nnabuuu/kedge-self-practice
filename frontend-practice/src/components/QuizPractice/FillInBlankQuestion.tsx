@@ -10,6 +10,7 @@ interface FillInBlankQuestionProps {
   showResult: boolean;
   isAnswerCorrect: () => boolean;
   sessionId?: string;
+  userGaveUp?: boolean;
   onAnswerChange: (index: number, value: string) => void;
   onToggleHints: () => void;
   onAiApproved?: (userAnswer: string) => void;
@@ -23,6 +24,7 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   showResult,
   isAnswerCorrect,
   sessionId,
+  userGaveUp = false,
   onAnswerChange,
   onToggleHints,
   onAiApproved,
@@ -148,8 +150,8 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
           {/* Show answer comparison */}
           {!isAnswerCorrect() && (
             <div className="mt-3">
-              {/* AI Re-evaluation button */}
-              {sessionId && !aiEvaluation && (
+              {/* AI Re-evaluation button - only show if user actually attempted (didn't give up) and provided some answer */}
+              {sessionId && !aiEvaluation && !userGaveUp && answers.some(a => a && a.trim()) && (
                 <div className="mb-3 flex justify-end">
                   <button
                     onClick={handleAiReevaluation}
