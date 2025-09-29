@@ -125,8 +125,9 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
    - **Enter Key**: Press Enter from any input field for quick submission (requires at least one filled blank)
    - **Submit Button**: Click "提交答案" button to submit filled answers
    - **Give Up Option**: Click "不知道，直接看答案" to reveal answers without attempting (AI evaluation disabled)
-   - **Backend Integration**: Answers automatically sent to backend for validation and tracking
-   - **Immediate Feedback**: Instant visual feedback after submission
+   - **Instant Validation**: Frontend immediately checks correctness using answer and alternative answers
+   - **Asynchronous Backend**: Session tracking happens in background without blocking UI
+   - **Zero-Delay Feedback**: No waiting for server response to see results
 
 4. **Result Review**
    - Correct/incorrect status clearly shown
@@ -155,7 +156,8 @@ The Fill-in-the-Blank question type is a core assessment feature designed to tes
 
 ### Data Handling
 - **Answer Format**: Multiple blanks joined with `|||` separator
-- **Real-time Validation**: Backend validates each submission
+- **Instant Frontend Validation**: Immediate correctness check using local data
+- **Asynchronous Backend Submission**: Non-blocking API calls for session tracking
 - **Session Tracking**: All attempts linked to practice sessions
 - **Progress Persistence**: Answers saved for review
 - **Smart Submission Logic**: Validates non-empty content before allowing Enter key submission

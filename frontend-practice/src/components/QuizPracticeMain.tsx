@@ -228,30 +228,35 @@ export default function QuizPractice({
       answerString = essayAnswer;
     }
 
-    // Submit to backend if we have a session
-    if (sessionId && currentQuestion) {
-      try {
-        const timeSpent = Math.floor((Date.now() - startTime.current) / 1000);
-        const response = await api.practice.submitAnswer(
-          sessionId,
-          currentQuestion.id,
-          answerString,
-          timeSpent
-        );
-        
-        // Store the result from backend
-        if (response.success) {
-          console.log('Answer submitted, is correct:', response.data?.isCorrect);
-        }
-      } catch (error) {
-        console.error('Failed to submit answer to backend:', error);
-      }
-    }
-
+    // Update answers and show result immediately (frontend validation)
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answer;
     setAnswers(newAnswers);
     setShowResult(true);
+
+    // Submit to backend asynchronously (doesn't block UI)
+    if (sessionId && currentQuestion) {
+      // Use setTimeout to ensure this runs after the UI updates
+      setTimeout(async () => {
+        try {
+          const timeSpent = Math.floor((Date.now() - startTime.current) / 1000);
+          const response = await api.practice.submitAnswer(
+            sessionId,
+            currentQuestion.id,
+            answerString,
+            timeSpent
+          );
+          
+          // Store the result from backend
+          if (response.success) {
+            console.log('Answer submitted to backend, is correct:', response.data?.isCorrect);
+          }
+        } catch (error) {
+          console.error('Failed to submit answer to backend:', error);
+          // Don't show error to user since the frontend already validated
+        }
+      }, 0);
+    }
   };
 
   // Continue to next question
