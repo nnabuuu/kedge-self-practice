@@ -139,11 +139,24 @@ ${answerFormat}`;
   * 文化类：著作、发明、制度、学派、文物
   * 其他类：数字、称号、民族、王朝、组织
 
+填空题替代答案（alternative_answers）说明：
+- 为每个填空题智能判断是否有其他可接受的答案表述
+- 考虑以下情况：
+  * 同义词或近义表达：如"美国"和"美利坚合众国"
+  * 简称和全称：如"中共"和"中国共产党"、"国民党"和"中国国民党"
+  * 不同翻译：如"列宁"和"列寧"
+  * 数字的不同写法：如"1949"和"一九四九"
+  * 历史人物的不同称呼：如"毛泽东"和"毛主席"
+  * 带标点和不带标点的区别：如"《神农本草经》"和"神农本草经"
+- 只包含确实可以接受的替代答案，不要过度宽松
+- 如果没有合理的替代答案，使用空数组 []
+
 格式要求：
 - **答案格式**：
-  * 单个空格：answer: "答案", hints: ["提示"]
-  * 多个空格：answer: ["答案1", "答案2"], hints: ["提示1", "提示2"]
-  * 不需要提示的空格用null：hints: [null, "提示2"]`;
+  * 单个空格：answer: "答案", hints: ["提示"], alternative_answers: ["替代答案1", "替代答案2"]
+  * 多个空格：answer: ["答案1", "答案2"], hints: ["提示1", "提示2"], alternative_answers: [["替代1-1", "替代1-2"], ["替代2-1"]]
+  * 不需要提示的空格用null：hints: [null, "提示2"]
+  * 没有替代答案：alternative_answers: [] 或 [[], ["替代2-1"]]`;
   }
 
   private getSubjectiveInstructions(): string {
@@ -154,6 +167,7 @@ ${answerFormat}`;
 
   private getFormatInstructions(): string {
     const includeHints = this.allowedTypes.includes('fill-in-the-blank');
+    const includeAlternatives = this.allowedTypes.includes('fill-in-the-blank');
     return `返回的 JSON 格式必须完全符合以下结构：
 {
   "items": [
@@ -161,7 +175,7 @@ ${answerFormat}`;
       "type": "${this.allowedTypes.join(' | ')}",
       "question": "题干（包含{{image:uuid}}占位符）",
       "options": ["选项1", "选项2", ...],  // 选择题必需，其他题型为空数组
-      "answer": ${this.getAnswerFormatDescription()}${includeHints ? ',\n      "hints": ["提示1", null, "提示3"]  // 填空题必需，每个空格对应一个提示（可为null）' : ''}
+      "answer": ${this.getAnswerFormatDescription()}${includeHints ? ',\n      "hints": ["提示1", null, "提示3"]  // 填空题必需，每个空格对应一个提示（可为null）' : ''}${includeAlternatives ? ',\n      "alternative_answers": ["替代答案1", ...] 或 [["空格1替代1", "空格1替代2"], ["空格2替代1"]]  // 填空题必需，替代答案数组' : ''}
     }
   ]
 }`;
@@ -254,7 +268,8 @@ ${examples.join('\n\n')}`;
     "question": "东汉时的《____》是中国古代第一部药物学专著",
     "options": [],
     "answer": "神农本草经",
-    "hints": ["著作"]
+    "hints": ["著作"],
+    "alternative_answers": ["《神农本草经》"]
   }]
 }
 
@@ -269,7 +284,8 @@ ${examples.join('\n\n')}`;
     "question": "____年10月1日，____在北京宣布中华人民共和国成立",
     "options": [],
     "answer": ["1949", "毛泽东"],
-    "hints": ["年份", "领袖"]
+    "hints": ["年份", "领袖"],
+    "alternative_answers": [["一九四九"], ["毛主席"]]
   }]
 }
 
@@ -284,7 +300,8 @@ ${examples.join('\n\n')}`;
     "question": "1947年3月，"杜鲁门主义"演说发表。为应对美国挑战，苏联等东欧国家成立____。",
     "options": [],
     "answer": "共产党和工人党情报局",
-    "hints": ["机构"]
+    "hints": ["机构"],
+    "alternative_answers": []
   }]
 }`;
   }
@@ -333,8 +350,26 @@ ${examples.join('\n\n')}`;
                   },
                   description: '填空题的提示词数组，每个空格对应一个提示'
                 },
+                alternative_answers: {
+                  anyOf: [
+                    {
+                      type: 'array',
+                      items: { type: 'string' },
+                      description: '单个空格的替代答案数组'
+                    },
+                    {
+                      type: 'array',
+                      items: {
+                        type: 'array',
+                        items: { type: 'string' }
+                      },
+                      description: '多个空格的替代答案二维数组'
+                    }
+                  ],
+                  description: '填空题的替代答案'
+                },
               },
-              required: ['type', 'question', 'options', 'answer', 'hints'],
+              required: ['type', 'question', 'options', 'answer', 'hints', 'alternative_answers'],
             },
           },
         },
