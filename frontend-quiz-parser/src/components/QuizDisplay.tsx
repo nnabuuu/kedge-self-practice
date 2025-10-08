@@ -292,6 +292,7 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
     const { icon: Icon, label, colorClasses } = getQuestionTypeInfo(item.type);
     const answers = Array.isArray(item.answer) ? item.answer : [item.answer];
     const hints = Array.isArray(item.hints) ? item.hints : [];
+    const alternatives = item.alternative_answers;
     const globalIndex = quizItems.findIndex(q => q === item);
     
     // Format question with hints
@@ -339,17 +340,42 @@ export const QuizDisplay: React.FC<QuizDisplayProps> = ({ quizItems, onQuizItemU
               <span className="text-sm font-medium text-emerald-700">正确答案:</span>
             </div>
             <div className="ml-7 space-y-1">
-              {answers.map((ans, idx) => (
-                <div key={idx} className="flex items-center space-x-2">
-                  <span className="text-sm text-emerald-600">空格 {idx + 1}:</span>
-                  <span className="text-emerald-800 font-semibold">{ans}</span>
-                  {hints[idx] && hints[idx] !== null && (
-                    <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
-                      提示：{hints[idx]}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {answers.map((ans, idx) => {
+                // Get alternative answers for this blank
+                let blankAlternatives: string[] = [];
+                if (alternatives) {
+                  if (answers.length === 1 && Array.isArray(alternatives)) {
+                    // Single blank case
+                    blankAlternatives = (alternatives as string[]).filter(a => typeof a === 'string');
+                  } else if (Array.isArray(alternatives) && alternatives[idx]) {
+                    // Multiple blanks case
+                    const alt = (alternatives as string[][])[idx];
+                    blankAlternatives = Array.isArray(alt) ? alt : [];
+                  }
+                }
+
+                return (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-emerald-600">空格 {idx + 1}:</span>
+                      <span className="text-emerald-800 font-semibold">{ans}</span>
+                      {hints[idx] && hints[idx] !== null && (
+                        <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
+                          提示：{hints[idx]}
+                        </span>
+                      )}
+                    </div>
+                    {blankAlternatives.length > 0 && (
+                      <div className="flex items-center space-x-2 ml-14">
+                        <span className="text-xs text-emerald-500">也可以是:</span>
+                        <span className="text-xs text-emerald-700">
+                          {blankAlternatives.join('、')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

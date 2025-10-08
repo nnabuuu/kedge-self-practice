@@ -200,6 +200,47 @@ export const EditableQuizItem: React.FC<EditableQuizItemProps> = ({ item, onSave
     setEditedItem({ ...editedItem, hints });
   };
 
+  const handleAlternativeAnswersChange = (index: number, value: string) => {
+    const alternatives = editedItem.alternative_answers;
+
+    // Parse comma-separated alternatives
+    const alternativeList = value.split(',').map(a => a.trim()).filter(a => a !== '');
+
+    if (blanksCount === 1) {
+      // Single blank: array of strings
+      setEditedItem({ ...editedItem, alternative_answers: alternativeList });
+    } else {
+      // Multiple blanks: array of arrays
+      const alternativesArray = Array.isArray(alternatives) && alternatives.length > 0
+        ? (alternatives as string[][]).map(a => Array.isArray(a) ? a : [])
+        : Array.from({ length: blanksCount }, () => []);
+
+      alternativesArray[index] = alternativeList;
+      setEditedItem({ ...editedItem, alternative_answers: alternativesArray });
+    }
+  };
+
+  const getAlternativeAnswersForBlank = (index: number): string => {
+    const alternatives = editedItem.alternative_answers;
+
+    if (!alternatives) return '';
+
+    if (blanksCount === 1 && Array.isArray(alternatives)) {
+      // Single blank case: check if it's array of strings
+      if (alternatives.length > 0 && typeof alternatives[0] === 'string') {
+        return (alternatives as string[]).join(', ');
+      }
+    } else if (Array.isArray(alternatives)) {
+      // Multiple blanks case: array of arrays
+      const blankAlternatives = (alternatives as string[][])[index];
+      if (Array.isArray(blankAlternatives)) {
+        return blankAlternatives.join(', ');
+      }
+    }
+
+    return '';
+  };
+
   const handleChoiceAnswerToggle = (optionIndex: number) => {
     if (item.type === 'single-choice') {
       setEditedItem({ ...editedItem, answer: [optionIndex] });
@@ -592,6 +633,42 @@ export const EditableQuizItem: React.FC<EditableQuizItemProps> = ({ item, onSave
             </div>
             <div className="mt-1 text-xs text-gray-500">
               提示词会在练习时显示在空格后，如"____（人名）"
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              替代答案 (可选，多个答案用逗号分隔)
+              <Info className="w-3 h-3 inline ml-1 text-gray-500" />
+            </label>
+            <div className="space-y-2">
+              {Array.from({ length: blanksCount }).map((_, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="flex-shrink-0 text-sm text-gray-600">
+                    空格 {index + 1}:
+                  </span>
+                  <input
+                    type="text"
+                    value={getAlternativeAnswersForBlank(index)}
+                    onChange={(e) => handleAlternativeAnswersChange(index, e.target.value)}
+                    className="flex-1 px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="如：美利坚合众国, USA (用逗号分隔)"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+              <div className="font-medium mb-1">替代答案示例：</div>
+              <div className="space-y-0.5">
+                <div>• 同义词：美国 → <span className="text-blue-600">美利坚合众国, USA</span></div>
+                <div>• 简称全称：中共 → <span className="text-blue-600">中国共产党</span></div>
+                <div>• 数字写法：1949 → <span className="text-blue-600">一九四九</span></div>
+                <div>• 不同称呼：毛泽东 → <span className="text-blue-600">毛主席</span></div>
+                <div>• 标点区别：神农本草经 → <span className="text-blue-600">《神农本草经》</span></div>
+              </div>
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              学生填写任何一个替代答案都会被判定为正确
             </div>
           </div>
         </>
