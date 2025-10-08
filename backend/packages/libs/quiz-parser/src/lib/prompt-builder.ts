@@ -315,7 +315,7 @@ ${examples.join('\n\n')}`;
                   description: '填空题的提示词数组，每个空格对应一个提示'
                 },
               },
-              required: ['type', 'question', 'options', 'answer'],
+              required: ['type', 'question', 'options', 'answer', 'hints'],
             },
           },
         },

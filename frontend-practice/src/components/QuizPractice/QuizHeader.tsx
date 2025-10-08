@@ -17,7 +17,6 @@ interface QuizHeaderProps {
   onEndPractice: () => void;
   onReadQuestion: () => void;
   onShowReportModal: () => void;
-  onShowMyReports: () => void;
 }
 
 export const QuizHeader: React.FC<QuizHeaderProps> = ({
@@ -34,8 +33,7 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
   onJumpToWorking,
   onEndPractice,
   onReadQuestion,
-  onShowReportModal,
-  onShowMyReports
+  onShowReportModal
 }) => {
   const getQuestionTypeLabel = () => {
     switch (currentQuestion.type) {
@@ -171,23 +169,14 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onShowReportModal}
-            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            title="报告问题"
-          >
-            <Flag className="w-4 h-4" />
-            <span className="hidden sm:inline">报告问题</span>
-          </button>
-          <button
-            onClick={onShowMyReports}
-            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="我的报告"
-          >
-            <span className="hidden sm:inline">我的报告</span>
-          </button>
-        </div>
+        <button
+          onClick={onShowReportModal}
+          className="flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          title="报告问题"
+        >
+          <Flag className="w-4 h-4" />
+          <span className="hidden sm:inline">报告问题</span>
+        </button>
       </div>
     </>
   );

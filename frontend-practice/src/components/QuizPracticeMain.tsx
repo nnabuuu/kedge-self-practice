@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { QuizQuestion } from '../types/quiz';
 import { api } from '../services/api';
 import ReportModal from './ReportModal';
-import MyReports from './MyReports';
 import { Eye } from 'lucide-react';
 import { useToast, ToastContainer } from './Toast';
 
@@ -57,7 +56,6 @@ export default function QuizPractice({
   const [isListening, setIsListening] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
-  const [showMyReports, setShowMyReports] = useState(false);
   const [userGaveUp, setUserGaveUp] = useState(false); // Track if user clicked "直接看答案"
   const { success, error, toasts, removeToast } = useToast();
 
@@ -395,7 +393,6 @@ export default function QuizPractice({
               onEndPractice={handleEndPractice}
               onReadQuestion={readQuestion}
               onShowReportModal={() => setShowReportModal(true)}
-              onShowMyReports={() => setShowMyReports(true)}
             />
 
             {/* Render question based on type */}
@@ -532,14 +529,7 @@ export default function QuizPractice({
           onClose={() => setShowReportModal(false)}
         />
       )}
-      
-      {/* My Reports Modal */}
-      {showMyReports && (
-        <MyReports
-          onClose={() => setShowMyReports(false)}
-        />
-      )}
-      
+
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
