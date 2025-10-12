@@ -61,21 +61,23 @@ export class QuizRepository {
             images,
             tags,
             knowledge_point_id,
-            alternative_answers
+            alternative_answers,
+            extra_properties
           )
           VALUES (
             ${item.type},
             ${item.question},
-            ${sql.json(item.options)},
+            ${sql.json(item.options ?? [])},
             ${sql.json(item.answer)},
             ${item.answer_index ? sql.array(item.answer_index, 'int4') : null},
             ${item.originalParagraph ?? null},
             ${sql.json(item.images ?? [])},
             ${sql.json(item.tags ?? [])},
             ${item.knowledge_point_id ?? null},
-            ${sql.array(item.alternative_answers ?? [], 'text')}
+            ${sql.array(item.alternative_answers ?? [], 'text')},
+            ${item.extra_properties ? sql.json(item.extra_properties) : sql.json({})}
           )
-          RETURNING id, type, question, options, answer, answer_index, original_paragraph, images, tags, knowledge_point_id, alternative_answers, NULL as "knowledgePoint"
+          RETURNING id, type, question, options, answer, answer_index, original_paragraph, images, tags, knowledge_point_id, alternative_answers, extra_properties, NULL as "knowledgePoint"
         `,
       );
       return result.rows[0];
@@ -91,10 +93,11 @@ export class QuizRepository {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
           SELECT id, type, question, options, answer, answer_index,
-                 original_paragraph as "originalParagraph", 
+                 original_paragraph as "originalParagraph",
                  images, tags, knowledge_point_id,
-                 alternative_answers, 
+                 alternative_answers,
                  COALESCE(hints, '[]'::jsonb) as hints,
+                 extra_properties,
                  NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           WHERE id = ${id}
@@ -123,10 +126,11 @@ export class QuizRepository {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
           SELECT id, type, question, options, answer, answer_index,
-                 original_paragraph as "originalParagraph", 
+                 original_paragraph as "originalParagraph",
                  images, tags, knowledge_point_id,
-                 alternative_answers, 
+                 alternative_answers,
                  COALESCE(hints, '[]'::jsonb) as hints,
+                 extra_properties,
                  NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           ORDER BY id DESC
@@ -185,7 +189,7 @@ export class QuizRepository {
           UPDATE kedge_practice.quizzes
           SET type = ${updatedQuiz.type},
               question = ${updatedQuiz.question},
-              options = ${sql.json(updatedQuiz.options)},
+              options = ${sql.json(updatedQuiz.options ?? [])},
               answer = ${sql.json(updatedQuiz.answer)},
               answer_index = ${updatedQuiz.answer_index ? sql.array(updatedQuiz.answer_index, 'int4') : null},
               original_paragraph = ${updatedQuiz.originalParagraph ?? null},
@@ -193,14 +197,16 @@ export class QuizRepository {
               tags = ${sql.json(updatedQuiz.tags ?? [])},
               knowledge_point_id = ${updatedQuiz.knowledge_point_id ?? null},
               alternative_answers = ${sql.array(updatedQuiz.alternative_answers ?? [], 'text')},
-              hints = ${sql.json(updatedQuiz.hints ?? null)},
+              hints = ${updatedQuiz.hints ? sql.json(updatedQuiz.hints) : null},
+              extra_properties = ${updatedQuiz.extra_properties ? sql.json(updatedQuiz.extra_properties) : sql.json({})},
               updated_at = now()
           WHERE id = ${id}
           RETURNING id, type, question, options, answer, answer_index,
-                    original_paragraph as "originalParagraph", 
+                    original_paragraph as "originalParagraph",
                     images, tags, knowledge_point_id,
-                    alternative_answers, 
+                    alternative_answers,
                     COALESCE(hints, '[]'::jsonb) as hints,
+                    extra_properties,
                     NULL as "knowledgePoint"
         `,
       );
@@ -222,10 +228,11 @@ export class QuizRepository {
       const result = await this.persistentService.pgPool.query(
         sql.type(QuizItemSchema)`
           SELECT id, type, question, options, answer, answer_index,
-                 original_paragraph as "originalParagraph", 
+                 original_paragraph as "originalParagraph",
                  images, tags, knowledge_point_id,
-                 alternative_answers, 
+                 alternative_answers,
                  COALESCE(hints, '[]'::jsonb) as hints,
+                 extra_properties,
                  NULL as "knowledgePoint"
           FROM kedge_practice.quizzes
           WHERE tags ?| ${sql.array(tags, 'text')}
@@ -291,18 +298,19 @@ export class QuizRepository {
         // If knowledge points are specified, filter by them and optionally by quiz types
         result = await this.persistentService.pgPool.query(
           sql.unsafe`
-            SELECT 
-              q.id, 
-              q.type, 
-              q.question, 
-              q.options, 
-              q.answer, 
-              q.original_paragraph as "originalParagraph", 
-              q.images, 
-              q.tags, 
+            SELECT
+              q.id,
+              q.type,
+              q.question,
+              q.options,
+              q.answer,
+              q.original_paragraph as "originalParagraph",
+              q.images,
+              q.tags,
               q.knowledge_point_id,
-              CASE 
-                WHEN kp.id IS NOT NULL THEN 
+              q.extra_properties,
+              CASE
+                WHEN kp.id IS NOT NULL THEN
                   json_build_object(
                     'id', kp.id,
                     'subjectId', 'history',
@@ -326,18 +334,19 @@ export class QuizRepository {
         if (quizTypes && quizTypes.length > 0) {
           result = await this.persistentService.pgPool.query(
             sql.unsafe`
-              SELECT 
-                q.id, 
-                q.type, 
-                q.question, 
-                q.options, 
-                q.answer, 
-                q.original_paragraph as "originalParagraph", 
-                q.images, 
-                q.tags, 
+              SELECT
+                q.id,
+                q.type,
+                q.question,
+                q.options,
+                q.answer,
+                q.original_paragraph as "originalParagraph",
+                q.images,
+                q.tags,
                 q.knowledge_point_id,
-                CASE 
-                  WHEN kp.id IS NOT NULL THEN 
+                q.extra_properties,
+                CASE
+                  WHEN kp.id IS NOT NULL THEN
                     json_build_object(
                       'id', kp.id,
                       'subjectId', 'history',
@@ -359,18 +368,19 @@ export class QuizRepository {
         } else {
           result = await this.persistentService.pgPool.query(
             sql.unsafe`
-              SELECT 
-                q.id, 
-                q.type, 
-                q.question, 
-                q.options, 
-                q.answer, 
-                q.original_paragraph as "originalParagraph", 
-                q.images, 
-                q.tags, 
+              SELECT
+                q.id,
+                q.type,
+                q.question,
+                q.options,
+                q.answer,
+                q.original_paragraph as "originalParagraph",
+                q.images,
+                q.tags,
                 q.knowledge_point_id,
-                CASE 
-                  WHEN kp.id IS NOT NULL THEN 
+                q.extra_properties,
+                CASE
+                  WHEN kp.id IS NOT NULL THEN
                     json_build_object(
                       'id', kp.id,
                       'subjectId', 'history',
@@ -423,8 +433,9 @@ export class QuizRepository {
             q.knowledge_point_id,
             q.alternative_answers,
             COALESCE(q.hints, '[]'::jsonb) as hints,
-            CASE 
-              WHEN kp.id IS NOT NULL THEN 
+            q.extra_properties,
+            CASE
+              WHEN kp.id IS NOT NULL THEN
                 json_build_object(
                   'id', kp.id,
                   'subjectId', 'history',

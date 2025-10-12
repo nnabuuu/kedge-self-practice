@@ -65,7 +65,9 @@ export class QuizController {
         answer: quiz.answer,
         originalParagraph: quiz.originalParagraph,
         images: quiz.images,
-        alternative_answers: []
+        alternative_answers: quiz.alternative_answers || [],
+        hints: quiz.hints,
+        extra_properties: quiz.extra_properties
       };
 
       const createdQuiz = await this.quizService.createQuiz(quizItem);
@@ -120,7 +122,9 @@ export class QuizController {
             images: quiz.images,
             tags: quiz.tags,
             knowledge_point_id: quiz.knowledgePoint?.id,
-            alternative_answers: []
+            alternative_answers: quiz.alternative_answers || [],
+            hints: quiz.hints,
+            extra_properties: quiz.extra_properties
           };
 
           const createdQuiz = await this.quizService.createQuiz(quizItem);
@@ -219,7 +223,9 @@ export class QuizController {
         answer: validatedData.answer,
         originalParagraph: validatedData.originalParagraph,
         images: imageUrls, // Store URLs instead of file paths
-        alternative_answers: []
+        alternative_answers: validatedData.alternative_answers || [],
+        hints: validatedData.hints,
+        extra_properties: validatedData.extra_properties
       };
 
       // For backward compatibility, still use the old storage service
