@@ -261,12 +261,20 @@ async function loginWithCredentials(apiUrl: string, username: string, password: 
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`\n❌ Login failed (${response.status} ${response.statusText}):`);
+    console.error(`   Response: ${errorText}`);
     throw new Error(`Login failed: ${response.statusText} - ${errorText}`);
   }
 
   const data = await response.json();
 
+  console.log('   📥 Login response received:');
+  console.log(`   ${JSON.stringify(data, null, 2).split('\n').join('\n   ')}`);
+
   if (!data.access_token) {
+    console.error('\n❌ Login response missing access_token field');
+    console.error('   Expected field: access_token');
+    console.error('   Available fields:', Object.keys(data).join(', '));
     throw new Error('Login response missing access_token');
   }
 
