@@ -310,16 +310,41 @@ async function getAuthToken(apiUrl: string, options: ScriptOptions): Promise<str
 // ============================================================================
 
 async function loadConfig(options: ScriptOptions): Promise<Config> {
+  // Load configuration with proper defaults
   const apiPort = process.env.API_PORT || '8718';
   const apiUrl = options.apiUrl || `http://localhost:${apiPort}`;
-  const llmApiKey = process.env.LLM_API_KEY;
+  const llmApiKey = process.env.LLM_API_KEY || '';
   const llmModel = process.env.LLM_MODEL_QUIZ_PARSER || 'gpt-4o';
   const llmTemperature = parseFloat(process.env.LLM_TEMP_QUIZ_PARSER || '0.1');
   const llmMaxTokens = parseInt(process.env.LLM_MAX_TOKENS_QUIZ_PARSER || '4000', 10);
-  const llmBaseUrl = process.env.LLM_BASE_URL;
+  const llmBaseUrl = process.env.LLM_BASE_URL || undefined;
+
+  // Validate required configuration
+  const errors: string[] = [];
 
   if (!llmApiKey || llmApiKey === 'your-llm-api-key-here') {
-    throw new Error('LLM_API_KEY is not set or is using the default placeholder. Please configure a valid API key in .envrc or .envrc.override.');
+    errors.push('LLM_API_KEY is not set or is using the default placeholder');
+  }
+
+  if (!apiUrl || apiUrl === 'http://localhost:undefined') {
+    errors.push('API_PORT is not set properly');
+  }
+
+  if (isNaN(llmTemperature) || llmTemperature < 0 || llmTemperature > 1) {
+    errors.push('LLM_TEMP_QUIZ_PARSER must be a number between 0 and 1');
+  }
+
+  if (isNaN(llmMaxTokens) || llmMaxTokens <= 0) {
+    errors.push('LLM_MAX_TOKENS_QUIZ_PARSER must be a positive number');
+  }
+
+  if (errors.length > 0) {
+    console.error('\n❌ Configuration Error:');
+    errors.forEach(error => console.error(`   - ${error}`));
+    console.error('\n💡 Make sure you have sourced .envrc:');
+    console.error('   source .envrc');
+    console.error('\n   Or set the required environment variables in .envrc.override');
+    throw new Error('Invalid configuration');
   }
 
   // Get authentication token
@@ -703,7 +728,7 @@ async function main() {
   // Parse command line arguments
   const options = parseArgs();
 
-  console.log('\n⚙️  Options:');
+  console.log('\n⚙️  Script Options:');
   console.log(`   Dry Run: ${options.dryRun ? 'Yes (no database changes)' : 'No'}`);
   console.log(`   Limit: ${options.limit || 'No limit'}`);
   console.log(`   Force: ${options.force ? 'Yes (regenerate all)' : 'No (skip if exists)'}`);
@@ -714,16 +739,44 @@ async function main() {
     console.log(`   Retry Errors: ${options.retryErrors}`);
   }
 
-  // Load configuration
-  console.log('\n🔧 Loading configuration...');
-  const config = loadConfig(options);
-  console.log(`   API URL: ${config.apiUrl}`);
-  console.log(`   LLM Model: ${config.llmModel}`);
-  console.log(`   Temperature: ${config.llmTemperature}`);
-  console.log(`   Max Tokens: ${config.llmMaxTokens}`);
-  if (config.llmBaseUrl) {
-    console.log(`   Base URL: ${config.llmBaseUrl}`);
+  // Pre-check environment variables BEFORE authentication
+  console.log('\n🔍 Pre-flight Configuration Check:');
+  const apiPort = process.env.API_PORT || '8718';
+  const apiUrl = options.apiUrl || `http://localhost:${apiPort}`;
+  const llmApiKey = process.env.LLM_API_KEY || '';
+  const llmModel = process.env.LLM_MODEL_QUIZ_PARSER || 'gpt-4o';
+  const llmTemperature = process.env.LLM_TEMP_QUIZ_PARSER || '0.1';
+  const llmMaxTokens = process.env.LLM_MAX_TOKENS_QUIZ_PARSER || '4000';
+  const llmBaseUrl = process.env.LLM_BASE_URL || '(auto-detected)';
+
+  console.log(`   ✓ API URL: ${apiUrl}`);
+  console.log(`   ✓ LLM Model: ${llmModel}`);
+  console.log(`   ✓ Temperature: ${llmTemperature}`);
+  console.log(`   ✓ Max Tokens: ${llmMaxTokens}`);
+  console.log(`   ✓ LLM Base URL: ${llmBaseUrl}`);
+  console.log(`   ✓ LLM API Key: ${llmApiKey ? '***' + llmApiKey.slice(-4) : '(not set)'}`);
+
+  if (!llmApiKey || llmApiKey === 'your-llm-api-key-here') {
+    console.error('\n❌ Configuration Error:');
+    console.error('   LLM_API_KEY is not set or is using the default placeholder');
+    console.error('\n💡 Make sure you have sourced .envrc:');
+    console.error('   source .envrc');
+    console.error('\n   Or set LLM_API_KEY in .envrc.override');
+    process.exit(1);
   }
+
+  // Ask for confirmation before proceeding
+  console.log('\n❓ Configuration looks good. Proceed with script execution?');
+  const confirm = await promptInput('   Continue? (yes/no): ');
+  if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
+    console.log('\n⚠️  Script cancelled by user.');
+    process.exit(0);
+  }
+
+  // Load full configuration (including authentication)
+  console.log('\n🔧 Loading configuration and authenticating...');
+  const config = await loadConfig(options);
+  console.log('   ✅ Configuration loaded successfully');
 
   // Check API health
   await checkAPIHealth(config.apiUrl);
