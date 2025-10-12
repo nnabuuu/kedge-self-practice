@@ -525,6 +525,23 @@ async function updateQuizViaAPI(
   quizId: string,
   data: GeneratedData
 ): Promise<void> {
+  // Flatten nested arrays for multi-blank questions
+  // API schema expects: string[] (flat array)
+  // Script generates: string[] | string[][] (flat or nested)
+  let flattenedAlternatives: string[];
+
+  if (Array.isArray(data.alternative_answers) && data.alternative_answers.length > 0) {
+    if (Array.isArray(data.alternative_answers[0])) {
+      // Nested array (multi-blank) - flatten it
+      flattenedAlternatives = (data.alternative_answers as string[][]).flat();
+    } else {
+      // Already flat (single blank)
+      flattenedAlternatives = data.alternative_answers as string[];
+    }
+  } else {
+    flattenedAlternatives = [];
+  }
+
   const response = await fetch(`${apiUrl}/v1/quiz/${quizId}`, {
     method: 'PUT',
     headers: {
@@ -532,7 +549,7 @@ async function updateQuizViaAPI(
       'Authorization': `Bearer ${jwtToken}`,
     },
     body: JSON.stringify({
-      alternative_answers: data.alternative_answers,
+      alternative_answers: flattenedAlternatives,
       hints: data.hints,
     }),
   });
@@ -707,6 +724,12 @@ async function processQuiz(
     console.log(`  📊 Generated:`);
     console.log(`     Alternative answers: ${JSON.stringify(generatedData.alternative_answers)}`);
     console.log(`     Hints: ${JSON.stringify(generatedData.hints)}`);
+
+    // Show flattening info for multi-blank questions
+    if (Array.isArray(generatedData.alternative_answers[0])) {
+      const flattened = (generatedData.alternative_answers as string[][]).flat();
+      console.log(`     ℹ️  Note: Multi-blank alternatives flattened to: ${JSON.stringify(flattened)}`);
+    }
 
     // Update via API (unless dry run)
     if (options.dryRun) {
