@@ -778,8 +778,11 @@ async function main() {
 
   // Ask for confirmation before proceeding
   console.log('\n❓ Configuration looks good. Proceed with script execution?');
-  const confirm = await promptInput('   Continue? (yes/no): ');
-  if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
+  const confirm = await promptInput('   Continue? (yes/no) [yes]: ');
+  const response = confirm.trim().toLowerCase();
+
+  // Empty input (just Enter) defaults to yes
+  if (response && response !== 'yes' && response !== 'y') {
     console.log('\n⚠️  Script cancelled by user.');
     process.exit(0);
   }
