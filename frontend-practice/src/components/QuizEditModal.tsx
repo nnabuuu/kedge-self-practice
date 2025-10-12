@@ -632,16 +632,13 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
                         </tbody>
                       </table>
                     </div>
-                    <div className="mt-2 space-y-1">
-                      <p className="text-xs text-gray-500">
-                        检测到 {blanksCount} 个空格，请为每个空格填写正确答案
-                      </p>
-                      {answers.some(a => !a) && (
+                    {answers.some(a => !a) && (
+                      <div className="mt-2">
                         <p className="text-xs text-red-600">
                           ⚠️ 请填写所有空格的正确答案
                         </p>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </>
                 );
               })()}
