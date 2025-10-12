@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
 /**
- * Detect and Fix Order-Independent Blanks in Fill-in-the-Blank Questions
+ * Fix Order-Independent Blanks in Fill-in-the-Blank Questions
  *
- * This script detects fill-in-the-blank quizzes where blanks are semantically
- * interchangeable (e.g., parallel items, coordinate concepts) and adds
- * cross-referenced alternative answers to allow students to answer in any order.
+ * This script detects and fixes fill-in-the-blank quizzes where blanks are
+ * semantically interchangeable (e.g., parallel items, coordinate concepts) and
+ * adds cross-referenced alternative answers to allow students to answer in any order.
  *
  * Problem it solves:
  * - Question: "北宋和北方的____、____政权"
@@ -21,7 +21,7 @@
  *
  * Usage:
  *   source .envrc
- *   npx tsx scripts/detect-order-independent-blanks.ts
+ *   npx tsx scripts/fix-order-independent-blanks.ts
  *
  * Options:
  *   --dry-run            Preview changes without updating
@@ -33,13 +33,13 @@
  *
  * Examples:
  *   # Dry run
- *   npx tsx scripts/detect-order-independent-blanks.ts --dry-run
+ *   npx tsx scripts/fix-order-independent-blanks.ts --dry-run
  *
  *   # Process first 10 quizzes
- *   npx tsx scripts/detect-order-independent-blanks.ts --limit=10 --jwt-token=...
+ *   npx tsx scripts/fix-order-independent-blanks.ts --limit=10 --jwt-token=...
  *
  *   # Force re-analysis
- *   npx tsx scripts/detect-order-independent-blanks.ts --force --jwt-token=...
+ *   npx tsx scripts/fix-order-independent-blanks.ts --force --jwt-token=...
  */
 
 import OpenAI from 'openai';
@@ -519,7 +519,7 @@ async function processQuiz(
 }
 
 async function main() {
-  console.log('🚀 Order-Independent Blanks Detection & Fixer');
+  console.log('🚀 Order-Independent Blanks Fixer');
   console.log('='.repeat(70));
 
   const options = parseArgs();

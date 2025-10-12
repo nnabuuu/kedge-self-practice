@@ -331,9 +331,9 @@ The script includes a 1-second delay between requests to avoid rate limiting. If
 
 ---
 
-### `detect-order-independent-blanks.ts`
+### `fix-order-independent-blanks.ts`
 
-Detect and fix fill-in-the-blank quizzes where coordinate blanks can be answered in any order.
+Fix fill-in-the-blank quizzes where coordinate blanks can be answered in any order.
 
 #### Purpose
 
@@ -381,19 +381,19 @@ The script provides three authentication methods (same as `generate-fill-blank-a
 
 1. **JWT Token** (recommended for automation):
    ```bash
-   npx tsx scripts/detect-order-independent-blanks.ts --jwt-token=eyJhbGc...
+   npx tsx scripts/fix-order-independent-blanks.ts --jwt-token=eyJhbGc...
    ```
 
 2. **Username/Password** (login via API):
    ```bash
-   npx tsx scripts/detect-order-independent-blanks.ts \
+   npx tsx scripts/fix-order-independent-blanks.ts \
      --username=teacher@example.com \
      --password=yourpassword
    ```
 
 3. **Interactive Prompt** (most secure, no command history):
    ```bash
-   npx tsx scripts/detect-order-independent-blanks.ts
+   npx tsx scripts/fix-order-independent-blanks.ts
    # Script will prompt for authentication method and credentials
    ```
 
@@ -418,56 +418,56 @@ The script provides three authentication methods (same as `generate-fill-blank-a
    ```bash
    cd backend
    source .envrc
-   tsx scripts/detect-order-independent-blanks.ts
+   tsx scripts/fix-order-independent-blanks.ts
    ```
 
 #### Command Line Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--jwt-token=TOKEN` | JWT authentication token (teacher role) | `npx tsx scripts/detect-order-independent-blanks.ts --jwt-token=eyJhbGc...` |
-| `--username=EMAIL` | Teacher email for login | `npx tsx scripts/detect-order-independent-blanks.ts --username=teacher@example.com` |
-| `--password=PASS` | Teacher password for login | `npx tsx scripts/detect-order-independent-blanks.ts --password=secret` |
-| `--dry-run` | Preview changes without updating database | `npx tsx scripts/detect-order-independent-blanks.ts --dry-run` |
-| `--limit=N` | Process only first N quizzes | `npx tsx scripts/detect-order-independent-blanks.ts --limit=10` |
-| `--force` | Analyze all multi-blank quizzes, ignoring conjunction pre-filter | `npx tsx scripts/detect-order-independent-blanks.ts --force` |
-| `--quiz-id=ID` | Process only a specific quiz | `npx tsx scripts/detect-order-independent-blanks.ts --quiz-id=abc-123` |
-| `--retry-errors=FILE` | Retry quizzes from a previous error log | `npx tsx scripts/detect-order-independent-blanks.ts --retry-errors=errors-2025-01-15.json` |
-| `--api-url=URL` | Override API URL | `npx tsx scripts/detect-order-independent-blanks.ts --api-url=http://localhost:3000` |
+| `--jwt-token=TOKEN` | JWT authentication token (teacher role) | `npx tsx scripts/fix-order-independent-blanks.ts --jwt-token=eyJhbGc...` |
+| `--username=EMAIL` | Teacher email for login | `npx tsx scripts/fix-order-independent-blanks.ts --username=teacher@example.com` |
+| `--password=PASS` | Teacher password for login | `npx tsx scripts/fix-order-independent-blanks.ts --password=secret` |
+| `--dry-run` | Preview changes without updating database | `npx tsx scripts/fix-order-independent-blanks.ts --dry-run` |
+| `--limit=N` | Process only first N quizzes | `npx tsx scripts/fix-order-independent-blanks.ts --limit=10` |
+| `--force` | Analyze all multi-blank quizzes, ignoring conjunction pre-filter | `npx tsx scripts/fix-order-independent-blanks.ts --force` |
+| `--quiz-id=ID` | Process only a specific quiz | `npx tsx scripts/fix-order-independent-blanks.ts --quiz-id=abc-123` |
+| `--retry-errors=FILE` | Retry quizzes from a previous error log | `npx tsx scripts/fix-order-independent-blanks.ts --retry-errors=errors-2025-01-15.json` |
+| `--api-url=URL` | Override API URL | `npx tsx scripts/fix-order-independent-blanks.ts --api-url=http://localhost:3000` |
 
 #### Examples
 
 **Interactive authentication with dry-run**:
 ```bash
-npx tsx scripts/detect-order-independent-blanks.ts --dry-run
+npx tsx scripts/fix-order-independent-blanks.ts --dry-run
 # Will prompt for authentication method and credentials
 # Shows what would be changed without updating
 ```
 
 **Using JWT token to process first 10 quizzes**:
 ```bash
-npx tsx scripts/detect-order-independent-blanks.ts \
+npx tsx scripts/fix-order-independent-blanks.ts \
   --jwt-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... \
   --limit=10
 ```
 
 **Force analyze all multi-blank quizzes (ignores conjunction pre-filter)**:
 ```bash
-npx tsx scripts/detect-order-independent-blanks.ts \
+npx tsx scripts/fix-order-independent-blanks.ts \
   --force \
   --jwt-token=...
 ```
 
 **Process a specific quiz by ID**:
 ```bash
-npx tsx scripts/detect-order-independent-blanks.ts \
+npx tsx scripts/fix-order-independent-blanks.ts \
   --quiz-id=550e8400-e29b-41d4-a716-446655440000 \
   --jwt-token=...
 ```
 
 **Retry failed quizzes from error log**:
 ```bash
-npx tsx scripts/detect-order-independent-blanks.ts \
+npx tsx scripts/fix-order-independent-blanks.ts \
   --retry-errors=errors-2025-01-15.json \
   --jwt-token=...
 ```
@@ -494,7 +494,7 @@ npx tsx scripts/detect-order-independent-blanks.ts \
 #### Output Example
 
 ```
-🚀 Order-Independent Blanks Detector & Fixer
+🚀 Order-Independent Blanks Fixer
 ======================================================================
 
 ⚙️  Script Options:
@@ -626,7 +626,7 @@ When quizzes fail to process, the script automatically:
 
 **Retrying Failed Quizzes**:
 ```bash
-npx tsx scripts/detect-order-independent-blanks.ts \
+npx tsx scripts/fix-order-independent-blanks.ts \
   --retry-errors=errors-2025-01-15.json \
   --jwt-token=...
 ```
@@ -681,7 +681,7 @@ The script includes a 1-second delay between requests to avoid rate limiting. If
 
 #### Difference from `generate-fill-blank-alternatives.ts`
 
-| Feature | `generate-fill-blank-alternatives.ts` | `detect-order-independent-blanks.ts` |
+| Feature | `generate-fill-blank-alternatives.ts` | `fix-order-independent-blanks.ts` |
 |---------|--------------------------------------|-------------------------------------|
 | **Purpose** | Generate initial alternatives & hints | Fix order-independence issues |
 | **Target** | Quizzes without alternatives/hints | Multi-blank quizzes with conjunctions |
@@ -693,7 +693,7 @@ The script includes a 1-second delay between requests to avoid rate limiting. If
 
 **Recommended workflow**:
 1. Run `generate-fill-blank-alternatives.ts` on new quizzes (sets up basic alternatives)
-2. Run `detect-order-independent-blanks.ts` afterwards (adds order-independence support)
+2. Run `fix-order-independent-blanks.ts` afterwards (adds order-independence support)
 
 ---
 
