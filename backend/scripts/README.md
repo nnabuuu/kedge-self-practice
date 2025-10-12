@@ -160,14 +160,20 @@ npx tsx scripts/generate-fill-blank-alternatives.ts \
 
 #### How It Works
 
-1. **Fetch Quizzes**: Retrieves all fill-in-the-blank quizzes from the backend API
-2. **Filter**: Skips quizzes that already have alternatives and hints (unless `--force` is used)
-3. **Generate**: For each quiz:
+1. **Pre-flight Check**: Validates all configuration and environment variables
+   - Shows API URL, LLM model, temperature, max tokens
+   - Masks API key (shows only last 4 characters)
+   - Asks for confirmation before proceeding
+2. **Authentication**: Prompts for credentials (JWT token or username/password)
+3. **API Health Check**: Verifies backend server is running and accessible
+4. **Fetch Quizzes**: Retrieves all fill-in-the-blank quizzes from the backend API
+5. **Filter**: Skips quizzes that already have alternatives and hints (unless `--force` is used)
+6. **Generate**: For each quiz:
    - Sends question, answer, and context to GPT
    - Receives structured JSON with alternative answers and hints
    - Validates and normalizes the response
-4. **Update**: Updates the quiz via the backend API (`PUT /v1/quiz/:id`)
-5. **Report**: Displays summary of updated, skipped, and failed quizzes
+7. **Update**: Updates the quiz via the backend API (`PUT /v1/quiz/:id`)
+8. **Report**: Displays summary of updated, skipped, and failed quizzes
 
 #### Output Example
 
@@ -175,16 +181,37 @@ npx tsx scripts/generate-fill-blank-alternatives.ts \
 🚀 Fill-in-the-Blank Alternative Answers & Hints Generator
 ======================================================================
 
-⚙️  Options:
+⚙️  Script Options:
    Dry Run: No
    Limit: 5
    Force: No (skip if exists)
 
-🔧 Loading configuration...
-   API URL: http://localhost:8718
-   LLM Model: gpt-4o
-   Temperature: 0.1
-   Max Tokens: 4000
+🔍 Pre-flight Configuration Check:
+   ✓ API URL: http://localhost:8718
+   ✓ LLM Model: gpt-4o
+   ✓ Temperature: 0.1
+   ✓ Max Tokens: 4000
+   ✓ LLM Base URL: (auto-detected)
+   ✓ LLM API Key: ***xyz9
+
+❓ Configuration looks good. Proceed with script execution?
+   Continue? (yes/no): yes
+
+🔧 Loading configuration and authenticating...
+
+🔐 Authentication Required
+   This script requires teacher access to update quizzes.
+   You can provide credentials in two ways:
+   1. JWT Token: --jwt-token=your-token
+   2. Username/Password: --username=your-email --password=your-pass
+
+Choose authentication method (1=Token, 2=Login): 2
+Enter email: teacher@example.com
+Enter password: ********
+
+🔐 Logging in as teacher@example.com...
+   ✅ Login successful
+   ✅ Configuration loaded successfully
 
 🏥 Checking API health at http://localhost:8718...
    ✅ API is healthy and reachable
