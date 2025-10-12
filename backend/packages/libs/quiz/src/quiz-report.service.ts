@@ -185,8 +185,8 @@ export class QuizReportService {
     const havingConditions: any[] = [];
     
     // Status filter should be in HAVING clause since we're grouping
-    if (query.status) {
-      havingConditions.push(sql.unsafe`COUNT(CASE WHEN r.status = ${query.status} THEN 1 END) > 0`);
+    if (query.status && query.status.length > 0) {
+      havingConditions.push(sql.unsafe`COUNT(CASE WHEN r.status = ANY(${sql.array(query.status, 'text')}) THEN 1 END) > 0`);
     }
     
     // Report type filter should also be in HAVING clause

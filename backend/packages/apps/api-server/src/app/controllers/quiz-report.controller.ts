@@ -136,7 +136,7 @@ export class QuizReportController {
   @UseGuards(JwtAuthGuard, TeacherGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get reports for management (teachers/admins)' })
-  @ApiQuery({ name: 'status', required: false, enum: ['pending', 'reviewing', 'resolved', 'dismissed'] })
+  @ApiQuery({ name: 'status', required: false, enum: ['pending', 'reviewing', 'resolved', 'dismissed'], isArray: true })
   @ApiQuery({ name: 'sort', required: false, enum: ['created_at', 'report_count', 'pending_count'] })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'offset', required: false, type: Number })

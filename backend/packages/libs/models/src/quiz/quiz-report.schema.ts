@@ -62,7 +62,14 @@ export type BulkUpdateReportsDto = z.infer<typeof BulkUpdateReportsSchema>;
 
 // Query filters
 export const GetReportsQuerySchema = z.object({
-  status: ReportStatusSchema.optional(),
+  status: z.union([
+    ReportStatusSchema,
+    z.array(ReportStatusSchema)
+  ]).optional().transform(val => {
+    // Normalize single value to array
+    if (val === undefined) return undefined;
+    return Array.isArray(val) ? val : [val];
+  }),
   report_type: ReportTypeSchema.optional(),
   quiz_id: z.string().uuid().optional(),
   user_id: z.string().uuid().optional(),

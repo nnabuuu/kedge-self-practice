@@ -107,9 +107,10 @@ export default function ReportManagement() {
   const [reports, setReports] = useState<QuizReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<QuizReport | null>(null);
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | QuizReport["status"]
-  >("all");
+  const [statusFilter, setStatusFilter] = useState<QuizReport["status"][]>([
+    "pending",
+    "reviewing",
+  ]);
   const [typeFilter, setTypeFilter] = useState<
     "all" | QuizReport["report_type"]
   >("all");
@@ -137,7 +138,7 @@ export default function ReportManagement() {
         limit: 50,
         offset: 0,
       };
-      if (statusFilter !== "all") params.status = statusFilter;
+      if (statusFilter.length > 0) params.status = statusFilter;
       if (typeFilter !== "all") params.report_type = typeFilter;
 
       const response = await api.reports.getManagementReports(params);
@@ -401,17 +402,77 @@ export default function ReportManagement() {
               </div>
             </div>
 
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">所有状态</option>
-              <option value="pending">待处理</option>
-              <option value="reviewing">处理中</option>
-              <option value="resolved">已解决</option>
-              <option value="dismissed">已忽略</option>
-            </select>
+            <div className="relative">
+              <button
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white flex items-center gap-2 min-w-[180px]"
+                onClick={() => {
+                  const dropdown = document.getElementById('status-dropdown');
+                  dropdown?.classList.toggle('hidden');
+                }}
+              >
+                <Filter className="w-4 h-4" />
+                <span>
+                  {statusFilter.length === 0
+                    ? '所有状态'
+                    : statusFilter.length === 4
+                    ? '所有状态'
+                    : `已选 ${statusFilter.length} 个`}
+                </span>
+              </button>
+              <div
+                id="status-dropdown"
+                className="hidden absolute top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 p-2 min-w-[180px]"
+              >
+                {[
+                  { value: 'pending' as const, label: '待处理' },
+                  { value: 'reviewing' as const, label: '处理中' },
+                  { value: 'resolved' as const, label: '已解决' },
+                  { value: 'dismissed' as const, label: '已忽略' },
+                ].map((status) => (
+                  <label
+                    key={status.value}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={statusFilter.includes(status.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setStatusFilter([...statusFilter, status.value]);
+                        } else {
+                          setStatusFilter(
+                            statusFilter.filter((s) => s !== status.value)
+                          );
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm">{status.label}</span>
+                  </label>
+                ))}
+                <div className="border-t mt-2 pt-2 flex gap-2">
+                  <button
+                    onClick={() =>
+                      setStatusFilter([
+                        'pending',
+                        'reviewing',
+                        'resolved',
+                        'dismissed',
+                      ])
+                    }
+                    className="flex-1 text-xs px-2 py-1 text-blue-600 hover:bg-blue-50 rounded"
+                  >
+                    全选
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter([])}
+                    className="flex-1 text-xs px-2 py-1 text-gray-600 hover:bg-gray-50 rounded"
+                  >
+                    清空
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <select
               value={typeFilter}
