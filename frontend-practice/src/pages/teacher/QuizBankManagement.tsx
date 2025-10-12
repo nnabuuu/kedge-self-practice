@@ -958,24 +958,16 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
               imageUrl = images?.[imageIndex];
             } else {
               // It's a UUID or filename, construct the URL
-              // Check if it's already a full URL or relative path
+              // Check if it's already a full URL
               if (imageRef.startsWith('http') || imageRef.startsWith('/')) {
                 imageUrl = imageRef;
-              } else if (imageRef.includes('/')) {
-                // Already has path structure (e.g., "2025/08/uuid.png")
-                imageUrl = `${getApiUrl()}/attachments/quiz/${imageRef}`;
               } else {
-                // Just a UUID, try to construct path with current year/month
-                // This is a guess - in production, the full path should be stored with the quiz
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                
-                // Check if imageRef already has extension
+                // Use the simplified attachment API: /attachments/:fileId
+                // Format: uuid.extension (e.g., 123e4567-e89b-12d3-a456-426614174000.png)
                 const hasExtension = /\.\w+$/.test(imageRef);
-                const filename = hasExtension ? imageRef : `${imageRef}.png`; // Default to .png if no extension
-                
-                imageUrl = `${getApiUrl()}/attachments/quiz/${year}/${month}/${filename}`;
+                const fileId = hasExtension ? imageRef : `${imageRef}.png`; // Default to .png if no extension
+
+                imageUrl = `${getApiUrl()}/attachments/${fileId}`;
               }
             }
             
