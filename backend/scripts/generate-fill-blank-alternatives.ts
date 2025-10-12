@@ -523,23 +523,32 @@ async function updateQuizViaAPI(
   apiUrl: string,
   jwtToken: string,
   quizId: string,
-  data: GeneratedData
+  data: GeneratedData,
+  quiz: QuizItem
 ): Promise<void> {
-  // Flatten nested arrays for multi-blank questions
-  // API schema expects: string[] (flat array)
-  // Script generates: string[] | string[][] (flat or nested)
-  let flattenedAlternatives: string[];
+  // Convert alternative_answers to the format expected by the practice system
+  // For multi-blank: ["[0]alt1", "[0]alt2", "[1]alt3"] - flat array with position prefixes
+  // For single-blank: ["alt1", "alt2"] - flat array without prefixes
+  let formattedAlternatives: string[];
+
+  const answer = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
+  const isMultiBlank = answer.length > 1;
 
   if (Array.isArray(data.alternative_answers) && data.alternative_answers.length > 0) {
     if (Array.isArray(data.alternative_answers[0])) {
-      // Nested array (multi-blank) - flatten it
-      flattenedAlternatives = (data.alternative_answers as string[][]).flat();
+      // Nested array (multi-blank) - add position prefixes
+      formattedAlternatives = [];
+      (data.alternative_answers as string[][]).forEach((alternatives, index) => {
+        alternatives.forEach(alt => {
+          formattedAlternatives.push(`[${index}]${alt}`);
+        });
+      });
     } else {
-      // Already flat (single blank)
-      flattenedAlternatives = data.alternative_answers as string[];
+      // Already flat (single blank) - no prefix needed
+      formattedAlternatives = data.alternative_answers as string[];
     }
   } else {
-    flattenedAlternatives = [];
+    formattedAlternatives = [];
   }
 
   const response = await fetch(`${apiUrl}/v1/quiz/${quizId}`, {
@@ -549,7 +558,7 @@ async function updateQuizViaAPI(
       'Authorization': `Bearer ${jwtToken}`,
     },
     body: JSON.stringify({
-      alternative_answers: flattenedAlternatives,
+      alternative_answers: formattedAlternatives,
       hints: data.hints,
     }),
   });
@@ -725,17 +734,22 @@ async function processQuiz(
     console.log(`     Alternative answers: ${JSON.stringify(generatedData.alternative_answers)}`);
     console.log(`     Hints: ${JSON.stringify(generatedData.hints)}`);
 
-    // Show flattening info for multi-blank questions
+    // Show formatted output for multi-blank questions
     if (Array.isArray(generatedData.alternative_answers[0])) {
-      const flattened = (generatedData.alternative_answers as string[][]).flat();
-      console.log(`     ℹ️  Note: Multi-blank alternatives flattened to: ${JSON.stringify(flattened)}`);
+      const formatted: string[] = [];
+      (generatedData.alternative_answers as string[][]).forEach((alternatives, index) => {
+        alternatives.forEach(alt => {
+          formatted.push(`[${index}]${alt}`);
+        });
+      });
+      console.log(`     ℹ️  Formatted with position prefixes: ${JSON.stringify(formatted)}`);
     }
 
     // Update via API (unless dry run)
     if (options.dryRun) {
       console.log(`  🔍 [DRY RUN] Would update via API`);
     } else {
-      await updateQuizViaAPI(config.apiUrl, config.jwtToken!, quiz.id, generatedData);
+      await updateQuizViaAPI(config.apiUrl, config.jwtToken!, quiz.id, generatedData, quiz);
       console.log(`  💾 Successfully updated via API`);
     }
 
