@@ -189,47 +189,58 @@ function promptInput(question: string): Promise<string> {
 }
 
 function promptPassword(question: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
   return new Promise((resolve) => {
-    // Hide password input
     const stdin = process.stdin;
-    (stdin as any).setRawMode(true);
+    const stdout = process.stdout;
 
     let password = '';
-    process.stdout.write(question);
 
-    stdin.on('data', (char) => {
-      const str = char.toString('utf8');
+    // Write the question
+    stdout.write(question);
 
-      switch (str) {
+    // Set raw mode to handle input character by character
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
+
+    const onData = (char: string) => {
+      switch (char) {
         case '\n':
         case '\r':
         case '\u0004': // Ctrl-D
-          (stdin as any).setRawMode(false);
+          // Finished
+          stdin.setRawMode(false);
           stdin.pause();
-          process.stdout.write('\n');
-          rl.close();
+          stdin.removeListener('data', onData);
+          stdout.write('\n');
           resolve(password);
           break;
+
         case '\u0003': // Ctrl-C
+          stdin.setRawMode(false);
           process.exit();
           break;
-        case '\u007f': // Backspace
-          password = password.slice(0, -1);
-          process.stdout.clearLine(0);
-          process.stdout.cursorTo(0);
-          process.stdout.write(question + '*'.repeat(password.length));
+
+        case '\u007f': // Backspace (Unix/Linux)
+        case '\b': // Backspace (Windows)
+          if (password.length > 0) {
+            password = password.slice(0, -1);
+            // Move cursor back, write space, move back again
+            stdout.write('\b \b');
+          }
           break;
+
         default:
-          password += str;
-          process.stdout.write('*');
+          // Only accept printable characters
+          if (char.charCodeAt(0) >= 32 && char.charCodeAt(0) <= 126) {
+            password += char;
+            stdout.write('*');
+          }
           break;
       }
-    });
+    };
+
+    stdin.on('data', onData);
   });
 }
 
