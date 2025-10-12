@@ -161,6 +161,127 @@ export class PracticeService {
       .replace(/[""]/g, '"');  // Normalize quotes
   }
 
+  /**
+   * Check if user answers match correct answers with order-independent-groups support
+   * @param userAnswers - User's answers (normalized)
+   * @param correctAnswers - Correct answers (normalized)
+   * @param orderIndependentGroups - Groups of indices that can be swapped (e.g., [[0, 1], [3, 4]])
+   * @param alternativeAnswers - Alternative correct answers with position prefixes
+   * @returns true if all answers match considering the groups
+   */
+  private checkAnswersWithGroups(
+    userAnswers: string[],
+    correctAnswers: string[],
+    orderIndependentGroups: number[][] | undefined,
+    alternativeAnswers: string[] | undefined
+  ): boolean {
+    if (userAnswers.length !== correctAnswers.length) {
+      return false;
+    }
+
+    // Create a mapping of which indices have been matched
+    const userMatched = new Array(userAnswers.length).fill(false);
+    const correctMatched = new Array(correctAnswers.length).fill(false);
+
+    // If no order-independent-groups, check exact positions only
+    if (!orderIndependentGroups || orderIndependentGroups.length === 0) {
+      for (let i = 0; i < correctAnswers.length; i++) {
+        if (!this.checkAnswerMatch(userAnswers[i], correctAnswers[i], i, alternativeAnswers)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // Build a map of which positions belong to which group
+    const positionToGroup = new Map<number, number>();
+    orderIndependentGroups.forEach((group, groupIndex) => {
+      group.forEach(pos => positionToGroup.set(pos, groupIndex));
+    });
+
+    // Process each order-independent group
+    for (let groupIndex = 0; groupIndex < orderIndependentGroups.length; groupIndex++) {
+      const group = orderIndependentGroups[groupIndex];
+      const groupUserAnswers = group.map(i => userAnswers[i]);
+      const groupCorrectAnswers = group.map(i => correctAnswers[i]);
+
+      // Try to match all answers within this group (any order)
+      for (const userIdx of group) {
+        if (userMatched[userIdx]) continue;
+
+        let matchFound = false;
+        for (const correctIdx of group) {
+          if (correctMatched[correctIdx]) continue;
+
+          if (this.checkAnswerMatch(userAnswers[userIdx], correctAnswers[correctIdx], correctIdx, alternativeAnswers)) {
+            userMatched[userIdx] = true;
+            correctMatched[correctIdx] = true;
+            matchFound = true;
+            break;
+          }
+        }
+
+        if (!matchFound) {
+          return false; // Couldn't match this user answer within the group
+        }
+      }
+    }
+
+    // Check positions not in any group (must match exactly)
+    for (let i = 0; i < correctAnswers.length; i++) {
+      if (!positionToGroup.has(i)) {
+        // This position is not in any group, must match exactly
+        if (!this.checkAnswerMatch(userAnswers[i], correctAnswers[i], i, alternativeAnswers)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if a user answer matches the correct answer at a specific position
+   * @param userAnswer - User's answer (normalized)
+   * @param correctAnswer - Correct answer (normalized)
+   * @param position - Position index (for checking position-specific alternatives)
+   * @param alternativeAnswers - Alternative correct answers with position prefixes
+   * @returns true if the answer matches
+   */
+  private checkAnswerMatch(
+    userAnswer: string,
+    correctAnswer: string,
+    position: number,
+    alternativeAnswers: string[] | undefined
+  ): boolean {
+    // Check exact match
+    if (userAnswer === correctAnswer) {
+      return true;
+    }
+
+    // Check position-specific alternatives
+    if (alternativeAnswers && alternativeAnswers.length > 0) {
+      const positionSpecific = alternativeAnswers
+        .filter(alt => alt.startsWith(`[${position}]`))
+        .map(alt => this.normalizeAnswerText(alt.replace(`[${position}]`, '').trim()));
+
+      if (positionSpecific.includes(userAnswer)) {
+        return true;
+      }
+
+      // Also check non-position-specific alternatives (backward compatibility)
+      const nonPositionSpecific = alternativeAnswers
+        .filter(alt => !alt.match(/^\[\d+\]/))
+        .map(alt => this.normalizeAnswerText(alt));
+
+      if (nonPositionSpecific.includes(userAnswer)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   async submitAnswer(data: SubmitAnswer, userId: string): Promise<{ isCorrect: boolean }> {
     const session = await this.practiceRepository.getSession(data.session_id, userId);
     
@@ -188,181 +309,29 @@ export class PracticeService {
       // For fill-in-the-blank questions, check each blank
       const correctAnswers = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
       const userAnswers = userAnswer.includes('|||') ? userAnswer.split('|||') : [userAnswer];
-      
-      // For multiple blanks, first check if it's order-independent
-      if (correctAnswers.length > 1 && userAnswers.length === correctAnswers.length) {
-        // Check if answers can be matched in any order
-        const normalizedCorrectAnswers = correctAnswers.map(a => this.normalizeAnswerText(String(a)));
-        const normalizedUserAnswers = userAnswers.map(a => this.normalizeAnswerText(String(a)));
-        
-        // First, try exact position matching (original logic)
-        let positionMatch = true;
-        for (let i = 0; i < correctAnswers.length; i++) {
-          const correctAnswerStr = normalizedCorrectAnswers[i];
-          const userAnswerStr = normalizedUserAnswers[i];
-          
-          if (userAnswerStr !== correctAnswerStr) {
-            // Also check alternatives for this position
-            let matchFound = false;
-            if (quiz.alternative_answers?.length > 0) {
-              const blankSpecific = quiz.alternative_answers
-                .filter(alt => alt.startsWith(`[${i}]`))
-                .map(alt => alt.replace(`[${i}]`, '').trim().toLowerCase());
-              
-              matchFound = blankSpecific.includes(userAnswerStr);
-            }
-            
-            if (!matchFound) {
-              positionMatch = false;
-              break;
-            }
-          }
-        }
-        
-        if (positionMatch) {
-          isCorrect = true;
-          this.logger.log(`All blanks matched in exact positions`);
-        } else {
-          // Try order-independent matching if exact positions don't match
-          // Check if all answers are unique (no duplicates expected)
-          const uniqueCorrectAnswers = [...new Set(normalizedCorrectAnswers)];
-          const uniqueUserAnswers = [...new Set(normalizedUserAnswers)];
-          
-          if (uniqueCorrectAnswers.length === correctAnswers.length) {
-            // All correct answers are unique, we can try any-order matching
-            
-            // Create a copy of correct answers to track which ones are matched
-            const unmatchedCorrectAnswers = [...normalizedCorrectAnswers];
-            const unmatchedUserAnswers = [...normalizedUserAnswers];
-            
-            // Try to match each user answer with a correct answer
-            for (let i = unmatchedUserAnswers.length - 1; i >= 0; i--) {
-              const userAns = unmatchedUserAnswers[i];
-              const correctIndex = unmatchedCorrectAnswers.indexOf(userAns);
-              
-              if (correctIndex !== -1) {
-                // Found a match
-                unmatchedUserAnswers.splice(i, 1);
-                unmatchedCorrectAnswers.splice(correctIndex, 1);
-              } else {
-                // Check if this matches any alternative answer (order-independent)
-                let altMatchFound = false;
-                if (quiz.alternative_answers?.length > 0) {
-                  // For order-independent matching, check all alternatives without position prefix
-                  const allAlternatives = quiz.alternative_answers
-                    .filter(alt => !alt.includes('[') || alt.match(/^\[\d+\]/))
-                    .map(alt => alt.replace(/^\[\d+\]/, '').trim().toLowerCase());
-                  
-                  // Check if this user answer matches any alternative for any correct answer
-                  for (let j = unmatchedCorrectAnswers.length - 1; j >= 0; j--) {
-                    if (allAlternatives.includes(userAns)) {
-                      // This could be an alternative for one of the correct answers
-                      unmatchedUserAnswers.splice(i, 1);
-                      unmatchedCorrectAnswers.splice(j, 1);
-                      altMatchFound = true;
-                      break;
-                    }
-                  }
-                }
-                
-                if (!altMatchFound) {
-                  // No match found for this answer
-                  break;
-                }
-              }
-            }
-            
-            // Check if all answers were matched
-            if (unmatchedUserAnswers.length === 0 && unmatchedCorrectAnswers.length === 0) {
-              isCorrect = true;
-              this.logger.log(`All blanks matched (order-independent): user provided "${userAnswers.join(', ')}" for "${correctAnswers.join(', ')}"`);
-            } else {
-              isCorrect = false;
-              this.logger.log(`Not all blanks matched. Unmatched user answers: [${unmatchedUserAnswers.join(', ')}], Unmatched correct answers: [${unmatchedCorrectAnswers.join(', ')}]`);
-            }
-          } else {
-            // Correct answers contain duplicates, must match positions exactly
-            // Fall back to position-based checking
-            let allCorrect = true;
-            
-            for (let i = 0; i < correctAnswers.length; i++) {
-              const correctAnswerStr = String(correctAnswers[i]).trim();
-              const userAnswerStr = (userAnswers[i] || '').trim();
-              
-              let blankCorrect = false;
-              
-              // Check exact match (with normalization)
-              if (this.normalizeAnswerText(userAnswerStr) === this.normalizeAnswerText(correctAnswerStr)) {
-                blankCorrect = true;
-                this.logger.log(`Blank ${i+1} matched exactly: "${userAnswerStr}" === "${correctAnswerStr}"`);
-              }
-              // Check alternatives
-              else if (quiz.alternative_answers?.length > 0) {
-                const blankSpecific = quiz.alternative_answers
-                  .filter(alt => alt.startsWith(`[${i}]`))
-                  .map(alt => alt.replace(`[${i}]`, '').trim());
-                
-                if (blankSpecific.length > 0) {
-                  blankCorrect = blankSpecific.some(
-                    alt => this.normalizeAnswerText(alt) === this.normalizeAnswerText(userAnswerStr)
-                  );
-                }
-              }
-              
-              if (!blankCorrect) {
-                allCorrect = false;
-                this.logger.log(`Blank ${i+1} incorrect: "${userAnswerStr}" vs "${correctAnswerStr}"`);
-              }
-            }
-            
-            isCorrect = allCorrect;
-          }
+
+      // Normalize answers for comparison
+      const normalizedCorrectAnswers = correctAnswers.map(a => this.normalizeAnswerText(String(a)));
+      const normalizedUserAnswers = userAnswers.map(a => this.normalizeAnswerText(String(a)));
+
+      // Extract order-independent-groups from extra_properties if available
+      const orderIndependentGroups = quiz.extra_properties?.['order-independent-groups'] as number[][] | undefined;
+
+      // Use the new helper method to check answers with order-independent-groups support
+      isCorrect = this.checkAnswersWithGroups(
+        normalizedUserAnswers,
+        normalizedCorrectAnswers,
+        orderIndependentGroups,
+        quiz.alternative_answers
+      );
+
+      if (isCorrect) {
+        this.logger.log(`Fill-in-the-blank correct: "${userAnswers.join(', ')}" matches "${correctAnswers.join(', ')}"`);
+        if (orderIndependentGroups && orderIndependentGroups.length > 0) {
+          this.logger.log(`Used order-independent-groups: ${JSON.stringify(orderIndependentGroups)}`);
         }
       } else {
-        // Single blank or mismatched count - use original position-based logic
-        let allCorrect = true;
-        
-        for (let i = 0; i < correctAnswers.length; i++) {
-          const correctAnswerStr = String(correctAnswers[i]).trim();
-          const userAnswerStr = (userAnswers[i] || '').trim();
-          
-          let blankCorrect = false;
-          
-          if (this.normalizeAnswerText(userAnswerStr) === this.normalizeAnswerText(correctAnswerStr)) {
-            blankCorrect = true;
-            this.logger.log(`Blank ${i+1} matched exactly: "${userAnswerStr}" === "${correctAnswerStr}"`);
-          }
-          else if (quiz.alternative_answers?.length > 0) {
-            const blankSpecific = quiz.alternative_answers
-              .filter(alt => alt.startsWith(`[${i}]`))
-              .map(alt => alt.replace(`[${i}]`, '').trim());
-            
-            if (blankSpecific.length > 0) {
-              blankCorrect = blankSpecific.some(
-                alt => this.normalizeAnswerText(alt) === this.normalizeAnswerText(userAnswerStr)
-              );
-              if (blankCorrect) {
-                this.logger.log(`Blank ${i+1} matched specific alternative: "${userAnswerStr}"`);
-              }
-            } else if (correctAnswers.length === 1) {
-              // Single blank - check unprefixed alternatives
-              blankCorrect = quiz.alternative_answers.some(
-                alt => !alt.includes('[') && this.normalizeAnswerText(alt) === this.normalizeAnswerText(userAnswerStr)
-              );
-            }
-          }
-          
-          if (!blankCorrect) {
-            allCorrect = false;
-            this.logger.log(`Blank ${i+1} incorrect: "${userAnswerStr}" vs "${correctAnswerStr}"`);
-          }
-        }
-        
-        isCorrect = allCorrect;
-      }
-      
-      if (!isCorrect) {
-        this.logger.log(`Answer did not match all blanks, user can request AI re-evaluation`);
+        this.logger.log(`Fill-in-the-blank incorrect: "${userAnswers.join(', ')}" vs "${correctAnswers.join(', ')}"`);
       }
     } else if (quiz.type === 'single-choice') {
       // Handle both text answers and index answers

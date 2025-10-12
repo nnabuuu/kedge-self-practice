@@ -79,11 +79,12 @@ interface QuizItem {
   answer: string | string[];
   alternative_answers?: string[];
   hints?: (string | null)[] | null;
+  extra_properties?: Record<string, any>;
 }
 
 interface OrderAnalysisResult {
   is_order_independent: boolean;
-  interchangeable_pairs: number[][];  // e.g., [[0, 1], [2, 3]]
+  order_independent_groups: number[][];  // e.g., [[0, 1], [2, 3]]
   reasoning: string;
 }
 
@@ -317,33 +318,32 @@ function needsAnalysis(quiz: QuizItem, force: boolean): boolean {
     return false;
   }
 
-  // Check if already has cross-referenced alternatives
-  const answer = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
-  const alternatives = quiz.alternative_answers || [];
-
-  // Check if any alternative has position prefix from another blank
-  for (let i = 0; i < answer.length; i++) {
-    for (let j = 0; j < answer.length; j++) {
-      if (i !== j) {
-        const crossRef = `[${i}]${answer[j]}`;
-        if (alternatives.includes(crossRef)) {
-          return false; // Already has cross-reference
-        }
-      }
-    }
+  // Check if already has order-independent-groups in extra_properties
+  const orderIndependentGroups = quiz.extra_properties?.['order-independent-groups'];
+  if (orderIndependentGroups && Array.isArray(orderIndependentGroups) && orderIndependentGroups.length > 0) {
+    return false; // Already analyzed and configured
   }
 
   return true;
 }
 
-async function updateQuizViaAPI(apiUrl: string, jwtToken: string, quizId: string, alternatives: string[]): Promise<void> {
+async function updateQuizViaAPI(
+  apiUrl: string,
+  jwtToken: string,
+  quizId: string,
+  orderIndependentGroups: number[][]
+): Promise<void> {
   const response = await fetch(`${apiUrl}/v1/quiz/${quizId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${jwtToken}`,
     },
-    body: JSON.stringify({ alternative_answers: alternatives }),
+    body: JSON.stringify({
+      extra_properties: {
+        'order-independent-groups': orderIndependentGroups,
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -389,14 +389,16 @@ function buildAnalysisPrompt(quiz: QuizItem): string {
 \`\`\`json
 {
   "is_order_independent": true/false,
-  "interchangeable_pairs": [[0, 1], [2, 3]],  // 可互换的空格对，如果不可互换则为空数组
+  "order_independent_groups": [[0, 1], [2, 3]],  // 可互换的空格组，如果不可互换则为空数组
   "reasoning": "判断理由"
 }
 \`\`\`
 
 注意：
-- interchangeable_pairs 是二维数组，每个子数组包含可以互换的空格索引
-- 如果所有空格都可以任意互换，可以列出所有组合
+- order_independent_groups 是二维数组，每个子数组包含可以互换的空格索引
+- 同一组内的空格可以任意互换顺序，不同组之间不能互换
+- 例如：[[0, 1]] 表示第0和第1个空格可以互换
+- 例如：[[0, 1], [3, 4]] 表示0和1可以互换，3和4可以互换，但0-1组和3-4组之间不能互换
 - 只有真正语义上可以互换的才返回true，不确定时返回false`;
 }
 
@@ -434,7 +436,7 @@ async function analyzeOrderIndependence(
   const parsed = JSON.parse(responseText);
   return {
     is_order_independent: parsed.is_order_independent || false,
-    interchangeable_pairs: parsed.interchangeable_pairs || [],
+    order_independent_groups: parsed.order_independent_groups || [],
     reasoning: parsed.reasoning || '',
   };
 }
@@ -462,7 +464,7 @@ async function processQuiz(
   }
 
   if (!needsAnalysis(quiz, options.force)) {
-    console.log(`  ⏭️  Skipping - already has cross-referenced alternatives`);
+    console.log(`  ⏭️  Skipping - already has order-independent-groups configured`);
     return false;
   }
 
@@ -471,40 +473,20 @@ async function processQuiz(
 
     console.log(`  📊 Analysis:`);
     console.log(`     Order-independent: ${analysis.is_order_independent}`);
-    console.log(`     Interchangeable pairs: ${JSON.stringify(analysis.interchangeable_pairs)}`);
+    console.log(`     Groups: ${JSON.stringify(analysis.order_independent_groups)}`);
     console.log(`     Reasoning: ${analysis.reasoning}`);
 
-    if (!analysis.is_order_independent || analysis.interchangeable_pairs.length === 0) {
+    if (!analysis.is_order_independent || analysis.order_independent_groups.length === 0) {
       console.log(`  ℹ️  No order-independent blanks detected`);
       return false;
     }
 
-    // Build new alternative_answers with cross-references
-    const answer = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
-    const existingAlts = quiz.alternative_answers || [];
-    const newAlts = [...existingAlts];
-
-    // Add cross-references for each interchangeable pair
-    for (const [idx1, idx2] of analysis.interchangeable_pairs) {
-      // Add answer[idx2] as alternative for position idx1
-      const crossRef1 = `[${idx1}]${answer[idx2]}`;
-      if (!newAlts.includes(crossRef1)) {
-        newAlts.push(crossRef1);
-      }
-
-      // Add answer[idx1] as alternative for position idx2
-      const crossRef2 = `[${idx2}]${answer[idx1]}`;
-      if (!newAlts.includes(crossRef2)) {
-        newAlts.push(crossRef2);
-      }
-    }
-
-    console.log(`  ✨ New alternatives: ${JSON.stringify(newAlts)}`);
+    console.log(`  ✨ Setting order-independent-groups: ${JSON.stringify(analysis.order_independent_groups)}`);
 
     if (options.dryRun) {
       console.log(`  🔍 [DRY RUN] Would update via API`);
     } else {
-      await updateQuizViaAPI(config.apiUrl, config.jwtToken, quiz.id, newAlts);
+      await updateQuizViaAPI(config.apiUrl, config.jwtToken, quiz.id, analysis.order_independent_groups);
       console.log(`  💾 Successfully updated via API`);
     }
 

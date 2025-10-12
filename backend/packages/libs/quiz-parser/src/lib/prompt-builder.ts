@@ -156,8 +156,10 @@ ${answerFormat}`;
     - 例如："____和____是重要的发明" → 如果是"火药"和"指南针"，可互换
     - 反例："____的____去世了" → "爷爷"和"孙子"有明确关系，不可互换
     - 反例："从____到____" → 有明确的时间/空间顺序，不可互换
-  * 可互换时的处理：为每个空格添加其他空格的答案作为替代答案
-  * 格式示例：answer: ["辽", "西夏"], alternative_answers: [["西夏"], ["辽"]]
+  * 可互换时需在extra_properties中设置order-independent-groups字段
+  * 格式示例：answer: ["辽", "西夏"], extra_properties: {"order-independent-groups": [[0, 1]]}
+  * 可以有多组独立的可互换空格：extra_properties: {"order-independent-groups": [[0, 1], [3, 4]]}
+  * 数组中的数字是空格的索引（从0开始），例如[0, 1]表示第1个和第2个空格可以互换
   * 这样学生填写"西夏、辽"或"辽、西夏"都能被正确判定
   * 注意：只有真正语义上可以互换的才添加，不确定时不要添加
 - 只包含确实可以接受的替代答案，不要过度宽松
@@ -168,7 +170,10 @@ ${answerFormat}`;
   * 单个空格：answer: "答案", hints: ["提示"], alternative_answers: ["替代答案1", "替代答案2"]
   * 多个空格：answer: ["答案1", "答案2"], hints: ["提示1", "提示2"], alternative_answers: [["替代1-1", "替代1-2"], ["替代2-1"]]
   * 不需要提示的空格用null：hints: [null, "提示2"]
-  * 没有替代答案：alternative_answers: [] 或 [[], ["替代2-1"]]`;
+  * 没有替代答案：alternative_answers: [] 或 [[], ["替代2-1"]]
+- **extra_properties格式**：
+  * 如果有顺序无关的空格组，添加：extra_properties: {"order-independent-groups": [[0, 1], [3, 4]]}
+  * 如果没有，可以省略extra_properties字段或设为null`;
   }
 
   private getSubjectiveInstructions(): string {
@@ -180,6 +185,7 @@ ${answerFormat}`;
   private getFormatInstructions(): string {
     const includeHints = this.allowedTypes.includes('fill-in-the-blank');
     const includeAlternatives = this.allowedTypes.includes('fill-in-the-blank');
+    const includeExtraProps = this.allowedTypes.includes('fill-in-the-blank');
     return `返回的 JSON 格式必须完全符合以下结构：
 {
   "items": [
@@ -187,7 +193,7 @@ ${answerFormat}`;
       "type": "${this.allowedTypes.join(' | ')}",
       "question": "题干（包含{{image:uuid}}占位符）",
       "options": ["选项1", "选项2", ...],  // 选择题必需，其他题型为空数组
-      "answer": ${this.getAnswerFormatDescription()}${includeHints ? ',\n      "hints": ["提示1", null, "提示3"]  // 填空题必需，每个空格对应一个提示（可为null）' : ''}${includeAlternatives ? ',\n      "alternative_answers": ["替代答案1", ...] 或 [["空格1替代1", "空格1替代2"], ["空格2替代1"]]  // 填空题必需，替代答案数组' : ''}
+      "answer": ${this.getAnswerFormatDescription()}${includeHints ? ',\n      "hints": ["提示1", null, "提示3"]  // 填空题必需，每个空格对应一个提示（可为null）' : ''}${includeAlternatives ? ',\n      "alternative_answers": ["替代答案1", ...] 或 [["空格1替代1", "空格1替代2"], ["空格2替代1"]]  // 填空题必需，替代答案数组' : ''}${includeExtraProps ? ',\n      "extra_properties": {"order-independent-groups": [[0, 1]]} 或 null  // 填空题可选，顺序无关的空格组' : ''}
     }
   ]
 }`;

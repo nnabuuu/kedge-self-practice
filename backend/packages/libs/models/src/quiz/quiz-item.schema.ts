@@ -42,6 +42,8 @@ export const QuizItemSchema = z.object({
   explanation: z.string().optional().nullable(),
   // Hints for fill-in-the-blank questions (e.g., ["人名", "朝代", null])
   hints: z.array(z.string().nullable()).optional().nullable(),
+  // Quiz-type-specific extra properties (e.g., order-independent-groups for fill-in-the-blank)
+  extra_properties: z.record(z.any()).optional().nullable(),
   // Full knowledge point information (populated when joining with knowledge_points table)
   knowledgePoint: z.object({
     id: z.string(),
@@ -75,3 +77,14 @@ export const QuizExtractionResultSchema = z.object({
 });
 
 export type QuizExtractionResult = z.infer<typeof QuizExtractionResultSchema>;
+
+/**
+ * Extra properties for fill-in-the-blank quizzes
+ */
+export const FillInTheBlankExtraPropertiesSchema = z.object({
+  // Groups of blank indices that can be answered in any order
+  // e.g., [[0, 1], [3, 4]] means blanks 0 and 1 can swap, and blanks 3 and 4 can swap
+  'order-independent-groups': z.array(z.array(z.number())).optional(),
+}).passthrough(); // Allow other properties
+
+export type FillInTheBlankExtraProperties = z.infer<typeof FillInTheBlankExtraPropertiesSchema>;
