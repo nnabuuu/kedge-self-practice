@@ -181,28 +181,88 @@ export default function QuizPractice({
     if (isFillInBlank) {
       const correctAnswers = Array.isArray(currentQuestion.answer) ? currentQuestion.answer : [currentQuestion.answer];
       const alternativeAnswers = currentQuestion.alternative_answers || [];
-      
-      return fillInBlankAnswers.every((userAns, idx) => {
-        const normalizedUserAns = userAns.trim().toLowerCase();
-        const normalizedCorrectAns = String(correctAnswers[idx]).trim().toLowerCase();
-        
+      const orderIndependentGroups = currentQuestion.extra_properties?.['order-independent-groups'] as number[][] | undefined;
+
+      // Helper: normalize answer text
+      const normalize = (text: string) => text.trim().toLowerCase();
+
+      // Helper: check if a single answer matches (considering position-specific alternatives)
+      const checkAnswerMatch = (userAns: string, correctAns: string, position: number): boolean => {
+        const normalizedUserAns = normalize(userAns);
+        const normalizedCorrectAns = normalize(String(correctAns));
+
         // Check main answer
         if (normalizedUserAns === normalizedCorrectAns) {
           return true;
         }
-        
-        // Check alternative answers for this blank position
-        // Format: "[0]answer" for position-specific or just "answer" for any position
+
+        // Check position-specific alternative answers
         const positionSpecific = alternativeAnswers
-          .filter(alt => alt.startsWith(`[${idx}]`))
-          .map(alt => alt.replace(`[${idx}]`, '').trim().toLowerCase());
-        
+          .filter(alt => alt.startsWith(`[${position}]`))
+          .map(alt => normalize(alt.replace(`[${position}]`, '')));
+
+        if (positionSpecific.includes(normalizedUserAns)) {
+          return true;
+        }
+
+        // Check general alternative answers
         const general = alternativeAnswers
           .filter(alt => !alt.includes('['))
-          .map(alt => alt.trim().toLowerCase());
-        
-        return positionSpecific.includes(normalizedUserAns) || general.includes(normalizedUserAns);
+          .map(alt => normalize(alt));
+
+        return general.includes(normalizedUserAns);
+      };
+
+      // If no order-independent-groups, check exact positions only
+      if (!orderIndependentGroups || orderIndependentGroups.length === 0) {
+        return fillInBlankAnswers.every((userAns, idx) =>
+          checkAnswerMatch(userAns, correctAnswers[idx], idx)
+        );
+      }
+
+      // With order-independent-groups: implement bipartite matching
+      const userMatched = new Array(fillInBlankAnswers.length).fill(false);
+      const correctMatched = new Array(correctAnswers.length).fill(false);
+
+      // Build map of position to group index
+      const positionToGroup = new Map<number, number>();
+      orderIndependentGroups.forEach((group, groupIndex) => {
+        group.forEach(pos => positionToGroup.set(pos, groupIndex));
       });
+
+      // Process each order-independent group
+      for (const group of orderIndependentGroups) {
+        for (const userIdx of group) {
+          if (userMatched[userIdx]) continue;
+
+          let matchFound = false;
+          for (const correctIdx of group) {
+            if (correctMatched[correctIdx]) continue;
+
+            if (checkAnswerMatch(fillInBlankAnswers[userIdx], correctAnswers[correctIdx], correctIdx)) {
+              userMatched[userIdx] = true;
+              correctMatched[correctIdx] = true;
+              matchFound = true;
+              break;
+            }
+          }
+
+          if (!matchFound) {
+            return false;
+          }
+        }
+      }
+
+      // Check positions not in any group (must match exactly)
+      for (let i = 0; i < correctAnswers.length; i++) {
+        if (!positionToGroup.has(i)) {
+          if (!checkAnswerMatch(fillInBlankAnswers[i], correctAnswers[i], i)) {
+            return false;
+          }
+        }
+      }
+
+      return true;
     }
     return true;
   };

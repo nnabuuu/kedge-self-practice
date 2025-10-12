@@ -37,6 +37,7 @@ export interface QuizQuestion {
   images?: string[]; // Image URLs or paths
   alternative_answers?: string[]; // Alternative correct answers for fill-in-the-blank questions
   hints?: (string | null)[]; // Hints for fill-in-the-blank questions, e.g., ["人名", "朝代", null]
+  extra_properties?: Record<string, any>; // Quiz-type-specific properties (e.g., order-independent-groups for fill-in-the-blank)
   knowledgePoint?: { // Full knowledge point data from backend
     id: string;
     subjectId: string;
