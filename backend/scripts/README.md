@@ -41,6 +41,38 @@ export LLM_MAX_TOKENS_QUIZ_PARSER="4000"       # Max response tokens
 export API_PORT="8718"                         # Backend API port
 ```
 
+#### Authentication
+
+**⚠️ IMPORTANT: This script requires teacher role authentication.**
+
+The script provides three authentication methods (in priority order):
+
+1. **JWT Token** (recommended for automation):
+   ```bash
+   npx tsx scripts/generate-fill-blank-alternatives.ts --jwt-token=eyJhbGc...
+   ```
+
+2. **Username/Password** (login via API):
+   ```bash
+   npx tsx scripts/generate-fill-blank-alternatives.ts \
+     --username=teacher@example.com \
+     --password=yourpassword
+   ```
+
+3. **Interactive Prompt** (most secure, no command history):
+   ```bash
+   npx tsx scripts/generate-fill-blank-alternatives.ts
+   # Script will prompt for authentication method and credentials
+   ```
+
+**⚠️ Security Best Practices:**
+- ❌ **NEVER** commit credentials to version control
+- ❌ **NEVER** add credentials to `.envrc` or `.envrc.override`
+- ❌ **NEVER** hardcode credentials in scripts
+- ✅ **DO** use interactive prompts for manual runs
+- ✅ **DO** use environment-specific secrets management for automation
+- ✅ **DO** use JWT tokens with short expiration for scripts
+
 #### Usage
 
 1. **Start the backend API server**:
@@ -61,43 +93,69 @@ export API_PORT="8718"                         # Backend API port
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--dry-run` | Preview changes without updating database | `tsx scripts/generate-fill-blank-alternatives.ts --dry-run` |
-| `--limit=N` | Process only first N quizzes | `tsx scripts/generate-fill-blank-alternatives.ts --limit=10` |
-| `--force` | Regenerate even if alternatives/hints exist | `tsx scripts/generate-fill-blank-alternatives.ts --force` |
-| `--quiz-id=ID` | Process only a specific quiz | `tsx scripts/generate-fill-blank-alternatives.ts --quiz-id=abc-123` |
-| `--retry-errors=FILE` | Retry quizzes from a previous error log | `tsx scripts/generate-fill-blank-alternatives.ts --retry-errors=errors-2025-01-15.json` |
-| `--api-url=URL` | Override API URL | `tsx scripts/generate-fill-blank-alternatives.ts --api-url=http://localhost:3000` |
+| `--jwt-token=TOKEN` | JWT authentication token (teacher role) | `npx tsx scripts/generate-fill-blank-alternatives.ts --jwt-token=eyJhbGc...` |
+| `--username=EMAIL` | Teacher email for login | `npx tsx scripts/generate-fill-blank-alternatives.ts --username=teacher@example.com` |
+| `--password=PASS` | Teacher password for login | `npx tsx scripts/generate-fill-blank-alternatives.ts --password=secret` |
+| `--dry-run` | Preview changes without updating database | `npx tsx scripts/generate-fill-blank-alternatives.ts --dry-run` |
+| `--limit=N` | Process only first N quizzes | `npx tsx scripts/generate-fill-blank-alternatives.ts --limit=10` |
+| `--force` | Regenerate even if alternatives/hints exist | `npx tsx scripts/generate-fill-blank-alternatives.ts --force` |
+| `--quiz-id=ID` | Process only a specific quiz | `npx tsx scripts/generate-fill-blank-alternatives.ts --quiz-id=abc-123` |
+| `--retry-errors=FILE` | Retry quizzes from a previous error log | `npx tsx scripts/generate-fill-blank-alternatives.ts --retry-errors=errors-2025-01-15.json` |
+| `--api-url=URL` | Override API URL | `npx tsx scripts/generate-fill-blank-alternatives.ts --api-url=http://localhost:3000` |
 
 #### Examples
 
-**Dry run to preview changes**:
+**Interactive authentication (most secure)**:
 ```bash
-tsx scripts/generate-fill-blank-alternatives.ts --dry-run
+npx tsx scripts/generate-fill-blank-alternatives.ts --dry-run
+# Will prompt for authentication method and credentials
+```
+
+**Using JWT token**:
+```bash
+npx tsx scripts/generate-fill-blank-alternatives.ts \
+  --jwt-token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... \
+  --dry-run
+```
+
+**Using username/password**:
+```bash
+npx tsx scripts/generate-fill-blank-alternatives.ts \
+  --username=teacher@example.com \
+  --password=yourpassword \
+  --limit=5
 ```
 
 **Process first 5 quizzes only**:
 ```bash
-tsx scripts/generate-fill-blank-alternatives.ts --limit=5
+npx tsx scripts/generate-fill-blank-alternatives.ts --limit=5 --jwt-token=...
 ```
 
 **Force regeneration for all quizzes** (even if they already have alternatives):
 ```bash
-tsx scripts/generate-fill-blank-alternatives.ts --force
+npx tsx scripts/generate-fill-blank-alternatives.ts --force --jwt-token=...
 ```
 
 **Process a specific quiz by ID**:
 ```bash
-tsx scripts/generate-fill-blank-alternatives.ts --quiz-id=550e8400-e29b-41d4-a716-446655440000
+npx tsx scripts/generate-fill-blank-alternatives.ts \
+  --quiz-id=550e8400-e29b-41d4-a716-446655440000 \
+  --jwt-token=...
 ```
 
 **Retry failed quizzes from error log**:
 ```bash
-tsx scripts/generate-fill-blank-alternatives.ts --retry-errors=errors-2025-01-15.json
+npx tsx scripts/generate-fill-blank-alternatives.ts \
+  --retry-errors=errors-2025-01-15.json \
+  --jwt-token=...
 ```
 
 **Combine options**:
 ```bash
-tsx scripts/generate-fill-blank-alternatives.ts --dry-run --limit=3
+npx tsx scripts/generate-fill-blank-alternatives.ts \
+  --dry-run \
+  --limit=3 \
+  --jwt-token=...
 ```
 
 #### How It Works

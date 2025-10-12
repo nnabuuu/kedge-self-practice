@@ -29,25 +29,45 @@
  *   --quiz-id=ID         Process only a specific quiz by ID
  *   --api-url=URL        Override API URL (default: http://localhost:8718)
  *   --retry-errors=FILE  Retry quizzes from a previous error log file
+ *   --jwt-token=TOKEN    JWT authentication token (teacher role required)
+ *   --username=EMAIL     Teacher email for login authentication
+ *   --password=PASS      Teacher password for login authentication
+ *
+ * Authentication:
+ *   This script requires teacher role authentication. You can provide credentials in three ways:
+ *   1. Command line JWT token: --jwt-token=your-jwt-token
+ *   2. Command line login: --username=teacher@example.com --password=yourpassword
+ *   3. Interactive prompt: The script will ask for credentials if not provided
+ *
+ *   ⚠️  WARNING: Never commit credentials to version control!
+ *   - Do NOT add credentials to .envrc or .envrc.override
+ *   - Do NOT hardcode credentials in scripts
+ *   - Use command-line arguments or interactive prompts only
  *
  * Examples:
- *   # Dry run to see what would be updated
- *   tsx scripts/generate-fill-blank-alternatives.ts --dry-run
+ *   # Interactive authentication (will prompt for credentials)
+ *   npx tsx scripts/generate-fill-blank-alternatives.ts --dry-run
+ *
+ *   # Using JWT token
+ *   npx tsx scripts/generate-fill-blank-alternatives.ts --jwt-token=eyJhbGc...
+ *
+ *   # Using username/password
+ *   npx tsx scripts/generate-fill-blank-alternatives.ts --username=teacher@example.com --password=secret
  *
  *   # Process only first 10 quizzes
- *   tsx scripts/generate-fill-blank-alternatives.ts --limit=10
+ *   npx tsx scripts/generate-fill-blank-alternatives.ts --limit=10 --jwt-token=eyJhbGc...
  *
  *   # Force regeneration for all quizzes
- *   tsx scripts/generate-fill-blank-alternatives.ts --force
+ *   npx tsx scripts/generate-fill-blank-alternatives.ts --force --jwt-token=eyJhbGc...
  *
  *   # Process a specific quiz
- *   tsx scripts/generate-fill-blank-alternatives.ts --quiz-id=abc-123-def
+ *   npx tsx scripts/generate-fill-blank-alternatives.ts --quiz-id=abc-123-def --jwt-token=eyJhbGc...
  *
  *   # Retry failed quizzes from error log
- *   tsx scripts/generate-fill-blank-alternatives.ts --retry-errors=errors-2025-01-15.json
+ *   npx tsx scripts/generate-fill-blank-alternatives.ts --retry-errors=errors-2025-01-15.json
  *
  *   # Use custom API URL
- *   tsx scripts/generate-fill-blank-alternatives.ts --api-url=http://localhost:3000
+ *   npx tsx scripts/generate-fill-blank-alternatives.ts --api-url=http://localhost:3000
  *
  * Environment Variables Required:
  *   LLM_API_KEY                   OpenAI/DeepSeek API key
@@ -60,6 +80,7 @@
 import OpenAI from 'openai';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as readline from 'readline';
 import 'dotenv/config';
 
 // ============================================================================
@@ -73,6 +94,7 @@ interface Config {
   llmTemperature: number;
   llmMaxTokens: number;
   llmBaseUrl?: string;
+  jwtToken?: string;
 }
 
 interface ScriptOptions {
@@ -82,6 +104,9 @@ interface ScriptOptions {
   quizId?: string;
   apiUrl?: string;
   retryErrors?: string;
+  jwtToken?: string;
+  username?: string;
+  password?: string;
 }
 
 interface ErrorRecord {
@@ -131,16 +156,160 @@ function parseArgs(): ScriptOptions {
     if (arg.startsWith('--retry-errors=')) {
       options.retryErrors = arg.split('=')[1];
     }
+    if (arg.startsWith('--jwt-token=')) {
+      options.jwtToken = arg.split('=')[1];
+    }
+    if (arg.startsWith('--username=')) {
+      options.username = arg.split('=')[1];
+    }
+    if (arg.startsWith('--password=')) {
+      options.password = arg.split('=')[1];
+    }
   }
 
   return options;
 }
 
 // ============================================================================
+// Authentication
+// ============================================================================
+
+function promptInput(question: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
+function promptPassword(question: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    // Hide password input
+    const stdin = process.stdin;
+    (stdin as any).setRawMode(true);
+
+    let password = '';
+    process.stdout.write(question);
+
+    stdin.on('data', (char) => {
+      const str = char.toString('utf8');
+
+      switch (str) {
+        case '\n':
+        case '\r':
+        case '\u0004': // Ctrl-D
+          (stdin as any).setRawMode(false);
+          stdin.pause();
+          process.stdout.write('\n');
+          rl.close();
+          resolve(password);
+          break;
+        case '\u0003': // Ctrl-C
+          process.exit();
+          break;
+        case '\u007f': // Backspace
+          password = password.slice(0, -1);
+          process.stdout.clearLine(0);
+          process.stdout.cursorTo(0);
+          process.stdout.write(question + '*'.repeat(password.length));
+          break;
+        default:
+          password += str;
+          process.stdout.write('*');
+          break;
+      }
+    });
+  });
+}
+
+async function loginWithCredentials(apiUrl: string, username: string, password: string): Promise<string> {
+  console.log(`\n🔐 Logging in as ${username}...`);
+
+  const response = await fetch(`${apiUrl}/v1/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: username,
+      password: password,
+      role: 'teacher', // Script requires teacher role
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Login failed: ${response.statusText} - ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.access_token) {
+    throw new Error('Login response missing access_token');
+  }
+
+  console.log('   ✅ Login successful');
+  return data.access_token;
+}
+
+async function getAuthToken(apiUrl: string, options: ScriptOptions): Promise<string> {
+  // Priority 1: JWT token from command line
+  if (options.jwtToken) {
+    console.log('\n🔑 Using JWT token from command line');
+    return options.jwtToken;
+  }
+
+  // Priority 2: Username/password from command line
+  if (options.username && options.password) {
+    return loginWithCredentials(apiUrl, options.username, options.password);
+  }
+
+  // Priority 3: Prompt for credentials
+  console.log('\n🔐 Authentication Required');
+  console.log('   This script requires teacher access to update quizzes.');
+  console.log('   You can provide credentials in two ways:');
+  console.log('   1. JWT Token: --jwt-token=your-token');
+  console.log('   2. Username/Password: --username=your-email --password=your-pass');
+  console.log('');
+
+  const authMethod = await promptInput('Choose authentication method (1=Token, 2=Login): ');
+
+  if (authMethod === '1') {
+    const token = await promptInput('Enter JWT token: ');
+    if (!token.trim()) {
+      throw new Error('JWT token cannot be empty');
+    }
+    return token.trim();
+  } else if (authMethod === '2') {
+    const username = await promptInput('Enter email: ');
+    const password = await promptPassword('Enter password: ');
+
+    if (!username.trim() || !password.trim()) {
+      throw new Error('Username and password cannot be empty');
+    }
+
+    return loginWithCredentials(apiUrl, username.trim(), password);
+  } else {
+    throw new Error('Invalid authentication method selected');
+  }
+}
+
+// ============================================================================
 // Load and Validate Configuration
 // ============================================================================
 
-function loadConfig(options: ScriptOptions): Config {
+async function loadConfig(options: ScriptOptions): Promise<Config> {
   const apiPort = process.env.API_PORT || '8718';
   const apiUrl = options.apiUrl || `http://localhost:${apiPort}`;
   const llmApiKey = process.env.LLM_API_KEY;
@@ -153,6 +322,9 @@ function loadConfig(options: ScriptOptions): Config {
     throw new Error('LLM_API_KEY is not set or is using the default placeholder. Please configure a valid API key in .envrc or .envrc.override.');
   }
 
+  // Get authentication token
+  const jwtToken = await getAuthToken(apiUrl, options);
+
   return {
     apiUrl,
     llmApiKey,
@@ -160,6 +332,7 @@ function loadConfig(options: ScriptOptions): Config {
     llmTemperature,
     llmMaxTokens,
     llmBaseUrl,
+    jwtToken,
   };
 }
 
@@ -195,8 +368,12 @@ function loadErrorRecords(filepath: string): ErrorRecord[] {
 // API Client Operations
 // ============================================================================
 
-async function fetchQuizzes(apiUrl: string, options: ScriptOptions): Promise<QuizItem[]> {
+async function fetchQuizzes(apiUrl: string, jwtToken: string, options: ScriptOptions): Promise<QuizItem[]> {
   console.log('\n📊 Fetching fill-in-the-blank quizzes from API...');
+
+  const headers = {
+    'Authorization': `Bearer ${jwtToken}`,
+  };
 
   // If retrying from error file, load quiz IDs from file
   if (options.retryErrors) {
@@ -208,7 +385,7 @@ async function fetchQuizzes(apiUrl: string, options: ScriptOptions): Promise<Qui
     const quizzes: QuizItem[] = [];
     for (const quizId of quizIds) {
       try {
-        const response = await fetch(`${apiUrl}/v1/quiz/${quizId}`);
+        const response = await fetch(`${apiUrl}/v1/quiz/${quizId}`, { headers });
         if (!response.ok) {
           console.warn(`   ⚠️  Could not fetch quiz ${quizId}: ${response.statusText}`);
           continue;
@@ -227,7 +404,7 @@ async function fetchQuizzes(apiUrl: string, options: ScriptOptions): Promise<Qui
 
   if (options.quizId) {
     // Fetch specific quiz by ID
-    const response = await fetch(`${apiUrl}/v1/quiz/${options.quizId}`);
+    const response = await fetch(`${apiUrl}/v1/quiz/${options.quizId}`, { headers });
     if (!response.ok) {
       throw new Error(`Failed to fetch quiz: ${response.statusText}`);
     }
@@ -247,7 +424,7 @@ async function fetchQuizzes(apiUrl: string, options: ScriptOptions): Promise<Qui
 
     while (true) {
       const url = `${apiUrl}/v1/quiz?page=${page}&limit=${limit}&type=fill-in-the-blank`;
-      const response = await fetch(url);
+      const response = await fetch(url, { headers });
 
       if (!response.ok) {
         throw new Error(`Failed to fetch quizzes: ${response.statusText}`);
@@ -299,6 +476,7 @@ function needsGeneration(quiz: QuizItem, force: boolean): boolean {
 
 async function updateQuizViaAPI(
   apiUrl: string,
+  jwtToken: string,
   quizId: string,
   data: GeneratedData
 ): Promise<void> {
@@ -306,6 +484,7 @@ async function updateQuizViaAPI(
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwtToken}`,
     },
     body: JSON.stringify({
       alternative_answers: data.alternative_answers,
@@ -488,7 +667,7 @@ async function processQuiz(
     if (options.dryRun) {
       console.log(`  🔍 [DRY RUN] Would update via API`);
     } else {
-      await updateQuizViaAPI(config.apiUrl, quiz.id, generatedData);
+      await updateQuizViaAPI(config.apiUrl, config.jwtToken!, quiz.id, generatedData);
       console.log(`  💾 Successfully updated via API`);
     }
 
@@ -558,7 +737,7 @@ async function main() {
   console.log('   ✅ LLM client initialized');
 
   // Fetch quizzes
-  const quizzes = await fetchQuizzes(config.apiUrl, options);
+  const quizzes = await fetchQuizzes(config.apiUrl, config.jwtToken!, options);
 
   if (quizzes.length === 0) {
     console.log('\n⚠️  No fill-in-the-blank quizzes found to process.');
