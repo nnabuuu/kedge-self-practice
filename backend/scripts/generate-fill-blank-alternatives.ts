@@ -271,15 +271,16 @@ async function loginWithCredentials(apiUrl: string, username: string, password: 
   console.log('   📥 Login response received:');
   console.log(`   ${JSON.stringify(data, null, 2).split('\n').join('\n   ')}`);
 
-  if (!data.access_token) {
-    console.error('\n❌ Login response missing access_token field');
-    console.error('   Expected field: access_token');
+  // API returns "token" field, not "access_token"
+  if (!data.token) {
+    console.error('\n❌ Login response missing token field');
+    console.error('   Expected field: token');
     console.error('   Available fields:', Object.keys(data).join(', '));
-    throw new Error('Login response missing access_token');
+    throw new Error('Login response missing token');
   }
 
   console.log('   ✅ Login successful');
-  return data.access_token;
+  return data.token;
 }
 
 async function getAuthToken(apiUrl: string, options: ScriptOptions): Promise<string> {
