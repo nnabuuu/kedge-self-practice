@@ -1,0 +1,259 @@
+# Backend Scripts
+
+This directory contains utility scripts for managing and maintaining the Kedge practice platform.
+
+## Available Scripts
+
+### `generate-fill-blank-alternatives.ts`
+
+Automatically generate alternative answers and hints for fill-in-the-blank quizzes using AI.
+
+#### Purpose
+
+This script processes fill-in-the-blank questions in the database and uses GPT to intelligently generate:
+- **Alternative Answers**: Other acceptable forms of the correct answer (synonyms, abbreviations, different names, etc.)
+- **Hints**: Category hints for each blank (e.g., "人名", "年份", "著作")
+
+This enhances the student learning experience by:
+- Accepting multiple valid answer formats
+- Providing helpful context clues without giving away the answer
+- Reducing frustration from technically correct but differently formatted answers
+
+#### Prerequisites
+
+1. **Node.js 18+** installed
+2. **tsx** runtime (install with `npm install -g tsx` or `pnpm add -g tsx`)
+3. **Backend API server running** at `http://localhost:8718` (or custom URL)
+4. **LLM API key** configured in `.envrc` or `.envrc.override`
+
+#### Configuration
+
+The script reads configuration from environment variables. Make sure these are set in your `.envrc` or `.envrc.override`:
+
+```bash
+# Required
+export LLM_API_KEY="your-openai-or-deepseek-api-key"
+
+# Optional (with defaults)
+export LLM_MODEL_QUIZ_PARSER="gpt-4o"          # AI model to use
+export LLM_TEMP_QUIZ_PARSER="0.1"              # Temperature (0.0-1.0)
+export LLM_MAX_TOKENS_QUIZ_PARSER="4000"       # Max response tokens
+export API_PORT="8718"                         # Backend API port
+```
+
+#### Usage
+
+1. **Start the backend API server**:
+   ```bash
+   cd backend
+   source .envrc
+   nx run api-server:serve
+   ```
+
+2. **In a new terminal, run the script**:
+   ```bash
+   cd backend
+   source .envrc
+   tsx scripts/generate-fill-blank-alternatives.ts
+   ```
+
+#### Command Line Options
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--dry-run` | Preview changes without updating database | `tsx scripts/generate-fill-blank-alternatives.ts --dry-run` |
+| `--limit=N` | Process only first N quizzes | `tsx scripts/generate-fill-blank-alternatives.ts --limit=10` |
+| `--force` | Regenerate even if alternatives/hints exist | `tsx scripts/generate-fill-blank-alternatives.ts --force` |
+| `--quiz-id=ID` | Process only a specific quiz | `tsx scripts/generate-fill-blank-alternatives.ts --quiz-id=abc-123` |
+| `--retry-errors=FILE` | Retry quizzes from a previous error log | `tsx scripts/generate-fill-blank-alternatives.ts --retry-errors=errors-2025-01-15.json` |
+| `--api-url=URL` | Override API URL | `tsx scripts/generate-fill-blank-alternatives.ts --api-url=http://localhost:3000` |
+
+#### Examples
+
+**Dry run to preview changes**:
+```bash
+tsx scripts/generate-fill-blank-alternatives.ts --dry-run
+```
+
+**Process first 5 quizzes only**:
+```bash
+tsx scripts/generate-fill-blank-alternatives.ts --limit=5
+```
+
+**Force regeneration for all quizzes** (even if they already have alternatives):
+```bash
+tsx scripts/generate-fill-blank-alternatives.ts --force
+```
+
+**Process a specific quiz by ID**:
+```bash
+tsx scripts/generate-fill-blank-alternatives.ts --quiz-id=550e8400-e29b-41d4-a716-446655440000
+```
+
+**Retry failed quizzes from error log**:
+```bash
+tsx scripts/generate-fill-blank-alternatives.ts --retry-errors=errors-2025-01-15.json
+```
+
+**Combine options**:
+```bash
+tsx scripts/generate-fill-blank-alternatives.ts --dry-run --limit=3
+```
+
+#### How It Works
+
+1. **Fetch Quizzes**: Retrieves all fill-in-the-blank quizzes from the backend API
+2. **Filter**: Skips quizzes that already have alternatives and hints (unless `--force` is used)
+3. **Generate**: For each quiz:
+   - Sends question, answer, and context to GPT
+   - Receives structured JSON with alternative answers and hints
+   - Validates and normalizes the response
+4. **Update**: Updates the quiz via the backend API (`PUT /v1/quiz/:id`)
+5. **Report**: Displays summary of updated, skipped, and failed quizzes
+
+#### Output Example
+
+```
+🚀 Fill-in-the-Blank Alternative Answers & Hints Generator
+======================================================================
+
+⚙️  Options:
+   Dry Run: No
+   Limit: 5
+   Force: No (skip if exists)
+
+🔧 Loading configuration...
+   API URL: http://localhost:8718
+   LLM Model: gpt-4o
+   Temperature: 0.1
+   Max Tokens: 4000
+
+🏥 Checking API health at http://localhost:8718...
+   ✅ API is healthy and reachable
+
+🤖 Initializing LLM client...
+   ✅ LLM client initialized
+
+📊 Fetching fill-in-the-blank quizzes from API...
+✅ Found 5 fill-in-the-blank quizzes
+
+🔄 Processing quizzes...
+======================================================================
+
+[1/5] Processing quiz: 550e8400-e29b-41d4-a716-446655440000
+  📝 Question: 中华人民共和国于____年____月____日成立
+  ✏️  Answer: ["1949","10","1"]
+  🔄 Needs generation...
+  🤖 Calling gpt-4o...
+  ✅ Received response (234 chars)
+  📊 Generated:
+     Alternative answers: [["一九四九"],["十"],["一"]]
+     Hints: ["年份","月份","日期"]
+  💾 Successfully updated via API
+
+[2/5] Processing quiz: 660e8400-e29b-41d4-a716-446655440001
+  📝 Question: 《神农本草经》是中国最早的药物学著作，作者是____
+  ✏️  Answer: "神农"
+  ⏭️  Skipping - already has alternatives and hints
+
+...
+
+======================================================================
+📊 Summary
+======================================================================
+   Total quizzes: 5
+   ✅ Updated: 3
+   ⏭️  Skipped: 2
+   ❌ Errors: 0
+
+✅ Script completed successfully!
+```
+
+#### Error Handling
+
+When quizzes fail to process, the script automatically:
+
+1. **Logs the error** to console with quiz ID and error message
+2. **Saves error details** to a JSON file (e.g., `errors-2025-01-15.json`)
+3. **Displays a summary** of all errors at the end
+4. **Provides retry command** to easily retry failed quizzes
+
+**Error Log Format** (`errors-YYYY-MM-DD.json`):
+```json
+[
+  {
+    "quizId": "550e8400-e29b-41d4-a716-446655440000",
+    "question": "中华人民共和国于____年____月____日成立...",
+    "answer": ["1949", "10", "1"],
+    "error": "Failed to update quiz: 500 - Internal Server Error",
+    "timestamp": "2025-01-15T10:30:45.123Z"
+  }
+]
+```
+
+**Retrying Failed Quizzes**:
+After a run with errors, you'll see a helpful message:
+```
+💡 To retry failed quizzes, run:
+   tsx scripts/generate-fill-blank-alternatives.ts --retry-errors=errors-2025-01-15.json
+```
+
+This will:
+- Load quiz IDs from the error file
+- Fetch fresh quiz data from the API
+- Retry generation only for those quizzes
+- Create a new error file if any still fail
+
+#### Troubleshooting
+
+**API Connection Error**:
+```
+❌ API is not reachable
+Cannot connect to API at http://localhost:8718
+```
+**Solution**: Make sure the backend API server is running with `nx run api-server:serve`
+
+**LLM API Key Error**:
+```
+LLM_API_KEY is not set or is using the default placeholder
+```
+**Solution**: Set a valid API key in `.envrc.override`:
+```bash
+export LLM_API_KEY="sk-your-actual-key-here"
+```
+
+**Rate Limiting**:
+The script includes a 1-second delay between requests to avoid rate limiting. If you still encounter issues, you can:
+- Use a model with higher rate limits
+- Process in smaller batches with `--limit`
+- Increase the delay in the script code
+
+#### Cost Considerations
+
+- Each quiz requires one API call to the LLM
+- Average tokens per request: ~500-1000 tokens
+- For 100 quizzes using GPT-4o:
+  - Estimated cost: ~$0.50-$1.00
+  - Time: ~2-3 minutes (with 1s delays)
+
+#### Best Practices
+
+1. **Always run with `--dry-run` first** to preview changes
+2. **Start with a small `--limit`** to test on a few quizzes
+3. **Use `--force` sparingly** as it regenerates existing data and costs more
+4. **Monitor the output** for any errors or unexpected results
+5. **Keep your `.envrc.override`** backed up with your API keys
+
+---
+
+## Adding New Scripts
+
+When adding new scripts to this directory:
+
+1. Use TypeScript with proper type definitions
+2. Add comprehensive JSDoc comments and usage instructions
+3. Support `--dry-run` for preview mode
+4. Read configuration from environment variables
+5. Include error handling and validation
+6. Provide clear progress indicators and summaries
+7. Update this README with documentation

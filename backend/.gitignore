@@ -57,3 +57,5 @@ packages/libs/intent-resolver/assets/*.api-schema-ts
 
 .nx/cache
 
+# Script error logs
+errors-*.json
