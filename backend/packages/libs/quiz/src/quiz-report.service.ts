@@ -195,18 +195,19 @@ export class QuizReportService {
     }
 
     const whereClause = whereConditions.length > 0
-      ? sql.unsafe`WHERE ${whereConditions.join(' AND ')}`
-      : sql.unsafe``;
+      ? `WHERE ${whereConditions.join(' AND ')}`
+      : '';
 
     const orderByClause = query.sort === 'report_count'
-      ? sql.unsafe`ORDER BY total_reports DESC`
+      ? 'ORDER BY total_reports DESC'
       : query.sort === 'pending_count'
-      ? sql.unsafe`ORDER BY pending_count DESC`
-      : sql.unsafe`ORDER BY last_reported_at DESC`;
+      ? 'ORDER BY pending_count DESC'
+      : 'ORDER BY last_reported_at DESC';
 
-    const summaryResult = await this.persistentService.pgPool.query(sql.unsafe`
+    // Build complete SQL query as string to avoid parameter binding issues
+    const summaryQuery = `
       WITH report_summary AS (
-        SELECT 
+        SELECT
           q.id as quiz_id,
           q.question,
           q.type as quiz_type,
@@ -223,7 +224,7 @@ export class QuizReportService {
         ${whereClause}
         GROUP BY q.id, q.question, q.type, q.knowledge_point_id
       )
-      SELECT 
+      SELECT
         rs.*,
         kp.topic as knowledge_point_topic,
         kp.volume as knowledge_point_volume,
@@ -233,31 +234,39 @@ export class QuizReportService {
       ${orderByClause}
       LIMIT ${query.limit}
       OFFSET ${query.offset}
-    `);
+    `;
+
+    const summaryResult = await this.persistentService.pgPool.query(sql.unsafe([summaryQuery], []));
 
     // Get total count - need to match the same filtering logic
     const countWhere = whereConditions.length > 0
-      ? sql.unsafe`WHERE ${whereConditions.join(' AND ')}`
-      : sql.unsafe``;
-    
-    const countResult = await this.persistentService.pgPool.query(sql.unsafe`
+      ? `WHERE ${whereConditions.join(' AND ')}`
+      : '';
+
+    const countQuery = `
       SELECT COUNT(DISTINCT quiz_id) as count
       FROM kedge_practice.quiz_reports
       ${countWhere}
-    `);
+    `;
+
+    const countResult = await this.persistentService.pgPool.query(sql.unsafe([countQuery], []));
 
     // Get detailed reports for each quiz
     const quizzesWithReports = await Promise.all(
       (summaryResult.rows as any[]).map(async (summary) => {
-        const reportsResult = await this.persistentService.pgPool.query(sql.unsafe`
-          SELECT 
+        const statusFilter = query.status && query.status.length > 0
+          ? `AND r.status IN (${query.status.map(s => `'${s}'`).join(', ')})`
+          : '';
+
+        const detailQuery = `
+          SELECT
             r.*,
             json_build_object(
               'id', u.id,
               'name', u.name,
               'class', u.class
             ) as reporter,
-            CASE 
+            CASE
               WHEN r.resolved_by IS NOT NULL THEN
                 json_build_object(
                   'id', resolver.id,
@@ -268,11 +277,13 @@ export class QuizReportService {
           FROM kedge_practice.quiz_reports r
           JOIN kedge_practice.users u ON r.user_id = u.id
           LEFT JOIN kedge_practice.users resolver ON r.resolved_by = resolver.id
-          WHERE r.quiz_id = ${summary.quiz_id}::uuid
-          ${query.status && query.status.length > 0 ? sql.unsafe`AND r.status IN (${query.status.map(s => `'${s}'`).join(', ')})` : sql.unsafe``}
+          WHERE r.quiz_id = '${summary.quiz_id}'::uuid
+          ${statusFilter}
           ORDER BY r.created_at DESC
           LIMIT 10
-        `);
+        `;
+
+        const reportsResult = await this.persistentService.pgPool.query(sql.unsafe([detailQuery], []));
 
         return {
           quiz_id: summary.quiz_id,
