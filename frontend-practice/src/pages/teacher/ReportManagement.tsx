@@ -8,7 +8,6 @@ import {
   Search,
   Filter,
   Eye,
-  MessageSquare,
   User,
   Calendar,
   Edit,
@@ -16,7 +15,6 @@ import {
 import { api } from "../../services/backendApi";
 import { authService } from "../../services/authService";
 import QuizEditModal from "../../components/QuizEditModal";
-import MyReports from "../../components/MyReports";
 import { useToast, ToastContainer } from "../../components/Toast";
 
 interface QuizReport {
@@ -103,7 +101,6 @@ const statusConfig = {
 };
 
 export default function ReportManagement() {
-  const [activeTab, setActiveTab] = useState<"all" | "my">("all");
   const [reports, setReports] = useState<QuizReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<QuizReport | null>(null);
@@ -120,7 +117,6 @@ export default function ReportManagement() {
   const [backendReady, setBackendReady] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<any>(null);
-  const [showMyReportsModal, setShowMyReportsModal] = useState(false);
   const { success, error, warning, info, toasts, removeToast } = useToast();
 
   // Check user role
@@ -310,35 +306,9 @@ export default function ReportManagement() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">问题报告管理</h2>
         <p className="text-gray-600">查看和处理学生提交的题目问题报告</p>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mt-4 border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab("all")}
-            className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "all"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-blue-600"
-            }`}
-          >
-            全部报告
-          </button>
-          <button
-            onClick={() => setActiveTab("my")}
-            className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "my"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-blue-600"
-            }`}
-          >
-            我的报告
-          </button>
-        </div>
       </div>
 
-      {/* All Reports Tab */}
-      {activeTab === "all" && (
-        <div>
+      <div>
           {/* Statistics */}
           <div className="grid grid-cols-4 gap-4 mb-6">
             <div className="bg-yellow-50 rounded-lg p-4">
@@ -696,14 +666,6 @@ export default function ReportManagement() {
             </div>
           )}
         </div>
-      )}
-
-      {/* My Reports Tab */}
-      {activeTab === "my" && (
-        <div className="mt-6">
-          <MyReports onClose={() => setActiveTab("all")} />
-        </div>
-      )}
 
       {/* Quiz Edit Modal */}
       <QuizEditModal
