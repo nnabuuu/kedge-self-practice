@@ -245,7 +245,7 @@ export class QuizReportService {
 
     const countQuery = `
       SELECT COUNT(DISTINCT quiz_id) as count
-      FROM kedge_practice.quiz_reports
+      FROM kedge_practice.quiz_reports r
       ${countWhere}
     `;
 
