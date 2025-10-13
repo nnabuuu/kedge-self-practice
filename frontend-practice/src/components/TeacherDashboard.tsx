@@ -300,7 +300,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                 { id: 'knowledge-points', label: isStudent ? '知识点列表' : '知识点管理', icon: BookOpen },
                 ...(isStudent ? [] : [
                   { id: 'questions', label: '题库管理', icon: FileText },
-                  { id: 'reports', label: '问题报告', icon: Flag },
+                  { id: 'reports', label: '问题上报', icon: Flag },
                   { id: 'leaderboard', label: '排行榜', icon: Trophy }
                 ]),
                 ...(isAdmin ? [

@@ -304,8 +304,8 @@ export default function ReportManagement() {
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">问题报告管理</h2>
-        <p className="text-gray-600">查看和处理学生提交的题目问题报告</p>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">问题上报管理</h2>
+        <p className="text-gray-600">查看和处理学生提交的题目问题上报</p>
       </div>
 
       <div>
@@ -556,7 +556,7 @@ export default function ReportManagement() {
               <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">
-                    处理问题报告
+                    处理问题上报
                   </h3>
 
                   <div className="space-y-4">
