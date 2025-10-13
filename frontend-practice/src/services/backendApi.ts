@@ -826,12 +826,32 @@ class BackendApiService {
 
   // Report Management Methods for Teachers/Admins
   async getReportsForManagement(params?: {
-    status?: 'pending' | 'reviewing' | 'resolved' | 'dismissed';
+    status?: ('pending' | 'reviewing' | 'resolved' | 'dismissed')[];
     sort?: 'created_at' | 'report_count' | 'pending_count';
     limit?: number;
     offset?: number;
   }): Promise<ApiResponse<any>> {
-    const queryString = params ? new URLSearchParams(params as any).toString() : '';
+    if (!params) {
+      return this.makeRequest('/quiz/report/management');
+    }
+
+    // Build query string manually to handle array parameters
+    const queryParts: string[] = [];
+
+    if (params.status && params.status.length > 0) {
+      params.status.forEach(s => queryParts.push(`status=${encodeURIComponent(s)}`));
+    }
+    if (params.sort) {
+      queryParts.push(`sort=${encodeURIComponent(params.sort)}`);
+    }
+    if (params.limit !== undefined) {
+      queryParts.push(`limit=${params.limit}`);
+    }
+    if (params.offset !== undefined) {
+      queryParts.push(`offset=${params.offset}`);
+    }
+
+    const queryString = queryParts.join('&');
     return this.makeRequest(`/quiz/report/management${queryString ? '?' + queryString : ''}`);
   }
 
