@@ -385,4 +385,121 @@ export class PracticeRepository {
       throw error;
     }
   }
+
+  /**
+   * Find the most recent incomplete session for a user
+   * Returns the newest session with status 'pending' or 'in_progress'
+   * Sessions older than 7 days are excluded
+   */
+  async findIncompleteSessionByUserId(userId: string): Promise<PracticeSession | null> {
+    try {
+      const result = await this.persistentService.pgPool.query(
+        sql.type(PracticeSessionSchema)`
+          SELECT * FROM kedge_practice.practice_sessions
+          WHERE user_id = ${userId}
+          AND status IN ('pending', 'in_progress')
+          AND updated_at > NOW() - INTERVAL '7 days'
+          ORDER BY updated_at DESC
+          LIMIT 1
+        `
+      );
+
+      return result.rowCount > 0 ? result.rows[0] : null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error finding incomplete session: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Update session progress - track current question index and UI state
+   */
+  async updateSessionProgress(
+    sessionId: string,
+    userId: string,
+    lastQuestionIndex: number,
+    sessionState?: Record<string, any>
+  ): Promise<void> {
+    try {
+      const updateParams: any = {
+        last_question_index: lastQuestionIndex,
+        updated_at: sql.fragment`NOW()`
+      };
+
+      if (sessionState) {
+        await this.persistentService.pgPool.query(
+          sql.unsafe`
+            UPDATE kedge_practice.practice_sessions
+            SET last_question_index = ${lastQuestionIndex},
+                session_state = ${sql.json(sessionState)},
+                updated_at = NOW()
+            WHERE id = ${sessionId}
+            AND user_id = ${userId}
+          `
+        );
+      } else {
+        await this.persistentService.pgPool.query(
+          sql.unsafe`
+            UPDATE kedge_practice.practice_sessions
+            SET last_question_index = ${lastQuestionIndex},
+                updated_at = NOW()
+            WHERE id = ${sessionId}
+            AND user_id = ${userId}
+          `
+        );
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error updating session progress: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark a session as abandoned
+   */
+  async abandonSession(sessionId: string, userId: string): Promise<void> {
+    try {
+      const result = await this.persistentService.pgPool.query(
+        sql.unsafe`
+          UPDATE kedge_practice.practice_sessions
+          SET status = 'abandoned',
+              updated_at = NOW()
+          WHERE id = ${sessionId}
+          AND user_id = ${userId}
+          AND status IN ('pending', 'in_progress')
+        `
+      );
+
+      if (result.rowCount === 0) {
+        throw new Error('Session not found or already completed/abandoned');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error abandoning session: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all answers for a session
+   */
+  async getAnswersBySessionId(sessionId: string): Promise<PracticeAnswer[]> {
+    try {
+      const result = await this.persistentService.pgPool.query(
+        sql.type(PracticeAnswerSchema)`
+          SELECT * FROM kedge_practice.practice_answers
+          WHERE session_id = ${sessionId}
+          ORDER BY answered_at ASC
+        `
+      );
+
+      return [...result.rows];
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error getting answers by session: ${errorMessage}`);
+      throw error;
+    }
+  }
 }

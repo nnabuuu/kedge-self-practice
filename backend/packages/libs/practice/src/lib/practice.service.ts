@@ -401,33 +401,6 @@ export class PracticeService {
     );
   }
 
-  async resumeSession(sessionId: string, userId: string): Promise<PracticeSessionResponse> {
-    const session = await this.practiceRepository.getSession(sessionId, userId);
-    
-    if (!session) {
-      throw new NotFoundException('Practice session not found');
-    }
-    
-    if (session.status !== 'pending' && session.status !== 'abandoned') {
-      throw new BadRequestException('Only pending or abandoned sessions can be resumed');
-    }
-
-    const updatedSession = await this.practiceRepository.updateSessionStatus(
-      sessionId,
-      userId,
-      'in_progress'
-    );
-
-    // Fetch the actual quiz items and answers
-    const quizzes = await this.quizService.getQuizzesByIds(updatedSession.quiz_ids);
-    const answers = await this.practiceRepository.getAnswersForSession(sessionId);
-
-    return {
-      session: updatedSession,
-      quizzes,
-      answers: [...answers] as any
-    };
-  }
 
   async completeSession(sessionId: string, userId: string): Promise<PracticeSession> {
     return await this.practiceRepository.updateSessionStatus(
@@ -1220,6 +1193,135 @@ export class PracticeService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error getting session type distribution: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get the most recent incomplete practice session for a user
+   * Returns null if no incomplete session found
+   */
+  async getIncompleteSession(userId: string): Promise<{
+    sessionId: string;
+    progress: {
+      current: number;
+      total: number;
+      answered: number;
+    };
+    configuration: {
+      strategy: string;
+      timeLimit: number | null;
+    };
+    lastActivityAt: string;
+    answers: Array<{
+      quizId: string;
+      userAnswer: any;
+      isCorrect: boolean;
+    }>;
+  } | null> {
+    try {
+      const session = await this.practiceRepository.findIncompleteSessionByUserId(userId);
+
+      if (!session) {
+        return null;
+      }
+
+      // Get previous answers for this session
+      const answers = await this.practiceRepository.getAnswersBySessionId(session.id);
+
+      return {
+        sessionId: session.id,
+        progress: {
+          current: session.last_question_index || 0,
+          total: session.total_questions,
+          answered: session.answered_questions
+        },
+        configuration: {
+          strategy: session.strategy,
+          timeLimit: session.time_limit_minutes ?? null
+        },
+        lastActivityAt: session.updated_at.toISOString(),
+        answers: answers.map(answer => ({
+          quizId: answer.quiz_id,
+          userAnswer: answer.user_answer,
+          isCorrect: answer.is_correct ?? false
+        }))
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error getting incomplete session: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Resume an incomplete practice session
+   * Returns session data, questions, previous answers, and current position
+   */
+  async resumeSession(sessionId: string, userId: string): Promise<{
+    session: PracticeSession;
+    questions: QuizItem[];
+    previousAnswers: any[];
+    currentQuestionIndex: number;
+  }> {
+    try {
+      // Get the session and verify ownership
+      const session = await this.practiceRepository.getSession(sessionId, userId);
+
+      if (!session) {
+        throw new NotFoundException('Practice session not found');
+      }
+
+      if (session.status === 'completed') {
+        throw new BadRequestException('Cannot resume a completed session');
+      }
+
+      if (session.status === 'abandoned') {
+        throw new BadRequestException('Cannot resume an abandoned session');
+      }
+
+      // Load the EXACT same questions using stored quiz_ids
+      const questions = await this.quizRepository.getQuizzesByIds(session.quiz_ids);
+
+      // Load previous answers
+      const answers = await this.practiceRepository.getAnswersBySessionId(sessionId);
+
+      // Determine current position (use stored index or fall back to answer count)
+      const currentIndex = session.last_question_index || answers.length;
+
+      // Update session status to in_progress if it was pending
+      if (session.status === 'pending') {
+        await this.practiceRepository.updateSessionStatus(
+          sessionId,
+          userId,
+          'in_progress',
+          { started_at: true }
+        );
+      }
+
+      return {
+        session,
+        questions,
+        previousAnswers: answers,
+        currentQuestionIndex: currentIndex
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error resuming session: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Abandon an incomplete practice session
+   */
+  async abandonSession(sessionId: string, userId: string): Promise<void> {
+    try {
+      await this.practiceRepository.abandonSession(sessionId, userId);
+      this.logger.log(`Session ${sessionId} abandoned by user ${userId}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error abandoning session: ${errorMessage}`);
       throw error;
     }
   }

@@ -5,6 +5,7 @@ import { useSubjects } from '../hooks/useApi';
 import { api } from '../services/api';
 import { authService } from '../services/authService';
 import { useToast } from './Toast';
+import ContinueSessionDialog from './ContinueSessionDialog';
 
 interface PracticeMenuProps {
   subject: Subject;
@@ -45,6 +46,10 @@ export default function PracticeMenu({
     weak_points?: { available: boolean; message: string };
     wrong_questions?: { available: boolean; message: string };
   }>({});
+
+  // State for continue session dialog
+  const [showContinueDialog, setShowContinueDialog] = useState(false);
+  const [incompleteSession, setIncompleteSession] = useState<any>(null);
   
   // Get subjects from API
   const { data: subjects = [] } = useSubjects();
@@ -97,7 +102,24 @@ export default function PracticeMenu({
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showSubjectDropdown]);
-  
+
+  // Check for incomplete sessions on mount
+  useEffect(() => {
+    const checkIncompleteSession = async () => {
+      try {
+        const response = await api.practice.getIncompleteSession();
+        if (response.success && response.data) {
+          setIncompleteSession(response.data);
+          setShowContinueDialog(true);
+        }
+      } catch (error) {
+        console.error('Failed to check incomplete session:', error);
+      }
+    };
+
+    checkIncompleteSession();
+  }, []); // Run once on mount
+
   // Get availability states
   const canQuickPractice = quickOptionsAvailability.quick_practice?.available || false;
   const canWeakPointsPractice = quickOptionsAvailability.weak_points?.available || false;
@@ -188,6 +210,52 @@ export default function PracticeMenu({
   const handleWrongQuestionsPractice = () => {
     // The parent component (App.tsx) already handles this with the backend API
     onWrongQuestionsPractice?.([]);
+  };
+
+  // Continue session dialog handlers
+  const handleResumeSession = async () => {
+    if (!incompleteSession) return;
+
+    try {
+      const response = await api.practice.resumeSession(incompleteSession.sessionId);
+      if (response.success && response.data) {
+        setShowContinueDialog(false);
+        // TODO: Navigate to practice session with restored data
+        // For now, just show a success message
+        success('成功恢复练习！');
+        console.log('Resumed session data:', response.data);
+      } else {
+        error(response.error || '恢复练习失败，请重试。');
+      }
+    } catch (err) {
+      console.error('Failed to resume session:', err);
+      error('恢复练习失败，请重试。');
+    }
+  };
+
+  const handleAbandonSession = async () => {
+    if (!incompleteSession) return;
+
+    try {
+      const response = await api.practice.abandonSession(incompleteSession.sessionId);
+      if (response.success) {
+        setShowContinueDialog(false);
+        setIncompleteSession(null);
+        success('已放弃上次练习');
+      } else {
+        error(response.error || '放弃练习失败，请重试。');
+      }
+    } catch (err) {
+      console.error('Failed to abandon session:', err);
+      error('放弃练习失败，请重试。');
+    }
+  };
+
+  const handleStartNewSession = () => {
+    setShowContinueDialog(false);
+    setIncompleteSession(null);
+    // User clicked "Start New Session" - they can proceed with normal flow
+    info('请选择练习方式开始新的练习');
   };
 
   return (
@@ -662,6 +730,16 @@ export default function PracticeMenu({
           </div>
         </div>
       </div>
+
+      {/* Continue Session Dialog */}
+      {showContinueDialog && incompleteSession && (
+        <ContinueSessionDialog
+          sessionData={incompleteSession}
+          onResume={handleResumeSession}
+          onAbandon={handleAbandonSession}
+          onStartNew={handleStartNewSession}
+        />
+      )}
     </div>
   );
 }

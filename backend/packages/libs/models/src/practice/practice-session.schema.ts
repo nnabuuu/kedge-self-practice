@@ -72,6 +72,8 @@ export const PracticeSessionSchema = z.object({
   time_spent_seconds: z.number().int().default(0),
   score: z.number().default(0),
   auto_advance_delay: z.number().int().default(0), // Delay in seconds before auto-advancing
+  last_question_index: z.number().int().default(0), // Track current question position for resume
+  session_state: z.record(z.any()).default({}), // Store UI state (shuffle seed, timer) as JSON
   started_at: nullableDateSchema.optional(),
   completed_at: nullableDateSchema.optional(),
   created_at: dateSchema,

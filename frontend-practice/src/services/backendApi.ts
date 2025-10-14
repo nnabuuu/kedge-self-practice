@@ -792,10 +792,57 @@ class BackendApiService {
   }
 
   async completePracticeSession(sessionId: string): Promise<ApiResponse<any>> {
-    
+
     const response = await this.makeRequest<any>('/practice/sessions/complete', {
       method: 'POST',
       body: JSON.stringify({ session_id: sessionId })
+    });
+
+    return response;
+  }
+
+  // Get incomplete session for current user
+  async getIncompleteSession(): Promise<ApiResponse<{
+    sessionId: string;
+    progress: { total: number; answered: number; currentIndex: number };
+    configuration: any;
+    lastActivityAt: string;
+    answers: any[];
+  } | null>> {
+    const response = await this.makeRequest<{
+      sessionId: string;
+      progress: { total: number; answered: number; currentIndex: number };
+      configuration: any;
+      lastActivityAt: string;
+      answers: any[];
+    } | null>('/practice/incomplete-session');
+
+    return response;
+  }
+
+  // Resume a practice session
+  async resumePracticeSession(sessionId: string): Promise<ApiResponse<{
+    session: any;
+    questions: any[];
+    previousAnswers: any[];
+    currentQuestionIndex: number;
+  }>> {
+    const response = await this.makeRequest<{
+      session: any;
+      questions: any[];
+      previousAnswers: any[];
+      currentQuestionIndex: number;
+    }>(`/practice/resume/${sessionId}`, {
+      method: 'POST'
+    });
+
+    return response;
+  }
+
+  // Abandon a practice session
+  async abandonPracticeSession(sessionId: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await this.makeRequest<{ message: string }>(`/practice/abandon/${sessionId}`, {
+      method: 'POST'
     });
 
     return response;
@@ -933,7 +980,7 @@ export const api = {
       // Convert letter answers to indices for more efficient backend processing
       // The backend expects indices as strings for single-choice questions
       let convertedAnswer = answer;
-      
+
       // Check if this looks like a single letter answer (A, B, C, D, etc.)
       if (answer && answer.length === 1 && /^[A-F]$/i.test(answer)) {
         const index = letterToIndex(answer);
@@ -949,11 +996,14 @@ export const api = {
         });
         convertedAnswer = indices.join(',');
       }
-      
+
       return backendApi.submitPracticeAnswer(sessionId, questionId, convertedAnswer, timeSpent);
     },
     completeSession: (sessionId: string) => backendApi.completePracticeSession(sessionId),
-    getTypeDistribution: (sessionId: string) => backendApi.getSessionTypeDistribution(sessionId)
+    getTypeDistribution: (sessionId: string) => backendApi.getSessionTypeDistribution(sessionId),
+    getIncompleteSession: () => backendApi.getIncompleteSession(),
+    resumeSession: (sessionId: string) => backendApi.resumePracticeSession(sessionId),
+    abandonSession: (sessionId: string) => backendApi.abandonPracticeSession(sessionId)
   },
   reports: {
     getManagementReports: (params?: any) => backendApi.getReportsForManagement(params),

@@ -140,18 +140,24 @@ export class PracticeController {
 
   @Post('sessions/resume')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Resume a paused practice session' })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiOperation({ summary: 'Resume a paused practice session (during active practice)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Session resumed',
-    type: PracticeSessionResponseDto 
+    type: PracticeSessionResponseDto
   })
-  async resumeSession(
+  async resumeActiveSession(
     @Request() req: AuthenticatedRequest,
     @Body() resumeSessionDto: ResumeSessionDto
   ): Promise<PracticeSessionResponseDto> {
     const userId = req.user.userId;
-    return await this.practiceService.resumeSession(resumeSessionDto.session_id, userId);
+    // For active session resume, we need to load questions and answers
+    const result = await this.practiceService.resumeSession(resumeSessionDto.session_id, userId);
+    return {
+      session: result.session,
+      quizzes: result.questions,
+      answers: result.previousAnswers
+    };
   }
 
   @Post('sessions/complete')
@@ -523,5 +529,101 @@ export class PracticeController {
   }> {
     const userId = req.user.userId;
     return await this.practiceService.getSessionTypeDistribution(sessionId, userId);
+  }
+
+  // ============================================================
+  // Session Resume Endpoints (Continue Last Practice Feature)
+  // ============================================================
+
+  @Get('incomplete-session')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get the most recent incomplete practice session for the current user' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Incomplete session details or null if none found',
+  })
+  async getIncompleteSession(
+    @Request() req: AuthenticatedRequest
+  ): Promise<{
+    success: boolean;
+    data: {
+      sessionId: string;
+      progress: {
+        current: number;
+        total: number;
+        answered: number;
+      };
+      configuration: {
+        strategy: string;
+        timeLimit: number | null;
+      };
+      lastActivityAt: string;
+      answers: Array<{
+        quizId: string;
+        userAnswer: any;
+        isCorrect: boolean;
+      }>;
+    } | null;
+  }> {
+    const userId = req.user.userId;
+    const result = await this.practiceService.getIncompleteSession(userId);
+    return {
+      success: true,
+      data: result
+    };
+  }
+
+  @Post('resume/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resume an incomplete practice session' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Session resumed successfully with questions and previous answers',
+  })
+  async resumeSession(
+    @Request() req: AuthenticatedRequest,
+    @Param('sessionId') sessionId: string
+  ): Promise<{
+    success: boolean;
+    data: {
+      session: any;
+      questions: any[];
+      previousAnswers: any[];
+      currentQuestionIndex: number;
+    };
+  }> {
+    const userId = req.user.userId;
+    const result = await this.practiceService.resumeSession(sessionId, userId);
+    return {
+      success: true,
+      data: result
+    };
+  }
+
+  @Post('abandon/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Abandon an incomplete practice session' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Session marked as abandoned',
+  })
+  async abandonSession(
+    @Request() req: AuthenticatedRequest,
+    @Param('sessionId') sessionId: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    const userId = req.user.userId;
+    await this.practiceService.abandonSession(sessionId, userId);
+    return {
+      success: true,
+      message: 'Session marked as abandoned'
+    };
   }
 }
