@@ -33,7 +33,6 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   renderQuestionWithBlanks
 }) => {
   const blanksCount = (question.question.match(/____/g) || []).length;
-  const [alwaysShowHints, setAlwaysShowHints] = useState(false);
   const [isLoadingPreference, setIsLoadingPreference] = useState(true);
 
   // Debug logging for hints
@@ -43,12 +42,11 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
     }
   }, [question]);
 
-  // Load hint preference on mount
+  // Load hint preference on mount and auto-show if preferred
   useEffect(() => {
     const loadPreference = async () => {
       try {
         const preference = await preferencesService.getHintPreference();
-        setAlwaysShowHints(preference === true);
         if (preference === true && !showHints) {
           // Auto-show hints if user preference is set
           onToggleHints();
@@ -62,24 +60,19 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
     loadPreference();
   }, []);
 
+  // Track hint visibility changes during session - store in sessionStorage
+  useEffect(() => {
+    if (!isLoadingPreference) {
+      sessionStorage.setItem('hintPreference', String(showHints));
+    }
+  }, [showHints, isLoadingPreference]);
+
   const [aiEvaluation, setAiEvaluation] = useState<{
     isCorrect: boolean;
     reasoning: string;
     message?: string;
     loading: boolean;
   } | null>(null);
-
-  // Handle checkbox change for always show preference
-  const handleAlwaysShowChange = async (checked: boolean) => {
-    try {
-      setAlwaysShowHints(checked);
-      await preferencesService.setHintPreference(checked);
-    } catch (error) {
-      console.error('Failed to save hint preference:', error);
-      // Revert on error
-      setAlwaysShowHints(!checked);
-    }
-  };
 
   const handleAiReevaluation = async () => {
     if (!sessionId || !question.id) {
@@ -130,36 +123,22 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
 
   return (
     <div className="mb-6">
-      {/* Hint toggle button for fill-in-blank questions */}
+      {/* Hint toggle button for fill-in-blank questions - subtle styling */}
       {question.hints && question.hints.length > 0 && question.hints.some(h => h !== null) && (
-        <div className="mb-3 flex justify-end items-center gap-3">
+        <div className="mb-3 flex justify-end">
           <button
             onClick={onToggleHints}
             disabled={isLoadingPreference}
-            className={`flex items-center gap-2 px-4 py-2.5 font-semibold rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
               showHints
-                ? 'text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
-                : 'text-white bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 animate-pulse'
+                ? 'text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200'
+                : 'text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200'
             } ${isLoadingPreference ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <Lightbulb className={`w-5 h-5 ${showHints ? 'fill-current' : 'fill-current animate-bounce'}`} />
-            <span className="text-base">{showHints ? '隐藏提示' : '显示提示'}</span>
-            <span className="text-sm opacity-90">({question.hints.filter(h => h !== null).length})</span>
+            <Lightbulb className="w-4 h-4" />
+            <span>{showHints ? '隐藏提示' : '显示提示'}</span>
+            <span className="text-xs opacity-75">({question.hints.filter(h => h !== null).length})</span>
           </button>
-
-          {/* Checkbox for always show preference */}
-          <label className="flex items-center gap-2 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={alwaysShowHints}
-              onChange={(e) => handleAlwaysShowChange(e.target.checked)}
-              disabled={isLoadingPreference}
-              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer disabled:opacity-50"
-            />
-            <span className="text-sm text-gray-700 group-hover:text-blue-600 transition-colors select-none">
-              以后默认显示
-            </span>
-          </label>
         </div>
       )}
       

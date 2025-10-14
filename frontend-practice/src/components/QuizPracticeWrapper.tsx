@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Subject, KnowledgePoint, QuizQuestion } from '../types/quiz';
 import { api } from '../services/api';
+import { preferencesService } from '../services/preferencesService';
 import QuizPracticeMain from './QuizPracticeMain';
 
 interface QuizPracticeWrapperProps {
@@ -303,7 +304,20 @@ export default function QuizPracticeWrapper({
         console.error('Failed to complete session on backend:', error);
       }
     }
-    
+
+    // Save hint preference from session to user profile
+    try {
+      const hintPreferenceStr = sessionStorage.getItem('hintPreference');
+      if (hintPreferenceStr !== null) {
+        const hintPreference = hintPreferenceStr === 'true';
+        await preferencesService.setHintPreference(hintPreference);
+        // Clean up session storage
+        sessionStorage.removeItem('hintPreference');
+      }
+    } catch (error) {
+      console.error('Failed to save hint preference:', error);
+    }
+
     // Pass the transformed session to the parent handler
     onEndPractice(practiceSession);
   };
