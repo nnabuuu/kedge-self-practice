@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QuizQuestion } from '../../types/quiz';
-import { CheckCircle2, XCircle, BookOpen, Brain, Lightbulb } from 'lucide-react';
+import { CheckCircle2, XCircle, BookOpen, Brain, Lightbulb, ChevronDown } from 'lucide-react';
 import { api } from '../../services/api';
+import { KnowledgePointDisplay } from './KnowledgePointDisplay';
+import { preferencesService } from '../../services/preferencesService';
 
 interface FillInBlankQuestionProps {
   question: QuizQuestion;
@@ -31,19 +33,84 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   renderQuestionWithBlanks
 }) => {
   const blanksCount = (question.question.match(/____/g) || []).length;
-  
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isLoadingPreference, setIsLoadingPreference] = useState(true);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   // Debug logging for hints
   React.useEffect(() => {
     if (question.hints) {
       console.log('Fill-in-blank question hints:', question.hints);
     }
   }, [question]);
+
+  // Load hint preference on mount
+  useEffect(() => {
+    const loadPreference = async () => {
+      try {
+        const preference = await preferencesService.getHintPreference();
+        if (preference === true && !showHints) {
+          // Auto-show hints if user preference is set
+          onToggleHints();
+        }
+      } catch (error) {
+        console.error('Failed to load hint preference:', error);
+      } finally {
+        setIsLoadingPreference(false);
+      }
+    };
+    loadPreference();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [aiEvaluation, setAiEvaluation] = useState<{
     isCorrect: boolean;
     reasoning: string;
     message?: string;
     loading: boolean;
   } | null>(null);
+
+  // Handle setting preference to always show
+  const handleAlwaysShow = async () => {
+    try {
+      await preferencesService.setHintPreference(true);
+      if (!showHints) {
+        onToggleHints();
+      }
+      setShowDropdown(false);
+    } catch (error) {
+      console.error('Failed to save hint preference:', error);
+    }
+  };
+
+  // Handle setting preference to never show
+  const handleNeverShow = async () => {
+    try {
+      await preferencesService.setHintPreference(false);
+      if (showHints) {
+        onToggleHints();
+      }
+      setShowDropdown(false);
+    } catch (error) {
+      console.error('Failed to save hint preference:', error);
+    }
+  };
+
+  // Toggle hints with dropdown
+  const handleToggleHints = () => {
+    onToggleHints();
+    setShowDropdown(true);
+  };
 
   const handleAiReevaluation = async () => {
     if (!sessionId || !question.id) {
@@ -56,7 +123,7 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
     try {
       // Join answers with ||| for multiple blanks
       const userAnswer = answers.join('|||');
-      
+
       const response = await api.practice.aiReevaluateAnswer(
         sessionId,
         question.id,
@@ -70,7 +137,7 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
           message: response.data.message,
           loading: false
         });
-        
+
         // If AI approved the answer, notify parent to update alternative answers
         if (response.data.isCorrect && onAiApproved) {
           onAiApproved(userAnswer);
@@ -96,19 +163,41 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
     <div className="mb-6">
       {/* Hint toggle button for fill-in-blank questions */}
       {question.hints && question.hints.length > 0 && question.hints.some(h => h !== null) && (
-        <div className="mb-3 flex justify-end">
+        <div className="mb-3 flex justify-end relative" ref={dropdownRef}>
           <button
-            onClick={onToggleHints}
-            className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-              showHints 
-                ? 'text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100' 
-                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-            }`}
+            onClick={handleToggleHints}
+            disabled={isLoadingPreference}
+            className={`flex items-center gap-2 px-4 py-2.5 font-semibold rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 ${
+              showHints
+                ? 'text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                : 'text-white bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 animate-pulse'
+            } ${isLoadingPreference ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <Lightbulb className={`w-4 h-4 ${showHints ? 'fill-current' : ''}`} />
-            <span>{showHints ? '隐藏提示' : '显示提示'}</span>
-            <span className="text-xs text-gray-500">({question.hints.filter(h => h !== null).length})</span>
+            <Lightbulb className={`w-5 h-5 ${showHints ? 'fill-current' : 'fill-current animate-bounce'}`} />
+            <span className="text-base">{showHints ? '隐藏提示' : '显示提示'}</span>
+            <span className="text-sm opacity-90">({question.hints.filter(h => h !== null).length})</span>
+            <ChevronDown className="w-4 h-4" />
           </button>
+
+          {/* Dropdown menu */}
+          {showDropdown && (
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+              <button
+                onClick={handleAlwaysShow}
+                className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 transition-colors flex items-center gap-2 text-gray-700 hover:text-blue-700"
+              >
+                <Lightbulb className="w-4 h-4" />
+                <span>以后都显示</span>
+              </button>
+              <button
+                onClick={handleNeverShow}
+                className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 text-gray-700 hover:text-gray-900 border-t border-gray-100"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>以后都不显示</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
       
@@ -304,6 +393,9 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
           )}
         </div>
       )}
+
+      {/* 知识点 - 仅在答错时显示 */}
+      {showResult && !isAnswerCorrect() && <KnowledgePointDisplay question={question} />}
     </div>
   );
 };

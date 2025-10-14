@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, XCircle, BookOpen } from 'lucide-react';
 import { QuizQuestion } from '../../types/quiz';
+import { KnowledgePointDisplay } from './KnowledgePointDisplay';
 
 interface SingleChoiceQuestionProps {
   question: QuizQuestion;
@@ -66,6 +67,9 @@ export const SingleChoiceQuestion: React.FC<SingleChoiceQuestionProps> = ({
           </p>
         </div>
       )}
+
+      {/* 知识点 - 仅在答错时显示 */}
+      {showResult && !isAnswerCorrect() && <KnowledgePointDisplay question={question} />}
     </>
   );
 };

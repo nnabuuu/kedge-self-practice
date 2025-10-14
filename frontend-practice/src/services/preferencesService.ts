@@ -15,6 +15,7 @@ interface UserPreferences {
     autoAdvanceDelay?: number;
     shuffleQuestions?: boolean;
     showExplanation?: boolean;
+    alwaysShowHints?: boolean; // Auto-show hints for fill-in-blank questions
   };
   [key: string]: any;
 }
@@ -106,6 +107,17 @@ class PreferencesService {
   async updateQuizSettings(settings: Partial<UserPreferences['quizSettings']>): Promise<boolean> {
     const current = await this.getQuizSettings();
     return this.updatePreference('quizSettings', { ...current, ...settings });
+  }
+
+  // Hint display preference for fill-in-blank questions
+  async getHintPreference(): Promise<boolean | null> {
+    const preferences = await this.getPreferences();
+    return preferences.quizSettings?.alwaysShowHints ?? null;
+  }
+
+  async setHintPreference(alwaysShow: boolean): Promise<boolean> {
+    const current = await this.getQuizSettings();
+    return this.updatePreference('quizSettings', { ...current, alwaysShowHints: alwaysShow });
   }
 }
 
