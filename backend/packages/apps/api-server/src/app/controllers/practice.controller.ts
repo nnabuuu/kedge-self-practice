@@ -574,7 +574,7 @@ export class PracticeController {
     };
   }
 
-  @Post('resume/:sessionId')
+  @Post(':sessionId/resume')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
@@ -603,7 +603,7 @@ export class PracticeController {
     };
   }
 
-  @Post('abandon/:sessionId')
+  @Post(':sessionId/abandon')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)

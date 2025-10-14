@@ -832,7 +832,7 @@ class BackendApiService {
       questions: any[];
       previousAnswers: any[];
       currentQuestionIndex: number;
-    }>(`/practice/resume/${sessionId}`, {
+    }>(`/practice/${sessionId}/resume`, {
       method: 'POST'
     });
 
@@ -841,7 +841,7 @@ class BackendApiService {
 
   // Abandon a practice session
   async abandonPracticeSession(sessionId: string): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.makeRequest<{ message: string }>(`/practice/abandon/${sessionId}`, {
+    const response = await this.makeRequest<{ message: string }>(`/practice/${sessionId}/abandon`, {
       method: 'POST'
     });
 
