@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QuizQuestion } from '../../types/quiz';
-import { CheckCircle2, XCircle, BookOpen, Brain, Lightbulb, ChevronDown } from 'lucide-react';
+import { CheckCircle2, XCircle, BookOpen, Brain, ChevronDown } from 'lucide-react';
 import { api } from '../../services/api';
 import { KnowledgePointDisplay } from './KnowledgePointDisplay';
 import { preferencesService } from '../../services/preferencesService';
@@ -123,25 +123,6 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
 
   return (
     <div className="mb-6">
-      {/* Hint toggle button for fill-in-blank questions - subtle styling */}
-      {question.hints && question.hints.length > 0 && question.hints.some(h => h !== null) && (
-        <div className="mb-3 flex justify-end">
-          <button
-            onClick={onToggleHints}
-            disabled={isLoadingPreference}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
-              showHints
-                ? 'text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200'
-                : 'text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200'
-            } ${isLoadingPreference ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <Lightbulb className="w-4 h-4" />
-            <span>{showHints ? '隐藏提示' : '显示提示'}</span>
-            <span className="text-xs opacity-75">({question.hints.filter(h => h !== null).length})</span>
-          </button>
-        </div>
-      )}
-      
       {renderQuestionWithBlanks(question.question)}
       
       {question.images && question.images.length > 0 && (

@@ -17,6 +17,7 @@ interface QuizHeaderProps {
   onEndPractice: () => void;
   onReadQuestion: () => void;
   onShowReportModal: () => void;
+  renderHintButton?: () => React.ReactNode;
 }
 
 export const QuizHeader: React.FC<QuizHeaderProps> = ({
@@ -33,7 +34,8 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
   onJumpToWorking,
   onEndPractice,
   onReadQuestion,
-  onShowReportModal
+  onShowReportModal,
+  renderHintButton
 }) => {
   const getQuestionTypeLabel = () => {
     switch (currentQuestion.type) {
@@ -152,7 +154,7 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
         </div>
       </div>
 
-      {/* Question header with report button */}
+      {/* Question header with hint and report buttons */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
@@ -169,14 +171,17 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
             </span>
           </div>
         </div>
-        <button
-          onClick={onShowReportModal}
-          className="flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          title="报告问题"
-        >
-          <Flag className="w-4 h-4" />
-          <span className="hidden sm:inline">报告问题</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {renderHintButton && renderHintButton()}
+          <button
+            onClick={onShowReportModal}
+            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="报告问题"
+          >
+            <Flag className="w-4 h-4" />
+            <span className="hidden sm:inline">报告问题</span>
+          </button>
+        </div>
       </div>
     </>
   );

@@ -12,6 +12,7 @@ import {
   EssayQuestion,
   QuizHeader
 } from './QuizPractice';
+import { Lightbulb } from 'lucide-react';
 
 interface QuizPracticeProps {
   questions: QuizQuestion[];
@@ -427,6 +428,29 @@ export default function QuizPractice({
     }
   };
 
+  // Render hint button for fill-in-blank questions
+  const renderHintButton = () => {
+    // Only show for fill-in-blank questions with hints
+    if (!isFillInBlank) return null;
+    if (!currentQuestion.hints || currentQuestion.hints.length === 0) return null;
+    if (!currentQuestion.hints.some(h => h !== null)) return null;
+
+    return (
+      <button
+        onClick={() => setShowHints(!showHints)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
+          showHints
+            ? 'text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200'
+            : 'text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200'
+        }`}
+      >
+        <Lightbulb className="w-4 h-4" />
+        <span>{showHints ? '隐藏提示' : '显示提示'}</span>
+        <span className="text-xs opacity-75">({currentQuestion.hints.filter(h => h !== null).length})</span>
+      </button>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 relative">
       {/* Background decorations */}
@@ -453,6 +477,7 @@ export default function QuizPractice({
               onEndPractice={handleEndPractice}
               onReadQuestion={readQuestion}
               onShowReportModal={() => setShowReportModal(true)}
+              renderHintButton={renderHintButton}
             />
 
             {/* Render question based on type */}
