@@ -33,9 +33,8 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   renderQuestionWithBlanks
 }) => {
   const blanksCount = (question.question.match(/____/g) || []).length;
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [alwaysShowHints, setAlwaysShowHints] = useState(false);
   const [isLoadingPreference, setIsLoadingPreference] = useState(true);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Debug logging for hints
   React.useEffect(() => {
@@ -49,6 +48,7 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
     const loadPreference = async () => {
       try {
         const preference = await preferencesService.getHintPreference();
+        setAlwaysShowHints(preference === true);
         if (preference === true && !showHints) {
           // Auto-show hints if user preference is set
           onToggleHints();
@@ -62,17 +62,6 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
     loadPreference();
   }, []);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const [aiEvaluation, setAiEvaluation] = useState<{
     isCorrect: boolean;
     reasoning: string;
@@ -80,36 +69,16 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
     loading: boolean;
   } | null>(null);
 
-  // Handle setting preference to always show
-  const handleAlwaysShow = async () => {
+  // Handle checkbox change for always show preference
+  const handleAlwaysShowChange = async (checked: boolean) => {
     try {
-      await preferencesService.setHintPreference(true);
-      if (!showHints) {
-        onToggleHints();
-      }
-      setShowDropdown(false);
+      setAlwaysShowHints(checked);
+      await preferencesService.setHintPreference(checked);
     } catch (error) {
       console.error('Failed to save hint preference:', error);
+      // Revert on error
+      setAlwaysShowHints(!checked);
     }
-  };
-
-  // Handle setting preference to never show
-  const handleNeverShow = async () => {
-    try {
-      await preferencesService.setHintPreference(false);
-      if (showHints) {
-        onToggleHints();
-      }
-      setShowDropdown(false);
-    } catch (error) {
-      console.error('Failed to save hint preference:', error);
-    }
-  };
-
-  // Toggle hints with dropdown
-  const handleToggleHints = () => {
-    onToggleHints();
-    setShowDropdown(true);
   };
 
   const handleAiReevaluation = async () => {
@@ -163,9 +132,9 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
     <div className="mb-6">
       {/* Hint toggle button for fill-in-blank questions */}
       {question.hints && question.hints.length > 0 && question.hints.some(h => h !== null) && (
-        <div className="mb-3 flex justify-end relative" ref={dropdownRef}>
+        <div className="mb-3 flex justify-end items-center gap-3">
           <button
-            onClick={handleToggleHints}
+            onClick={onToggleHints}
             disabled={isLoadingPreference}
             className={`flex items-center gap-2 px-4 py-2.5 font-semibold rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 ${
               showHints
@@ -176,28 +145,21 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
             <Lightbulb className={`w-5 h-5 ${showHints ? 'fill-current' : 'fill-current animate-bounce'}`} />
             <span className="text-base">{showHints ? '隐藏提示' : '显示提示'}</span>
             <span className="text-sm opacity-90">({question.hints.filter(h => h !== null).length})</span>
-            <ChevronDown className="w-4 h-4" />
           </button>
 
-          {/* Dropdown menu */}
-          {showDropdown && (
-            <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
-              <button
-                onClick={handleAlwaysShow}
-                className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 transition-colors flex items-center gap-2 text-gray-700 hover:text-blue-700"
-              >
-                <Lightbulb className="w-4 h-4" />
-                <span>以后都显示</span>
-              </button>
-              <button
-                onClick={handleNeverShow}
-                className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 text-gray-700 hover:text-gray-900 border-t border-gray-100"
-              >
-                <XCircle className="w-4 h-4" />
-                <span>以后都不显示</span>
-              </button>
-            </div>
-          )}
+          {/* Checkbox for always show preference */}
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={alwaysShowHints}
+              onChange={(e) => handleAlwaysShowChange(e.target.checked)}
+              disabled={isLoadingPreference}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer disabled:opacity-50"
+            />
+            <span className="text-sm text-gray-700 group-hover:text-blue-600 transition-colors select-none">
+              以后默认显示
+            </span>
+          </label>
         </div>
       )}
       
