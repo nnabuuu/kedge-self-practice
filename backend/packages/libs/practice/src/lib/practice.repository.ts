@@ -33,8 +33,20 @@ export class PracticeRepository {
     }
   ): Promise<PracticeSession> {
     try {
+      // Auto-abandon any previous incomplete sessions for this user
+      // This ensures users only have one active session at a time
+      await this.persistentService.pgPool.query(
+        sql.unsafe`
+          UPDATE kedge_practice.practice_sessions
+          SET status = 'abandoned',
+              updated_at = NOW()
+          WHERE user_id = ${userId}
+          AND status IN ('pending', 'in_progress')
+        `
+      );
+
       this.logger.log(`Creating session ${sessionId} with ${quizIds.length} quizzes. Quiz IDs: ${quizIds.join(', ')}`);
-      
+
       const result = await this.persistentService.pgPool.query(
         sql.type(PracticeSessionSchema)`
           INSERT INTO kedge_practice.practice_sessions (
@@ -389,7 +401,7 @@ export class PracticeRepository {
   /**
    * Find the most recent incomplete session for a user
    * Returns the newest session with status 'pending' or 'in_progress'
-   * Sessions older than 7 days are excluded
+   * No time restriction - returns the most recent incomplete session regardless of age
    */
   async findIncompleteSessionByUserId(userId: string): Promise<PracticeSession | null> {
     try {
@@ -398,7 +410,6 @@ export class PracticeRepository {
           SELECT * FROM kedge_practice.practice_sessions
           WHERE user_id = ${userId}
           AND status IN ('pending', 'in_progress')
-          AND updated_at > NOW() - INTERVAL '7 days'
           ORDER BY updated_at DESC
           LIMIT 1
         `
