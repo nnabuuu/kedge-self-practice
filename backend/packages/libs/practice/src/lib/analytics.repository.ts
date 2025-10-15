@@ -260,8 +260,8 @@ export class AnalyticsRepository {
         SELECT
           COUNT(*) AS total_questions,
           COALESCE(ROUND(AVG(error_rate), 2), 0) AS avg_error_rate,
-          SUM(CASE WHEN error_rate > 60 THEN 1 ELSE 0 END) AS high_error_count,
-          SUM(total_attempts) AS total_attempts
+          COALESCE(SUM(CASE WHEN error_rate > 60 THEN 1 ELSE 0 END), 0) AS high_error_count,
+          COALESCE(SUM(total_attempts), 0) AS total_attempts
         FROM quiz_stats
       `;
 
