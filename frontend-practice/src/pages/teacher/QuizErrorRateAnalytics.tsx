@@ -275,8 +275,16 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
 
   // Convert numeric answer to letter format (0 -> A, 1 -> B, etc.)
   const formatAnswer = (answer: string, options?: any) => {
+    if (!answer) return '';
+
+    // Remove JSON quotes if present (e.g., "3" becomes 3)
+    let cleanAnswer = answer;
+    if (answer.startsWith('"') && answer.endsWith('"')) {
+      cleanAnswer = answer.slice(1, -1);
+    }
+
     // Try to parse as number for multiple choice
-    const numAnswer = parseInt(answer);
+    const numAnswer = parseInt(cleanAnswer);
     if (!isNaN(numAnswer)) {
       // Handle options array
       let optionsArray = options;
@@ -300,7 +308,7 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
       // Otherwise just return the letter
       return String.fromCharCode(65 + numAnswer);
     }
-    return answer;
+    return cleanAnswer;
   };
 
   const timeFrameOptions = [
