@@ -136,7 +136,9 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
       <div className="mt-4 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
         <span className="font-medium">提示：</span>
         {(() => {
-          if (blanksCount === 0) {
+          if (showResult) {
+            return "按 Enter 键继续";
+          } else if (blanksCount === 0) {
             return "请在输入框中填写答案，填写后按 Enter 键提交";
           } else if (blanksCount > 1) {
             return "使用 Tab 键在空格之间切换，Shift+Tab 返回上一个空格。填写至少一个空格后按 Enter 键提交答案";

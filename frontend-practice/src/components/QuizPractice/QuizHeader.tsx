@@ -72,45 +72,43 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
         </div>
         
         <div className="flex items-center space-x-2">
-          {/* Navigation buttons */}
-          {(answers[currentQuestionIndex] !== null && answers[currentQuestionIndex] !== undefined) ? (
-            <div className="flex items-center bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-xl shadow-lg">
-              <button
-                onClick={onNavigatePrevious}
-                disabled={viewingQuestionIndex === 0}
-                className="p-1.5 text-gray-600 hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none rounded-l-xl"
-                title="上一题"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={viewingQuestionIndex !== workingQuestionIndex ? onJumpToWorking : undefined}
-                disabled={viewingQuestionIndex === workingQuestionIndex}
-                className={`px-2 py-1.5 transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none border-x border-gray-200 ${
-                  viewingQuestionIndex === workingQuestionIndex
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-gray-600 hover:text-blue-600'
-                }`}
-                title={viewingQuestionIndex !== workingQuestionIndex ? `返回当前题 (第${workingQuestionIndex + 1}题)` : '当前题'}
-              >
-                <Home className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={onNavigateNext}
-                disabled={viewingQuestionIndex === totalQuestions - 1}
-                className="p-1.5 text-gray-600 hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none rounded-r-xl"
-                title="下一题"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          ) : null}
-          
+          {/* Navigation buttons - always visible */}
+          <div className="flex items-center bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-xl shadow-lg">
+            <button
+              onClick={onNavigatePrevious}
+              disabled={viewingQuestionIndex === 0}
+              className="p-1.5 text-gray-600 hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none rounded-l-xl"
+              title="上一题"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={viewingQuestionIndex !== workingQuestionIndex ? onJumpToWorking : undefined}
+              disabled={viewingQuestionIndex === workingQuestionIndex}
+              className={`px-2 py-1.5 transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none border-x border-gray-200 ${
+                viewingQuestionIndex === workingQuestionIndex
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-600 hover:text-blue-600'
+              }`}
+              title={viewingQuestionIndex !== workingQuestionIndex ? `返回当前题 (第${workingQuestionIndex + 1}题)` : '当前题'}
+            >
+              <Home className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={onNavigateNext}
+              disabled={viewingQuestionIndex === totalQuestions - 1}
+              className="p-1.5 text-gray-600 hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none rounded-r-xl"
+              title="下一题"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
           <div className="text-sm text-gray-600 bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow-lg font-medium tracking-wide">
             <span className="flex items-center gap-1">
-              {getQuestionTypeLabel()} • 
+              {getQuestionTypeLabel()} •
               <span className={viewingQuestionIndex !== workingQuestionIndex ? 'text-orange-600' : ''}>
                 {currentQuestionIndex + 1}
               </span>

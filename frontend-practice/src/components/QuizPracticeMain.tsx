@@ -127,26 +127,87 @@ export default function QuizPractice({
     }
   };
 
+  // Auto-save current answer before navigating
+  const saveCurrentAnswer = () => {
+    const newAnswers = [...answers];
+    let currentAnswer = null;
+
+    if (isSingleChoice) {
+      currentAnswer = selectedAnswer;
+    } else if (isMultipleChoice) {
+      currentAnswer = selectedMultipleAnswers.length > 0 ? selectedMultipleAnswers : null;
+    } else if (isFillInBlank) {
+      // Save even if incomplete - user might have filled some blanks
+      const hasContent = fillInBlankAnswers.some(a => a && a.trim());
+      currentAnswer = hasContent ? fillInBlankAnswers : null;
+    } else if (isEssay) {
+      currentAnswer = essayAnswer.trim() ? essayAnswer : null;
+    }
+
+    newAnswers[currentQuestionIndex] = currentAnswer;
+    setAnswers(newAnswers);
+  };
+
+  // Load answer for the target question
+  const loadAnswerForQuestion = (targetIndex: number) => {
+    const targetQuestion = questions[targetIndex];
+    const savedAnswer = answers[targetIndex];
+
+    // Reset current state first
+    setSelectedAnswer(null);
+    setSelectedMultipleAnswers([]);
+    setEssayAnswer('');
+    setFillInBlankAnswers([]);
+    setShowResult(false);
+    setUserGaveUp(false);
+
+    // Load saved answer if exists
+    if (savedAnswer !== null && savedAnswer !== undefined) {
+      if (targetQuestion.type === 'single-choice') {
+        setSelectedAnswer(savedAnswer);
+      } else if (targetQuestion.type === 'multiple-choice') {
+        setSelectedMultipleAnswers(Array.isArray(savedAnswer) ? savedAnswer : []);
+      } else if (targetQuestion.type === 'fill-in-the-blank') {
+        setFillInBlankAnswers(Array.isArray(savedAnswer) ? savedAnswer : []);
+      } else if (targetQuestion.type === 'subjective') {
+        setEssayAnswer(savedAnswer);
+      }
+    }
+  };
+
   // Navigate to previous question
   const handleNavigateToPrevious = () => {
     if (viewingQuestionIndex > 0) {
-      setViewingQuestionIndex(viewingQuestionIndex - 1);
-      setCurrentQuestionIndex(viewingQuestionIndex - 1);
+      saveCurrentAnswer();
+      const targetIndex = viewingQuestionIndex - 1;
+      setViewingQuestionIndex(targetIndex);
+      setCurrentQuestionIndex(targetIndex);
+      loadAnswerForQuestion(targetIndex);
     }
   };
 
   // Navigate to next question
   const handleNavigateToNext = () => {
     if (viewingQuestionIndex < questions.length - 1) {
-      setViewingQuestionIndex(viewingQuestionIndex + 1);
-      setCurrentQuestionIndex(viewingQuestionIndex + 1);
+      saveCurrentAnswer();
+      const targetIndex = viewingQuestionIndex + 1;
+      setViewingQuestionIndex(targetIndex);
+      setCurrentQuestionIndex(targetIndex);
+      loadAnswerForQuestion(targetIndex);
+
+      // Update working question if moving forward to a new question
+      if (targetIndex > workingQuestionIndex) {
+        setWorkingQuestionIndex(targetIndex);
+      }
     }
   };
 
   // Jump to working question
   const handleJumpToWorking = () => {
+    saveCurrentAnswer();
     setViewingQuestionIndex(workingQuestionIndex);
     setCurrentQuestionIndex(workingQuestionIndex);
+    loadAnswerForQuestion(workingQuestionIndex);
   };
 
   // End practice
@@ -323,10 +384,11 @@ export default function QuizPractice({
   // Continue to next question
   const handleContinue = () => {
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setViewingQuestionIndex(currentQuestionIndex + 1);
-      setWorkingQuestionIndex(currentQuestionIndex + 1);
-      resetQuestionState();
+      const nextIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(nextIndex);
+      setViewingQuestionIndex(nextIndex);
+      setWorkingQuestionIndex(nextIndex);
+      loadAnswerForQuestion(nextIndex);
     } else {
       handleEndPractice();
     }
@@ -339,7 +401,7 @@ export default function QuizPractice({
     setEssayAnswer('');
     setFillInBlankAnswers([]);
     setShowResult(false);
-    setShowHints(false);
+    // Don't reset showHints - keep user's preference across questions
     setUserGaveUp(false); // Reset the gave up flag
   };
 
@@ -360,11 +422,16 @@ export default function QuizPractice({
                   value={fillInBlankAnswers[index] || ''}
                   onChange={(e) => handleFillInBlankChange(index, e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !showResult) {
+                    if (e.key === 'Enter') {
                       e.preventDefault();
-                      // Check if at least one blank has content
-                      if (fillInBlankAnswers.some(a => a && a.trim())) {
-                        handleSubmitAnswer();
+                      if (showResult) {
+                        // After showing result, Enter continues to next question
+                        handleContinue();
+                      } else {
+                        // Before submission, Enter submits the answer
+                        if (fillInBlankAnswers.some(a => a && a.trim())) {
+                          handleSubmitAnswer();
+                        }
                       }
                     } else if (e.key === 'Tab' && !e.shiftKey && index < parts.length - 2) {
                       // Tab to next blank (if not the last one)
