@@ -30,6 +30,12 @@ export const ContinueSessionDialog: React.FC<ContinueSessionDialogProps> = ({
   onStartNew,
   onClose
 }) => {
+  // Defensive checks for undefined data
+  if (!sessionData || !sessionData.progress) {
+    console.error('Invalid session data:', sessionData);
+    return null;
+  }
+
   const { progress, lastActivityAt } = sessionData;
   const progressPercentage = Math.round((progress.answered / progress.total) * 100);
 

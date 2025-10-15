@@ -663,7 +663,11 @@ export const api = {
     createQuickPracticeSession: (questionLimit?: number) => ApiService.createQuickPracticeSession(questionLimit),
     createWeakPointsSession: (limit?: number) => ApiService.createWeakPointsSession(limit),
     getQuickOptionsAvailability: () => ApiService.getQuickOptionsAvailability(),
-    aiReevaluateAnswer: (sessionId: string, questionId: string, userAnswer: string) => ApiService.aiReevaluateAnswer(sessionId, questionId, userAnswer)
+    aiReevaluateAnswer: (sessionId: string, questionId: string, userAnswer: string) => ApiService.aiReevaluateAnswer(sessionId, questionId, userAnswer),
+    // Resume session methods
+    getIncompleteSession: backendApiMethods.practice.getIncompleteSession,
+    resumeSession: backendApiMethods.practice.resumeSession,
+    abandonSession: backendApiMethods.practice.abandonSession
   },
   ai: {
     analyzeQuestion: (question: string) => ApiService.analyzeQuestionWithAI(question)

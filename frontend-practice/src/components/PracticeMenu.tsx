@@ -108,12 +108,20 @@ export default function PracticeMenu({
     const checkIncompleteSession = async () => {
       try {
         const response = await api.practice.getIncompleteSession();
-        if (response.success && response.data) {
+        console.log('[PracticeMenu] Checking incomplete session, response:', response);
+
+        // Validate response has required data structure
+        if (response.success && response.data && response.data.progress) {
+          console.log('[PracticeMenu] Found incomplete session:', response.data.sessionId);
           setIncompleteSession(response.data);
           setShowContinueDialog(true);
+        } else if (response.success && response.data) {
+          console.warn('[PracticeMenu] Incomplete session data missing progress:', response.data);
+        } else {
+          console.log('[PracticeMenu] No incomplete session found');
         }
       } catch (error) {
-        console.error('Failed to check incomplete session:', error);
+        console.error('[PracticeMenu] Failed to check incomplete session:', error);
       }
     };
 
@@ -236,17 +244,22 @@ export default function PracticeMenu({
   const handleAbandonSession = async () => {
     if (!incompleteSession) return;
 
+    console.log('[PracticeMenu] Abandoning session:', incompleteSession.sessionId);
     try {
       const response = await api.practice.abandonSession(incompleteSession.sessionId);
+      console.log('[PracticeMenu] Abandon response:', response);
+
       if (response.success) {
         setShowContinueDialog(false);
         setIncompleteSession(null);
         success('已放弃上次练习');
+        console.log('[PracticeMenu] Session abandoned successfully');
       } else {
+        console.error('[PracticeMenu] Abandon failed:', response.error);
         error(response.error || '放弃练习失败，请重试。');
       }
     } catch (err) {
-      console.error('Failed to abandon session:', err);
+      console.error('[PracticeMenu] Exception abandoning session:', err);
       error('放弃练习失败，请重试。');
     }
   };

@@ -76,6 +76,12 @@ class BackendApiService {
         };
       }
 
+      // TODO: Fix API contract inconsistency
+      // Backend returns {success, data} format, and we wrap it again here.
+      // This causes double-wrapping: {success, data: {success, data: actualData}}
+      // Many components (authService, ReportManagement, etc.) now expect this format.
+      // Proper fix: Either backend returns raw data OR makeRequest detects wrapped responses.
+      // For now, individual methods handle double-wrapping as needed.
       return {
         success: true,
         data,
@@ -812,13 +818,26 @@ class BackendApiService {
     lastActivityAt: string;
     answers: any[];
   } | null>> {
-    const response = await this.makeRequest<{
-      sessionId: string;
-      progress: { total: number; answered: number; currentIndex: number };
-      configuration: any;
-      lastActivityAt: string;
-      answers: any[];
-    } | null>('/practice/incomplete-session');
+    const response = await this.makeRequest<any>('/practice/incomplete-session');
+
+    // Backend returns {success, data} and makeRequest wraps it again
+    // So actual data is at response.data.data (double-wrapped)
+    const actualData = (response.data as any)?.data || response.data;
+
+    // Map backend's progress.current to frontend's progress.currentIndex
+    if (response.success && actualData && actualData.progress) {
+      return {
+        success: true,
+        data: {
+          ...actualData,
+          progress: {
+            total: actualData.progress.total,
+            answered: actualData.progress.answered,
+            currentIndex: actualData.progress.current  // Map current -> currentIndex
+          }
+        }
+      };
+    }
 
     return response;
   }
