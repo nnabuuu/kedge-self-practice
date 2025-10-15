@@ -29,6 +29,7 @@ interface Quiz {
   updatedAt?: string;
   tags?: string[];
   images?: string[];
+  extra_properties?: Record<string, any>;
 }
 
 interface KnowledgePoint {

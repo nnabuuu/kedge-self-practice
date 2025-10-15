@@ -16,6 +16,7 @@ interface Quiz {
   knowledge_point_id?: string;
   tags?: string[];
   images?: string[];
+  extra_properties?: Record<string, any>;
 }
 
 interface QuizEditModalProps {
@@ -123,7 +124,12 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
     if (!cloned.alternative_answers) {
       cloned.alternative_answers = [];
     }
-    
+
+    // Initialize extra_properties if not present
+    if (!cloned.extra_properties) {
+      cloned.extra_properties = {};
+    }
+
     setEditingQuiz(cloned);
     
     // Load knowledge points
@@ -325,27 +331,81 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
 
   const handleAnswerChange = (value: any) => {
     if (!editingQuiz) return;
-    
+
     if (editingQuiz.type === 'single-choice') {
       setEditingQuiz({ ...editingQuiz, answer: parseInt(value) });
     } else if (editingQuiz.type === 'multiple-choice') {
       const index = parseInt(value);
       const currentAnswer = Array.isArray(editingQuiz.answer) ? editingQuiz.answer : [];
-      
+
       if (currentAnswer.includes(index)) {
-        setEditingQuiz({ 
-          ...editingQuiz, 
-          answer: currentAnswer.filter((a: number) => a !== index) 
+        setEditingQuiz({
+          ...editingQuiz,
+          answer: currentAnswer.filter((a: number) => a !== index)
         });
       } else {
-        setEditingQuiz({ 
-          ...editingQuiz, 
-          answer: [...currentAnswer, index].sort() 
+        setEditingQuiz({
+          ...editingQuiz,
+          answer: [...currentAnswer, index].sort()
         });
       }
     } else {
       setEditingQuiz({ ...editingQuiz, answer: value });
     }
+  };
+
+  // Order-independent-groups handlers
+  const getOrderIndependentGroups = (): number[][] => {
+    if (!editingQuiz?.extra_properties) return [];
+    const groups = editingQuiz.extra_properties['order-independent-groups'];
+    return Array.isArray(groups) ? groups : [];
+  };
+
+  const handleAddOrderIndependentGroup = () => {
+    if (!editingQuiz) return;
+    const groups = getOrderIndependentGroups();
+    const newGroups = [...groups, []];
+    setEditingQuiz({
+      ...editingQuiz,
+      extra_properties: {
+        ...editingQuiz.extra_properties,
+        'order-independent-groups': newGroups
+      }
+    });
+  };
+
+  const handleRemoveOrderIndependentGroup = (groupIndex: number) => {
+    if (!editingQuiz) return;
+    const groups = getOrderIndependentGroups();
+    const newGroups = groups.filter((_, i) => i !== groupIndex);
+    setEditingQuiz({
+      ...editingQuiz,
+      extra_properties: {
+        ...editingQuiz.extra_properties,
+        'order-independent-groups': newGroups.length > 0 ? newGroups : undefined
+      }
+    });
+  };
+
+  const handleToggleBlankInGroup = (groupIndex: number, blankIndex: number) => {
+    if (!editingQuiz) return;
+    const groups = getOrderIndependentGroups();
+    const newGroups = [...groups];
+    const group = newGroups[groupIndex];
+
+    if (group.includes(blankIndex)) {
+      newGroups[groupIndex] = group.filter(i => i !== blankIndex);
+    } else {
+      newGroups[groupIndex] = [...group, blankIndex].sort((a, b) => a - b);
+    }
+
+    setEditingQuiz({
+      ...editingQuiz,
+      extra_properties: {
+        ...editingQuiz.extra_properties,
+        'order-independent-groups': newGroups
+      }
+    });
   };
 
   const renderAnswerInput = () => {
@@ -640,6 +700,90 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
                       </div>
                     )}
                   </>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Order-Independent Groups (for fill-in-the-blank only) */}
+          {editingQuiz.type === 'fill-in-the-blank' && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  顺序无关组
+                  <span className="ml-2 text-xs text-gray-500">（选择可以任意顺序填写的空格）</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddOrderIndependentGroup}
+                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  添加组
+                </button>
+              </div>
+
+              {(() => {
+                const groups = getOrderIndependentGroups();
+                const blanksCount = (editingQuiz.question?.match(/____/g) || []).length;
+
+                if (groups.length === 0) {
+                  return (
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                      暂无顺序无关组。如果有多个空格答案顺序可以互换（如"辽"和"西夏"），请添加组。
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {groups.map((group, groupIndex) => (
+                      <div key={groupIndex} className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-medium text-gray-700">
+                            组 {groupIndex + 1}
+                            {group.length > 0 && (
+                              <span className="ml-2 text-xs text-gray-600">
+                                ({group.map(i => `空格${i + 1}`).join(', ')})
+                              </span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOrderIndependentGroup(groupIndex)}
+                            className="p-1 text-red-600 hover:bg-red-100 rounded"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.from({ length: blanksCount }, (_, blankIndex) => (
+                            <label
+                              key={blankIndex}
+                              className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors ${
+                                group.includes(blankIndex)
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={group.includes(blankIndex)}
+                                onChange={() => handleToggleBlankInGroup(groupIndex, blankIndex)}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm">空格 {blankIndex + 1}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {group.length < 2 && (
+                          <div className="mt-2 text-xs text-orange-600">
+                            ⚠️ 请至少选择2个空格
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 );
               })()}
             </div>
