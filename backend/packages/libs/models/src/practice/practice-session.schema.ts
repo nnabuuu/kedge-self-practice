@@ -80,11 +80,20 @@ export const PracticeSessionSchema = z.object({
   updated_at: dateSchema
 });
 
+// User answer preprocessor to handle both string and number from JSONB
+// Converts numeric strings to numbers for consistent storage
+const userAnswerSchema = z.preprocess((arg) => {
+  if (arg === null || arg === undefined) return null;
+  if (typeof arg === 'number') return arg.toString(); // Convert numbers back to strings for app logic
+  if (typeof arg === 'string') return arg;
+  return String(arg); // Fallback: convert to string
+}, z.string().nullable().optional());
+
 export const PracticeAnswerSchema = z.object({
   id: z.string().uuid(),
   session_id: z.string().uuid(),
   quiz_id: z.string().uuid(),
-  user_answer: z.string().nullable().optional(),
+  user_answer: userAnswerSchema,
   is_correct: z.boolean().nullable().optional(),
   time_spent_seconds: z.number().int().default(0),
   answered_at: nullableDateSchema.optional(),
