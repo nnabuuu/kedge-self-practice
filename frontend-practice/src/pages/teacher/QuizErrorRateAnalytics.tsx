@@ -271,10 +271,14 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
   ];
 
   const quizTypeLabels: Record<string, string> = {
+    "single-choice": "单选题",
+    "multiple-choice": "多选题",
+    "fill-in-the-blank": "填空题",
+    essay: "问答题",
+    // Legacy underscore versions (fallback)
     single_choice: "单选题",
     multiple_choice: "多选题",
     fill_in_blank: "填空题",
-    essay: "问答题",
   };
 
   return (
