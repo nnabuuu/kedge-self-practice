@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import naturalCompare from "natural-compare-lite";
 import { api } from "../../services/backendApi";
 import { authService } from "../../services/authService";
 import { useToast, ToastContainer } from "../../components/Toast";
@@ -294,7 +295,7 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
   // Get unique volumes from knowledge points
   const uniqueVolumes = Array.from(
     new Set(knowledgePoints.map(kp => kp.volume).filter(Boolean))
-  ).sort();
+  ).sort(naturalCompare);
 
   // Get unique units for the selected volume
   const uniqueUnits = selectedVolume
@@ -305,7 +306,7 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
             .map(kp => kp.unit)
             .filter(Boolean)
         )
-      ).sort()
+      ).sort(naturalCompare)
     : [];
 
   return (
