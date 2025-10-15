@@ -301,14 +301,30 @@ export class PracticeService {
 
     // Enhanced answer evaluation logic (without automatic GPT)
     let isCorrect = false;
-    const userAnswer = data.answer?.trim();
-    
+
+    // Normalize answer: convert to string if needed
+    let userAnswer: string;
+    let userAnswersArray: string[] = [];
+
+    if (Array.isArray(data.answer)) {
+      // If answer is array, store it directly
+      userAnswersArray = data.answer.map(a => String(a || '').trim());
+      userAnswer = userAnswersArray.join('|||'); // For backward compatibility with database storage
+    } else {
+      // If answer is string, trim it
+      userAnswer = (data.answer || '').trim();
+    }
+
     if (!userAnswer) {
       isCorrect = false;
     } else if (quiz.type === 'fill-in-the-blank') {
       // For fill-in-the-blank questions, check each blank
       const correctAnswers = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
-      const userAnswers = userAnswer.includes('|||') ? userAnswer.split('|||') : [userAnswer];
+
+      // Use the array if we have it, otherwise split by delimiter
+      const userAnswers = userAnswersArray.length > 0
+        ? userAnswersArray
+        : (userAnswer.includes('|||') ? userAnswer.split('|||') : [userAnswer]);
 
       // Normalize answers for comparison
       const normalizedCorrectAnswers = correctAnswers.map(a => this.normalizeAnswerText(String(a)));
@@ -365,11 +381,11 @@ export class PracticeService {
       this.logger.log(`Other type (${quiz.type}) validation: user="${userAnswer}" vs correct="${correctAnswer}" -> ${isCorrect}`);
     }
 
-    // Submit the answer
+    // Submit the answer (use userAnswer which is always a string)
     const result = await this.practiceRepository.submitAnswer(
       data.session_id,
       data.question_id,
-      data.answer,
+      userAnswer, // Already converted to string format
       isCorrect,
       data.time_spent_seconds
     );

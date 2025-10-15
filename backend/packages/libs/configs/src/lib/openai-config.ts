@@ -35,29 +35,29 @@ export interface OpenAIConfig {
 // Default configuration using unified LLM_* variables
 export const getOpenAIConfig = (): OpenAIConfig => {
   return {
-    apiKey: process.env.LLM_API_KEY || '',
-    baseURL: process.env.LLM_BASE_URL,
-    organization: process.env.LLM_ORGANIZATION,
+    apiKey: process.env['LLM_API_KEY'] || '',
+    baseURL: process.env['LLM_BASE_URL'],
+    organization: process.env['LLM_ORGANIZATION'],
     models: {
       quizParser: {
-        model: process.env.LLM_MODEL_QUIZ_PARSER || 'gpt-4o',
-        temperature: parseFloat(process.env.LLM_TEMP_QUIZ_PARSER || '0.7'),
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_QUIZ_PARSER || '4000'),
+        model: process.env['LLM_MODEL_QUIZ_PARSER'] || 'gpt-4o',
+        temperature: parseFloat(process.env['LLM_TEMP_QUIZ_PARSER'] || '0.7'),
+        maxTokens: parseInt(process.env['LLM_MAX_TOKENS_QUIZ_PARSER'] || '4000'),
       },
       quizRenderer: {
-        model: process.env.LLM_MODEL_QUIZ_RENDERER || 'gpt-4o-mini',
-        temperature: parseFloat(process.env.LLM_TEMP_QUIZ_RENDERER || '0.3'),
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_QUIZ_RENDERER || '1000'),
+        model: process.env['LLM_MODEL_QUIZ_RENDERER'] || 'gpt-4o-mini',
+        temperature: parseFloat(process.env['LLM_TEMP_QUIZ_RENDERER'] || '0.3'),
+        maxTokens: parseInt(process.env['LLM_MAX_TOKENS_QUIZ_RENDERER'] || '1000'),
       },
       answerValidator: {
-        model: process.env.LLM_MODEL_ANSWER_VALIDATOR || 'gpt-4o-mini',
-        temperature: parseFloat(process.env.LLM_TEMP_ANSWER_VALIDATOR || '0.3'),
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_ANSWER_VALIDATOR || '500'),
+        model: process.env['LLM_MODEL_ANSWER_VALIDATOR'] || 'gpt-4o-mini',
+        temperature: parseFloat(process.env['LLM_TEMP_ANSWER_VALIDATOR'] || '0.3'),
+        maxTokens: parseInt(process.env['LLM_MAX_TOKENS_ANSWER_VALIDATOR'] || '500'),
       },
       knowledgePointExtractor: {
-        model: process.env.LLM_MODEL_KNOWLEDGE_EXTRACTOR || 'gpt-4o',
-        temperature: parseFloat(process.env.LLM_TEMP_KNOWLEDGE_EXTRACTOR || '0.3'),
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS_KNOWLEDGE_EXTRACTOR || '1000'),
+        model: process.env['LLM_MODEL_KNOWLEDGE_EXTRACTOR'] || 'gpt-4o',
+        temperature: parseFloat(process.env['LLM_TEMP_KNOWLEDGE_EXTRACTOR'] || '0.3'),
+        maxTokens: parseInt(process.env['LLM_MAX_TOKENS_KNOWLEDGE_EXTRACTOR'] || '1000'),
       },
     },
   };
@@ -74,8 +74,8 @@ export const getModelConfig = (useCase: ModelUseCase): OpenAIModelConfig => {
 // DeepSeek configuration - uses unified LLM_* variables
 export const getDeepSeekConfig = (): DeepSeekConfig => {
   return {
-    apiKey: process.env.LLM_API_KEY || '',
-    baseURL: process.env.LLM_BASE_URL || 'https://api.deepseek.com',
+    apiKey: process.env['LLM_API_KEY'] || '',
+    baseURL: process.env['LLM_BASE_URL'] || 'https://api.deepseek.com',
     model: 'deepseek-chat', // Default DeepSeek model
   };
 };
@@ -101,10 +101,10 @@ export const getLLMProvider = (useCase: ModelUseCase = 'quizParser'): LLMProvide
 // Get the appropriate base URL for the detected provider
 export const getAutoBaseURL = (provider: LLMProvider): string | undefined => {
   // If LLM_BASE_URL is explicitly set, use it
-  if (process.env.LLM_BASE_URL) {
-    return process.env.LLM_BASE_URL;
+  if (process.env['LLM_BASE_URL']) {
+    return process.env['LLM_BASE_URL'];
   }
-  
+
   // Otherwise, use provider-specific defaults
   switch (provider) {
     case 'deepseek':

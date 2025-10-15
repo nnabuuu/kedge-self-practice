@@ -774,12 +774,15 @@ class BackendApiService {
     return response;
   }
 
-  async submitPracticeAnswer(sessionId: string, questionId: string, answer: string | number, timeSpent: number): Promise<ApiResponse<{isCorrect: boolean}>> {
-    
+  async submitPracticeAnswer(sessionId: string, questionId: string, answer: string | number | string[], timeSpent: number): Promise<ApiResponse<{isCorrect: boolean}>> {
+
+    // Prepare answer: keep arrays as-is, convert others to string
+    const answerValue = Array.isArray(answer) ? answer : String(answer);
+
     const answerData = {
       session_id: sessionId,
       question_id: questionId,
-      answer: String(answer), // Convert to string as backend expects string
+      answer: answerValue, // Can be string or string array
       time_spent_seconds: timeSpent
     };
 
@@ -976,25 +979,32 @@ export const api = {
     createSession: (config: any) => backendApi.createPracticeSession(config),
     startSession: (sessionId: string) => backendApi.startPracticeSession(sessionId),
     getSession: (sessionId: string) => backendApi.getPracticeSession(sessionId),
-    submitAnswer: (sessionId: string, questionId: string, answer: string, timeSpent: number) => {
-      // Convert letter answers to indices for more efficient backend processing
-      // The backend expects indices as strings for single-choice questions
-      let convertedAnswer = answer;
+    submitAnswer: (sessionId: string, questionId: string, answer: string | string[], timeSpent: number) => {
+      // Handle both string and array answers
+      let convertedAnswer: string | string[];
 
-      // Check if this looks like a single letter answer (A, B, C, D, etc.)
-      if (answer && answer.length === 1 && /^[A-F]$/i.test(answer)) {
-        const index = letterToIndex(answer);
-        if (typeof index === 'number') {
-          convertedAnswer = String(index);
+      if (Array.isArray(answer)) {
+        // For array answers (fill-in-blank), pass through directly
+        convertedAnswer = answer;
+      } else {
+        // For string answers, apply existing conversion logic
+        convertedAnswer = answer;
+
+        // Check if this looks like a single letter answer (A, B, C, D, etc.)
+        if (answer && answer.length === 1 && /^[A-F]$/i.test(answer)) {
+          const index = letterToIndex(answer);
+          if (typeof index === 'number') {
+            convertedAnswer = String(index);
+          }
+        } else if (answer && answer.includes(',')) {
+          // Multiple choice: convert comma-separated letters to indices
+          const letters = answer.split(',').map(s => s.trim());
+          const indices = letters.map(letter => {
+            const index = letterToIndex(letter);
+            return typeof index === 'number' ? index : letter;
+          });
+          convertedAnswer = indices.join(',');
         }
-      } else if (answer && answer.includes(',')) {
-        // Multiple choice: convert comma-separated letters to indices
-        const letters = answer.split(',').map(s => s.trim());
-        const indices = letters.map(letter => {
-          const index = letterToIndex(letter);
-          return typeof index === 'number' ? index : letter;
-        });
-        convertedAnswer = indices.join(',');
       }
 
       return backendApi.submitPracticeAnswer(sessionId, questionId, convertedAnswer, timeSpent);

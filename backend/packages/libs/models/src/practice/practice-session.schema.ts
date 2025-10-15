@@ -95,7 +95,7 @@ export const PracticeAnswerSchema = z.object({
 export const SubmitAnswerSchema = z.object({
   session_id: z.string().uuid(),
   question_id: z.string().uuid(),
-  answer: z.string(),
+  answer: z.union([z.string(), z.array(z.string())]), // Accept both string and string array
   time_spent_seconds: z.number().int().min(0)
 });
 

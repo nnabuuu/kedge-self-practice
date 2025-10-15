@@ -71,9 +71,11 @@ export default function QuizPractice({
   // Initialize fill-in-blank answers when question changes
   useEffect(() => {
     if (isFillInBlank && currentQuestion) {
-      const blanksCount = (currentQuestion.question.match(/_{2,}/g) || []).length;
-      if (fillInBlankAnswers.length !== blanksCount) {
-        setFillInBlankAnswers(new Array(blanksCount).fill(''));
+      const blanksCount = (currentQuestion.question.match(/____/g) || []).length;
+      // Use Math.max(1, blanksCount) to ensure at least 1 blank for non-blank fill-in questions
+      const actualBlanksCount = Math.max(1, blanksCount);
+      if (fillInBlankAnswers.length !== actualBlanksCount) {
+        setFillInBlankAnswers(new Array(actualBlanksCount).fill(''));
       }
     }
   }, [currentQuestionIndex, isFillInBlank]);
@@ -332,22 +334,25 @@ export default function QuizPractice({
   // Submit answer (with optional answer for auto-submit)
   const handleSubmitAnswer = async (autoSubmitAnswer?: string) => {
     let answer = null;
-    let answerString = '';
-    
+    let answerPayload: string | string[] = ''; // Can be string or array for API
+
     if (isSingleChoice) {
       // Use auto-submit answer if provided, otherwise use selected
       answer = autoSubmitAnswer || selectedAnswer;
-      answerString = answer || '';
+      answerPayload = answer || '';
     } else if (isMultipleChoice) {
       answer = selectedMultipleAnswers;
-      answerString = selectedMultipleAnswers.join(',');
+      answerPayload = selectedMultipleAnswers.join(',');
     } else if (isFillInBlank) {
       answer = fillInBlankAnswers;
-      // Join fill-in-blank answers with ||| separator
-      answerString = fillInBlankAnswers.join('|||');
+      // For fill-in-blank, send array directly to backend
+      // Only include answers up to the actual number of blanks in the question
+      const blanksCount = (currentQuestion.question.match(/____/g) || []).length;
+      const trimmedAnswers = fillInBlankAnswers.slice(0, Math.max(1, blanksCount));
+      answerPayload = trimmedAnswers; // Send as array
     } else if (isEssay) {
       answer = essayAnswer;
-      answerString = essayAnswer;
+      answerPayload = essayAnswer;
     }
 
     // Update answers and show result immediately (frontend validation)
@@ -365,7 +370,7 @@ export default function QuizPractice({
           const response = await api.practice.submitAnswer(
             sessionId,
             currentQuestion.id,
-            answerString,
+            answerPayload, // Send as string or array
             timeSpent
           );
           

@@ -32,7 +32,8 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   onAiApproved,
   renderQuestionWithBlanks
 }) => {
-  const blanksCount = (question.question.match(/____/g) || []).length;
+  // Use Math.max(1, blanksCount) to ensure at least 1 blank for non-blank fill-in questions
+  const blanksCount = Math.max(1, (question.question.match(/____/g) || []).length);
   const [isLoadingPreference, setIsLoadingPreference] = useState(true);
 
   // Debug logging for hints
