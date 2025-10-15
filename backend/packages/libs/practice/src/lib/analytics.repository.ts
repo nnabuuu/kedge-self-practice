@@ -110,7 +110,9 @@ export class AnalyticsRepository {
         whereConditions.push(sql.fragment`pa.answered_at <= ${timeFrameEnd.toISOString()}`);
       }
 
-      const whereClause = sql.join(whereConditions, sql.fragment` AND `);
+      const whereClause = whereConditions.length > 0
+        ? sql.join(whereConditions, sql.fragment` AND `)
+        : sql.fragment`1=1`;
 
       // Main query
       const query = sql.type(QuizErrorRateSchema)`
@@ -209,7 +211,9 @@ export class AnalyticsRepository {
         whereConditions.push(sql.fragment`pa.answered_at <= ${timeFrameEnd.toISOString()}`);
       }
 
-      const whereClause = sql.join(whereConditions, sql.fragment` AND `);
+      const whereClause = whereConditions.length > 0
+        ? sql.join(whereConditions, sql.fragment` AND `)
+        : sql.fragment`1=1`;
 
       const query = sql.type(ErrorRateSummarySchema)`
         WITH quiz_stats AS (
@@ -271,7 +275,9 @@ export class AnalyticsRepository {
         whereConditions.push(sql.fragment`pa.answered_at <= ${timeFrameEnd.toISOString()}`);
       }
 
-      const whereClause = sql.join(whereConditions, sql.fragment` AND `);
+      const whereClause = whereConditions.length > 0
+        ? sql.join(whereConditions, sql.fragment` AND `)
+        : sql.fragment`1=1`;
 
       const query = sql.type(QuizErrorDetailsSchema)`
         SELECT
@@ -334,7 +340,9 @@ export class AnalyticsRepository {
         whereConditions.push(sql.fragment`answered_at <= ${timeFrameEnd.toISOString()}`);
       }
 
-      const whereClause = sql.join(whereConditions, sql.fragment` AND `);
+      const whereClause = whereConditions.length > 0
+        ? sql.join(whereConditions, sql.fragment` AND `)
+        : sql.fragment`1=1`;
 
       const query = sql.type(WrongAnswerDistributionSchema)`
         WITH total_wrong AS (

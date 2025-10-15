@@ -19,13 +19,14 @@ export class KnowledgePointStorage implements OnModuleInit {
       // Load knowledge points from database
       const result = await this.persistentService.pgPool.query(
         sql.unsafe`
-          SELECT 
+          SELECT
             id,
             topic,
             volume,
             unit,
             lesson,
-            sub
+            sub,
+            subject_id
           FROM kedge_practice.knowledge_points
           ORDER BY id
         `
@@ -38,6 +39,7 @@ export class KnowledgePointStorage implements OnModuleInit {
         unit: row.unit || '',
         lesson: row.lesson || '',
         sub: row.sub || '',
+        subject_id: row.subject_id || '',
       }));
 
       this.logger.log(`Loaded ${this.knowledgePoints.length} knowledge points from database`);
