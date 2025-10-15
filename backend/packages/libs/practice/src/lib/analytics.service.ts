@@ -1,0 +1,200 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { AnalyticsRepository, QuizErrorRate, QuizErrorDetails, ErrorRateSummary, WrongAnswerDistribution } from './analytics.repository';
+
+type TimeFrame = '7d' | '30d' | '3m' | '6m' | 'all';
+
+@Injectable()
+export class AnalyticsService {
+  private readonly logger = new Logger(AnalyticsService.name);
+
+  constructor(private readonly analyticsRepository: AnalyticsRepository) {}
+
+  /**
+   * Convert time frame string to Date objects
+   */
+  private getTimeRange(timeFrame: TimeFrame): { start?: Date; end?: Date } {
+    const now = new Date();
+    const end = now;
+    let start: Date | undefined;
+
+    switch (timeFrame) {
+      case '7d':
+        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '3m':
+        start = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case '6m':
+        start = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+        break;
+      case 'all':
+      default:
+        start = undefined;
+        break;
+    }
+
+    return { start, end };
+  }
+
+  /**
+   * Get quiz error rates with filtering and pagination
+   */
+  async getQuizErrorRates(params: {
+    subjectId: string;
+    knowledgePointId?: string;
+    timeFrame: TimeFrame;
+    minAttempts: number;
+    page: number;
+    pageSize: number;
+  }): Promise<{
+    data: QuizErrorRate[];
+    summary: ErrorRateSummary;
+    pagination: {
+      currentPage: number;
+      pageSize: number;
+      totalPages: number;
+      totalCount: number;
+    };
+  }> {
+    const { subjectId, knowledgePointId, timeFrame, minAttempts, page, pageSize } = params;
+
+    this.logger.log(
+      `Getting error rates for subject ${subjectId}, timeFrame: ${timeFrame}, page: ${page}`
+    );
+
+    const { start, end } = this.getTimeRange(timeFrame);
+    const offset = (page - 1) * pageSize;
+
+    // Get paginated data
+    const {data, total} = await this.analyticsRepository.getQuizErrorRates({
+      subjectId,
+      knowledgePointId,
+      timeFrameStart: start,
+      timeFrameEnd: end,
+      minAttempts,
+      limit: pageSize,
+      offset,
+    });
+
+    // Get summary statistics
+    const summary = await this.analyticsRepository.getErrorRateSummary({
+      subjectId,
+      knowledgePointId,
+      timeFrameStart: start,
+      timeFrameEnd: end,
+      minAttempts,
+    });
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      data,
+      summary,
+      pagination: {
+        currentPage: page,
+        pageSize,
+        totalPages,
+        totalCount: total,
+      },
+    };
+  }
+
+  /**
+   * Get detailed error analysis for a specific quiz
+   */
+  async getQuizErrorDetails(params: {
+    quizId: string;
+    timeFrame: TimeFrame;
+  }): Promise<{
+    quiz: QuizErrorDetails;
+    wrongAnswerDistribution: WrongAnswerDistribution[];
+  }> {
+    const { quizId, timeFrame } = params;
+
+    this.logger.log(`Getting error details for quiz ${quizId}, timeFrame: ${timeFrame}`);
+
+    const { start, end } = this.getTimeRange(timeFrame);
+
+    // Get quiz details
+    const quiz = await this.analyticsRepository.getQuizErrorDetails({
+      quizId,
+      timeFrameStart: start,
+      timeFrameEnd: end,
+    });
+
+    if (!quiz) {
+      throw new NotFoundException(`Quiz with ID ${quizId} not found or has no attempt data`);
+    }
+
+    // Get wrong answer distribution
+    const wrongAnswerDistribution = await this.analyticsRepository.getWrongAnswerDistribution({
+      quizId,
+      timeFrameStart: start,
+      timeFrameEnd: end,
+    });
+
+    return {
+      quiz,
+      wrongAnswerDistribution,
+    };
+  }
+
+  /**
+   * Export error rates to CSV format
+   */
+  async exportErrorRatesToCSV(params: {
+    subjectId: string;
+    knowledgePointId?: string;
+    timeFrame: TimeFrame;
+    minAttempts: number;
+  }): Promise<string> {
+    const { subjectId, knowledgePointId, timeFrame, minAttempts } = params;
+
+    this.logger.log(`Exporting error rates for subject ${subjectId} to CSV`);
+
+    const { start, end } = this.getTimeRange(timeFrame);
+
+    // Get all data (no pagination limit)
+    const { data } = await this.analyticsRepository.getQuizErrorRates({
+      subjectId,
+      knowledgePointId,
+      timeFrameStart: start,
+      timeFrameEnd: end,
+      minAttempts,
+      limit: 10000, // Large limit for export
+      offset: 0,
+    });
+
+    // Build CSV
+    const headers = [
+      'Rank',
+      'Quiz ID',
+      'Question',
+      'Type',
+      'Knowledge Point',
+      'Error Rate',
+      'Total Attempts',
+      'Incorrect',
+      'Correct',
+    ];
+
+    const rows = data.map((row, index) => [
+      (index + 1).toString(),
+      row.quiz_id,
+      `"${row.quiz_text.replace(/"/g, '""')}"`, // Escape quotes
+      row.quiz_type,
+      row.knowledge_point_name || 'N/A',
+      `${row.error_rate}%`,
+      row.total_attempts.toString(),
+      row.incorrect_attempts.toString(),
+      (row.total_attempts - row.incorrect_attempts).toString(),
+    ]);
+
+    const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+
+    return csv;
+  }
+}
