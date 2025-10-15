@@ -93,7 +93,10 @@ export default function QuizPractice({
       const timeSinceSubmission = Date.now() - lastSubmissionTime.current;
       const minDelay = 300; // 300ms delay to ensure user sees the result
 
-      if (e.key === 'Enter' && showResult && !isInputField && timeSinceSubmission >= minDelay) {
+      // Verify current question has been answered before allowing continue
+      const currentQuestionAnswered = answers[currentQuestionIndex] !== null && answers[currentQuestionIndex] !== undefined;
+
+      if (e.key === 'Enter' && showResult && !isInputField && timeSinceSubmission >= minDelay && currentQuestionAnswered) {
         e.preventDefault();
         handleContinue();
       }
@@ -101,7 +104,7 @@ export default function QuizPractice({
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [showResult, currentQuestionIndex, questions.length]);
+  }, [showResult, currentQuestionIndex, questions.length, answers]);
 
   // Handle single choice selection with auto-submit
   const handleSingleChoiceSelect = (key: string) => {
@@ -154,6 +157,12 @@ export default function QuizPractice({
 
   // Auto-save current answer before navigating
   const saveCurrentAnswer = () => {
+    // Don't overwrite already-submitted answers
+    // If showResult is true, the answer has already been submitted via handleSubmitAnswer()
+    if (showResult) {
+      return;
+    }
+
     const newAnswers = [...answers];
     let currentAnswer = null;
 
@@ -183,11 +192,16 @@ export default function QuizPractice({
     setSelectedMultipleAnswers([]);
     setEssayAnswer('');
     setFillInBlankAnswers([]);
-    setShowResult(false);
     setUserGaveUp(false);
 
+    // Check if this question has been answered (submitted)
+    const hasBeenAnswered = savedAnswer !== null && savedAnswer !== undefined;
+
     // Load saved answer if exists
-    if (savedAnswer !== null && savedAnswer !== undefined) {
+    if (hasBeenAnswered) {
+      // Show result if question was already answered
+      setShowResult(true);
+
       if (targetQuestion.type === 'single-choice') {
         setSelectedAnswer(savedAnswer);
       } else if (targetQuestion.type === 'multiple-choice') {
@@ -197,6 +211,9 @@ export default function QuizPractice({
       } else if (targetQuestion.type === 'subjective') {
         setEssayAnswer(savedAnswer);
       }
+    } else {
+      // Question not yet answered
+      setShowResult(false);
     }
   };
 
@@ -663,11 +680,10 @@ export default function QuizPractice({
                     {isFillInBlank && (
                       <button
                         onClick={() => {
-                          // Submit with empty answers to see the correct answers
-                          const emptyAnswers = new Array(
-                            (currentQuestion.question.match(/_{2,}/g) || []).length
-                          ).fill('');
-                          setFillInBlankAnswers(emptyAnswers);
+                          // Submit with placeholder text to indicate user gave up
+                          const blanksCount = (currentQuestion.question.match(/_{2,}/g) || []).length;
+                          const placeholderAnswers = new Array(Math.max(1, blanksCount)).fill('(未填写)');
+                          setFillInBlankAnswers(placeholderAnswers);
                           setUserGaveUp(true); // Mark that user gave up
                           handleSubmitAnswer();
                         }}
