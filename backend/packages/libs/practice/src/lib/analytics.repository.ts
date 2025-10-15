@@ -154,6 +154,7 @@ export class AnalyticsRepository {
             q.id AS quiz_id,
             COUNT(pa.id) AS total_attempts
           FROM kedge_practice.quizzes q
+          LEFT JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
           INNER JOIN kedge_practice.practice_answers pa ON pa.quiz_id = q.id
           WHERE ${whereClause}
           GROUP BY q.id
@@ -226,6 +227,7 @@ export class AnalyticsRepository {
               2
             ) AS error_rate
           FROM kedge_practice.quizzes q
+          LEFT JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
           INNER JOIN kedge_practice.practice_answers pa ON pa.quiz_id = q.id
           WHERE ${whereClause}
           GROUP BY q.id
