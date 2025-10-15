@@ -189,19 +189,63 @@ export class AnalyticsService {
       'Total Attempts',
       'Incorrect',
       'Correct',
+      'Options',
+      'Wrong Answer Distribution',
     ];
 
-    const rows = data.map((row, index) => [
-      (index + 1).toString(),
-      row.quiz_id,
-      `"${row.quiz_text.replace(/"/g, '""')}"`, // Escape quotes
-      row.quiz_type,
-      row.knowledge_point_name || 'N/A',
-      `${row.error_rate}%`,
-      row.total_attempts.toString(),
-      row.incorrect_attempts.toString(),
-      (row.total_attempts - row.incorrect_attempts).toString(),
-    ]);
+    const rows = data.map((row, index) => {
+      // Format options for single-choice questions
+      let optionsStr = '';
+      if (row.quiz_type === 'single-choice' && row.options) {
+        try {
+          const options = typeof row.options === 'string' ? JSON.parse(row.options) : row.options;
+          if (Array.isArray(options)) {
+            optionsStr = options.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt}`).join(' | ');
+          }
+        } catch (e) {
+          optionsStr = '';
+        }
+      }
+
+      // Format wrong answer distribution
+      let wrongAnswersStr = '';
+      if (row.wrong_answer_distribution) {
+        try {
+          const dist = typeof row.wrong_answer_distribution === 'string'
+            ? JSON.parse(row.wrong_answer_distribution)
+            : row.wrong_answer_distribution;
+          if (Array.isArray(dist)) {
+            wrongAnswersStr = dist.map(item => {
+              // Convert numeric answer to letter for single-choice
+              let answerDisplay = item.answer;
+              if (row.quiz_type === 'single-choice') {
+                const numAnswer = parseInt(item.answer);
+                if (!isNaN(numAnswer)) {
+                  answerDisplay = String.fromCharCode(65 + numAnswer);
+                }
+              }
+              return `${answerDisplay}: ${item.count} (${item.percentage}%)`;
+            }).join(' | ');
+          }
+        } catch (e) {
+          wrongAnswersStr = '';
+        }
+      }
+
+      return [
+        (index + 1).toString(),
+        row.quiz_id,
+        `"${row.quiz_text.replace(/"/g, '""')}"`, // Escape quotes
+        row.quiz_type,
+        row.knowledge_point_name || 'N/A',
+        `${row.error_rate}%`,
+        row.total_attempts.toString(),
+        row.incorrect_attempts.toString(),
+        (row.total_attempts - row.incorrect_attempts).toString(),
+        `"${optionsStr.replace(/"/g, '""')}"`, // Escape quotes
+        `"${wrongAnswersStr.replace(/"/g, '""')}"`, // Escape quotes
+      ];
+    });
 
     const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 

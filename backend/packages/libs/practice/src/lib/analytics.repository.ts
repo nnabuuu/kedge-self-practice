@@ -9,11 +9,13 @@ const QuizErrorRateSchema = z.object({
   quiz_text: z.string(),
   quiz_type: z.string(),
   correct_answer: z.string(),
+  options: z.any().nullable(),
   knowledge_point_id: z.string().nullable(),
   knowledge_point_name: z.string().nullable(),
   total_attempts: z.number(),
   incorrect_attempts: z.number(),
   error_rate: z.number(),
+  wrong_answer_distribution: z.any().nullable(),
 });
 
 export type QuizErrorRate = z.infer<typeof QuizErrorRateSchema>;
@@ -134,6 +136,7 @@ export class AnalyticsRepository {
             q.question AS quiz_text,
             q.type AS quiz_type,
             q.answer::text AS correct_answer,
+            q.options,
             q.knowledge_point_id,
             kp.topic AS knowledge_point_name,
             COUNT(pa.id) AS total_attempts,
@@ -147,12 +150,31 @@ export class AnalyticsRepository {
           LEFT JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
           INNER JOIN kedge_practice.practice_answers pa ON pa.quiz_id = q.id
           WHERE ${whereClause}
-          GROUP BY q.id, q.question, q.type, q.answer, q.knowledge_point_id, kp.topic
+          GROUP BY q.id, q.question, q.type, q.answer, q.options, q.knowledge_point_id, kp.topic
           HAVING COUNT(pa.id) >= ${minAttempts}
+        ),
+        wrong_answer_stats AS (
+          SELECT
+            qs.quiz_id,
+            json_agg(
+              json_build_object(
+                'answer', pa.user_answer::text,
+                'count', COUNT(*),
+                'percentage', ROUND(100.0 * COUNT(*) / NULLIF(qs.incorrect_attempts, 0), 2)
+              )
+              ORDER BY COUNT(*) DESC
+            ) AS wrong_answer_distribution
+          FROM quiz_stats qs
+          INNER JOIN kedge_practice.practice_answers pa ON pa.quiz_id = qs.quiz_id
+          WHERE pa.is_correct = false
+          GROUP BY qs.quiz_id, qs.incorrect_attempts
         )
-        SELECT *
-        FROM quiz_stats
-        ORDER BY error_rate DESC
+        SELECT
+          qs.*,
+          was.wrong_answer_distribution
+        FROM quiz_stats qs
+        LEFT JOIN wrong_answer_stats was ON qs.quiz_id = was.quiz_id
+        ORDER BY qs.error_rate DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
