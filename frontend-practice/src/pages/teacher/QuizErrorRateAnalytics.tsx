@@ -277,9 +277,28 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
   const formatAnswer = (answer: string, options?: any) => {
     // Try to parse as number for multiple choice
     const numAnswer = parseInt(answer);
-    if (!isNaN(numAnswer) && options && Array.isArray(options)) {
-      const letter = String.fromCharCode(65 + numAnswer); // 65 is 'A'
-      return `${letter}. ${options[numAnswer] || ''}`;
+    if (!isNaN(numAnswer)) {
+      // Handle options array
+      let optionsArray = options;
+
+      // If options is a string, try to parse it as JSON
+      if (typeof options === 'string') {
+        try {
+          optionsArray = JSON.parse(options);
+        } catch (e) {
+          // If parsing fails, return just the letter
+          return String.fromCharCode(65 + numAnswer);
+        }
+      }
+
+      // If we have a valid array, format with option text
+      if (Array.isArray(optionsArray) && optionsArray[numAnswer]) {
+        const letter = String.fromCharCode(65 + numAnswer); // 65 is 'A'
+        return `${letter}. ${optionsArray[numAnswer]}`;
+      }
+
+      // Otherwise just return the letter
+      return String.fromCharCode(65 + numAnswer);
     }
     return answer;
   };
