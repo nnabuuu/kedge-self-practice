@@ -84,8 +84,11 @@ export default function QuizPractice({
   // Global keyboard handler for Enter key when showing result
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Only handle Enter when showing result
-      if (e.key === 'Enter' && showResult) {
+      // Only handle Enter when showing result AND not focused on input/textarea
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+      if (e.key === 'Enter' && showResult && !isInputField) {
         e.preventDefault();
         handleContinue();
       }
