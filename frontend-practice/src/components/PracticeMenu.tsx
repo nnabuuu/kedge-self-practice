@@ -228,10 +228,24 @@ export default function PracticeMenu({
       const response = await api.practice.resumeSession(incompleteSession.sessionId);
       if (response.success && response.data) {
         setShowContinueDialog(false);
-        // TODO: Navigate to practice session with restored data
-        // For now, just show a success message
-        success('成功恢复练习！');
-        console.log('Resumed session data:', response.data);
+        console.log('[PracticeMenu] Resuming session:', incompleteSession.sessionId);
+
+        // Store resume data in sessionStorage for QuizPracticeWrapper to use
+        sessionStorage.setItem('resumeSessionData', JSON.stringify(response.data));
+
+        // Navigate to practice session using the appropriate callback
+        // Check if session was created via quick practice or weak points
+        const strategy = incompleteSession.configuration?.strategy;
+        if (strategy === 'weak_points' && onWeakPointsSession) {
+          onWeakPointsSession(incompleteSession.sessionId);
+        } else if (onQuickPracticeSession) {
+          // Default to quick practice session handler
+          onQuickPracticeSession(incompleteSession.sessionId);
+        } else {
+          // Fallback: just show success if no navigation callback available
+          success('成功恢复练习！');
+          console.log('Resumed session data:', response.data);
+        }
       } else {
         error(response.error || '恢复练习失败，请重试。');
       }
@@ -250,6 +264,8 @@ export default function PracticeMenu({
       console.log('[PracticeMenu] Abandon response:', response);
 
       if (response.success) {
+        // Clear the abandoned session ID from storage to prevent reuse
+        sessionStorage.removeItem('practiceSessionId');
         setShowContinueDialog(false);
         setIncompleteSession(null);
         success('已放弃上次练习');
@@ -265,6 +281,8 @@ export default function PracticeMenu({
   };
 
   const handleStartNewSession = () => {
+    // Clear the old session ID from storage when starting new session
+    sessionStorage.removeItem('practiceSessionId');
     setShowContinueDialog(false);
     setIncompleteSession(null);
     // User clicked "Start New Session" - they can proceed with normal flow

@@ -17,6 +17,10 @@ import { Lightbulb } from 'lucide-react';
 interface QuizPracticeProps {
   questions: QuizQuestion[];
   sessionId?: string;
+  resumeData?: {
+    previousAnswers: any[];
+    currentQuestionIndex: number;
+  } | null;
   onEnd: (results: any) => void;
   onBack: () => void;
 }
@@ -24,6 +28,7 @@ interface QuizPracticeProps {
 export default function QuizPractice({
   questions,
   sessionId,
+  resumeData,
   onEnd,
   onBack
 }: QuizPracticeProps) {
@@ -44,10 +49,16 @@ export default function QuizPractice({
     );
   }
 
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [viewingQuestionIndex, setViewingQuestionIndex] = useState(0);
-  const [workingQuestionIndex, setWorkingQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<any[]>(Array(questions.length).fill(null));
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(resumeData?.currentQuestionIndex || 0);
+  const [viewingQuestionIndex, setViewingQuestionIndex] = useState(resumeData?.currentQuestionIndex || 0);
+  const [workingQuestionIndex, setWorkingQuestionIndex] = useState(resumeData?.currentQuestionIndex || 0);
+  const [answers, setAnswers] = useState<any[]>(() => {
+    if (resumeData?.previousAnswers && resumeData.previousAnswers.length > 0) {
+      console.log('[QuizPracticeMain] Restoring previous answers:', resumeData.previousAnswers);
+      return resumeData.previousAnswers;
+    }
+    return Array(questions.length).fill(null);
+  });
   const [showResult, setShowResult] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [selectedMultipleAnswers, setSelectedMultipleAnswers] = useState<string[]>([]);

@@ -73,13 +73,15 @@ interface KnowledgePoint {
   unit?: string;
 }
 
-const QuizErrorRateAnalytics: React.FC = () => {
-  const { showToast } = useToast();
+interface QuizErrorRateAnalyticsProps {
+  selectedSubject: Subject | null;
+}
+
+const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selectedSubject }) => {
+  const { toasts, showToast, removeToast } = useToast();
 
   // Filter state
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedKnowledgePoint, setSelectedKnowledgePoint] = useState<string>("");
   const [timeFrame, setTimeFrame] = useState<string>("30d");
   const [minAttempts, setMinAttempts] = useState<number>(5);
@@ -100,46 +102,28 @@ const QuizErrorRateAnalytics: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // Load subjects on mount
-  useEffect(() => {
-    loadSubjects();
-  }, []);
-
   // Load knowledge points when subject changes
   useEffect(() => {
-    if (selectedSubject) {
+    if (selectedSubject?.id) {
       loadKnowledgePoints();
     } else {
       setKnowledgePoints([]);
       setSelectedKnowledgePoint("");
     }
-  }, [selectedSubject]);
+  }, [selectedSubject?.id]);
 
   // Load error rates when filters change
   useEffect(() => {
-    if (selectedSubject) {
+    if (selectedSubject?.id) {
       loadErrorRates();
     }
-  }, [selectedSubject, selectedKnowledgePoint, timeFrame, minAttempts, currentPage]);
-
-  const loadSubjects = async () => {
-    try {
-      const response = await api.getSubjects();
-      if (response.success && response.data) {
-        setSubjects(response.data.filter((s: Subject) => s.enabled));
-        if (response.data.length > 0) {
-          setSelectedSubject(response.data[0].id);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load subjects:", error);
-      showToast("加载科目失败", "error");
-    }
-  };
+  }, [selectedSubject?.id, selectedKnowledgePoint, timeFrame, minAttempts, currentPage]);
 
   const loadKnowledgePoints = async () => {
+    if (!selectedSubject?.id) return;
+
     try {
-      const response = await api.getKnowledgePointsBySubject(selectedSubject);
+      const response = await api.knowledgePoints.getBySubject(selectedSubject.id);
       if (response.success && response.data) {
         setKnowledgePoints(response.data);
       }
@@ -149,11 +133,13 @@ const QuizErrorRateAnalytics: React.FC = () => {
   };
 
   const loadErrorRates = async () => {
+    if (!selectedSubject?.id) return;
+
     setLoading(true);
     try {
       const token = authService.getToken();
       const params = new URLSearchParams({
-        subjectId: selectedSubject,
+        subjectId: selectedSubject.id,
         timeFrame,
         minAttempts: minAttempts.toString(),
         page: currentPage.toString(),
@@ -219,10 +205,12 @@ const QuizErrorRateAnalytics: React.FC = () => {
   };
 
   const exportToCSV = async () => {
+    if (!selectedSubject?.id) return;
+
     try {
       const token = authService.getToken();
       const params = new URLSearchParams({
-        subjectId: selectedSubject,
+        subjectId: selectedSubject.id,
         timeFrame,
         minAttempts: minAttempts.toString(),
       });
@@ -291,7 +279,7 @@ const QuizErrorRateAnalytics: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ToastContainer />
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
@@ -306,7 +294,7 @@ const QuizErrorRateAnalytics: React.FC = () => {
             </div>
             <button
               onClick={exportToCSV}
-              disabled={!selectedSubject || loading}
+              disabled={!selectedSubject?.id || loading}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Download className="w-4 h-4" />
@@ -324,29 +312,7 @@ const QuizErrorRateAnalytics: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">筛选条件</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Subject Selector */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                科目 *
-              </label>
-              <select
-                value={selectedSubject}
-                onChange={(e) => {
-                  setSelectedSubject(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">请选择科目</option>
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Knowledge Point Selector */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -358,7 +324,7 @@ const QuizErrorRateAnalytics: React.FC = () => {
                   setSelectedKnowledgePoint(e.target.value);
                   setCurrentPage(1);
                 }}
-                disabled={!selectedSubject || knowledgePoints.length === 0}
+                disabled={!selectedSubject?.id || knowledgePoints.length === 0}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">全部知识点</option>
@@ -470,10 +436,10 @@ const QuizErrorRateAnalytics: React.FC = () => {
             <div className="flex items-center justify-center py-16">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
-          ) : !selectedSubject ? (
+          ) : !selectedSubject?.id ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-500">
               <Filter className="w-16 h-16 mb-4 opacity-20" />
-              <p>请选择科目以查看错题率分析</p>
+              <p>请在顶部选择科目以查看错题率分析</p>
             </div>
           ) : errorRates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-500">

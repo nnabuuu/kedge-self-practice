@@ -440,6 +440,9 @@ function App() {
       shuffleQuestions: true,
       showExplanation: true
     });
+    // Clear session ID from both state and storage immediately
+    sessionStorage.removeItem('practiceSessionId');
+    setPracticeSessionId(undefined);
     navigateToScreen('quiz-practice');
   };
   
@@ -452,6 +455,9 @@ function App() {
       shuffleQuestions: true,
       showExplanation: true
     });
+    // Clear session ID from both state and storage immediately
+    sessionStorage.removeItem('practiceSessionId');
+    setPracticeSessionId(undefined);
     navigateToScreen('quiz-practice');
   };
   

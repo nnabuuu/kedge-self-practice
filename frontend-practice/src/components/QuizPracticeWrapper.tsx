@@ -31,10 +31,25 @@ export default function QuizPracticeWrapper({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(practiceSessionId);
-  
+  const [resumeData, setResumeData] = useState<{
+    previousAnswers: any[];
+    currentQuestionIndex: number;
+  } | null>(null);
+  const hasLoadedRef = React.useRef<string | null>(null);
+
   console.log('QuizPracticeWrapper render - questions:', questions, 'loading:', loading, 'error:', error);
 
   useEffect(() => {
+    // Prevent double-fetching in React strict mode
+    // Use string comparison to handle both defined and undefined values
+    const sessionKey = practiceSessionId || '__new_session__';
+    if (hasLoadedRef.current === sessionKey) {
+      console.log('[QuizPracticeWrapper] Already loaded session:', sessionKey);
+      return;
+    }
+
+    hasLoadedRef.current = sessionKey;
+
     if (practiceSessionId) {
       fetchSessionQuestions();
     } else {
@@ -46,23 +61,87 @@ export default function QuizPracticeWrapper({
     try {
       setLoading(true);
       setError(null);
-      
+
+      // Check if we have cached resume data (from clicking "继续练习")
+      const cachedResumeData = sessionStorage.getItem('resumeSessionData');
+      console.log('[QuizPracticeWrapper] Checking cache, found:', cachedResumeData ? 'YES' : 'NO');
+
+      if (cachedResumeData) {
+        console.log('[QuizPracticeWrapper] Raw cached data:', cachedResumeData.substring(0, 200));
+        const resumeData = JSON.parse(cachedResumeData);
+        console.log('[QuizPracticeWrapper] Parsed resume data:', resumeData);
+
+        // Clear the cache after using it
+        sessionStorage.removeItem('resumeSessionData');
+
+        // Unwrap double-wrapped response: {success, data: {questions, ...}}
+        const actualData = resumeData.data || resumeData;
+
+        if (actualData.questions && actualData.questions.length > 0) {
+          console.log('[QuizPracticeWrapper] Loaded questions from resume data:', actualData.questions.length);
+          console.log('[QuizPracticeWrapper] Previous answers:', actualData.previousAnswers?.length);
+          console.log('[QuizPracticeWrapper] Current question index:', actualData.currentQuestionIndex);
+
+          setQuestions(actualData.questions);
+
+          // Convert backend answer objects to frontend answer array format
+          // Backend: [{quiz_id, user_answer, is_correct}, ...]
+          // Frontend: [answer1, answer2, ...] indexed by question position
+          let mappedAnswers: any[] | undefined;
+          if (actualData.previousAnswers && actualData.previousAnswers.length > 0) {
+            console.log('[QuizPracticeWrapper] Raw previous answers from backend:', actualData.previousAnswers);
+
+            mappedAnswers = new Array(actualData.questions.length).fill(null);
+            actualData.previousAnswers.forEach((answerObj: any, idx: number) => {
+              console.log(`[QuizPracticeWrapper] Processing answer ${idx}:`, {
+                quiz_id: answerObj.quiz_id,
+                user_answer: answerObj.user_answer,
+                user_answer_type: typeof answerObj.user_answer,
+                is_correct: answerObj.is_correct
+              });
+
+              // Find the index of this quiz_id in the questions array
+              const questionIndex = actualData.questions.findIndex((q: any) => q.id === answerObj.quiz_id);
+              if (questionIndex >= 0) {
+                // user_answer from JSONB column should already be parsed by slonik
+                // Just use it directly
+                mappedAnswers[questionIndex] = answerObj.user_answer;
+              }
+            });
+            console.log('[QuizPracticeWrapper] Mapped answers to positions:', mappedAnswers);
+          }
+
+          // Store resume data for QuizPracticeMain to use
+          if (mappedAnswers || actualData.currentQuestionIndex !== undefined) {
+            setResumeData({
+              previousAnswers: mappedAnswers || [],
+              currentQuestionIndex: actualData.currentQuestionIndex || 0
+            });
+          }
+
+          setLoading(false);
+          return;
+        } else {
+          console.warn('[QuizPracticeWrapper] Resume data missing questions:', {resumeData, actualData});
+        }
+      }
+
       console.log('Fetching session with ID:', practiceSessionId);
       const sessionResponse = await api.practice.getSession(practiceSessionId);
       console.log('Session response:', sessionResponse);
-      
+
       if (sessionResponse.success && sessionResponse.data) {
         // Check if response has session object or direct quiz_ids
         const session = sessionResponse.data.session || sessionResponse.data;
         const sessionQuizIds = session.quiz_ids || [];
         console.log('Session quiz IDs:', sessionQuizIds);
-        
+
         // Fetch the actual questions using the quiz IDs
         if (sessionQuizIds.length > 0) {
           console.log('Fetching batch questions for IDs:', sessionQuizIds);
           const questionsResponse = await api.questions.getBatch(sessionQuizIds);
           console.log('Batch questions response:', questionsResponse);
-          
+
           if (questionsResponse.success && questionsResponse.data) {
             console.log('Setting questions:', questionsResponse.data);
             // Log questions with hints for debugging
@@ -326,6 +405,7 @@ export default function QuizPracticeWrapper({
     <QuizPracticeMain
       questions={questions}
       sessionId={currentSessionId}
+      resumeData={resumeData}
       onEnd={handleQuizEnd}
       onBack={onBack}
     />

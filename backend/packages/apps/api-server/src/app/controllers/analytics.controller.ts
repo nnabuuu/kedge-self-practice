@@ -16,7 +16,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 // Validation schemas
 const TimeFrameSchema = z.enum(['7d', '30d', '3m', '6m', 'all']);
 const QuizErrorRatesQuerySchema = z.object({
-  subjectId: z.string().uuid(),
+  subjectId: z.string().min(1), // Accept string identifiers like 'history', 'biology'
   knowledgePointId: z.string().uuid().optional(),
   timeFrame: TimeFrameSchema,
   minAttempts: z.coerce.number().int().min(1).default(5),
@@ -29,7 +29,7 @@ const QuizErrorDetailsQuerySchema = z.object({
 });
 
 const ExportErrorRatesQuerySchema = z.object({
-  subjectId: z.string().uuid(),
+  subjectId: z.string().min(1), // Accept string identifiers like 'history', 'biology'
   knowledgePointId: z.string().uuid().optional(),
   timeFrame: TimeFrameSchema,
   minAttempts: z.coerce.number().int().min(1).default(5),
@@ -51,7 +51,7 @@ export class AnalyticsController {
     summary: 'Get quiz error rates with filtering and pagination',
     description: 'Returns quizzes ordered by error rate (highest first) with filtering options for subject, knowledge point, time frame, and minimum attempts threshold.'
   })
-  @ApiQuery({ name: 'subjectId', required: true, description: 'Subject UUID to filter quizzes' })
+  @ApiQuery({ name: 'subjectId', required: true, description: 'Subject ID (e.g., "history", "biology") to filter quizzes' })
   @ApiQuery({ name: 'knowledgePointId', required: false, description: 'Optional knowledge point UUID to narrow down results' })
   @ApiQuery({ name: 'timeFrame', required: true, enum: ['7d', '30d', '3m', '6m', 'all'], description: 'Time frame for analytics' })
   @ApiQuery({ name: 'minAttempts', required: false, type: Number, description: 'Minimum number of attempts required (default: 5)' })
@@ -251,7 +251,7 @@ export class AnalyticsController {
     summary: 'Export quiz error rates to CSV',
     description: 'Downloads all quiz error rates as a CSV file with the specified filters.'
   })
-  @ApiQuery({ name: 'subjectId', required: true, description: 'Subject UUID to filter quizzes' })
+  @ApiQuery({ name: 'subjectId', required: true, description: 'Subject ID (e.g., "history", "biology") to filter quizzes' })
   @ApiQuery({ name: 'knowledgePointId', required: false, description: 'Optional knowledge point UUID to narrow down results' })
   @ApiQuery({ name: 'timeFrame', required: true, enum: ['7d', '30d', '3m', '6m', 'all'], description: 'Time frame for analytics' })
   @ApiQuery({ name: 'minAttempts', required: false, type: Number, description: 'Minimum number of attempts required (default: 5)' })

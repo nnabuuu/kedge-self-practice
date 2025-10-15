@@ -368,7 +368,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
               <Leaderboard />
             )}
             {activeTab === 'analytics' && !isStudent && (
-              <QuizErrorRateAnalytics />
+              <QuizErrorRateAnalytics selectedSubject={selectedSubject} />
             )}
             {activeTab === 'settings' && (
               <SettingsPage />
