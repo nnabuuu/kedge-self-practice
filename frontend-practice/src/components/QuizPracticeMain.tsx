@@ -59,6 +59,7 @@ export default function QuizPractice({
   const [showReportModal, setShowReportModal] = useState(false);
   const [userGaveUp, setUserGaveUp] = useState(false); // Track if user clicked "直接看答案"
   const [forceUpdate, setForceUpdate] = useState(0); // Force re-render when AI approves answer
+  const lastSubmissionTime = useRef<number>(0); // Track when answer was last submitted
   const { success, error, toasts, removeToast } = useToast();
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -88,7 +89,11 @@ export default function QuizPractice({
       const target = e.target as HTMLElement;
       const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
-      if (e.key === 'Enter' && showResult && !isInputField) {
+      // Check if enough time has passed since last submission (prevent accidental double-Enter)
+      const timeSinceSubmission = Date.now() - lastSubmissionTime.current;
+      const minDelay = 300; // 300ms delay to ensure user sees the result
+
+      if (e.key === 'Enter' && showResult && !isInputField && timeSinceSubmission >= minDelay) {
         e.preventDefault();
         handleContinue();
       }
@@ -378,6 +383,7 @@ export default function QuizPractice({
     newAnswers[currentQuestionIndex] = answer;
     setAnswers(newAnswers);
     setShowResult(true);
+    lastSubmissionTime.current = Date.now(); // Record submission time to prevent accidental double-Enter
 
     // Submit to backend asynchronously (doesn't block UI)
     if (sessionId && currentQuestion) {
