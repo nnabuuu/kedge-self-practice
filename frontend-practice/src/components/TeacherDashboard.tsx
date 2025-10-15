@@ -13,6 +13,7 @@ import SettingsPage from '../pages/teacher/Settings';
 import AIConfigManagement from '../pages/teacher/AIConfigManagement';
 import Leaderboard from '../pages/teacher/Leaderboard';
 import ReportManagement from '../pages/teacher/ReportManagement';
+import QuizErrorRateAnalytics from '../pages/teacher/QuizErrorRateAnalytics';
 
 interface TeacherDashboardProps {
   teacher: Teacher;
@@ -307,7 +308,7 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
                   { id: 'users', label: '用户管理', icon: Users },
                   { id: 'ai-config', label: 'AI配置管理', icon: Cpu }
                 ] : []),
-                // { id: 'analytics', label: '数据分析', icon: BarChart3 }, // Hidden for now
+                ...(isStudent ? [] : [{ id: 'analytics', label: '错题率分析', icon: BarChart3 }]),
                 { id: 'settings', label: '设置', icon: Settings }
               ].map(tab => {
                 const TabIcon = tab.icon;
@@ -366,11 +367,8 @@ export default function TeacherDashboard({ teacher, selectedSubject: propsSelect
             {activeTab === 'leaderboard' && (
               <Leaderboard />
             )}
-            {activeTab === 'analytics' && (
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">数据分析</h3>
-                <p className="text-gray-600">数据分析功能开发中...</p>
-              </div>
+            {activeTab === 'analytics' && !isStudent && (
+              <QuizErrorRateAnalytics />
             )}
             {activeTab === 'settings' && (
               <SettingsPage />
