@@ -81,6 +81,20 @@ export default function QuizPractice({
     }
   }, [currentQuestionIndex, isFillInBlank]);
 
+  // Global keyboard handler for Enter key when showing result
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Only handle Enter when showing result
+      if (e.key === 'Enter' && showResult) {
+        e.preventDefault();
+        handleContinue();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showResult, currentQuestionIndex, questions.length]);
+
   // Handle single choice selection with auto-submit
   const handleSingleChoiceSelect = (key: string) => {
     setSelectedAnswer(key);
