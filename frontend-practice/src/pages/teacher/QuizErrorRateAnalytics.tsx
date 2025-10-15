@@ -273,6 +273,17 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
     return "🟢";
   };
 
+  // Convert numeric answer to letter format (0 -> A, 1 -> B, etc.)
+  const formatAnswer = (answer: string, options?: any) => {
+    // Try to parse as number for multiple choice
+    const numAnswer = parseInt(answer);
+    if (!isNaN(numAnswer) && options && Array.isArray(options)) {
+      const letter = String.fromCharCode(65 + numAnswer); // 65 is 'A'
+      return `${letter}. ${options[numAnswer] || ''}`;
+    }
+    return answer;
+  };
+
   const timeFrameOptions = [
     { value: "7d", label: "最近7天" },
     { value: "30d", label: "最近30天" },
@@ -635,10 +646,29 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
                 <p className="text-gray-900 whitespace-pre-wrap">{selectedQuiz.question}</p>
               </div>
 
+              {/* Options */}
+              {selectedQuiz.options && Array.isArray(selectedQuiz.options) && selectedQuiz.options.length > 0 && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-700 mb-2">选项</h4>
+                  <div className="space-y-2">
+                    {selectedQuiz.options.map((option: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="font-medium text-blue-900 min-w-[24px]">
+                          {String.fromCharCode(65 + index)}.
+                        </span>
+                        <span className="text-gray-900">{option}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Correct Answer */}
               <div className="bg-green-50 rounded-lg p-4">
                 <h4 className="text-sm font-semibold text-green-700 mb-2">正确答案</h4>
-                <p className="text-green-900 font-medium">{selectedQuiz.correct_answer}</p>
+                <p className="text-green-900 font-medium">
+                  {formatAnswer(selectedQuiz.correct_answer, selectedQuiz.options)}
+                </p>
               </div>
 
               {/* Statistics Grid */}
@@ -678,8 +708,8 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
                   <div className="space-y-2">
                     {wrongAnswers.map((wa, index) => (
                       <div key={index} className="flex items-center gap-3">
-                        <div className="w-20 text-sm text-gray-600 font-medium">
-                          {wa.answer}
+                        <div className="w-32 text-sm text-gray-600 font-medium truncate">
+                          {formatAnswer(wa.answer, selectedQuiz.options)}
                         </div>
                         <div className="flex-1">
                           <div className="bg-gray-200 rounded-full h-6 overflow-hidden">
