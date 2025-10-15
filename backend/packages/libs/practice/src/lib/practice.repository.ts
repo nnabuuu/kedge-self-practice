@@ -108,6 +108,13 @@ export class PracticeRepository {
     timeSpentSeconds: number
   ): Promise<PracticeAnswer> {
     try {
+      // Convert numeric strings to numbers for better JSONB storage
+      // This prevents "3" being stored as JSONB string, stores as JSONB number 3 instead
+      // When cast to text, JSONB numbers don't include quotes
+      const answerValue = /^\d+$/.test(userAnswer)
+        ? parseInt(userAnswer, 10)
+        : userAnswer;
+
       // Insert or update the answer
       const result = await this.persistentService.pgPool.query(
         sql.type(PracticeAnswerSchema)`
@@ -121,14 +128,14 @@ export class PracticeRepository {
           ) VALUES (
             ${sessionId},
             ${quizId},
-            ${userAnswer},
+            ${sql.json(answerValue)},
             ${isCorrect},
             ${timeSpentSeconds},
             NOW()
           )
           ON CONFLICT (session_id, quiz_id)
           DO UPDATE SET
-            user_answer = ${userAnswer},
+            user_answer = ${sql.json(answerValue)},
             is_correct = ${isCorrect},
             time_spent_seconds = ${timeSpentSeconds},
             answered_at = NOW()
