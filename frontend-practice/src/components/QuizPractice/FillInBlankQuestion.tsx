@@ -165,7 +165,48 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
               </>
             )}
           </div>
-          
+
+          {/* AI Evaluation Result - always show if exists, regardless of correctness */}
+          {aiEvaluation && (
+            <div className="mt-3">
+              <div className={`mb-3 p-4 rounded-lg ${
+                aiEvaluation.loading ? 'bg-gray-50 border border-gray-200' :
+                aiEvaluation.isCorrect ? 'bg-green-50 border border-green-200' :
+                'bg-yellow-50 border border-yellow-200'
+              }`}>
+                {aiEvaluation.loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-600 border-t-transparent"></div>
+                    <span className="text-gray-600">AI正在评估您的答案...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center mb-2">
+                      <Brain className={`w-5 h-5 mr-2 ${
+                        aiEvaluation.isCorrect ? 'text-green-600' : 'text-yellow-600'
+                      }`} />
+                      <span className={`font-semibold ${
+                        aiEvaluation.isCorrect ? 'text-green-800' : 'text-yellow-800'
+                      }`}>
+                        AI评估结果: {aiEvaluation.isCorrect ? '答案可接受' : '答案仍需改进'}
+                      </span>
+                    </div>
+                    <p className={`text-sm leading-relaxed ${
+                      aiEvaluation.isCorrect ? 'text-green-700' : 'text-yellow-700'
+                    }`}>
+                      {aiEvaluation.reasoning}
+                    </p>
+                    {aiEvaluation.message && (
+                      <p className="text-xs mt-2 text-gray-600 italic">
+                        💡 {aiEvaluation.message}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Show answer comparison */}
           {!isAnswerCorrect() && (
             <div className="mt-3">
@@ -181,46 +222,7 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
                   </button>
                 </div>
               )}
-              
-              {/* AI Evaluation Result */}
-              {aiEvaluation && (
-                <div className={`mb-3 p-4 rounded-lg ${
-                  aiEvaluation.loading ? 'bg-gray-50 border border-gray-200' :
-                  aiEvaluation.isCorrect ? 'bg-green-50 border border-green-200' : 
-                  'bg-yellow-50 border border-yellow-200'
-                }`}>
-                  {aiEvaluation.loading ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-600 border-t-transparent"></div>
-                      <span className="text-gray-600">AI正在评估您的答案...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center mb-2">
-                        <Brain className={`w-5 h-5 mr-2 ${
-                          aiEvaluation.isCorrect ? 'text-green-600' : 'text-yellow-600'
-                        }`} />
-                        <span className={`font-semibold ${
-                          aiEvaluation.isCorrect ? 'text-green-800' : 'text-yellow-800'
-                        }`}>
-                          AI评估结果: {aiEvaluation.isCorrect ? '答案可接受' : '答案仍需改进'}
-                        </span>
-                      </div>
-                      <p className={`text-sm leading-relaxed ${
-                        aiEvaluation.isCorrect ? 'text-green-700' : 'text-yellow-700'
-                      }`}>
-                        {aiEvaluation.reasoning}
-                      </p>
-                      {aiEvaluation.message && (
-                        <p className="text-xs mt-2 text-gray-600 italic">
-                          💡 {aiEvaluation.message}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-              
+
               <div className="space-y-2">
                 {(() => {
                   // Extract order-independent-groups
