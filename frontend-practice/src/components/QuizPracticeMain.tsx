@@ -58,6 +58,7 @@ export default function QuizPractice({
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
   const [userGaveUp, setUserGaveUp] = useState(false); // Track if user clicked "直接看答案"
+  const [forceUpdate, setForceUpdate] = useState(0); // Force re-render when AI approves answer
   const { success, error, toasts, removeToast } = useToast();
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -454,8 +455,8 @@ export default function QuizPractice({
                       }
                     }
                   }}
-                  disabled={showResult}
-                  className="mx-2 px-3 py-1 border-b-2 border-blue-500 text-center min-w-[100px] focus:outline-none focus:border-blue-700"
+                  readOnly={showResult}
+                  className={`mx-2 px-3 py-1 border-b-2 ${showResult ? 'border-gray-300 bg-gray-50 cursor-not-allowed' : 'border-blue-500'} text-center min-w-[100px] focus:outline-none focus:border-blue-700`}
                   placeholder={showHints && hints[index] ? hints[index] : ''}
                 />
               )}
@@ -572,6 +573,8 @@ export default function QuizPractice({
                     currentQuestion.alternative_answers = [userAnswer];
                   }
                   console.log('AI-approved answer added to alternatives:', userAnswer);
+                  // Force re-render to update isAnswerCorrect() check
+                  setForceUpdate(prev => prev + 1);
                 }}
                 renderQuestionWithBlanks={renderFillInBlankQuestion}
               />
