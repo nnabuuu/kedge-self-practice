@@ -18,6 +18,8 @@ const TimeFrameSchema = z.enum(['7d', '30d', '3m', '6m', 'all']);
 const QuizErrorRatesQuerySchema = z.object({
   subjectId: z.string().min(1), // Accept string identifiers like 'history', 'biology'
   knowledgePointId: z.string().uuid().optional(),
+  volume: z.string().min(1).optional(),
+  unit: z.string().min(1).optional(),
   timeFrame: TimeFrameSchema,
   minAttempts: z.coerce.number().int().min(1).default(5),
   page: z.coerce.number().int().min(1).default(1),
@@ -31,6 +33,8 @@ const QuizErrorDetailsQuerySchema = z.object({
 const ExportErrorRatesQuerySchema = z.object({
   subjectId: z.string().min(1), // Accept string identifiers like 'history', 'biology'
   knowledgePointId: z.string().uuid().optional(),
+  volume: z.string().min(1).optional(),
+  unit: z.string().min(1).optional(),
   timeFrame: TimeFrameSchema,
   minAttempts: z.coerce.number().int().min(1).default(5),
 });
@@ -49,10 +53,12 @@ export class AnalyticsController {
   @Get('quiz-error-rates')
   @ApiOperation({
     summary: 'Get quiz error rates with filtering and pagination',
-    description: 'Returns quizzes ordered by error rate (highest first) with filtering options for subject, knowledge point, time frame, and minimum attempts threshold.'
+    description: 'Returns quizzes ordered by error rate (highest first) with filtering options for subject, volume, unit, time frame, and minimum attempts threshold.'
   })
   @ApiQuery({ name: 'subjectId', required: true, description: 'Subject ID (e.g., "history", "biology") to filter quizzes' })
   @ApiQuery({ name: 'knowledgePointId', required: false, description: 'Optional knowledge point UUID to narrow down results' })
+  @ApiQuery({ name: 'volume', required: false, description: 'Optional volume (册别) to filter by' })
+  @ApiQuery({ name: 'unit', required: false, description: 'Optional unit (单元) to filter by' })
   @ApiQuery({ name: 'timeFrame', required: true, enum: ['7d', '30d', '3m', '6m', 'all'], description: 'Time frame for analytics' })
   @ApiQuery({ name: 'minAttempts', required: false, type: Number, description: 'Minimum number of attempts required (default: 5)' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
@@ -106,6 +112,8 @@ export class AnalyticsController {
   async getQuizErrorRates(
     @Query('subjectId') subjectId: string,
     @Query('knowledgePointId') knowledgePointId?: string,
+    @Query('volume') volume?: string,
+    @Query('unit') unit?: string,
     @Query('timeFrame') timeFrame?: string,
     @Query('minAttempts') minAttempts?: string,
     @Query('page') page?: string,
@@ -116,6 +124,8 @@ export class AnalyticsController {
       const validatedQuery = QuizErrorRatesQuerySchema.parse({
         subjectId,
         knowledgePointId,
+        volume,
+        unit,
         timeFrame,
         minAttempts,
         page,
@@ -125,6 +135,8 @@ export class AnalyticsController {
       const result = await this.analyticsService.getQuizErrorRates({
         subjectId: validatedQuery.subjectId,
         knowledgePointId: validatedQuery.knowledgePointId,
+        volume: validatedQuery.volume,
+        unit: validatedQuery.unit,
         timeFrame: validatedQuery.timeFrame,
         minAttempts: validatedQuery.minAttempts,
         page: validatedQuery.page,
@@ -253,6 +265,8 @@ export class AnalyticsController {
   })
   @ApiQuery({ name: 'subjectId', required: true, description: 'Subject ID (e.g., "history", "biology") to filter quizzes' })
   @ApiQuery({ name: 'knowledgePointId', required: false, description: 'Optional knowledge point UUID to narrow down results' })
+  @ApiQuery({ name: 'volume', required: false, description: 'Optional volume (册别) to filter by' })
+  @ApiQuery({ name: 'unit', required: false, description: 'Optional unit (单元) to filter by' })
   @ApiQuery({ name: 'timeFrame', required: true, enum: ['7d', '30d', '3m', '6m', 'all'], description: 'Time frame for analytics' })
   @ApiQuery({ name: 'minAttempts', required: false, type: Number, description: 'Minimum number of attempts required (default: 5)' })
   @ApiResponse({
@@ -271,6 +285,8 @@ export class AnalyticsController {
   async exportQuizErrorRates(
     @Query('subjectId') subjectId: string,
     @Query('knowledgePointId') knowledgePointId?: string,
+    @Query('volume') volume?: string,
+    @Query('unit') unit?: string,
     @Query('timeFrame') timeFrame?: string,
     @Query('minAttempts') minAttempts?: string,
   ): Promise<string> {
@@ -279,6 +295,8 @@ export class AnalyticsController {
       const validatedQuery = ExportErrorRatesQuerySchema.parse({
         subjectId,
         knowledgePointId,
+        volume,
+        unit,
         timeFrame,
         minAttempts,
       });
@@ -286,6 +304,8 @@ export class AnalyticsController {
       const csv = await this.analyticsService.exportErrorRatesToCSV({
         subjectId: validatedQuery.subjectId,
         knowledgePointId: validatedQuery.knowledgePointId,
+        volume: validatedQuery.volume,
+        unit: validatedQuery.unit,
         timeFrame: validatedQuery.timeFrame,
         minAttempts: validatedQuery.minAttempts,
       });

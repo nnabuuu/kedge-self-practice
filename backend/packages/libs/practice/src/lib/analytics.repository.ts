@@ -68,6 +68,8 @@ export class AnalyticsRepository {
   async getQuizErrorRates(params: {
     subjectId: string;
     knowledgePointId?: string;
+    volume?: string;
+    unit?: string;
     timeFrameStart?: Date;
     timeFrameEnd?: Date;
     minAttempts?: number;
@@ -77,6 +79,8 @@ export class AnalyticsRepository {
     const {
       subjectId,
       knowledgePointId,
+      volume,
+      unit,
       timeFrameStart,
       timeFrameEnd,
       minAttempts = 5,
@@ -84,7 +88,7 @@ export class AnalyticsRepository {
       offset = 0,
     } = params;
 
-    this.logger.log(`Getting error rates for subject ${subjectId}, KP: ${knowledgePointId || 'all'}`);
+    this.logger.log(`Getting error rates for subject ${subjectId}, volume: ${volume || 'all'}, unit: ${unit || 'all'}`);
 
     try {
       // Build the WHERE clause dynamically
@@ -100,6 +104,14 @@ export class AnalyticsRepository {
 
       if (knowledgePointId) {
         whereConditions.push(sql.fragment`q.knowledge_point_id = ${knowledgePointId}`);
+      }
+
+      if (volume) {
+        whereConditions.push(sql.fragment`kp.volume = ${volume}`);
+      }
+
+      if (unit) {
+        whereConditions.push(sql.fragment`kp.unit = ${unit}`);
       }
 
       if (timeFrameStart) {
@@ -184,6 +196,8 @@ export class AnalyticsRepository {
   async getErrorRateSummary(params: {
     subjectId: string;
     knowledgePointId?: string;
+    volume?: string;
+    unit?: string;
     timeFrameStart?: Date;
     timeFrameEnd?: Date;
     minAttempts?: number;
@@ -191,6 +205,8 @@ export class AnalyticsRepository {
     const {
       subjectId,
       knowledgePointId,
+      volume,
+      unit,
       timeFrameStart,
       timeFrameEnd,
       minAttempts = 5,
@@ -202,6 +218,14 @@ export class AnalyticsRepository {
 
       if (knowledgePointId) {
         whereConditions.push(sql.fragment`q.knowledge_point_id = ${knowledgePointId}`);
+      }
+
+      if (volume) {
+        whereConditions.push(sql.fragment`kp.volume = ${volume}`);
+      }
+
+      if (unit) {
+        whereConditions.push(sql.fragment`kp.unit = ${unit}`);
       }
 
       if (timeFrameStart) {

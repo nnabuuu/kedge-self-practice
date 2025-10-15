@@ -45,6 +45,8 @@ export class AnalyticsService {
   async getQuizErrorRates(params: {
     subjectId: string;
     knowledgePointId?: string;
+    volume?: string;
+    unit?: string;
     timeFrame: TimeFrame;
     minAttempts: number;
     page: number;
@@ -59,10 +61,10 @@ export class AnalyticsService {
       totalCount: number;
     };
   }> {
-    const { subjectId, knowledgePointId, timeFrame, minAttempts, page, pageSize } = params;
+    const { subjectId, knowledgePointId, volume, unit, timeFrame, minAttempts, page, pageSize } = params;
 
     this.logger.log(
-      `Getting error rates for subject ${subjectId}, timeFrame: ${timeFrame}, page: ${page}`
+      `Getting error rates for subject ${subjectId}, volume: ${volume || 'all'}, unit: ${unit || 'all'}, timeFrame: ${timeFrame}, page: ${page}`
     );
 
     const { start, end } = this.getTimeRange(timeFrame);
@@ -72,6 +74,8 @@ export class AnalyticsService {
     const {data, total} = await this.analyticsRepository.getQuizErrorRates({
       subjectId,
       knowledgePointId,
+      volume,
+      unit,
       timeFrameStart: start,
       timeFrameEnd: end,
       minAttempts,
@@ -83,6 +87,8 @@ export class AnalyticsService {
     const summary = await this.analyticsRepository.getErrorRateSummary({
       subjectId,
       knowledgePointId,
+      volume,
+      unit,
       timeFrameStart: start,
       timeFrameEnd: end,
       minAttempts,
@@ -148,10 +154,12 @@ export class AnalyticsService {
   async exportErrorRatesToCSV(params: {
     subjectId: string;
     knowledgePointId?: string;
+    volume?: string;
+    unit?: string;
     timeFrame: TimeFrame;
     minAttempts: number;
   }): Promise<string> {
-    const { subjectId, knowledgePointId, timeFrame, minAttempts } = params;
+    const { subjectId, knowledgePointId, volume, unit, timeFrame, minAttempts } = params;
 
     this.logger.log(`Exporting error rates for subject ${subjectId} to CSV`);
 
@@ -161,6 +169,8 @@ export class AnalyticsService {
     const { data } = await this.analyticsRepository.getQuizErrorRates({
       subjectId,
       knowledgePointId,
+      volume,
+      unit,
       timeFrameStart: start,
       timeFrameEnd: end,
       minAttempts,

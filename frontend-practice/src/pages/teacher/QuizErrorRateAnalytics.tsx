@@ -82,7 +82,8 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
 
   // Filter state
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
-  const [selectedKnowledgePoint, setSelectedKnowledgePoint] = useState<string>("");
+  const [selectedVolume, setSelectedVolume] = useState<string>("");
+  const [selectedUnit, setSelectedUnit] = useState<string>("");
   const [timeFrame, setTimeFrame] = useState<string>("30d");
   const [minAttempts, setMinAttempts] = useState<number>(5);
 
@@ -108,7 +109,8 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
       loadKnowledgePoints();
     } else {
       setKnowledgePoints([]);
-      setSelectedKnowledgePoint("");
+      setSelectedVolume("");
+      setSelectedUnit("");
     }
   }, [selectedSubject?.id]);
 
@@ -117,7 +119,7 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
     if (selectedSubject?.id) {
       loadErrorRates();
     }
-  }, [selectedSubject?.id, selectedKnowledgePoint, timeFrame, minAttempts, currentPage]);
+  }, [selectedSubject?.id, selectedVolume, selectedUnit, timeFrame, minAttempts, currentPage]);
 
   const loadKnowledgePoints = async () => {
     if (!selectedSubject?.id) return;
@@ -146,8 +148,12 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
         pageSize: pageSize.toString(),
       });
 
-      if (selectedKnowledgePoint) {
-        params.append("knowledgePointId", selectedKnowledgePoint);
+      if (selectedVolume) {
+        params.append("volume", selectedVolume);
+      }
+
+      if (selectedUnit) {
+        params.append("unit", selectedUnit);
       }
 
       const response = await fetch(
@@ -215,8 +221,12 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
         minAttempts: minAttempts.toString(),
       });
 
-      if (selectedKnowledgePoint) {
-        params.append("knowledgePointId", selectedKnowledgePoint);
+      if (selectedVolume) {
+        params.append("volume", selectedVolume);
+      }
+
+      if (selectedUnit) {
+        params.append("unit", selectedUnit);
       }
 
       const response = await fetch(
@@ -281,6 +291,23 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
     fill_in_blank: "填空题",
   };
 
+  // Get unique volumes from knowledge points
+  const uniqueVolumes = Array.from(
+    new Set(knowledgePoints.map(kp => kp.volume).filter(Boolean))
+  ).sort();
+
+  // Get unique units for the selected volume
+  const uniqueUnits = selectedVolume
+    ? Array.from(
+        new Set(
+          knowledgePoints
+            .filter(kp => kp.volume === selectedVolume)
+            .map(kp => kp.unit)
+            .filter(Boolean)
+        )
+      ).sort()
+    : [];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
@@ -316,25 +343,49 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
             <h2 className="text-lg font-semibold text-gray-900">筛选条件</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Knowledge Point Selector */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Volume Selector */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                知识点（可选）
+                册别（可选）
               </label>
               <select
-                value={selectedKnowledgePoint}
+                value={selectedVolume}
                 onChange={(e) => {
-                  setSelectedKnowledgePoint(e.target.value);
+                  setSelectedVolume(e.target.value);
+                  setSelectedUnit(""); // Reset unit when volume changes
                   setCurrentPage(1);
                 }}
-                disabled={!selectedSubject?.id || knowledgePoints.length === 0}
+                disabled={!selectedSubject?.id || uniqueVolumes.length === 0}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">全部知识点</option>
-                {knowledgePoints.map((kp) => (
-                  <option key={kp.id} value={kp.id}>
-                    {kp.topic}
+                <option value="">全部册别</option>
+                {uniqueVolumes.map((volume) => (
+                  <option key={volume} value={volume}>
+                    {volume}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Unit Selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                单元（可选）
+              </label>
+              <select
+                value={selectedUnit}
+                onChange={(e) => {
+                  setSelectedUnit(e.target.value);
+                  setCurrentPage(1);
+                }}
+                disabled={!selectedVolume || uniqueUnits.length === 0}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">全部单元</option>
+                {uniqueUnits.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
                   </option>
                 ))}
               </select>
