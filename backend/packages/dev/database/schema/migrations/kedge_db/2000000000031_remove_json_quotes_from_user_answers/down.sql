@@ -1,10 +1,10 @@
--- Rollback: Re-add JSON quotes to user_answer field
--- Note: This reverts to the buggy behavior where sql.json() adds quotes
+-- Rollback: Convert JSONB numbers back to JSONB strings
+-- This reverts to the previous behavior where numeric answers were stored as strings
 
--- Add quotes back to values that don't already have them
+-- Convert JSONB numbers back to strings
 UPDATE kedge_practice.practice_answers
-SET user_answer = '"' || REPLACE(user_answer, '"', '\"') || '"'
-WHERE user_answer NOT LIKE '"%"';
+SET user_answer = to_jsonb((user_answer #>> '{}')::text)
+WHERE jsonb_typeof(user_answer) = 'number';
 
 -- Remove the comment
 COMMENT ON COLUMN kedge_practice.practice_answers.user_answer IS NULL;
