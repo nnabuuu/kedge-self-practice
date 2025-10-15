@@ -75,6 +75,11 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
     loading: boolean;
   } | null>(null);
 
+  // Reset AI evaluation when question changes
+  useEffect(() => {
+    setAiEvaluation(null);
+  }, [question.id]);
+
   const handleAiReevaluation = async () => {
     if (!sessionId || !question.id) {
       console.error('Missing sessionId or questionId for AI re-evaluation');
