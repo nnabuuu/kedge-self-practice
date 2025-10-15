@@ -96,7 +96,7 @@ export class AnalyticsRepository {
         offset,
       };
 
-      whereConditions.push(sql.fragment`q.subject_id = ${subjectId}`);
+      whereConditions.push(sql.fragment`kp.subject_id = ${subjectId}`);
 
       if (knowledgePointId) {
         whereConditions.push(sql.fragment`q.knowledge_point_id = ${knowledgePointId}`);
@@ -195,7 +195,7 @@ export class AnalyticsRepository {
 
     try {
       const whereConditions = [];
-      whereConditions.push(sql.fragment`q.subject_id = ${subjectId}`);
+      whereConditions.push(sql.fragment`kp.subject_id = ${subjectId}`);
 
       if (knowledgePointId) {
         whereConditions.push(sql.fragment`q.knowledge_point_id = ${knowledgePointId}`);
