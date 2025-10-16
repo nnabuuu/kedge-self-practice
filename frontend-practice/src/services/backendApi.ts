@@ -870,19 +870,21 @@ class BackendApiService {
   }
 
   // Resume a practice session
+  // Now uses GET /sessions/:sessionId instead of POST /practice/:sessionId/resume
   async resumePracticeSession(sessionId: string): Promise<ApiResponse<{
     session: any;
     quizzes: any[];
     submittedAnswers: any[];
     currentQuestionIndex: number;
   }>> {
+    // Use the standard REST endpoint - GET /sessions/:sessionId
     const response = await this.makeRequest<{
       session: any;
       quizzes: any[];
       submittedAnswers: any[];
       currentQuestionIndex: number;
-    }>(`/practice/${sessionId}/resume`, {
-      method: 'POST'
+    }>(`/practice/sessions/${sessionId}`, {
+      method: 'GET'
     });
 
     // Convert the quizzes to frontend format

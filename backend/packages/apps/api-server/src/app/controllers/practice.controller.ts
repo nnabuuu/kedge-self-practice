@@ -606,11 +606,18 @@ export class PracticeController {
     };
   }
 
+  /**
+   * @deprecated This endpoint is deprecated. Use GET /sessions/:sessionId to retrieve session data instead.
+   * This follows standard REST conventions. Kept for backward compatibility only.
+   */
   @Post(':sessionId/resume')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Resume an incomplete practice session' })
+  @ApiOperation({
+    summary: 'Resume an incomplete practice session (DEPRECATED: Use GET /sessions/:sessionId instead)',
+    deprecated: true
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Session resumed successfully with quizzes and previous answers',
