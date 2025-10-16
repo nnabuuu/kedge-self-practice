@@ -15,31 +15,19 @@ interface KnowledgePointHeatmapProps {
   data: KnowledgePointData[];
 }
 
-interface GroupedData {
-  [volume: string]: {
-    [unit: string]: {
-      [lesson: string]: KnowledgePointData[];
-    };
-  };
+interface GroupedByVolume {
+  [volume: string]: KnowledgePointData[];
 }
 
 export default function KnowledgePointHeatmap({ data }: KnowledgePointHeatmapProps) {
   const [expandedVolumes, setExpandedVolumes] = useState<Set<string>>(new Set());
-  const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
-  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
 
-  // Group data by volume, unit, lesson
-  const groupedData: GroupedData = {};
+  // Group data by volume only (flat structure within each volume)
+  const groupedData: GroupedByVolume = {};
   data.forEach(item => {
     const volume = item.volume || '未分类';
-    const unit = item.unit || '未分类';
-    const lesson = item.lesson || '未分类';
-
-    if (!groupedData[volume]) groupedData[volume] = {};
-    if (!groupedData[volume][unit]) groupedData[volume][unit] = {};
-    if (!groupedData[volume][unit][lesson]) groupedData[volume][unit][lesson] = [];
-
-    groupedData[volume][unit][lesson].push(item);
+    if (!groupedData[volume]) groupedData[volume] = [];
+    groupedData[volume].push(item);
   });
 
   // Get color based on accuracy
@@ -51,12 +39,12 @@ export default function KnowledgePointHeatmap({ data }: KnowledgePointHeatmapPro
 
   // Get background color for cards
   const getAccuracyBgColor = (accuracy: number) => {
-    if (accuracy >= 80) return 'bg-green-50 border-green-200';
-    if (accuracy >= 60) return 'bg-yellow-50 border-yellow-200';
-    return 'bg-red-50 border-red-200';
+    if (accuracy >= 80) return 'bg-green-50 border-green-200 hover:border-green-300';
+    if (accuracy >= 60) return 'bg-yellow-50 border-yellow-200 hover:border-yellow-300';
+    return 'bg-red-50 border-red-200 hover:border-red-300';
   };
 
-  // Toggle expansion
+  // Toggle volume expansion
   const toggleVolume = (volume: string) => {
     const newSet = new Set(expandedVolumes);
     if (newSet.has(volume)) {
@@ -65,26 +53,6 @@ export default function KnowledgePointHeatmap({ data }: KnowledgePointHeatmapPro
       newSet.add(volume);
     }
     setExpandedVolumes(newSet);
-  };
-
-  const toggleUnit = (key: string) => {
-    const newSet = new Set(expandedUnits);
-    if (newSet.has(key)) {
-      newSet.delete(key);
-    } else {
-      newSet.add(key);
-    }
-    setExpandedUnits(newSet);
-  };
-
-  const toggleLesson = (key: string) => {
-    const newSet = new Set(expandedLessons);
-    if (newSet.has(key)) {
-      newSet.delete(key);
-    } else {
-      newSet.add(key);
-    }
-    setExpandedLessons(newSet);
   };
 
   return (
@@ -117,12 +85,12 @@ export default function KnowledgePointHeatmap({ data }: KnowledgePointHeatmapPro
         </div>
       </div>
 
-      {/* Hierarchical Data Display */}
+      {/* Data Display */}
       {data.length > 0 ? (
-        <div className="space-y-4">
-          {Object.entries(groupedData).map(([volume, units]) => (
+        <div className="space-y-6">
+          {Object.entries(groupedData).map(([volume, topics]) => (
             <div key={volume} className="border border-gray-200 rounded-xl overflow-hidden">
-              {/* Volume Level */}
+              {/* Volume Header - Clickable */}
               <button
                 onClick={() => toggleVolume(volume)}
                 className="w-full p-4 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-colors flex items-center justify-between"
@@ -134,82 +102,50 @@ export default function KnowledgePointHeatmap({ data }: KnowledgePointHeatmapPro
                     <ChevronRight className="w-5 h-5 text-blue-600 mr-2" />
                   )}
                   <span className="font-bold text-blue-900 text-lg">{volume}</span>
+                  <span className="ml-4 text-sm text-blue-700 font-medium">
+                    {topics.length} 个知识点
+                  </span>
+                </div>
+                <div className="text-sm text-blue-700">
+                  平均正确率: {Math.round(topics.reduce((sum, t) => sum + t.correct_rate, 0) / topics.length)}%
                 </div>
               </button>
 
-              {/* Unit Level */}
+              {/* Topics Grid - All visible when expanded */}
               {expandedVolumes.has(volume) && (
-                <div className="bg-white">
-                  {Object.entries(units).map(([unit, lessons]) => {
-                    const unitKey = `${volume}-${unit}`;
-                    return (
-                      <div key={unitKey} className="border-t border-gray-100">
-                        <button
-                          onClick={() => toggleUnit(unitKey)}
-                          className="w-full p-4 hover:bg-gray-50 transition-colors flex items-center justify-between"
-                        >
-                          <div className="flex items-center">
-                            {expandedUnits.has(unitKey) ? (
-                              <ChevronDown className="w-4 h-4 text-gray-600 mr-2" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-gray-600 mr-2" />
-                            )}
-                            <span className="font-semibold text-gray-800">{unit}</span>
+                <div className="p-6 bg-white">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {topics.map(topic => (
+                      <div
+                        key={topic.knowledge_point_id}
+                        className={`p-4 rounded-lg border-2 transition-all hover:shadow-md ${getAccuracyBgColor(topic.correct_rate)}`}
+                      >
+                        {/* Topic Header */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1 mr-2">
+                            <div className="text-sm font-bold text-gray-900 mb-1 line-clamp-2">
+                              {topic.topic}
+                            </div>
+                            <div className="text-xs text-gray-600 space-y-0.5">
+                              {topic.unit && <div>单元: {topic.unit}</div>}
+                              {topic.lesson && <div>课时: {topic.lesson}</div>}
+                            </div>
                           </div>
-                        </button>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${getAccuracyColor(topic.correct_rate)}`}>
+                            {topic.correct_rate.toFixed(0)}%
+                          </span>
+                        </div>
 
-                        {/* Lesson Level */}
-                        {expandedUnits.has(unitKey) && (
-                          <div className="bg-gray-50">
-                            {Object.entries(lessons).map(([lesson, topics]) => {
-                              const lessonKey = `${volume}-${unit}-${lesson}`;
-                              return (
-                                <div key={lessonKey} className="border-t border-gray-200">
-                                  <button
-                                    onClick={() => toggleLesson(lessonKey)}
-                                    className="w-full p-4 hover:bg-gray-100 transition-colors flex items-center justify-between"
-                                  >
-                                    <div className="flex items-center">
-                                      {expandedLessons.has(lessonKey) ? (
-                                        <ChevronDown className="w-4 h-4 text-gray-600 mr-2" />
-                                      ) : (
-                                        <ChevronRight className="w-4 h-4 text-gray-600 mr-2" />
-                                      )}
-                                      <span className="font-medium text-gray-700">{lesson}</span>
-                                    </div>
-                                  </button>
-
-                                  {/* Topics Grid */}
-                                  {expandedLessons.has(lessonKey) && (
-                                    <div className="p-4 bg-white grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                      {topics.map(topic => (
-                                        <div
-                                          key={topic.knowledge_point_id}
-                                          className={`p-4 rounded-lg border-2 ${getAccuracyBgColor(topic.correct_rate)} transition-all hover:shadow-md`}
-                                        >
-                                          <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-medium text-gray-900 line-clamp-1">
-                                              {topic.topic}
-                                            </span>
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getAccuracyColor(topic.correct_rate)}`}>
-                                              {topic.correct_rate.toFixed(0)}%
-                                            </span>
-                                          </div>
-                                          <div className="text-xs text-gray-600">
-                                            练习 {topic.attempt_count} 次
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                        {/* Stats */}
+                        <div className="flex items-center justify-between text-xs text-gray-600 pt-2 border-t border-gray-200">
+                          <span>练习 {topic.attempt_count} 次</span>
+                          <span className="font-medium">
+                            {topic.correct_rate >= 80 ? '✓ 已掌握' : topic.correct_rate >= 60 ? '进步中' : '需加强'}
+                          </span>
+                        </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

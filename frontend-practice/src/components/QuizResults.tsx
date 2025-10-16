@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, Award, Zap, Brain, Star, MessageSquare, Loader2, RotateCcw, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, Award, Zap, Brain, Star, MessageSquare, Loader2, RotateCcw } from 'lucide-react';
 import { Subject, PracticeSession, QuizQuestion } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import TimeAnalysisChart from './TimeAnalysisChart';
@@ -12,8 +12,6 @@ import KnowledgePointTree from './results/KnowledgePointTree';
 import LearningSuggestions from './results/LearningSuggestions';
 import QuickActionsGrid from './results/QuickActionsGrid';
 import QuizPerformanceComparison from './results/QuizPerformanceComparison';
-import ProgressTrendChart from './charts/ProgressTrendChart';
-import KnowledgePointHeatmap from './charts/KnowledgePointHeatmap';
 
 interface QuizResultsProps {
   subject?: Subject;
@@ -79,7 +77,7 @@ export default function QuizResults({
   const [expandedVolumes, setExpandedVolumes] = useState<Set<string>>(new Set());
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'overview' | 'detailed' | 'suggestions' | 'charts'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'detailed' | 'suggestions'>('overview');
   const [typeDistribution, setTypeDistribution] = useState<{
     distribution: Array<{
       type: string;
@@ -106,27 +104,6 @@ export default function QuizResults({
   }>({});
   const [performanceLoading, setPerformanceLoading] = useState(false);
   const [showPerformanceForQuiz, setShowPerformanceForQuiz] = useState<string | null>(null);
-
-  // Chart data state
-  const [progressTrendData, setProgressTrendData] = useState<Array<{
-    date: string;
-    total_questions: number;
-    correct_count: number;
-    accuracy: number;
-  }> | null>(null);
-  const [progressTrendLoading, setProgressTrendLoading] = useState(false);
-  const [progressTrendTimeFrame, setProgressTrendTimeFrame] = useState<'7d' | '30d' | 'all'>('30d');
-
-  const [heatmapData, setHeatmapData] = useState<Array<{
-    knowledge_point_id: string;
-    volume: string | null;
-    unit: string | null;
-    lesson: string | null;
-    topic: string;
-    correct_rate: number;
-    attempt_count: number;
-  }> | null>(null);
-  const [heatmapLoading, setHeatmapLoading] = useState(false);
 
   // Use API hook to get knowledge points
   const { data: knowledgePoints, loading: knowledgePointsLoading } = useKnowledgePoints(subject?.id || session.subjectId);
@@ -155,69 +132,6 @@ export default function QuizResults({
         });
     }
   }, [session.id]);
-
-  // Fetch chart data when charts tab is active
-  useEffect(() => {
-    if (activeTab === 'charts') {
-      // Fetch progress trend data
-      if (!progressTrendData) {
-        setProgressTrendLoading(true);
-        api.analytics.getProgressTrend({
-          timeFrame: progressTrendTimeFrame,
-          subjectId: subject?.id || session.subjectId
-        })
-          .then(response => {
-            if (response.success && response.data) {
-              setProgressTrendData(response.data);
-            }
-          })
-          .catch(error => {
-            console.error('Error fetching progress trend:', error);
-          })
-          .finally(() => {
-            setProgressTrendLoading(false);
-          });
-      }
-
-      // Fetch heatmap data
-      if (!heatmapData) {
-        setHeatmapLoading(true);
-        api.analytics.getKnowledgePointHeatmap(subject?.id || session.subjectId)
-          .then(response => {
-            if (response.success && response.data) {
-              setHeatmapData(response.data);
-            }
-          })
-          .catch(error => {
-            console.error('Error fetching knowledge point heatmap:', error);
-          })
-          .finally(() => {
-            setHeatmapLoading(false);
-          });
-      }
-    }
-  }, [activeTab, progressTrendTimeFrame, progressTrendData, heatmapData, subject?.id, session.subjectId]);
-
-  // Refetch progress trend when time frame changes
-  const handleTimeFrameChange = (newTimeFrame: '7d' | '30d' | 'all') => {
-    setProgressTrendTimeFrame(newTimeFrame);
-    setProgressTrendLoading(true);
-    api.analytics.getProgressTrend({
-      timeFrame: newTimeFrame,
-      subjectId: subject?.id || session.subjectId
-    })
-      .then(response => {
-        if (response.success && response.data) {
-          setProgressTrendData(response.data);
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching progress trend:', error);
-      })
-      .finally(() => {
-        setProgressTrendLoading(false);
-      });
-  };
 
   // Local calculation fallback
   const calculateLocalTypeDistribution = () => {
@@ -810,7 +724,6 @@ export default function QuizResults({
               {[
                 { id: 'overview', label: '总览分析', icon: TrendingUp },
                 { id: 'detailed', label: '详细分析', icon: BookOpen },
-                { id: 'charts', label: '我的图表数据报告', icon: BarChart3 },
                 { id: 'suggestions', label: '学习建议', icon: Brain }
               ].map(tab => {
                 const TabIcon = tab.icon;
@@ -1088,46 +1001,6 @@ export default function QuizResults({
                 />
               )}
 
-              {activeTab === 'charts' && (
-                <div className="space-y-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center tracking-wide">
-                    <BarChart3 className="w-6 h-6 text-purple-500 mr-3" />
-                    我的图表数据报告
-                  </h3>
-
-                  {/* Progress Trend Chart */}
-                  {progressTrendLoading ? (
-                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 flex items-center justify-center">
-                      <Loader2 className="w-8 h-8 text-blue-600 animate-spin mr-3" />
-                      <span className="text-gray-600">加载学习进度趋势...</span>
-                    </div>
-                  ) : progressTrendData ? (
-                    <ProgressTrendChart
-                      data={progressTrendData}
-                      timeFrame={progressTrendTimeFrame}
-                      onTimeFrameChange={handleTimeFrameChange}
-                    />
-                  ) : (
-                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
-                      <p className="text-gray-500">暂无学习进度数据</p>
-                    </div>
-                  )}
-
-                  {/* Knowledge Point Heatmap */}
-                  {heatmapLoading ? (
-                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 flex items-center justify-center">
-                      <Loader2 className="w-8 h-8 text-purple-600 animate-spin mr-3" />
-                      <span className="text-gray-600">加载知识点掌握热力图...</span>
-                    </div>
-                  ) : heatmapData ? (
-                    <KnowledgePointHeatmap data={heatmapData} />
-                  ) : (
-                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
-                      <p className="text-gray-500">暂无知识点数据</p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
