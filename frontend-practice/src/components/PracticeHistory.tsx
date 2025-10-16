@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, RotateCcw, Trash2, ChevronRight, ChevronDown, Layers, Eye, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, RotateCcw, Trash2, ChevronRight, ChevronDown, Layers, Eye, BarChart3, X } from 'lucide-react';
 import { Subject, PracticeHistory as PracticeHistoryType, PracticeSession } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import PracticeSessionDetailsModal from './PracticeSessionDetailsModal';
