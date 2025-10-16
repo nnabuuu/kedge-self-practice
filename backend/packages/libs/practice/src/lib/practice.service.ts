@@ -1338,7 +1338,7 @@ export class PracticeService {
       }
 
       // Load the EXACT same questions using stored quiz_ids
-      const quizzes = await this.quizRepository.getQuizzesByIds(session.quiz_ids);
+      const quizzes = await this.quizService.getQuizzesByIds(session.quiz_ids);
 
       // Load previous answers
       const answers = await this.practiceRepository.getAnswersBySessionId(sessionId);

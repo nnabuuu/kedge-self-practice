@@ -693,4 +693,182 @@ describe('PracticeService - Answer Submission', () => {
       });
     });
   });
+
+  describe('Session Quiz Data Consistency', () => {
+    const sessionId = '123e4567-e89b-12d3-a456-426614174000';
+    const userId = '123e4567-e89b-12d3-a456-426614174002';
+    const quizIds = ['quiz-1', 'quiz-2', 'quiz-3'];
+
+    const mockQuizzes = [
+      {
+        id: 'quiz-1',
+        type: 'single-choice',
+        question: 'Question 1',
+        options: ['A', 'B', 'C', 'D'],
+        answer: '0',
+      },
+      {
+        id: 'quiz-2',
+        type: 'fill-in-the-blank',
+        question: 'Question 2',
+        answer: ['Answer'],
+      },
+      {
+        id: 'quiz-3',
+        type: 'multiple-choice',
+        question: 'Question 3',
+        options: ['A', 'B', 'C', 'D'],
+        answer: [0, 1],
+      },
+    ];
+
+    const mockSession = {
+      id: sessionId,
+      user_id: userId,
+      status: 'in_progress',
+      quiz_ids: quizIds,
+      answered_questions: 1,
+      total_questions: 3,
+      last_question_index: 1,
+    };
+
+    const mockRepository = {
+      getSession: jest.fn(),
+      getAnswersBySessionId: jest.fn(),
+      updateSessionStatus: jest.fn(),
+    };
+
+    const mockQuizServiceImpl = {
+      getQuizzesByIds: jest.fn(),
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return quiz data from quizService.getQuizzesByIds in resumeSession', async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PracticeService,
+          {
+            provide: PracticeRepository,
+            useValue: mockRepository,
+          },
+          {
+            provide: QuizService,
+            useValue: mockQuizServiceImpl,
+          },
+          {
+            provide: QuizRepository,
+            useValue: {},
+          },
+          {
+            provide: PersistentService,
+            useValue: {},
+          },
+          {
+            provide: GptService,
+            useValue: {},
+          },
+        ],
+      }).compile();
+
+      const service = module.get<PracticeService>(PracticeService);
+
+      mockRepository.getSession.mockResolvedValue(mockSession);
+      mockRepository.getAnswersBySessionId.mockResolvedValue([
+        { quiz_id: 'quiz-1', user_answer: '0', is_correct: true },
+      ]);
+      mockQuizServiceImpl.getQuizzesByIds.mockResolvedValue(mockQuizzes);
+
+      const result = await service.resumeSession(sessionId, userId);
+
+      // Verify quizService.getQuizzesByIds was called with correct quiz IDs
+      expect(mockQuizServiceImpl.getQuizzesByIds).toHaveBeenCalledWith(quizIds);
+      expect(mockQuizServiceImpl.getQuizzesByIds).toHaveBeenCalledTimes(1);
+
+      // Verify the returned data structure matches other session endpoints
+      expect(result).toEqual({
+        session: mockSession,
+        quizzes: mockQuizzes,
+        submittedAnswers: expect.any(Array),
+        currentQuestionIndex: 1,
+      });
+    });
+
+    it('should use quizService consistently across createSession, startSession, and resumeSession', async () => {
+      // This test documents the consistency requirement:
+      // All session endpoints should use quizService.getQuizzesByIds()
+      // to ensure quiz data (including options format) is identical
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PracticeService,
+          {
+            provide: PracticeRepository,
+            useValue: {
+              ...mockRepository,
+              createSession: jest.fn().mockResolvedValue(mockSession),
+              updateSessionStatus: jest.fn(),
+              getAnswersForSession: jest.fn().mockResolvedValue([]),
+            },
+          },
+          {
+            provide: QuizService,
+            useValue: {
+              ...mockQuizServiceImpl,
+              getRandomQuizzesByKnowledgePoints: jest.fn().mockResolvedValue(mockQuizzes),
+            },
+          },
+          {
+            provide: QuizRepository,
+            useValue: {},
+          },
+          {
+            provide: PersistentService,
+            useValue: {},
+          },
+          {
+            provide: GptService,
+            useValue: {},
+          },
+        ],
+      }).compile();
+
+      const service = module.get<PracticeService>(PracticeService);
+      const quizService = module.get<QuizService>(QuizService);
+
+      // Test startSession - should use quizService
+      // Note: startSession requires status 'pending'
+      const practiceRepo = module.get(PracticeRepository);
+      (practiceRepo as any).getSession.mockResolvedValue({
+        ...mockSession,
+        status: 'pending',
+      });
+      (practiceRepo as any).updateSessionStatus.mockResolvedValue({
+        ...mockSession,
+        status: 'in_progress',
+      });
+      (practiceRepo as any).getAnswersForSession.mockResolvedValue([]);
+      mockQuizServiceImpl.getQuizzesByIds.mockResolvedValue(mockQuizzes);
+
+      const startResult = await service.startSession(sessionId, userId);
+      expect(quizService.getQuizzesByIds).toHaveBeenCalled();
+      expect(startResult.quizzes).toEqual(mockQuizzes);
+
+      jest.clearAllMocks();
+
+      // Test resumeSession - should also use quizService
+      (practiceRepo as any).getSession.mockResolvedValue(mockSession);
+      (practiceRepo as any).getAnswersBySessionId.mockResolvedValue([]);
+      mockQuizServiceImpl.getQuizzesByIds.mockResolvedValue(mockQuizzes);
+
+      const resumeResult = await service.resumeSession(sessionId, userId);
+      expect(quizService.getQuizzesByIds).toHaveBeenCalled();
+      expect(resumeResult.quizzes).toEqual(mockQuizzes);
+
+      // Both should return identical quiz data format
+      expect(startResult.quizzes).toEqual(resumeResult.quizzes);
+    });
+  });
 });
