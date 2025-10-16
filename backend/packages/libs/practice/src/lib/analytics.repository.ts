@@ -621,7 +621,6 @@ export class AnalyticsRepository {
     subjectId?: string;
   }): Promise<Array<{
     knowledge_point_id: string;
-    name: string;
     volume: string | null;
     unit: string | null;
     lesson: string | null;
@@ -639,8 +638,7 @@ export class AnalyticsRepository {
         : sql.fragment``;
 
       const query = sql.type(z.object({
-        knowledge_point_id: z.string().uuid(),
-        name: z.string(),
+        knowledge_point_id: z.string(),
         volume: z.string().nullable(),
         unit: z.string().nullable(),
         lesson: z.string().nullable(),
@@ -650,7 +648,6 @@ export class AnalyticsRepository {
       }))`
         SELECT
           kp.id AS knowledge_point_id,
-          kp.name,
           kp.volume,
           kp.unit,
           kp.lesson,
@@ -668,7 +665,7 @@ export class AnalyticsRepository {
         WHERE ps.user_id = ${userId}
           AND ps.status = 'completed'
           ${subjectFilter}
-        GROUP BY kp.id, kp.name, kp.volume, kp.unit, kp.lesson, kp.topic
+        GROUP BY kp.id, kp.volume, kp.unit, kp.lesson, kp.topic
         ORDER BY kp.volume, kp.unit, kp.lesson, kp.topic
       `;
 

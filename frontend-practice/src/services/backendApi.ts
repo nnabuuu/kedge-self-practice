@@ -996,7 +996,6 @@ class BackendApiService {
     subjectId?: string
   ): Promise<ApiResponse<Array<{
     knowledge_point_id: string;
-    name: string;
     volume: string | null;
     unit: string | null;
     lesson: string | null;
@@ -1011,7 +1010,6 @@ class BackendApiService {
 
     const response = await this.makeRequest<Array<{
       knowledge_point_id: string;
-      name: string;
       volume: string | null;
       unit: string | null;
       lesson: string | null;

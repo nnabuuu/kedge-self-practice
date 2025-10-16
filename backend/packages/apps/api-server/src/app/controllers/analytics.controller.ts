@@ -512,8 +512,7 @@ export class AnalyticsController {
           items: {
             type: 'object',
             properties: {
-              knowledge_point_id: { type: 'string', format: 'uuid' },
-              name: { type: 'string' },
+              knowledge_point_id: { type: 'string' },
               volume: { type: 'string', nullable: true },
               unit: { type: 'string', nullable: true },
               lesson: { type: 'string', nullable: true },

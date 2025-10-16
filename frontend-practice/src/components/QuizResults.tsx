@@ -119,7 +119,6 @@ export default function QuizResults({
 
   const [heatmapData, setHeatmapData] = useState<Array<{
     knowledge_point_id: string;
-    name: string;
     volume: string | null;
     unit: string | null;
     lesson: string | null;

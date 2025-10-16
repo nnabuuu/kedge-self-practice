@@ -3,7 +3,6 @@ import { Target, ChevronRight, ChevronDown } from 'lucide-react';
 
 interface KnowledgePointData {
   knowledge_point_id: string;
-  name: string;
   volume: string | null;
   unit: string | null;
   lesson: string | null;
