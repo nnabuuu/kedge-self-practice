@@ -102,8 +102,8 @@ export default function QuizResults({
       total_attempts: number;
     };
   }>({});
-  const [performanceLoading, setPerformanceLoading] = useState(false);
-  const [showPerformanceForQuiz, setShowPerformanceForQuiz] = useState<string | null>(null);
+  const [performanceLoading, setPerformanceLoading] = useState<Set<string>>(new Set());
+  const [expandedPerformanceQuizzes, setExpandedPerformanceQuizzes] = useState<Set<string>>(new Set());
 
   // Use API hook to get knowledge points
   const { data: knowledgePoints, loading: knowledgePointsLoading } = useKnowledgePoints(subject?.id || session.subjectId);
@@ -864,19 +864,24 @@ export default function QuizResults({
                               {/* Question Card - Clickable header */}
                               <button
                                 onClick={async () => {
-                                  if (showPerformanceForQuiz === question.id) {
-                                    setShowPerformanceForQuiz(null);
+                                  // Toggle expansion
+                                  if (expandedPerformanceQuizzes.has(question.id)) {
+                                    setExpandedPerformanceQuizzes(prev => {
+                                      const next = new Set(prev);
+                                      next.delete(question.id);
+                                      return next;
+                                    });
                                     return;
                                   }
 
                                   // Check if we already have the data
                                   if (performanceComparisons[question.id]) {
-                                    setShowPerformanceForQuiz(question.id);
+                                    setExpandedPerformanceQuizzes(prev => new Set(prev).add(question.id));
                                     return;
                                   }
 
                                   // Fetch performance comparison
-                                  setPerformanceLoading(true);
+                                  setPerformanceLoading(prev => new Set(prev).add(question.id));
                                   try {
                                     const response = await api.practice.getQuizPerformanceComparison(
                                       question.id,
@@ -890,16 +895,20 @@ export default function QuizResults({
                                         ...prev,
                                         [question.id]: data
                                       }));
-                                      setShowPerformanceForQuiz(question.id);
+                                      setExpandedPerformanceQuizzes(prev => new Set(prev).add(question.id));
                                     }
                                   } catch (error) {
                                     console.error('Failed to fetch performance comparison:', error);
                                   } finally {
-                                    setPerformanceLoading(false);
+                                    setPerformanceLoading(prev => {
+                                      const next = new Set(prev);
+                                      next.delete(question.id);
+                                      return next;
+                                    });
                                   }
                                 }}
                                 className={`w-full text-left p-4 transition-all duration-200 ${
-                                  showPerformanceForQuiz === question.id
+                                  expandedPerformanceQuizzes.has(question.id)
                                     ? 'bg-purple-50'
                                     : 'hover:bg-gray-50'
                                 }`}
@@ -931,11 +940,11 @@ export default function QuizResults({
                                     </div>
                                   </div>
                                   <div className="ml-4">
-                                    {performanceLoading && showPerformanceForQuiz === question.id ? (
+                                    {performanceLoading.has(question.id) ? (
                                       <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
                                     ) : (
                                       <span className="text-purple-600 text-sm">
-                                        {showPerformanceForQuiz === question.id ? '收起' : '查看对比'}
+                                        {expandedPerformanceQuizzes.has(question.id) ? '收起' : '查看对比'}
                                       </span>
                                     )}
                                   </div>
@@ -943,7 +952,7 @@ export default function QuizResults({
                               </button>
 
                               {/* Inline Performance Comparison - Shows directly below the question */}
-                              {showPerformanceForQuiz === question.id && performanceComparisons[question.id] && (
+                              {expandedPerformanceQuizzes.has(question.id) && performanceComparisons[question.id] && (
                                 <div className="border-t border-gray-200 bg-white p-4">
                                   <QuizPerformanceComparison
                                     quizId={performanceComparisons[question.id].quiz_id}
