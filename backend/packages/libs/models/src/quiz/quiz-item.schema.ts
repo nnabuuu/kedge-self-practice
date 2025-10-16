@@ -36,6 +36,8 @@ export const QuizItemSchema = z.object({
   tags: z.array(z.string()).optional(),
   // Knowledge point ID this quiz is associated with
   knowledge_point_id: z.string().nullable().optional(),
+  // Subject ID this quiz belongs to (e.g., 'history', 'biology')
+  subject_id: z.string().optional(),
   // Alternative correct answers for fill-in-the-blank questions
   alternative_answers: z.array(z.string()).optional().default([]),
   // Educational explanation shown when student answers incorrectly
