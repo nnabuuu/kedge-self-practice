@@ -267,14 +267,53 @@ export default function QuizResults({
         const stat = statsMap.get(kpId);
         if (stat) {
           stat.total++;
-          
-          if (question.type === 'multiple-choice') {
-            if (session.answers[index] === question.answer) {
+
+          // Check if answer is correct based on question type
+          const userAnswer = session.answers[index];
+
+          if (question.type === 'single-choice') {
+            // Single choice: compare letter answers
+            if (userAnswer === question.answer) {
+              stat.correct++;
+            }
+          } else if (question.type === 'multiple-choice') {
+            // Multiple choice: compare arrays
+            const correctAnswers = Array.isArray(question.answer) ? question.answer : [];
+            const userAnswers = Array.isArray(userAnswer) ? userAnswer : [];
+            if (userAnswers.length === correctAnswers.length &&
+                userAnswers.every((a: string) => correctAnswers.includes(a))) {
+              stat.correct++;
+            }
+          } else if (question.type === 'fill-in-the-blank') {
+            // Fill-in-blank: compare arrays with alternative answers support
+            const correctAnswers = Array.isArray(question.answer) ? question.answer : [question.answer];
+            const userAnswers = Array.isArray(userAnswer) ? userAnswer : [];
+            const alternativeAnswers = question.alternativeAnswers || [];
+
+            const isCorrect = userAnswers.every((ans: string, idx: number) => {
+              const normalizedUserAns = ans?.trim().toLowerCase() || '';
+              const normalizedCorrectAns = String(correctAnswers[idx]).trim().toLowerCase();
+
+              if (normalizedUserAns === normalizedCorrectAns) return true;
+
+              // Check alternatives
+              const positionSpecific = alternativeAnswers
+                .filter((alt: string) => alt.startsWith(`[${idx}]`))
+                .map((alt: string) => alt.replace(`[${idx}]`, '').trim().toLowerCase());
+
+              const general = alternativeAnswers
+                .filter((alt: string) => !alt.includes('['))
+                .map((alt: string) => alt.trim().toLowerCase());
+
+              return positionSpecific.includes(normalizedUserAns) || general.includes(normalizedUserAns);
+            });
+
+            if (isCorrect) {
               stat.correct++;
             }
           } else if (question.type === 'essay') {
             // 问答题暂时按回答了就算正确
-            if (session.answers[index] !== null && session.answers[index]?.trim() !== '') {
+            if (userAnswer !== null && userAnswer?.trim() !== '') {
               stat.correct++;
             }
           }
