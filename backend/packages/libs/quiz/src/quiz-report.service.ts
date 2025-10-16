@@ -208,9 +208,9 @@ export class QuizReportService {
     const summaryQuery = `
       WITH report_summary AS (
         SELECT
-          q.id as quiz_id,
-          q.question,
-          q.type as quiz_type,
+          r.quiz_id,
+          COALESCE(q.question, '[已删除的题目]') as question,
+          COALESCE(q.type, 'unknown') as quiz_type,
           q.knowledge_point_id,
           COUNT(DISTINCT r.id) as total_reports,
           COUNT(DISTINCT r.user_id) as unique_reporters,
@@ -219,10 +219,10 @@ export class QuizReportService {
           ARRAY_AGG(DISTINCT r.report_type) as report_types,
           MAX(r.created_at) as last_reported_at,
           MAX(r.resolved_at) as last_resolved_at
-        FROM kedge_practice.quizzes q
-        INNER JOIN kedge_practice.quiz_reports r ON q.id = r.quiz_id
+        FROM kedge_practice.quiz_reports r
+        LEFT JOIN kedge_practice.quizzes q ON q.id = r.quiz_id
         ${whereClause}
-        GROUP BY q.id, q.question, q.type, q.knowledge_point_id
+        GROUP BY r.quiz_id, q.question, q.type, q.knowledge_point_id
       )
       SELECT
         rs.*,
