@@ -153,21 +153,29 @@ export class AnalyticsRepository {
           GROUP BY q.id, q.question, q.type, q.answer, q.options, q.knowledge_point_id, kp.topic
           HAVING COUNT(pa.id) >= ${minAttempts}
         ),
+        wrong_answer_counts AS (
+          SELECT
+            pa.quiz_id,
+            pa.user_answer::text AS answer,
+            COUNT(*) AS answer_count
+          FROM kedge_practice.practice_answers pa
+          WHERE pa.is_correct = false
+          GROUP BY pa.quiz_id, pa.user_answer::text
+        ),
         wrong_answer_stats AS (
           SELECT
-            qs.quiz_id,
+            wac.quiz_id,
             json_agg(
               json_build_object(
-                'answer', pa.user_answer::text,
-                'count', COUNT(*),
-                'percentage', ROUND(100.0 * COUNT(*) / NULLIF(qs.incorrect_attempts, 0), 2)
+                'answer', wac.answer,
+                'count', wac.answer_count,
+                'percentage', ROUND(100.0 * wac.answer_count / NULLIF(qs.incorrect_attempts, 0), 2)
               )
-              ORDER BY COUNT(*) DESC
+              ORDER BY wac.answer_count DESC
             ) AS wrong_answer_distribution
-          FROM quiz_stats qs
-          INNER JOIN kedge_practice.practice_answers pa ON pa.quiz_id = qs.quiz_id
-          WHERE pa.is_correct = false
-          GROUP BY qs.quiz_id, qs.incorrect_attempts
+          FROM wrong_answer_counts wac
+          INNER JOIN quiz_stats qs ON wac.quiz_id = qs.quiz_id
+          GROUP BY wac.quiz_id
         )
         SELECT
           qs.*,
