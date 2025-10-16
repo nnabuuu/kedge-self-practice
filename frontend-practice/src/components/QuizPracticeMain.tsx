@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { QuizQuestion } from '../types/quiz';
 import { api } from '../services/api';
 import ReportModal from './ReportModal';
-import { Eye } from 'lucide-react';
+import { Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast, ToastContainer } from './Toast';
 
 import {
@@ -785,12 +785,30 @@ export default function QuizPractice({
                   </div>
                 )
               ) : (
-                <button
-                  onClick={handleContinue}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  {currentQuestionIndex < questions.length - 1 ? '继续' : '结束练习'}
-                </button>
+                // After answering: show Previous and Next/Continue buttons
+                <>
+                  <button
+                    onClick={handleNavigateToPrevious}
+                    disabled={currentQuestionIndex === 0}
+                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    上一题
+                  </button>
+                  <button
+                    onClick={handleContinue}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                  >
+                    {currentQuestionIndex < questions.length - 1 ? (
+                      <>
+                        下一题
+                        <ChevronRight className="w-4 h-4" />
+                      </>
+                    ) : (
+                      '结束练习'
+                    )}
+                  </button>
+                </>
               )}
             </div>
           </div>
