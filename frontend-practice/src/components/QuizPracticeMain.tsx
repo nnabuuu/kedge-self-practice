@@ -790,30 +790,29 @@ export default function QuizPractice({
                   <button
                     onClick={handleNavigateToPrevious}
                     disabled={currentQuestionIndex === 0}
-                    className="w-36 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-medium shadow-lg hover:shadow-xl relative"
+                    className="w-36 h-12 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-medium shadow-lg hover:shadow-xl relative"
                   >
                     <ChevronLeft className="w-5 h-5 absolute left-3" />
                     <span>上一题</span>
                   </button>
-                  <button
-                    onClick={handleContinue}
-                    className="w-36 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex flex-col items-center justify-center text-lg font-medium shadow-lg hover:shadow-xl relative"
-                  >
-                    {currentQuestionIndex < questions.length - 1 ? (
-                      <>
-                        <span className="relative">
-                          下一题
-                          <ChevronRight className="w-5 h-5 absolute -right-7 top-1/2 -translate-y-1/2" />
-                        </span>
-                        <span className="text-xs opacity-70 font-normal mt-0.5">(回车键)</span>
-                      </>
-                    ) : (
-                      <>
+                  <div className="flex flex-col items-center gap-1">
+                    <button
+                      onClick={handleContinue}
+                      className="w-36 h-12 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center text-lg font-medium shadow-lg hover:shadow-xl relative"
+                    >
+                      {currentQuestionIndex < questions.length - 1 ? (
+                        <>
+                          <span className="relative">
+                            下一题
+                            <ChevronRight className="w-5 h-5 absolute -right-7 top-1/2 -translate-y-1/2" />
+                          </span>
+                        </>
+                      ) : (
                         <span>结束练习</span>
-                        <span className="text-xs opacity-70 font-normal mt-0.5">(回车键)</span>
-                      </>
-                    )}
-                  </button>
+                      )}
+                    </button>
+                    <span className="text-xs text-gray-500">(回车键)</span>
+                  </div>
                 </>
               )}
             </div>
