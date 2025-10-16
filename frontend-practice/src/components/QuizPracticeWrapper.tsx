@@ -131,32 +131,44 @@ export default function QuizPracticeWrapper({
       console.log('Session response:', sessionResponse);
 
       if (sessionResponse.success && sessionResponse.data) {
-        // Check if response has session object or direct quiz_ids
-        const session = sessionResponse.data.session || sessionResponse.data;
-        const sessionQuizIds = session.quiz_ids || [];
-        console.log('Session quiz IDs:', sessionQuizIds);
+        // The GET endpoint now returns full session data including quizzes and answers
+        const { session, quizzes, submittedAnswers, currentQuestionIndex } = sessionResponse.data;
 
-        // Fetch the actual questions using the quiz IDs
-        if (sessionQuizIds.length > 0) {
-          console.log('Fetching batch questions for IDs:', sessionQuizIds);
-          const questionsResponse = await api.questions.getBatch(sessionQuizIds);
-          console.log('Batch questions response:', questionsResponse);
+        console.log('[QuizPracticeWrapper] Session data from GET:', {
+          quizzesCount: quizzes?.length,
+          submittedAnswersCount: submittedAnswers?.length,
+          currentQuestionIndex
+        });
 
-          if (questionsResponse.success && questionsResponse.data) {
-            console.log('Setting questions:', questionsResponse.data);
-            // Log questions with hints for debugging
-            questionsResponse.data.forEach((q: any, idx: number) => {
-              if (q.type === 'fill-in-the-blank' && q.hints) {
-                console.log(`Question ${idx} hints:`, q.hints);
+        if (quizzes && quizzes.length > 0) {
+          console.log('[QuizPracticeWrapper] Setting questions from GET response:', quizzes.length);
+          setQuestions(quizzes);
+
+          // Convert backend answer objects to frontend answer array format
+          let mappedAnswers: any[] | undefined;
+          if (submittedAnswers && submittedAnswers.length > 0) {
+            console.log('[QuizPracticeWrapper] Processing submitted answers:', submittedAnswers);
+
+            mappedAnswers = new Array(quizzes.length).fill(null);
+            submittedAnswers.forEach((answerObj: any) => {
+              // Find the index of this quiz_id in the quizzes array
+              const questionIndex = quizzes.findIndex((q: any) => q.id === answerObj.quiz_id);
+              if (questionIndex >= 0) {
+                mappedAnswers[questionIndex] = answerObj.user_answer;
               }
             });
-            setQuestions(questionsResponse.data);
-          } else {
-            console.error('Failed to load questions:', questionsResponse);
-            setError('Failed to load practice questions');
+            console.log('[QuizPracticeWrapper] Mapped answers:', mappedAnswers);
+          }
+
+          // Store resume data for QuizPracticeMain to use
+          if (mappedAnswers || currentQuestionIndex !== undefined) {
+            setResumeData({
+              submittedAnswers: mappedAnswers || [],
+              currentQuestionIndex: currentQuestionIndex || 0
+            });
           }
         } else {
-          console.error('No quiz IDs found in session');
+          console.error('No quizzes found in session');
           setError('No questions found in practice session');
         }
       } else {
