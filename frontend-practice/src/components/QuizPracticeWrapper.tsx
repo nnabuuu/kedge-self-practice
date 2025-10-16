@@ -87,6 +87,8 @@ export default function QuizPracticeWrapper({
           // Convert backend answer objects to frontend answer array format
           // Backend: [{quiz_id, user_answer, is_correct}, ...]
           // Frontend: [answer1, answer2, ...] indexed by question position
+          // Note: Backend stores answers as indices (0,1,2) for single/multiple choice
+          //       Frontend displays them as letters (A,B,C)
           let mappedAnswers: any[] | undefined;
           if (actualData.submittedAnswers && actualData.submittedAnswers.length > 0) {
             console.log('[QuizPracticeWrapper] Raw submitted answers from backend:', actualData.submittedAnswers);
@@ -103,9 +105,38 @@ export default function QuizPracticeWrapper({
               // Find the index of this quiz_id in the quizzes array
               const questionIndex = actualData.quizzes.findIndex((q: any) => q.id === answerObj.quiz_id);
               if (questionIndex >= 0) {
-                // user_answer from JSONB column should already be parsed by slonik
-                // Just use it directly
-                mappedAnswers[questionIndex] = answerObj.user_answer;
+                const question = actualData.quizzes[questionIndex];
+                let convertedAnswer = answerObj.user_answer;
+
+                // Convert backend format to frontend format based on question type
+                if (question.type === 'single-choice') {
+                  // Backend stores "0", "1", "2", etc. - convert to "A", "B", "C"
+                  const answerIndex = parseInt(convertedAnswer, 10);
+                  if (!isNaN(answerIndex)) {
+                    convertedAnswer = String.fromCharCode(65 + answerIndex); // 65 is 'A'
+                  }
+                } else if (question.type === 'multiple-choice') {
+                  // Backend stores "0,1,2" - convert to ["A", "B", "C"]
+                  const indices = convertedAnswer.split(',').map((s: string) => s.trim());
+                  convertedAnswer = indices.map((idx: string) => {
+                    const num = parseInt(idx, 10);
+                    return !isNaN(num) ? String.fromCharCode(65 + num) : idx;
+                  });
+                } else if (question.type === 'fill-in-the-blank') {
+                  // Backend stores "answer1|||answer2|||answer3" - convert to array
+                  if (typeof convertedAnswer === 'string' && convertedAnswer.includes('|||')) {
+                    convertedAnswer = convertedAnswer.split('|||');
+                  } else if (!Array.isArray(convertedAnswer)) {
+                    convertedAnswer = [convertedAnswer];
+                  }
+                }
+
+                mappedAnswers[questionIndex] = convertedAnswer;
+                console.log(`[QuizPracticeWrapper] Converted answer for question ${questionIndex}:`, {
+                  original: answerObj.user_answer,
+                  converted: convertedAnswer,
+                  type: question.type
+                });
               }
             });
             console.log('[QuizPracticeWrapper] Mapped answers to positions:', mappedAnswers);
@@ -145,6 +176,8 @@ export default function QuizPracticeWrapper({
           setQuestions(quizzes);
 
           // Convert backend answer objects to frontend answer array format
+          // Note: Backend stores answers as indices (0,1,2) for single/multiple choice
+          //       Frontend displays them as letters (A,B,C)
           let mappedAnswers: any[] | undefined;
           if (submittedAnswers && submittedAnswers.length > 0) {
             console.log('[QuizPracticeWrapper] Processing submitted answers:', submittedAnswers);
@@ -154,7 +187,38 @@ export default function QuizPracticeWrapper({
               // Find the index of this quiz_id in the quizzes array
               const questionIndex = quizzes.findIndex((q: any) => q.id === answerObj.quiz_id);
               if (questionIndex >= 0) {
-                mappedAnswers[questionIndex] = answerObj.user_answer;
+                const question = quizzes[questionIndex];
+                let convertedAnswer = answerObj.user_answer;
+
+                // Convert backend format to frontend format based on question type
+                if (question.type === 'single-choice') {
+                  // Backend stores "0", "1", "2", etc. - convert to "A", "B", "C"
+                  const answerIndex = parseInt(convertedAnswer, 10);
+                  if (!isNaN(answerIndex)) {
+                    convertedAnswer = String.fromCharCode(65 + answerIndex); // 65 is 'A'
+                  }
+                } else if (question.type === 'multiple-choice') {
+                  // Backend stores "0,1,2" - convert to ["A", "B", "C"]
+                  const indices = convertedAnswer.split(',').map((s: string) => s.trim());
+                  convertedAnswer = indices.map((idx: string) => {
+                    const num = parseInt(idx, 10);
+                    return !isNaN(num) ? String.fromCharCode(65 + num) : idx;
+                  });
+                } else if (question.type === 'fill-in-the-blank') {
+                  // Backend stores "answer1|||answer2|||answer3" - convert to array
+                  if (typeof convertedAnswer === 'string' && convertedAnswer.includes('|||')) {
+                    convertedAnswer = convertedAnswer.split('|||');
+                  } else if (!Array.isArray(convertedAnswer)) {
+                    convertedAnswer = [convertedAnswer];
+                  }
+                }
+
+                mappedAnswers[questionIndex] = convertedAnswer;
+                console.log(`[QuizPracticeWrapper] Converted answer for question ${questionIndex}:`, {
+                  original: answerObj.user_answer,
+                  converted: convertedAnswer,
+                  type: question.type
+                });
               }
             });
             console.log('[QuizPracticeWrapper] Mapped answers:', mappedAnswers);
