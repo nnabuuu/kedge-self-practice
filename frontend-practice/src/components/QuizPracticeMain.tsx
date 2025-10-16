@@ -294,6 +294,12 @@ export default function QuizPractice({
       answerText = question.answer[0];
     }
 
+    // Check if answer is already a letter (A, B, C, D, etc.)
+    // This happens after backend conversion in convertQuiz()
+    if (answerText && answerText.length === 1 && /^[A-Z]$/i.test(answerText)) {
+      return answerText.toUpperCase();
+    }
+
     // Find which option matches the answer text
     const answerIndex = question.options.findIndex(opt => opt === answerText);
 
