@@ -58,14 +58,27 @@ export class PracticeController {
     private readonly strategyService: StrategyService
   ) {}
 
+  /**
+   * Create a new practice session.
+   *
+   * This endpoint immediately creates a session with status=in_progress and returns
+   * the full session data including all quiz questions. The session is ready to practice
+   * immediately - no need to call a separate start endpoint.
+   *
+   * Returns:
+   * - session: Session metadata with status=in_progress
+   * - quizzes: All quiz questions for this session
+   * - submittedAnswers: Empty array (no answers yet)
+   * - currentQuestionIndex: 0 (start from first question)
+   */
   @Post('sessions/create')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new practice session' })
-  @ApiResponse({ 
-    status: HttpStatus.CREATED, 
+  @ApiOperation({ summary: 'Create a new practice session (returns session with quiz data, ready to practice)' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
     description: 'Practice session created successfully',
-    type: PracticeSessionResponseDto 
+    type: PracticeSessionResponseDto
   })
   async createSession(
     @Request() req: AuthenticatedRequest,
@@ -76,15 +89,22 @@ export class PracticeController {
     return await this.practiceService.createSession(userId, createSessionDto);
   }
 
+  /**
+   * @deprecated This endpoint is deprecated. Use POST /sessions/create which now returns the session with quiz data immediately.
+   * Kept for backward compatibility only.
+   */
   @Post('sessions/:sessionId/start')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Start a practice session' })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiOperation({
+    summary: 'Start a practice session (DEPRECATED: Use POST /sessions/create instead)',
+    deprecated: true
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Practice session started',
-    type: PracticeSessionResponseDto 
+    type: PracticeSessionResponseDto
   })
   async startSession(
     @Request() req: AuthenticatedRequest,
@@ -129,9 +149,16 @@ export class PracticeController {
     return await this.practiceService.pauseSession(pauseSessionDto.session_id, userId);
   }
 
+  /**
+   * @deprecated This endpoint is deprecated. Use GET /sessions/:sessionId to retrieve session data instead.
+   * This follows standard REST conventions. Kept for backward compatibility only.
+   */
   @Post('sessions/resume')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Resume a paused practice session (during active practice)' })
+  @ApiOperation({
+    summary: 'Resume a paused practice session (DEPRECATED: Use GET /sessions/:sessionId instead)',
+    deprecated: true
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Session resumed',
@@ -171,14 +198,27 @@ export class PracticeController {
     return await this.practiceService.completeSession(completeSessionDto.session_id, userId);
   }
 
+  /**
+   * Standard REST endpoint for retrieving session data.
+   * Can be used to:
+   * - Resume an incomplete session (continue from where you left off)
+   * - Review a completed session
+   * - Get current state of an active session
+   *
+   * Returns the full session object including:
+   * - session: Session metadata (status, timestamps, configuration)
+   * - quizzes: All quiz questions for this session
+   * - submittedAnswers: Previously submitted answers (if any)
+   * - currentQuestionIndex: Position to resume from
+   */
   @Get('sessions/:sessionId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get practice session details with all questions' })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiOperation({ summary: 'Get practice session details with questions and answers (use this to resume sessions)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Practice session details with questions',
-    type: PracticeSessionResponseDto 
+    type: PracticeSessionResponseDto
   })
   async getSession(
     @Request() req: AuthenticatedRequest,

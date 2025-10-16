@@ -198,43 +198,33 @@ export default function QuizPracticeWrapper({
       };
 
       console.log('Creating session with config:', sessionConfig);
-      
-      // Create the session
+
+      // Create the session - now returns session with quiz data immediately
       const createResponse = await api.practice.createSession(sessionConfig);
       console.log('Create session response:', createResponse);
-      
+
       if (createResponse.success && createResponse.data) {
-        // The response contains a 'session' object with the session details
+        // The response now contains session object AND quiz data
         const session = createResponse.data.session;
+        const quizzes = createResponse.data.quizzes || [];
         const sessionId = session?.id;
-        
+
         if (!sessionId) {
           console.error('No session ID in create response:', createResponse.data);
           setError('Failed to create practice session - no session ID');
           return;
         }
-        
+
         console.log('Created session with ID:', sessionId);
+        console.log('Session created with quizzes:', quizzes.length);
         setCurrentSessionId(sessionId); // Save the session ID
 
-        // Start the session to get quiz data
-        const startResponse = await api.practice.startSession(sessionId);
-        console.log('Start session response:', startResponse);
-
-        if (startResponse.success && startResponse.data) {
-          const quizzes = startResponse.data.quizzes || [];
-          console.log('Session started with quizzes:', quizzes);
-
-          if (quizzes.length > 0) {
-            // Set the questions from the start response
-            setQuestions(quizzes);
-          } else {
-            console.log('No questions found for the selected criteria');
-            setError('没有找到符合条件的题目');
-          }
+        if (quizzes.length > 0) {
+          // Set the questions from the create response
+          setQuestions(quizzes);
         } else {
-          console.error('Failed to start session:', startResponse.error);
-          setError('Failed to start practice session');
+          console.log('No questions found for the selected criteria');
+          setError('没有找到符合条件的题目');
         }
       } else {
         setError('Failed to create practice session');

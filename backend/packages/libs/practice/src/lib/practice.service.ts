@@ -96,7 +96,7 @@ export class PracticeService {
     // Extract quiz IDs
     const quizIds = finalQuizzes.map(quiz => quiz.id || uuidv4());
 
-    // Create session with quiz IDs
+    // Create session with quiz IDs - immediately set to in_progress
     const session = await this.practiceRepository.createSession(
       sessionId,
       userId,
@@ -110,42 +110,45 @@ export class PracticeService {
       }
     );
 
-    // Return only session info - quiz data will be fetched when session is started
-    return {
-      session,
-      quizzes: [], // Empty array - frontend should call startSession to get quiz data
-      submittedAnswers: [],
-      currentQuestionIndex: 0
-    };
-  }
-
-  async startSession(sessionId: string, userId: string): Promise<PracticeSessionResponse> {
-    const session = await this.practiceRepository.getSession(sessionId, userId);
-    
-    if (!session) {
-      throw new NotFoundException('Practice session not found');
-    }
-    
-    if (session.status !== 'pending') {
-      throw new BadRequestException(`Session cannot be started from status: ${session.status}`);
-    }
-
-    const updatedSession = await this.practiceRepository.updateSessionStatus(
+    // Immediately update status to in_progress and set started_at
+    const startedSession = await this.practiceRepository.updateSessionStatus(
       sessionId,
       userId,
       'in_progress',
       { started_at: true }
     );
 
-    // Fetch the actual quiz items from the quiz service
-    const quizzes = await this.quizService.getQuizzesByIds(updatedSession.quiz_ids);
+    // Return full session with quiz data - ready to practice
+    return {
+      session: startedSession,
+      quizzes: finalQuizzes,
+      submittedAnswers: [],
+      currentQuestionIndex: 0
+    };
+  }
+
+  /**
+   * @deprecated This endpoint is deprecated. Sessions are now created with in_progress status.
+   * Use createSession() which now returns the session ready to practice.
+   * This method is kept for backward compatibility only.
+   */
+  async startSession(sessionId: string, userId: string): Promise<PracticeSessionResponse> {
+    // Just return the session data - createSession already started it
+    const session = await this.practiceRepository.getSession(sessionId, userId);
+
+    if (!session) {
+      throw new NotFoundException('Practice session not found');
+    }
+
+    // Fetch the quiz items and answers
+    const quizzes = await this.quizService.getQuizzesByIds(session.quiz_ids);
     const submittedAnswers = await this.practiceRepository.getAnswersForSession(sessionId);
 
     return {
-      session: updatedSession,
+      session,
       quizzes,
       submittedAnswers: [...submittedAnswers] as any,
-      currentQuestionIndex: 0 // New session always starts at 0
+      currentQuestionIndex: session.last_question_index || 0
     };
   }
 

@@ -761,6 +761,10 @@ class BackendApiService {
     return response;
   }
 
+  /**
+   * @deprecated Backend endpoint is deprecated. Use createPracticeSession() which now returns
+   * session with quiz data immediately. This method is kept for backward compatibility only.
+   */
   async startPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[], submittedAnswers: any[], currentQuestionIndex: number}>> {
 
     const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[], submittedAnswers: any[], currentQuestionIndex: number}>(`/practice/sessions/${sessionId}/start`, {
