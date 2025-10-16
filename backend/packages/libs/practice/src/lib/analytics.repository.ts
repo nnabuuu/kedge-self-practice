@@ -9,6 +9,7 @@ const QuizErrorRateSchema = z.object({
   quiz_text: z.string(),
   quiz_type: z.string(),
   correct_answer: z.string(),
+  answer_index: z.array(z.number()).nullable(),
   options: z.any().nullable(),
   knowledge_point_id: z.string().nullable(),
   knowledge_point_name: z.string().nullable(),
@@ -136,6 +137,7 @@ export class AnalyticsRepository {
             q.question AS quiz_text,
             q.type AS quiz_type,
             q.answer::text AS correct_answer,
+            q.answer_index,
             q.options,
             q.knowledge_point_id,
             kp.topic AS knowledge_point_name,
@@ -150,7 +152,7 @@ export class AnalyticsRepository {
           LEFT JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
           INNER JOIN kedge_practice.practice_answers pa ON pa.quiz_id = q.id
           WHERE ${whereClause}
-          GROUP BY q.id, q.question, q.type, q.answer, q.options, q.knowledge_point_id, kp.topic
+          GROUP BY q.id, q.question, q.type, q.answer, q.answer_index, q.options, q.knowledge_point_id, kp.topic
           HAVING COUNT(pa.id) >= ${minAttempts}
         ),
         wrong_answer_counts AS (
