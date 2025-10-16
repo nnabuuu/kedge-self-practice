@@ -211,9 +211,11 @@ export default function QuizPractice({
     // Load saved answer if exists
     if (hasBeenAnswered) {
       // Show result if question was already answered
+      console.log('[loadAnswerForQuestion] Question has been answered, setting showResult=true, savedAnswer:', savedAnswer);
       setShowResult(true);
 
       if (targetQuestion.type === 'single-choice') {
+        console.log('[loadAnswerForQuestion] Setting selectedAnswer for single-choice:', savedAnswer);
         setSelectedAnswer(savedAnswer);
       } else if (targetQuestion.type === 'multiple-choice') {
         setSelectedMultipleAnswers(Array.isArray(savedAnswer) ? savedAnswer : []);
@@ -224,6 +226,7 @@ export default function QuizPractice({
       }
     } else {
       // Question not yet answered
+      console.log('[loadAnswerForQuestion] Question not answered yet, setting showResult=false');
       setShowResult(false);
     }
   };
@@ -280,39 +283,80 @@ export default function QuizPractice({
     });
   };
 
-  // Get correct answer letter for single choice
-  const getCorrectAnswerLetter = (question: QuizQuestion) => {
-    if (!question.options || !Array.isArray(question.options)) {
-      return '';
+  /**
+   * Get correct answer INDEX for single choice questions.
+   * STANDARD: Use indices (numbers) as single source of truth, not letters.
+   * Returns: 0 for A, 1 for B, 2 for C, etc.
+   */
+  const getCorrectAnswerIndex = (question: QuizQuestion): number => {
+    // Primary: Use answer_index if available
+    if (question.answer_index && Array.isArray(question.answer_index) && question.answer_index.length > 0) {
+      const index = question.answer_index[0];
+      console.log('[getCorrectAnswerIndex] ✅ Using answer_index:', index);
+      return index;
     }
 
-    // Get the answer text
-    let answerText = '';
+    // Fallback 1: If answer is a letter, convert to index
+    let answerValue = '';
     if (typeof question.answer === 'string') {
-      answerText = question.answer;
+      answerValue = question.answer;
     } else if (Array.isArray(question.answer) && question.answer.length > 0) {
-      answerText = question.answer[0];
+      answerValue = question.answer[0];
     }
 
-    // Check if answer is already a letter (A, B, C, D, etc.)
-    // This happens after backend conversion in convertQuiz()
-    if (answerText && answerText.length === 1 && /^[A-Z]$/i.test(answerText)) {
-      return answerText.toUpperCase();
+    if (answerValue && /^[A-Z]$/i.test(answerValue)) {
+      const index = answerValue.toUpperCase().charCodeAt(0) - 65;
+      console.log('[getCorrectAnswerIndex] ⚠️ Converted letter to index:', answerValue, '→', index);
+      return index;
     }
 
-    // Find which option matches the answer text
-    const answerIndex = question.options.findIndex(opt => opt === answerText);
-
-    // Convert index to letter (0 -> A, 1 -> B, etc.)
-    if (answerIndex >= 0) {
-      return String.fromCharCode(65 + answerIndex);
+    // Fallback 2: If answer is option text, find it in options
+    if (question.options && Array.isArray(question.options)) {
+      const index = question.options.findIndex(opt => opt === answerValue);
+      if (index >= 0) {
+        console.log('[getCorrectAnswerIndex] ⚠️ Found answer in options at index:', index);
+        return index;
+      }
     }
 
-    // If answer_index is provided, use that
-    if (question.answer_index && question.answer_index.length > 0) {
-      return String.fromCharCode(65 + question.answer_index[0]);
+    console.error('[getCorrectAnswerIndex] ❌ Could not determine correct answer index!', {
+      answer: question.answer,
+      answer_index: question.answer_index,
+      options: question.options
+    });
+    return -1;
+  };
+
+  /**
+   * Get user's selected answer INDEX.
+   * Converts letter format to index.
+   */
+  const getSelectedAnswerIndex = (answer: string | null): number => {
+    if (!answer) return -1;
+
+    // If it's a letter, convert to index
+    if (answer.length === 1 && /^[A-Z]$/i.test(answer)) {
+      const index = answer.toUpperCase().charCodeAt(0) - 65;
+      return index;
     }
 
+    // If it's already a number string, parse it
+    const parsed = parseInt(answer, 10);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
+
+    return -1;
+  };
+
+  /**
+   * Legacy function for backward compatibility - converts index to letter for display.
+   */
+  const getCorrectAnswerLetter = (question: QuizQuestion): string => {
+    const index = getCorrectAnswerIndex(question);
+    if (index >= 0) {
+      return String.fromCharCode(65 + index);
+    }
     return '';
   };
 
@@ -734,16 +778,30 @@ export default function QuizPractice({
             )}
 
             {/* Render answer options based on type */}
-            {isSingleChoice && !isFillInBlank && currentQuestion.options && (
-              <SingleChoiceQuestion
-                question={currentQuestion}
-                selectedAnswer={selectedAnswer}
-                showResult={showResult}
-                onAnswerSelect={handleSingleChoiceSelect}
-                getCorrectAnswerLetter={getCorrectAnswerLetter}
-                isAnswerCorrect={isAnswerCorrect}
-              />
-            )}
+            {isSingleChoice && !isFillInBlank && currentQuestion.options && (() => {
+              const correctIndex = getCorrectAnswerIndex(currentQuestion);
+              const selectedIndex = getSelectedAnswerIndex(selectedAnswer);
+              const correctLetter = String.fromCharCode(65 + correctIndex);
+              console.log('[QuizPracticeMain] Rendering SingleChoiceQuestion:', {
+                questionId: currentQuestion.id,
+                selectedAnswer_letter: selectedAnswer,
+                selectedAnswer_index: selectedIndex,
+                correctAnswer_letter: correctLetter,
+                correctAnswer_index: correctIndex,
+                showResult,
+                matches: selectedIndex === correctIndex
+              });
+              return (
+                <SingleChoiceQuestion
+                  question={currentQuestion}
+                  selectedAnswer={selectedAnswer}
+                  showResult={showResult}
+                  onAnswerSelect={handleSingleChoiceSelect}
+                  getCorrectAnswerLetter={getCorrectAnswerLetter}
+                  isAnswerCorrect={isAnswerCorrect}
+                />
+              );
+            })()}
 
             {isMultipleChoice && currentQuestion.options && (
               <MultipleChoiceQuestion
