@@ -255,12 +255,20 @@ export default function QuizPractice({
     }
   };
 
-  // Jump to working question
+  // Jump to first unanswered question
   const handleJumpToWorking = () => {
     saveCurrentAnswer();
-    setViewingQuestionIndex(workingQuestionIndex);
-    setCurrentQuestionIndex(workingQuestionIndex);
-    loadAnswerForQuestion(workingQuestionIndex);
+
+    // Find the first unanswered question
+    const firstUnansweredIndex = answers.findIndex(answer => answer === null || answer === undefined);
+
+    // If all questions are answered, go to the last question
+    const targetIndex = firstUnansweredIndex !== -1 ? firstUnansweredIndex : questions.length - 1;
+
+    setViewingQuestionIndex(targetIndex);
+    setCurrentQuestionIndex(targetIndex);
+    setWorkingQuestionIndex(targetIndex);
+    loadAnswerForQuestion(targetIndex);
   };
 
   // End practice
@@ -518,18 +526,83 @@ export default function QuizPractice({
     );
   };
 
-  // Render question with images
+  // Render question with inline images (replaces {{img:N}} placeholders)
   const renderQuestionWithImages = (text: string, images?: string[]) => {
+    if (!text) return null;
+
+    // Handle different image placeholder formats
+    // Format 1: {{img:0}}, {{img:1}}, etc. (index-based)
+    // Format 2: {{image:uuid}} (UUID-based)
+
+    const parts = text.split(/(\{\{(?:img|image):[^}]+\}\})/g);
+
     return (
       <>
-        <span>{text}</span>
-        {images && images.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-4">
-            {images.map((url, index) => (
-              <img key={index} src={url} alt={`图片 ${index + 1}`} className="max-w-sm rounded-lg shadow-md" />
-            ))}
-          </div>
-        )}
+        {parts.map((part, index) => {
+          // Check if this part is an image placeholder
+          const imgMatch = part.match(/\{\{(?:img|image):([^}]+)\}\}/);
+
+          if (imgMatch) {
+            const imageRef = imgMatch[1];
+            let imageUrl: string | undefined;
+
+            // Check if it's an index (number)
+            if (/^\d+$/.test(imageRef)) {
+              const imageIndex = parseInt(imageRef);
+              imageUrl = images?.[imageIndex];
+            } else {
+              // It's a UUID or filename, construct the URL
+              // Check if it's already a full URL
+              if (imageRef.startsWith('http') || imageRef.startsWith('/')) {
+                imageUrl = imageRef;
+              } else {
+                // Use the simplified attachment API: /attachments/:fileId
+                const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.endsWith('/v1')
+                  ? import.meta.env.VITE_API_BASE_URL
+                  : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8718'}/v1`;
+
+                const hasExtension = /\.\w+$/.test(imageRef);
+                const fileId = hasExtension ? imageRef : `${imageRef}.png`;
+                imageUrl = `${API_BASE_URL}/attachments/${fileId}`;
+              }
+            }
+
+            if (imageUrl) {
+              // Add JWT token to image URL if needed for authentication
+              const token = localStorage.getItem('jwt_token');
+              const authenticatedUrl = token && imageUrl.includes('/attachments/')
+                ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+                : imageUrl;
+
+              return (
+                <div key={index} className="my-3">
+                  <img
+                    src={authenticatedUrl}
+                    alt={`Quiz image ${imageRef}`}
+                    className="max-w-full h-auto rounded-lg shadow-md"
+                    onError={(e) => {
+                      // Fallback for broken images
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y0ZjRmNCIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBub3QgYXZhaWxhYmxlPC90ZXh0Pgo8L3N2Zz4=';
+                      target.alt = 'Image not available';
+                    }}
+                  />
+                </div>
+              );
+            } else {
+              // No image URL available, show placeholder
+              return (
+                <div key={index} className="my-3 p-4 bg-gray-100 rounded-lg text-gray-500 text-sm">
+                  图片加载失败: {imageRef}
+                </div>
+              );
+            }
+          } else {
+            // Regular text
+            return <span key={index}>{part}</span>;
+          }
+        })}
       </>
     );
   };

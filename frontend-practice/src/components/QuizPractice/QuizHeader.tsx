@@ -37,6 +37,11 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
   onShowReportModal,
   renderHintButton
 }) => {
+  // Find the first unanswered question
+  const firstUnansweredIndex = answers.findIndex(answer => answer === null || answer === undefined);
+  const hasUnansweredQuestions = firstUnansweredIndex !== -1;
+  const isAtFirstUnanswered = viewingQuestionIndex === firstUnansweredIndex;
+
   const getQuestionTypeLabel = () => {
     switch (currentQuestion.type) {
       case 'single-choice': return '单选';
@@ -84,14 +89,20 @@ export const QuizHeader: React.FC<QuizHeaderProps> = ({
             </button>
 
             <button
-              onClick={viewingQuestionIndex !== workingQuestionIndex ? onJumpToWorking : undefined}
-              disabled={viewingQuestionIndex === workingQuestionIndex}
+              onClick={!isAtFirstUnanswered && hasUnansweredQuestions ? onJumpToWorking : undefined}
+              disabled={isAtFirstUnanswered || !hasUnansweredQuestions}
               className={`px-2 py-1.5 transition-all duration-300 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none border-x border-gray-200 ${
-                viewingQuestionIndex === workingQuestionIndex
+                isAtFirstUnanswered || !hasUnansweredQuestions
                   ? 'text-gray-400 cursor-not-allowed'
                   : 'text-gray-600 hover:text-blue-600'
               }`}
-              title={viewingQuestionIndex !== workingQuestionIndex ? `返回当前题 (第${workingQuestionIndex + 1}题)` : '当前题'}
+              title={
+                !hasUnansweredQuestions
+                  ? '已完成所有题目'
+                  : isAtFirstUnanswered
+                    ? '已在首个未答题'
+                    : `回到首个未答题 (第${firstUnansweredIndex + 1}题)`
+              }
             >
               <Home className="w-4 h-4" />
             </button>
