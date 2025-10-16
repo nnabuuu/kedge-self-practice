@@ -608,20 +608,23 @@ export default function QuizResults({
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-400/8 rounded-full blur-3xl"></div>
       </div>
 
+      {/* Sticky Header - Always visible at top */}
+      {(onReturnToMenu || onBackToHome) && (
+        <div className="sticky top-0 z-50 bg-gradient-to-br from-slate-50/95 via-blue-50/95 to-indigo-100/95 backdrop-blur-md border-b border-white/20 shadow-lg">
+          <div className="max-w-6xl mx-auto px-6 py-4">
+            <button
+              onClick={onReturnToMenu || onBackToHome}
+              className="group flex items-center text-gray-700 hover:text-gray-900 transition-all duration-300 ease-out bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-4 py-2 rounded-xl hover:bg-white/90 shadow-lg hover:shadow-xl border-2 border-transparent hover:border-gray-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
+              <span className="font-medium tracking-wide">返回菜单</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="relative z-10 p-6">
         <div className="max-w-6xl mx-auto">
-          {/* Header - 统一样式 */}
-          {(onReturnToMenu || onBackToHome) && (
-            <div className="flex items-center justify-between mb-8">
-              <button
-                onClick={onReturnToMenu || onBackToHome}
-                className="group flex items-center text-gray-700 hover:text-gray-900 transition-all duration-300 ease-out bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-4 py-2 rounded-xl hover:bg-white/90 shadow-lg hover:shadow-xl border-2 border-transparent hover:border-gray-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
-                <span className="font-medium tracking-wide">返回菜单</span>
-              </button>
-            </div>
-          )}
 
           {/* Title Section - 客观展示结果 */}
           <PerformanceSummaryCard
