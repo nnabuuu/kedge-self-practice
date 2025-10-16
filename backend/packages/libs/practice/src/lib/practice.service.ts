@@ -110,9 +110,10 @@ export class PracticeService {
       }
     );
 
+    // Return only session info - quiz data will be fetched when session is started
     return {
       session,
-      quizzes: finalQuizzes,
+      quizzes: [], // Empty array - frontend should call startSession to get quiz data
       submittedAnswers: [],
       currentQuestionIndex: 0
     };

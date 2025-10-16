@@ -216,26 +216,25 @@ export default function QuizPracticeWrapper({
         
         console.log('Created session with ID:', sessionId);
         setCurrentSessionId(sessionId); // Save the session ID
-        
-        // The create response already includes the quizzes
-        const quizzes = createResponse.data.quizzes || [];
-        console.log('Session created with quizzes:', quizzes);
-        
-        if (quizzes.length > 0) {
-          // Start the session
-          const startResponse = await api.practice.startSession(sessionId);
-          console.log('Start session response:', startResponse);
-          
-          if (startResponse.success) {
-            // Set the questions directly from the create response
+
+        // Start the session to get quiz data
+        const startResponse = await api.practice.startSession(sessionId);
+        console.log('Start session response:', startResponse);
+
+        if (startResponse.success && startResponse.data) {
+          const quizzes = startResponse.data.quizzes || [];
+          console.log('Session started with quizzes:', quizzes);
+
+          if (quizzes.length > 0) {
+            // Set the questions from the start response
             setQuestions(quizzes);
           } else {
-            console.error('Failed to start session:', startResponse.error);
-            setError('Failed to start practice session');
+            console.log('No questions found for the selected criteria');
+            setError('没有找到符合条件的题目');
           }
         } else {
-          console.log('No questions found for the selected criteria');
-          setError('没有找到符合条件的题目');
+          console.error('Failed to start session:', startResponse.error);
+          setError('Failed to start practice session');
         }
       } else {
         setError('Failed to create practice session');
