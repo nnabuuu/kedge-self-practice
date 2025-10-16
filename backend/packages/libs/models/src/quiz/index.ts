@@ -9,3 +9,6 @@ export * from './quiz-item.schema';
 
 // Quiz report types
 export * from './quiz-report.schema';
+
+// Quiz API types
+export * from './quiz-api.schema';

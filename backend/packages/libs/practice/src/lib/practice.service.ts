@@ -113,7 +113,8 @@ export class PracticeService {
     return {
       session,
       quizzes: finalQuizzes,
-      answers: []
+      submittedAnswers: [],
+      currentQuestionIndex: 0
     };
   }
 
@@ -137,12 +138,13 @@ export class PracticeService {
 
     // Fetch the actual quiz items from the quiz service
     const quizzes = await this.quizService.getQuizzesByIds(updatedSession.quiz_ids);
-    const answers = await this.practiceRepository.getAnswersForSession(sessionId);
+    const submittedAnswers = await this.practiceRepository.getAnswersForSession(sessionId);
 
     return {
       session: updatedSession,
       quizzes,
-      answers: [...answers] as any
+      submittedAnswers: [...submittedAnswers] as any,
+      currentQuestionIndex: 0 // New session always starts at 0
     };
   }
 
@@ -470,12 +472,16 @@ export class PracticeService {
 
     // Fetch the actual quiz items and answers
     const quizzes = await this.quizService.getQuizzesByIds(session.quiz_ids);
-    const answers = await this.practiceRepository.getAnswersForSession(sessionId);
+    const submittedAnswers = await this.practiceRepository.getAnswersForSession(sessionId);
+
+    // Determine current position based on answered questions
+    const currentQuestionIndex = session.last_question_index || submittedAnswers.length;
 
     return {
       session,
       quizzes,
-      answers: [...answers] as any
+      submittedAnswers: [...submittedAnswers] as any,
+      currentQuestionIndex
     };
   }
 
@@ -778,7 +784,8 @@ export class PracticeService {
     return {
       session,
       quizzes,
-      answers: []
+      submittedAnswers: [],
+      currentQuestionIndex: 0
     };
   }
 
@@ -1310,8 +1317,8 @@ export class PracticeService {
    */
   async resumeSession(sessionId: string, userId: string): Promise<{
     session: PracticeSession;
-    questions: QuizItem[];
-    previousAnswers: any[];
+    quizzes: QuizItem[];
+    submittedAnswers: any[];
     currentQuestionIndex: number;
   }> {
     try {
@@ -1331,7 +1338,7 @@ export class PracticeService {
       }
 
       // Load the EXACT same questions using stored quiz_ids
-      const questions = await this.quizRepository.getQuizzesByIds(session.quiz_ids);
+      const quizzes = await this.quizRepository.getQuizzesByIds(session.quiz_ids);
 
       // Load previous answers
       const answers = await this.practiceRepository.getAnswersBySessionId(sessionId);
@@ -1351,8 +1358,8 @@ export class PracticeService {
 
       return {
         session,
-        questions,
-        previousAnswers: answers,
+        quizzes,
+        submittedAnswers: answers,
         currentQuestionIndex: currentIndex
       };
     } catch (error) {

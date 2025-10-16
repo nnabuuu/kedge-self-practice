@@ -16,20 +16,21 @@ import {
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { QuizService, EnhancedQuizStorageService, AttachmentMetadata } from '@kedge/quiz';
-import { QuizItemSchema, QuizWithKnowledgePointSchema, QuizWithKnowledgePoint, QuizItem } from '@kedge/models';
+import {
+  QuizItemSchema,
+  QuizWithKnowledgePointSchema,
+  QuizWithKnowledgePoint,
+  QuizItem,
+  CreateQuizSchema,
+  CreateMultipleQuizzesSchema,
+  CreateQuizRequest,
+  CreateMultipleQuizzesRequest,
+} from '@kedge/models';
 import { z } from 'zod';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 
-const CreateQuizSchema = z.object({
-  quiz: QuizWithKnowledgePointSchema,
-});
-
-const CreateMultipleQuizzesSchema = z.object({
-  quizzes: z.array(QuizWithKnowledgePointSchema),
-});
-
-type CreateQuizDto = z.infer<typeof CreateQuizSchema>;
-type CreateMultipleQuizzesDto = z.infer<typeof CreateMultipleQuizzesSchema>;
+type CreateQuizDto = CreateQuizRequest;
+type CreateMultipleQuizzesDto = CreateMultipleQuizzesRequest;
 
 interface MulterFile {
   buffer: Buffer;

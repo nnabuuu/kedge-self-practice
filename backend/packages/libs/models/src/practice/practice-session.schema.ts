@@ -134,7 +134,8 @@ export const CompleteSessionSchema = z.object({
 export const PracticeSessionResponseSchema = z.object({
   session: PracticeSessionSchema,
   quizzes: z.array(z.any()), // Array of QuizItem from quiz service
-  answers: z.array(PracticeAnswerSchema).optional()
+  submittedAnswers: z.array(PracticeAnswerSchema).default([]), // User's submitted answers
+  currentQuestionIndex: z.number().int().default(0) // Current position in the quiz
 });
 
 export const PracticeStatisticsSchema = z.object({

@@ -14,25 +14,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { createZodDto } from 'nestjs-zod';
-import { z } from 'zod';
 import { AuthService, AuthRepository, JwtAuthGuard, AdminGuard } from '@kedge/auth';
-import { User, UserRole, UserRoleSchema } from '@kedge/models';
-
-const SignUpSchema = z.object({
-  name: z.string().nullable().optional(), // Name is optional
-  account_id: z.string().min(1), // Support any non-empty string as account ID
-  password: z.string(),
-  role: UserRoleSchema,
-  class: z.string().nullable().optional(), // Class is optional (required for students)
-});
+import { User, UserRole, SignUpSchema, SignInSchema } from '@kedge/models';
 
 export class SignUpDto extends createZodDto(SignUpSchema) {}
-
-const SignInSchema = z.object({
-  account_id: z.string().min(1), // Support any non-empty string as account ID
-  password: z.string(),
-});
-
 export class SignInDto extends createZodDto(SignInSchema) {}
 
 @Controller('auth')

@@ -32,7 +32,7 @@ export default function QuizPracticeWrapper({
   const [error, setError] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(practiceSessionId);
   const [resumeData, setResumeData] = useState<{
-    previousAnswers: any[];
+    submittedAnswers: any[];
     currentQuestionIndex: number;
   } | null>(null);
   const hasLoadedRef = React.useRef<string | null>(null);
@@ -74,25 +74,25 @@ export default function QuizPracticeWrapper({
         // Clear the cache after using it
         sessionStorage.removeItem('resumeSessionData');
 
-        // Unwrap double-wrapped response: {success, data: {questions, ...}}
+        // Unwrap double-wrapped response: {success, data: {quizzes, ...}}
         const actualData = resumeData.data || resumeData;
 
-        if (actualData.questions && actualData.questions.length > 0) {
-          console.log('[QuizPracticeWrapper] Loaded questions from resume data:', actualData.questions.length);
-          console.log('[QuizPracticeWrapper] Previous answers:', actualData.previousAnswers?.length);
+        if (actualData.quizzes && actualData.quizzes.length > 0) {
+          console.log('[QuizPracticeWrapper] Loaded questions from resume data:', actualData.quizzes.length);
+          console.log('[QuizPracticeWrapper] Submitted answers:', actualData.submittedAnswers?.length);
           console.log('[QuizPracticeWrapper] Current question index:', actualData.currentQuestionIndex);
 
-          setQuestions(actualData.questions);
+          setQuestions(actualData.quizzes);
 
           // Convert backend answer objects to frontend answer array format
           // Backend: [{quiz_id, user_answer, is_correct}, ...]
           // Frontend: [answer1, answer2, ...] indexed by question position
           let mappedAnswers: any[] | undefined;
-          if (actualData.previousAnswers && actualData.previousAnswers.length > 0) {
-            console.log('[QuizPracticeWrapper] Raw previous answers from backend:', actualData.previousAnswers);
+          if (actualData.submittedAnswers && actualData.submittedAnswers.length > 0) {
+            console.log('[QuizPracticeWrapper] Raw submitted answers from backend:', actualData.submittedAnswers);
 
-            mappedAnswers = new Array(actualData.questions.length).fill(null);
-            actualData.previousAnswers.forEach((answerObj: any, idx: number) => {
+            mappedAnswers = new Array(actualData.quizzes.length).fill(null);
+            actualData.submittedAnswers.forEach((answerObj: any, idx: number) => {
               console.log(`[QuizPracticeWrapper] Processing answer ${idx}:`, {
                 quiz_id: answerObj.quiz_id,
                 user_answer: answerObj.user_answer,
@@ -100,8 +100,8 @@ export default function QuizPracticeWrapper({
                 is_correct: answerObj.is_correct
               });
 
-              // Find the index of this quiz_id in the questions array
-              const questionIndex = actualData.questions.findIndex((q: any) => q.id === answerObj.quiz_id);
+              // Find the index of this quiz_id in the quizzes array
+              const questionIndex = actualData.quizzes.findIndex((q: any) => q.id === answerObj.quiz_id);
               if (questionIndex >= 0) {
                 // user_answer from JSONB column should already be parsed by slonik
                 // Just use it directly
@@ -114,7 +114,7 @@ export default function QuizPracticeWrapper({
           // Store resume data for QuizPracticeMain to use
           if (mappedAnswers || actualData.currentQuestionIndex !== undefined) {
             setResumeData({
-              previousAnswers: mappedAnswers || [],
+              submittedAnswers: mappedAnswers || [],
               currentQuestionIndex: actualData.currentQuestionIndex || 0
             });
           }

@@ -102,6 +102,15 @@ export {
   PracticeStrategyCode,
 } from './practice-session.schema';
 
+// Practice API exports
+export {
+  RecordMistakeSchema,
+  type RecordMistake,
+  RecordCorrectionSchema,
+  type RecordCorrection,
+  PracticeApiSchemas,
+} from './practice-api.schema';
+
 export const PracticeSchema = {
   KnowledgePoint: KnowledgePointSchema,
   // QuizItem is now in the quiz module - import from @kedge/models

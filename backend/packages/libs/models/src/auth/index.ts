@@ -20,3 +20,13 @@ export {
 } from './auth.repository.schema';
 
 export { JwtPayloadSchema } from './jwt-payload.schema';
+
+export {
+  SignUpSchema,
+  SignUpRequest,
+  SignInSchema,
+  SignInRequest,
+  AuthResponseSchema,
+  AuthResponse,
+  AuthApiSchemas,
+} from './auth-api.schema';

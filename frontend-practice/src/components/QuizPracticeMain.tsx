@@ -18,7 +18,7 @@ interface QuizPracticeProps {
   questions: QuizQuestion[];
   sessionId?: string;
   resumeData?: {
-    previousAnswers: any[];
+    submittedAnswers: any[];
     currentQuestionIndex: number;
   } | null;
   onEnd: (results: any) => void;
@@ -53,9 +53,9 @@ export default function QuizPractice({
   const [viewingQuestionIndex, setViewingQuestionIndex] = useState(resumeData?.currentQuestionIndex || 0);
   const [workingQuestionIndex, setWorkingQuestionIndex] = useState(resumeData?.currentQuestionIndex || 0);
   const [answers, setAnswers] = useState<any[]>(() => {
-    if (resumeData?.previousAnswers && resumeData.previousAnswers.length > 0) {
-      console.log('[QuizPracticeMain] Restoring previous answers:', resumeData.previousAnswers);
-      return resumeData.previousAnswers;
+    if (resumeData?.submittedAnswers && resumeData.submittedAnswers.length > 0) {
+      console.log('[QuizPracticeMain] Restoring submitted answers:', resumeData.submittedAnswers);
+      return resumeData.submittedAnswers;
     }
     return Array(questions.length).fill(null);
   });

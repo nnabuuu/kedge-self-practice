@@ -224,11 +224,11 @@ class BackendApiService {
   private convertKnowledgePoint(backendKP: BackendKnowledgePoint): KnowledgePoint {
     return {
       id: backendKP.id,
-      subject_id: 'history', // All current KPs are history
+      subjectId: 'history', // All current KPs are history
       volume: backendKP.volume || '',
       unit: backendKP.unit || '',
       lesson: backendKP.lesson || '',
-      sub: backendKP.sub || '', // Keep backend field name
+      section: backendKP.sub || '', // Backend uses 'sub' field
       topic: backendKP.topic || '',
     };
   }
@@ -561,11 +561,11 @@ class BackendApiService {
   // Create a knowledge point
   async createKnowledgePoint(knowledgePoint: Omit<KnowledgePoint, 'id'>): Promise<ApiResponse<KnowledgePoint>> {
     const backendKP = {
-      subject_id: knowledgePoint.subject_id,
+      subject_id: knowledgePoint.subjectId,
       volume: knowledgePoint.volume,
       unit: knowledgePoint.unit,
       lesson: knowledgePoint.lesson,
-      sub: knowledgePoint.sub,
+      sub: knowledgePoint.section,
       topic: knowledgePoint.topic,
     };
 
@@ -590,11 +590,11 @@ class BackendApiService {
   async updateKnowledgePoint(id: string, updates: Partial<KnowledgePoint>): Promise<ApiResponse<KnowledgePoint | null>> {
     const backendUpdates: any = {};
 
-    if (updates.subject_id !== undefined) backendUpdates.subject_id = updates.subject_id;
+    if (updates.subjectId !== undefined) backendUpdates.subject_id = updates.subjectId;
     if (updates.volume !== undefined) backendUpdates.volume = updates.volume;
     if (updates.unit !== undefined) backendUpdates.unit = updates.unit;
     if (updates.lesson !== undefined) backendUpdates.lesson = updates.lesson;
-    if (updates.sub !== undefined) backendUpdates.sub = updates.sub;
+    if (updates.section !== undefined) backendUpdates.sub = updates.section;
     if (updates.topic !== undefined) backendUpdates.topic = updates.topic;
 
     const response = await this.makeRequest<BackendKnowledgePoint>(`/knowledge-points/${id}`, {
@@ -696,7 +696,7 @@ class BackendApiService {
     show_answer_immediately?: boolean;
     quiz_types?: string[];
     question_type?: 'new-only' | 'with-wrong' | 'wrong-only';
-  }): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
+  }): Promise<ApiResponse<{session: any, quizzes: any[], submittedAnswers: any[], currentQuestionIndex: number}>> {
     
     const sessionData = {
       subject_id: config.subject_id,
@@ -715,7 +715,7 @@ class BackendApiService {
     console.log('Creating practice session with config:', sessionData);
     console.log('Quiz types being sent:', config.quiz_types);
 
-    const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>('/practice/sessions/create', {
+    const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[], submittedAnswers: any[], currentQuestionIndex: number}>('/practice/sessions/create', {
       method: 'POST',
       body: JSON.stringify(sessionData)
     });
@@ -738,9 +738,9 @@ class BackendApiService {
     return response;
   }
 
-  async startPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
-    
-    const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>(`/practice/sessions/${sessionId}/start`, {
+  async startPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[], submittedAnswers: any[], currentQuestionIndex: number}>> {
+
+    const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[], submittedAnswers: any[], currentQuestionIndex: number}>(`/practice/sessions/${sessionId}/start`, {
       method: 'POST'
     });
 
@@ -760,9 +760,9 @@ class BackendApiService {
     return response;
   }
 
-  async getPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[]}>> {
-    
-    const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[]}>(`/practice/sessions/${sessionId}`);
+  async getPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[], submittedAnswers: any[], currentQuestionIndex: number}>> {
+
+    const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[], submittedAnswers: any[], currentQuestionIndex: number}>(`/practice/sessions/${sessionId}`);
 
     
     // Convert the quizzes to frontend format
@@ -845,25 +845,37 @@ class BackendApiService {
   // Resume a practice session
   async resumePracticeSession(sessionId: string): Promise<ApiResponse<{
     session: any;
-    questions: any[];
-    previousAnswers: any[];
+    quizzes: any[];
+    submittedAnswers: any[];
     currentQuestionIndex: number;
   }>> {
     const response = await this.makeRequest<{
       session: any;
-      questions: any[];
-      previousAnswers: any[];
+      quizzes: any[];
+      submittedAnswers: any[];
       currentQuestionIndex: number;
     }>(`/practice/${sessionId}/resume`, {
       method: 'POST'
     });
 
+    // Convert the quizzes to frontend format
+    if (response.success && response.data && response.data.quizzes) {
+      const convertedQuizzes = response.data.quizzes.map(quiz => this.convertQuiz(quiz));
+      return {
+        ...response,
+        data: {
+          ...response.data,
+          quizzes: convertedQuizzes
+        }
+      };
+    }
+
     return response;
   }
 
   // Abandon a practice session
-  async abandonPracticeSession(sessionId: string): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.makeRequest<{ message: string }>(`/practice/${sessionId}/abandon`, {
+  async abandonPracticeSession(sessionId: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    const response = await this.makeRequest<{ success: boolean; message: string }>(`/practice/${sessionId}/abandon`, {
       method: 'POST'
     });
 

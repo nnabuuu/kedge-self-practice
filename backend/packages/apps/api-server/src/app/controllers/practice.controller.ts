@@ -33,19 +33,10 @@ import {
   PauseSessionSchema,
   ResumeSessionSchema,
   CompleteSessionSchema,
-  GeneratePracticeRequestSchema
+  GeneratePracticeRequestSchema,
+  RecordMistakeSchema,
+  RecordCorrectionSchema,
 } from '@kedge/models';
-import { z } from 'zod';
-
-const RecordMistakeSchema = z.object({
-  quiz_id: z.string().uuid(),
-  incorrect_answer: z.string(),
-  correct_answer: z.string(),
-});
-
-const RecordCorrectionSchema = z.object({
-  quiz_id: z.string().uuid(),
-});
 
 class CreatePracticeSessionDto extends createZodDto(CreatePracticeSessionSchema) {}
 class PracticeSessionDto extends createZodDto(PracticeSessionSchema) {}
@@ -155,8 +146,9 @@ export class PracticeController {
     const result = await this.practiceService.resumeSession(resumeSessionDto.session_id, userId);
     return {
       session: result.session,
-      quizzes: result.questions,
-      answers: result.previousAnswers
+      quizzes: result.quizzes,
+      submittedAnswers: result.submittedAnswers,
+      currentQuestionIndex: result.currentQuestionIndex
     };
   }
 
@@ -581,7 +573,7 @@ export class PracticeController {
   @ApiOperation({ summary: 'Resume an incomplete practice session' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Session resumed successfully with questions and previous answers',
+    description: 'Session resumed successfully with quizzes and previous answers',
   })
   async resumeSession(
     @Request() req: AuthenticatedRequest,
@@ -590,8 +582,8 @@ export class PracticeController {
     success: boolean;
     data: {
       session: any;
-      questions: any[];
-      previousAnswers: any[];
+      quizzes: any[];
+      submittedAnswers: any[];
       currentQuestionIndex: number;
     };
   }> {
