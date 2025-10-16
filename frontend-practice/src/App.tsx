@@ -18,6 +18,7 @@ import QuizResults from './components/QuizResults';
 import KnowledgeAnalysis from './components/KnowledgeAnalysis';
 import PracticeHistoryComponent from './components/PracticeHistory';
 import TeacherDashboard from './components/TeacherDashboard';
+import MyAnalytics from './components/MyAnalytics';
 
 interface QuizConfig {
   questionType: 'new' | 'with-wrong' | 'wrong-only';
@@ -29,17 +30,18 @@ interface QuizConfig {
   autoAdvanceDelay?: number; // Delay in seconds before auto-advancing to next question after correct answer (0 = disabled)
 }
 
-type Screen = 
+type Screen =
   | 'login'
-  | 'home' 
-  | 'subject-selection' 
-  | 'practice-menu' 
-  | 'knowledge-selection' 
-  | 'quiz-practice' 
+  | 'home'
+  | 'subject-selection'
+  | 'practice-menu'
+  | 'knowledge-selection'
+  | 'quiz-practice'
   | 'quiz-results'
   | 'knowledge-analysis'
   | 'practice-history'
-  | 'teacher-dashboard';
+  | 'teacher-dashboard'
+  | 'my-analytics';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
@@ -717,9 +719,10 @@ function App() {
       
       case 'home':
         return (
-          <HomePage 
+          <HomePage
             onStartPractice={handleStartPractice}
             onManagementCenter={handleManagementCenter} // Allow both teachers and students
+            onMyAnalytics={() => setCurrentScreen('my-analytics')}
             onLogout={handleLogout}
             currentUser={currentUser}
             userType={userType}
@@ -855,7 +858,15 @@ function App() {
             onBack={handleBack}
           />
         ) : null;
-      
+
+      case 'my-analytics':
+        return currentUser ? (
+          <MyAnalytics
+            onBack={() => setCurrentScreen('home')}
+            selectedSubject={selectedSubject}
+          />
+        ) : null;
+
       default:
         return (
           <LoginPage onLogin={handleLogin} />

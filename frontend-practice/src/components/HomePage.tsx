@@ -1,20 +1,22 @@
 import React from 'react';
-import { GraduationCap, TrendingUp, Award, Sparkles, ArrowRight, Target, Brain, Users, LogOut } from 'lucide-react';
+import { GraduationCap, TrendingUp, Award, Sparkles, ArrowRight, Target, Brain, Users, LogOut, BarChart3 } from 'lucide-react';
 
 interface HomePageProps {
   onStartPractice: () => void;
   onManagementCenter?: () => void;
+  onMyAnalytics?: () => void;
   onLogout: () => void;
   currentUser: any;
   userType: 'student' | 'teacher' | null;
 }
 
-export default function HomePage({ 
-  onStartPractice, 
-  onManagementCenter, 
-  onLogout, 
-  currentUser, 
-  userType 
+export default function HomePage({
+  onStartPractice,
+  onManagementCenter,
+  onMyAnalytics,
+  onLogout,
+  currentUser,
+  userType
 }: HomePageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50/80 via-blue-50/60 to-indigo-100/80 relative overflow-hidden">
@@ -50,6 +52,17 @@ export default function HomePage({
                   </div>
                 </div>
               </div>
+
+              {/* My Analytics Button - For students */}
+              {userType === 'student' && onMyAnalytics && (
+                <button
+                  onClick={onMyAnalytics}
+                  className="group flex items-center px-4 py-2 bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 ease-out shadow-lg hover:shadow-xl focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  <span className="font-medium tracking-wide">我的学习数据</span>
+                </button>
+              )}
 
               {/* Management Center Button - Available for both teachers and students */}
               {onManagementCenter && (
