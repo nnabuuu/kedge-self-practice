@@ -18,12 +18,13 @@ interface PracticeMenuProps {
   onWeakPointsSession?: (sessionId: string) => void;
   onViewHistory: () => void;
   onViewKnowledgeAnalysis: () => void;
+  onMyAnalytics?: () => void;
   onBack: () => void;
   onSelectSubject?: (subject: Subject) => void;
 }
 
-export default function PracticeMenu({ 
-  subject, 
+export default function PracticeMenu({
+  subject,
   currentUser,
   onStartPractice,
   onQuickPractice,
@@ -31,8 +32,9 @@ export default function PracticeMenu({
   onWrongQuestionsPractice,
   onQuickPracticeSession,
   onWeakPointsSession,
-  onViewHistory, 
+  onViewHistory,
   onViewKnowledgeAnalysis,
+  onMyAnalytics,
   onBack,
   onSelectSubject
 }: PracticeMenuProps) {
@@ -694,7 +696,7 @@ export default function PracticeMenu({
             </div>
 
             {/* 学习分析和历史记录 - 辅助功能区域 */}
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <button
                 onClick={onViewKnowledgeAnalysis}
                 className="group bg-gradient-to-br from-white/60 to-white/40 backdrop-blur-sm rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 ease-out hover:-translate-y-1 border border-white/20 text-left focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
@@ -734,6 +736,28 @@ export default function PracticeMenu({
                   查看详细的练习历史，分析学习进度
                 </p>
               </button>
+
+              {onMyAnalytics && (
+                <button
+                  onClick={onMyAnalytics}
+                  className="group bg-gradient-to-br from-white/60 to-white/40 backdrop-blur-sm rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 ease-out hover:-translate-y-1 border border-white/20 text-left focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <div className="flex items-center mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-cyan-500/25">
+                      <TrendingUp className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 group-hover:text-cyan-600 transition-colors duration-300 leading-tight tracking-wide">
+                        学习数据
+                      </h3>
+                      <p className="text-sm text-gray-600 font-medium">趋势图表 • 热力图</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-sm leading-relaxed tracking-wide">
+                    查看学习进度趋势和知识点掌握热力图
+                  </p>
+                </button>
+              )}
             </div>
           </div>
 

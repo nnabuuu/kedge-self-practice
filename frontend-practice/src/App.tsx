@@ -722,7 +722,6 @@ function App() {
           <HomePage
             onStartPractice={handleStartPractice}
             onManagementCenter={handleManagementCenter} // Allow both teachers and students
-            onMyAnalytics={() => setCurrentScreen('my-analytics')}
             onLogout={handleLogout}
             currentUser={currentUser}
             userType={userType}
@@ -751,6 +750,7 @@ function App() {
             onWeakPointsSession={handleWeakPointsSession}
             onViewHistory={handleViewHistory}
             onViewKnowledgeAnalysis={handleViewKnowledgeAnalysis}
+            onMyAnalytics={() => setCurrentScreen('my-analytics')}
             onBack={handleBack}
             onSelectSubject={handleSelectSubject}
           />
@@ -862,7 +862,7 @@ function App() {
       case 'my-analytics':
         return currentUser ? (
           <MyAnalytics
-            onBack={() => setCurrentScreen('home')}
+            onBack={() => setCurrentScreen(selectedSubject ? 'practice-menu' : 'home')}
             selectedSubject={selectedSubject}
           />
         ) : null;
