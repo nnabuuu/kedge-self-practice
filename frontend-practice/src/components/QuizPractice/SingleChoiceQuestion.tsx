@@ -22,10 +22,21 @@ export const SingleChoiceQuestion: React.FC<SingleChoiceQuestionProps> = ({
 }) => {
   if (!question.options) return null;
 
+  // Convert array options to object with letter keys (A, B, C, D...)
+  const optionsWithLetters = Array.isArray(question.options)
+    ? question.options.map((option, index) => ({
+        key: String.fromCharCode(65 + index), // 65 is 'A' in ASCII
+        value: option
+      }))
+    : Object.entries(question.options).map(([key, option]) => ({
+        key,
+        value: option
+      }));
+
   return (
     <>
       <div className="space-y-4 mb-8">
-        {Object.entries(question.options).map(([key, option]) => (
+        {optionsWithLetters.map(({ key, value: option }) => (
           <button
             key={key}
             onClick={() => !showResult && onAnswerSelect(key)}

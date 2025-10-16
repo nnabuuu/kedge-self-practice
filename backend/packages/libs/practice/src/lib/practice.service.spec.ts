@@ -694,6 +694,281 @@ describe('PracticeService - Answer Submission', () => {
     });
   });
 
+  describe('submitAnswer - Flexible Answer Format Validation', () => {
+    const sessionId = '123e4567-e89b-12d3-a456-426614174000';
+    const questionId = '123e4567-e89b-12d3-a456-426614174001';
+    const userId = '123e4567-e89b-12d3-a456-426614174002';
+
+    beforeEach(() => {
+      practiceRepository.getSession.mockResolvedValue({
+        id: sessionId,
+        user_id: userId,
+        status: 'in_progress',
+        answered_questions: 0,
+        total_questions: 5,
+      } as any);
+
+      practiceRepository.submitAnswer.mockResolvedValue({
+        session_id: sessionId,
+        quiz_id: questionId,
+        user_answer: 'test',
+        is_correct: true,
+      } as any);
+    });
+
+    describe('Single-choice: Backend stored as TEXT, answer_index exists', () => {
+      const quizStoredAsText = {
+        id: questionId,
+        type: 'single-choice',
+        question: '原始社会时期,美洲地区居民最早培植出了',
+        options: ['大麦、小麦', '芋头', '水稻、粟', '玉米、南瓜'],
+        answer: ['玉米、南瓜'], // Stored as text
+        answer_index: [3], // Index is also available
+      };
+
+      it('should accept index 3 (number)', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsText as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: 3 as any, time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept index "3" (string)', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsText as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: '3', time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept letter "D" (uppercase)', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsText as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: 'D', time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept letter "d" (lowercase)', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsText as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: 'd', time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept exact text answer "玉米、南瓜"', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsText as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: '玉米、南瓜', time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should reject wrong index 0', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsText as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: 0 as any, time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(false);
+      });
+
+      it('should reject wrong letter "A"', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsText as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: 'A', time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(false);
+      });
+
+      it('should reject wrong text "大麦、小麦"', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsText as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: '大麦、小麦', time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(false);
+      });
+    });
+
+    describe('Single-choice: Backend stored as INDEX only', () => {
+      const quizStoredAsIndex = {
+        id: questionId,
+        type: 'single-choice',
+        question: '谁是禁烟先驱?',
+        options: ['林则徐', '魏源', '龚自珍', '洪秀全'],
+        answer_index: [0], // Only index stored
+      };
+
+      it('should accept index 0 (number)', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsIndex as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: 0 as any, time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept index "0" (string)', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsIndex as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: '0', time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept letter "A"', async () => {
+        quizService.getQuizById.mockResolvedValue(quizStoredAsIndex as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: 'A', time_spent_seconds: 10 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+    });
+
+    describe('Multiple-choice: Various formats', () => {
+      const multipleChoiceQuiz = {
+        id: questionId,
+        type: 'multiple-choice',
+        question: '选择改革家(多选)',
+        options: ['林则徐', '康有为', '梁启超', '洪秀全'],
+        answer: ['康有为', '梁启超'], // Stored as text
+        answer_index: [1, 2], // Indices also available
+      };
+
+      it('should accept index array [1, 2]', async () => {
+        quizService.getQuizById.mockResolvedValue(multipleChoiceQuiz as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: [1, 2] as any, time_spent_seconds: 15 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept string index array ["1", "2"]', async () => {
+        quizService.getQuizById.mockResolvedValue(multipleChoiceQuiz as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: ['1', '2'], time_spent_seconds: 15 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept letter array ["B", "C"]', async () => {
+        quizService.getQuizById.mockResolvedValue(multipleChoiceQuiz as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: ['B', 'C'], time_spent_seconds: 15 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept mixed case letters ["b", "c"]', async () => {
+        quizService.getQuizById.mockResolvedValue(multipleChoiceQuiz as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: ['b', 'c'], time_spent_seconds: 15 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept text array ["康有为", "梁启超"]', async () => {
+        quizService.getQuizById.mockResolvedValue(multipleChoiceQuiz as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: ['康有为', '梁启超'], time_spent_seconds: 15 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should accept answers in different order [2, 1]', async () => {
+        quizService.getQuizById.mockResolvedValue(multipleChoiceQuiz as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: [2, 1] as any, time_spent_seconds: 15 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(true);
+      });
+
+      it('should reject wrong indices [0, 1]', async () => {
+        quizService.getQuizById.mockResolvedValue(multipleChoiceQuiz as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: [0, 1] as any, time_spent_seconds: 15 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(false);
+      });
+
+      it('should reject wrong letters ["A", "B"]', async () => {
+        quizService.getQuizById.mockResolvedValue(multipleChoiceQuiz as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: ['A', 'B'], time_spent_seconds: 15 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(false);
+      });
+
+      it('should reject incomplete answer [1] (missing one)', async () => {
+        quizService.getQuizById.mockResolvedValue(multipleChoiceQuiz as any);
+
+        const result = await service.submitAnswer(
+          { session_id: sessionId, question_id: questionId, answer: [1] as any, time_spent_seconds: 15 },
+          userId
+        );
+
+        expect(result.isCorrect).toBe(false);
+      });
+    });
+  });
+
   describe('Session Quiz Data Consistency', () => {
     const sessionId = '123e4567-e89b-12d3-a456-426614174000';
     const userId = '123e4567-e89b-12d3-a456-426614174002';

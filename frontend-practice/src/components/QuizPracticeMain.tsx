@@ -282,12 +282,31 @@ export default function QuizPractice({
 
   // Get correct answer letter for single choice
   const getCorrectAnswerLetter = (question: QuizQuestion) => {
+    if (!question.options || !Array.isArray(question.options)) {
+      return '';
+    }
+
+    // Get the answer text
+    let answerText = '';
     if (typeof question.answer === 'string') {
-      return question.answer;
+      answerText = question.answer;
+    } else if (Array.isArray(question.answer) && question.answer.length > 0) {
+      answerText = question.answer[0];
     }
-    if (Array.isArray(question.answer) && question.answer.length > 0) {
-      return question.answer[0];
+
+    // Find which option matches the answer text
+    const answerIndex = question.options.findIndex(opt => opt === answerText);
+
+    // Convert index to letter (0 -> A, 1 -> B, etc.)
+    if (answerIndex >= 0) {
+      return String.fromCharCode(65 + answerIndex);
     }
+
+    // If answer_index is provided, use that
+    if (question.answer_index && question.answer_index.length > 0) {
+      return String.fromCharCode(65 + question.answer_index[0]);
+    }
+
     return '';
   };
 

@@ -386,30 +386,74 @@ export class PracticeService {
         this.logger.log(`Fill-in-the-blank incorrect: "${userAnswers.join(', ')}" vs "${correctAnswers.join(', ')}"`);
       }
     } else if (quiz.type === 'single-choice') {
-      // Handle both text answers and index answers
-      const correctAnswerValue = Array.isArray(quiz.answer) ? quiz.answer[0] : quiz.answer;
-      
-      // Check if the answer is stored as text (matches one of the options)
-      let correctIndex: number | string = String(correctAnswerValue);
-      if (quiz.options && Array.isArray(quiz.options)) {
-        // Find the index of the correct answer in the options array
-        const textIndex = quiz.options.findIndex(option => option === correctAnswerValue);
-        if (textIndex !== -1) {
-          correctIndex = textIndex;
-          this.logger.log(`Converted text answer "${correctAnswerValue}" to index ${correctIndex}`);
-        }
+      // Get the correct answer - try both index and text
+      const correctAnswerText = Array.isArray(quiz.answer) ? quiz.answer[0] : quiz.answer;
+      let correctIndex: number = -1;
+
+      // Get the correct index
+      if (quiz.answer_index && Array.isArray(quiz.answer_index) && quiz.answer_index.length > 0) {
+        correctIndex = quiz.answer_index[0];
+      } else if (quiz.options && Array.isArray(quiz.options)) {
+        // Fallback: find index by matching text
+        correctIndex = quiz.options.findIndex(option => option === correctAnswerText);
       }
-      
-      // Compare as strings to handle both number and string indices
-      isCorrect = userAnswer === String(correctIndex);
-      this.logger.log(`Single-choice validation: user="${userAnswer}" vs correct="${correctIndex}" (original: "${correctAnswerValue}") -> ${isCorrect}`);
+
+      // Check if user answer matches:
+      // 1. By index (user submitted "0", "1", "2", "3")
+      // 2. By text (user submitted the full text answer)
+      const matchesByIndex = correctIndex !== -1 && userAnswer === String(correctIndex);
+      const matchesByText = userAnswer === String(correctAnswerText);
+
+      // Also check if user answer is the option text from the options array
+      let matchesByOptionText = false;
+      if (quiz.options && Array.isArray(quiz.options) && correctIndex !== -1) {
+        matchesByOptionText = userAnswer === quiz.options[correctIndex];
+      }
+
+      isCorrect = matchesByIndex || matchesByText || matchesByOptionText;
+
+      this.logger.log(`Single-choice validation: user="${userAnswer}" vs index="${correctIndex}" text="${correctAnswerText}" -> matchesByIndex=${matchesByIndex}, matchesByText=${matchesByText}, matchesByOptionText=${matchesByOptionText} -> ${isCorrect}`);
     } else if (quiz.type === 'multiple-choice') {
-      // For multiple-choice, answer is array of indices
-      const correctIndices = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
-      const userIndices = userAnswer.split(',').map(s => parseInt(s.trim())).sort();
-      const correctIndicesSorted = correctIndices.map(i => parseInt(String(i))).sort();
-      isCorrect = JSON.stringify(userIndices) === JSON.stringify(correctIndicesSorted);
-      this.logger.log(`Multiple-choice validation: user="${userAnswer}" vs correct="${correctIndices}" -> ${isCorrect}`);
+      // Get correct answer indices and texts
+      const correctAnswerTexts = Array.isArray(quiz.answer) ? quiz.answer : [quiz.answer];
+      let correctIndices: number[] = [];
+
+      // Get the correct indices
+      if (quiz.answer_index && Array.isArray(quiz.answer_index) && quiz.answer_index.length > 0) {
+        correctIndices = quiz.answer_index;
+      } else if (quiz.options && Array.isArray(quiz.options)) {
+        // Fallback: find indices by matching texts
+        const options = quiz.options; // Type guard
+        correctIndices = correctAnswerTexts.map(answerText => {
+          const index = options.findIndex(option => option === answerText);
+          return index;
+        }).filter(index => index !== -1);
+      }
+
+      // Parse user answer (could be indices like "0,2,3" or texts)
+      const userAnswerParts = userAnswer.split(',').map(s => s.trim());
+
+      // Try matching by indices first
+      const userIndices = userAnswerParts
+        .map(part => {
+          const num = parseInt(part);
+          return isNaN(num) ? -1 : num;
+        })
+        .filter(n => n !== -1)
+        .sort();
+
+      const correctIndicesSorted = [...correctIndices].sort();
+      const matchesByIndex = JSON.stringify(userIndices) === JSON.stringify(correctIndicesSorted);
+
+      // Also try matching by text
+      const userAnswerTextsSet = new Set(userAnswerParts);
+      const correctAnswerTextsSet = new Set(correctAnswerTexts.map(String));
+      const matchesByText = userAnswerParts.length === correctAnswerTexts.length &&
+        [...userAnswerTextsSet].every(t => correctAnswerTextsSet.has(String(t)));
+
+      isCorrect = matchesByIndex || matchesByText;
+
+      this.logger.log(`Multiple-choice validation: user=[${userAnswerParts.join(',')}] vs indices=[${correctIndicesSorted.join(',')}] texts=[${correctAnswerTexts.join(',')}] -> matchesByIndex=${matchesByIndex}, matchesByText=${matchesByText} -> ${isCorrect}`);
     } else {
       // For other question types, use original logic
       const correctAnswer = Array.isArray(quiz.answer) ? quiz.answer.join(',') : quiz.answer;
