@@ -302,17 +302,51 @@ export class PracticeService {
     // Enhanced answer evaluation logic (without automatic GPT)
     let isCorrect = false;
 
+    // Helper function to normalize letter to index (A→0, B→1, etc.)
+    const normalizeLetterToIndex = (value: string): string => {
+      const trimmed = value.trim();
+      if (/^[A-Z]$/i.test(trimmed)) {
+        const letter = trimmed.toUpperCase();
+        const index = letter.charCodeAt(0) - 'A'.charCodeAt(0);
+        return String(index);
+      }
+      return trimmed;
+    };
+
     // Normalize answer: convert to string if needed
     let userAnswer: string;
     let userAnswersArray: string[] = [];
 
     if (Array.isArray(data.answer)) {
-      // If answer is array, store it directly
-      userAnswersArray = data.answer.map(a => String(a || '').trim());
-      userAnswer = userAnswersArray.join('|||'); // For backward compatibility with database storage
+      // If answer is array (for multiple-choice or fill-in-blank)
+      userAnswersArray = data.answer.map(a => String(a ?? '').trim());
+
+      // For multiple-choice, normalize letter answers (A, B, C) to indices (0, 1, 2)
+      if (quiz.type === 'multiple-choice') {
+        const originalAnswers = [...userAnswersArray];
+        userAnswersArray = userAnswersArray.map(normalizeLetterToIndex);
+        if (JSON.stringify(originalAnswers) !== JSON.stringify(userAnswersArray)) {
+          this.logger.log(`Normalized multiple-choice answers [${originalAnswers.join(', ')}] to [${userAnswersArray.join(', ')}]`);
+        }
+        // Multiple-choice uses comma separator
+        userAnswer = userAnswersArray.join(',');
+      } else {
+        // Fill-in-blank uses ||| separator
+        userAnswer = userAnswersArray.join('|||');
+      }
     } else {
-      // If answer is string, trim it
-      userAnswer = (data.answer || '').trim();
+      // If answer is string or number, convert to string and trim
+      // Use ?? instead of || to handle falsy values like 0
+      userAnswer = String(data.answer ?? '').trim();
+
+      // For single-choice questions, normalize letter answers (A, B, C) to indices (0, 1, 2)
+      if (quiz.type === 'single-choice') {
+        const normalized = normalizeLetterToIndex(userAnswer);
+        if (normalized !== userAnswer) {
+          this.logger.log(`Normalized single-choice answer "${userAnswer}" to index "${normalized}"`);
+          userAnswer = normalized;
+        }
+      }
     }
 
     if (!userAnswer) {
