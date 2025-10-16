@@ -982,12 +982,16 @@ class BackendApiService {
       params.append('subjectId', subjectId);
     }
 
-    const response = await this.makeRequest<Array<{
-      date: string;
-      total_questions: number;
-      correct_count: number;
-      accuracy: number;
-    }>>(`/analytics/user/progress-trend?${params.toString()}`);
+    const response = await this.makeRequest<any>(`/analytics/user/progress-trend?${params.toString()}`);
+
+    // Handle potential double-wrapping from backend
+    if (response.success && response.data) {
+      const actualData = (response.data as any)?.data || response.data;
+      return {
+        success: true,
+        data: Array.isArray(actualData) ? actualData : []
+      };
+    }
 
     return response;
   }
@@ -1008,15 +1012,16 @@ class BackendApiService {
       params.append('subjectId', subjectId);
     }
 
-    const response = await this.makeRequest<Array<{
-      knowledge_point_id: string;
-      volume: string | null;
-      unit: string | null;
-      lesson: string | null;
-      topic: string;
-      correct_rate: number;
-      attempt_count: number;
-    }>>(`/analytics/user/knowledge-point-heatmap?${params.toString()}`);
+    const response = await this.makeRequest<any>(`/analytics/user/knowledge-point-heatmap?${params.toString()}`);
+
+    // Handle potential double-wrapping from backend
+    if (response.success && response.data) {
+      const actualData = (response.data as any)?.data || response.data;
+      return {
+        success: true,
+        data: Array.isArray(actualData) ? actualData : []
+      };
+    }
 
     return response;
   }
