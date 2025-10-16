@@ -275,7 +275,31 @@ export default function QuizPractice({
   };
 
   // End practice
-  const handleEndPractice = () => {
+  const handleEndPractice = async () => {
+    // Before ending, submit any unanswered questions to the backend
+    if (sessionId) {
+      const unansweredPromises = questions.map(async (question, index) => {
+        // Check if this question was never answered (null in answers array)
+        if (answers[index] === null || answers[index] === undefined) {
+          try {
+            // Submit empty answer for unanswered question
+            await api.practice.submitAnswer(
+              sessionId,
+              question.id,
+              '', // Empty answer
+              0   // 0 seconds spent
+            );
+            console.log(`Submitted unanswered question ${index + 1}/${questions.length}`);
+          } catch (error) {
+            console.error(`Failed to submit unanswered question ${index}:`, error);
+          }
+        }
+      });
+
+      // Wait for all unanswered questions to be submitted
+      await Promise.all(unansweredPromises);
+    }
+
     onEnd({
       answers,
       totalTime: Date.now() - startTime.current,
