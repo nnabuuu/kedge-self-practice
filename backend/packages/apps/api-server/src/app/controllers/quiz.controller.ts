@@ -277,6 +277,65 @@ export class QuizController {
     }
   }
 
+  // IMPORTANT: Specific routes must come BEFORE generic :id route
+  // Otherwise NestJS will match :id first and treat "by-ids" as an ID
+
+  @Get('by-ids')
+  @ApiOperation({ summary: 'Get multiple quizzes by their IDs' })
+  @ApiQuery({ name: 'ids', required: true, description: 'Comma-separated list of quiz IDs', example: 'id1,id2,id3' })
+  @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
+  async getQuizzesByIds(@Query('ids') idsString: string) {
+    if (!idsString) {
+      return {
+        success: true,
+        data: []
+      };
+    }
+
+    // Parse comma-separated IDs
+    const ids = idsString.split(',').map(id => id.trim()).filter(id => id);
+    
+    if (ids.length === 0) {
+      return {
+        success: true,
+        data: []
+      };
+    }
+
+    const quizzes = await this.quizService.getQuizzesByIds(ids);
+    
+    return {
+      success: true,
+      total: quizzes.length,
+      data: quizzes
+    };
+  }
+
+  @Get('search/by-tags')
+  @ApiOperation({ summary: 'Search quizzes by tags' })
+  @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
+  async searchQuizzesByTags(@Query('tags') tags: string) {
+    const tagArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
+    const quizzes = await this.quizService.searchQuizzesByTags(tagArray);
+    return {
+      success: true,
+      count: quizzes.length,
+      data: quizzes,
+    };
+  }
+
+  @Get('tags')
+  @ApiOperation({ summary: 'Get all available tags' })
+  @ApiResponse({ status: 200, description: 'Tags retrieved successfully' })
+  async getAllTags() {
+    const tags = await this.quizService.getAllTags();
+    return {
+      success: true,
+      count: tags.length,
+      data: tags,
+    };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a quiz by ID' })
   @ApiResponse({ status: 200, description: 'Quiz retrieved successfully' })
@@ -310,10 +369,10 @@ export class QuizController {
     const page = pageStr ? parseInt(pageStr, 10) : 1;
     const limit = limitStr ? parseInt(limitStr, 10) : 10;
     const offset = (page - 1) * limit;
-    
+
     // Get all quizzes for now (pagination can be added at repository level later)
     let allQuizzes = await this.quizService.listQuizzes();
-    
+
     // Filter by search term if provided (supports Chinese characters)
     if (searchTerm && searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
@@ -324,19 +383,19 @@ export class QuizController {
         }
         // Also search in options for multiple choice questions
         if (quiz.options && Array.isArray(quiz.options)) {
-          return quiz.options.some(option => 
+          return quiz.options.some(option =>
             option && option.toLowerCase().includes(searchLower)
           );
         }
         return false;
       });
     }
-    
+
     // Filter by type if provided
     if (quizType && quizType !== 'all') {
       allQuizzes = allQuizzes.filter(quiz => quiz.type === quizType);
     }
-    
+
     // Filter by knowledge point ID(s) if provided
     if (knowledgePointIds) {
       // Support both single ID and comma-separated multiple IDs
@@ -345,10 +404,10 @@ export class QuizController {
         allQuizzes = allQuizzes.filter(quiz => quiz.knowledge_point_id && idsArray.includes(quiz.knowledge_point_id));
       }
     }
-    
+
     // Apply pagination in memory for now
     const paginatedQuizzes = allQuizzes.slice(offset, offset + limit);
-    
+
     return {
       success: true,
       count: paginatedQuizzes.length,
@@ -356,37 +415,6 @@ export class QuizController {
       page,
       limit,
       data: paginatedQuizzes,
-    };
-  }
-
-  @Get('by-ids')
-  @ApiOperation({ summary: 'Get multiple quizzes by their IDs' })
-  @ApiQuery({ name: 'ids', required: true, description: 'Comma-separated list of quiz IDs', example: 'id1,id2,id3' })
-  @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
-  async getQuizzesByIds(@Query('ids') idsString: string) {
-    if (!idsString) {
-      return {
-        success: true,
-        data: []
-      };
-    }
-
-    // Parse comma-separated IDs
-    const ids = idsString.split(',').map(id => id.trim()).filter(id => id);
-    
-    if (ids.length === 0) {
-      return {
-        success: true,
-        data: []
-      };
-    }
-
-    const quizzes = await this.quizService.getQuizzesByIds(ids);
-    
-    return {
-      success: true,
-      total: quizzes.length,
-      data: quizzes
     };
   }
 
@@ -439,30 +467,5 @@ export class QuizController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-  }
-
-  @Get('search/by-tags')
-  @ApiOperation({ summary: 'Search quizzes by tags' })
-  @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
-  async searchQuizzesByTags(@Query('tags') tags: string) {
-    const tagArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
-    const quizzes = await this.quizService.searchQuizzesByTags(tagArray);
-    return {
-      success: true,
-      count: quizzes.length,
-      data: quizzes,
-    };
-  }
-
-  @Get('tags')
-  @ApiOperation({ summary: 'Get all available tags' })
-  @ApiResponse({ status: 200, description: 'Tags retrieved successfully' })
-  async getAllTags() {
-    const tags = await this.quizService.getAllTags();
-    return {
-      success: true,
-      count: tags.length,
-      data: tags,
-    };
   }
 }
