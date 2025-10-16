@@ -43,19 +43,18 @@ export default function KnowledgeAnalysis({
   // Use backend API for knowledge point statistics
   const { data: statsData, loading: statsLoading } = useKnowledgePointStats(undefined, subject.id, 20);
 
-  // Convert backend stats to frontend format
-  const knowledgePointStats = useMemo<KnowledgePointStats[]>(() => {
+  // Convert backend stats to frontend format - ALL knowledge points for overall stats
+  const allKnowledgePointStats = useMemo<KnowledgePointStats[]>(() => {
     if (!statsData?.statistics || !knowledgePoints || knowledgePoints.length === 0) {
       return [];
     }
 
-    // Only show knowledge points with wrong answers
+    // Map all knowledge points (including those with 100% accuracy)
     return statsData.statistics
-      .filter(stat => stat.wrong_answers > 0)
       .map(stat => {
         const kp = knowledgePoints.find(k => k.id === stat.knowledge_point_id);
         if (!kp) return null;
-        
+
         return {
           id: kp.id,
           volume: kp.volume,
@@ -74,19 +73,24 @@ export default function KnowledgeAnalysis({
       .filter((stat): stat is KnowledgePointStats => stat !== null);
   }, [statsData, knowledgePoints]);
 
-  // 获取薄弱知识点
-  const weakKnowledgePoints = knowledgePointStats
+  // Filtered view: only show knowledge points with wrong answers for detailed analysis
+  const knowledgePointStats = useMemo(() => {
+    return allKnowledgePointStats.filter(stat => stat.wrongAnswers && stat.wrongAnswers > 0);
+  }, [allKnowledgePointStats]);
+
+  // 获取薄弱知识点 - based on all stats
+  const weakKnowledgePoints = allKnowledgePointStats
     .filter(stat => stat.masteryLevel === 'poor' || stat.masteryLevel === 'needs-improvement')
     .map(stat => stat.id);
 
-  // 获取优势知识点
-  const strongKnowledgePoints = knowledgePointStats
+  // 获取优势知识点 - based on all stats
+  const strongKnowledgePoints = allKnowledgePointStats
     .filter(stat => stat.masteryLevel === 'excellent')
     .length;
 
-  // 计算总体学习统计
-  const totalQuestions = knowledgePointStats.reduce((sum, stat) => sum + stat.totalQuestions, 0);
-  const totalCorrect = knowledgePointStats.reduce((sum, stat) => sum + stat.correctAnswers, 0);
+  // 计算总体学习统计 - CRITICAL: Use ALL stats, not just those with errors
+  const totalQuestions = allKnowledgePointStats.reduce((sum, stat) => sum + stat.totalQuestions, 0);
+  const totalCorrect = allKnowledgePointStats.reduce((sum, stat) => sum + stat.correctAnswers, 0);
   const overallAccuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
   const practiceCount = statsData?.sessions_analyzed || 0;
 
@@ -94,17 +98,17 @@ export default function KnowledgeAnalysis({
   const filteredStats = useMemo(() => {
     switch (selectedFilter) {
       case 'weak':
-        return knowledgePointStats.filter(stat => 
+        return allKnowledgePointStats.filter(stat =>
           stat.masteryLevel === 'poor' || stat.masteryLevel === 'needs-improvement'
         );
       case 'strong':
-        return knowledgePointStats.filter(stat => 
+        return allKnowledgePointStats.filter(stat =>
           stat.masteryLevel === 'excellent' || stat.masteryLevel === 'good'
         );
       default:
-        return knowledgePointStats;
+        return allKnowledgePointStats;
     }
-  }, [knowledgePointStats, selectedFilter]);
+  }, [allKnowledgePointStats, selectedFilter]);
 
   // Get performance trend (mock data for now)
   const getTrend = () => {
