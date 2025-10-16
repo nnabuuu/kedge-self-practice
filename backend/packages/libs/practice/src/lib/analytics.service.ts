@@ -178,32 +178,56 @@ export class AnalyticsService {
       offset: 0,
     });
 
-    // Build CSV
+    // Build CSV with Simplified Chinese headers
     const headers = [
-      'Rank',
-      'Quiz ID',
-      'Question',
-      'Type',
-      'Knowledge Point',
-      'Error Rate',
-      'Total Attempts',
-      'Incorrect',
-      'Correct',
-      'Options',
-      'Wrong Answer Distribution',
+      '排名',
+      '题目ID',
+      '题目内容',
+      '题型',
+      '知识点',
+      '错误率',
+      '总答题次数',
+      '错误次数',
+      '正确次数',
+      '选项',
+      '正确答案',
+      '错误答案分布',
     ];
 
     const rows = data.map((row, index) => {
       // Format options for single-choice questions
       let optionsStr = '';
+      let correctAnswerStr = '';
       if (row.quiz_type === 'single-choice' && row.options) {
         try {
           const options = typeof row.options === 'string' ? JSON.parse(row.options) : row.options;
           if (Array.isArray(options)) {
             optionsStr = options.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt}`).join(' | ');
           }
+
+          // Get correct answer index and convert to letter
+          const correctAnswer = typeof row.correct_answer === 'string' ? JSON.parse(row.correct_answer) : row.correct_answer;
+          if (Array.isArray(correctAnswer) && correctAnswer.length > 0) {
+            // If correct_answer is array of indices like [2]
+            const answerIndex = typeof correctAnswer[0] === 'number' ? correctAnswer[0] : parseInt(correctAnswer[0]);
+            if (!isNaN(answerIndex)) {
+              correctAnswerStr = String.fromCharCode(65 + answerIndex);
+            }
+          } else if (typeof correctAnswer === 'number') {
+            // If correct_answer is a single number
+            correctAnswerStr = String.fromCharCode(65 + correctAnswer);
+          } else if (typeof correctAnswer === 'string') {
+            // If correct_answer is already a letter or number string
+            const parsed = parseInt(correctAnswer);
+            if (!isNaN(parsed)) {
+              correctAnswerStr = String.fromCharCode(65 + parsed);
+            } else if (/^[A-Z]$/i.test(correctAnswer)) {
+              correctAnswerStr = correctAnswer.toUpperCase();
+            }
+          }
         } catch (e) {
           optionsStr = '';
+          correctAnswerStr = '';
         }
       }
 
@@ -224,7 +248,7 @@ export class AnalyticsService {
                   answerDisplay = String.fromCharCode(65 + numAnswer);
                 }
               }
-              return `${answerDisplay}: ${item.count} (${item.percentage}%)`;
+              return `${answerDisplay}: ${item.count}次 (${item.percentage}%)`;
             }).join(' | ');
           }
         } catch (e) {
@@ -237,12 +261,13 @@ export class AnalyticsService {
         row.quiz_id,
         `"${row.quiz_text.replace(/"/g, '""')}"`, // Escape quotes
         row.quiz_type,
-        row.knowledge_point_name || 'N/A',
+        row.knowledge_point_name || '无',
         `${row.error_rate}%`,
         row.total_attempts.toString(),
         row.incorrect_attempts.toString(),
         (row.total_attempts - row.incorrect_attempts).toString(),
         `"${optionsStr.replace(/"/g, '""')}"`, // Escape quotes
+        correctAnswerStr,
         `"${wrongAnswersStr.replace(/"/g, '""')}"`, // Escape quotes
       ];
     });
