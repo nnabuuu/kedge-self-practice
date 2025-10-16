@@ -663,8 +663,8 @@ export class AnalyticsRepository {
           COUNT(pa.id) AS attempt_count
         FROM kedge_practice.practice_sessions ps
         JOIN kedge_practice.practice_answers pa ON ps.id = pa.session_id
-        JOIN kedge.quizzes q ON pa.quiz_id = q.id
-        JOIN kedge.knowledge_points kp ON q.knowledge_point_id = kp.id
+        JOIN kedge_practice.quizzes q ON pa.quiz_id = q.id
+        JOIN kedge_practice.knowledge_points kp ON q.knowledge_point_id = kp.id
         WHERE ps.user_id = ${userId}
           AND ps.status = 'completed'
           ${subjectFilter}
