@@ -274,32 +274,35 @@ export default function QuizPractice({
     loadAnswerForQuestion(targetIndex);
   };
 
-  // End practice
-  const handleEndPractice = async () => {
-    // Before ending, submit any unanswered questions to the backend
-    if (sessionId) {
-      const unansweredPromises = questions.map(async (question, index) => {
-        // Check if this question was never answered (null in answers array)
-        if (answers[index] === null || answers[index] === undefined) {
-          try {
-            // Submit empty answer for unanswered question
-            await api.practice.submitAnswer(
-              sessionId,
-              question.id,
-              '', // Empty answer
-              0   // 0 seconds spent
-            );
-            console.log(`Submitted unanswered question ${index + 1}/${questions.length}`);
-          } catch (error) {
-            console.error(`Failed to submit unanswered question ${index}:`, error);
-          }
-        }
-      });
+  // Check if all questions have been answered
+  const hasUnansweredQuestions = () => {
+    return answers.some((answer, index) => {
+      // Check if this question exists and was not answered
+      return index < questions.length && (answer === null || answer === undefined);
+    });
+  };
 
-      // Wait for all unanswered questions to be submitted
-      await Promise.all(unansweredPromises);
+  // Get the index of the first unanswered question
+  const getFirstUnansweredIndex = () => {
+    return answers.findIndex((answer, index) => {
+      return index < questions.length && (answer === null || answer === undefined);
+    });
+  };
+
+  // Navigate to the first unanswered question
+  const goToFirstUnanswered = () => {
+    const firstUnanswered = getFirstUnansweredIndex();
+    if (firstUnanswered >= 0) {
+      saveCurrentAnswer();
+      setCurrentQuestionIndex(firstUnanswered);
+      setViewingQuestionIndex(firstUnanswered);
+      setWorkingQuestionIndex(firstUnanswered);
+      loadAnswerForQuestion(firstUnanswered);
     }
+  };
 
+  // End practice
+  const handleEndPractice = () => {
     onEnd({
       answers,
       totalTime: Date.now() - startTime.current,
@@ -903,22 +906,38 @@ export default function QuizPractice({
                     <span>上一题</span>
                   </button>
                   <div className="flex flex-col items-center gap-1">
-                    <button
-                      onClick={handleContinue}
-                      className="w-36 h-12 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center text-lg font-medium shadow-lg hover:shadow-xl relative"
-                    >
-                      {currentQuestionIndex < questions.length - 1 ? (
-                        <>
+                    {currentQuestionIndex < questions.length - 1 ? (
+                      <>
+                        <button
+                          onClick={handleContinue}
+                          className="w-36 h-12 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center text-lg font-medium shadow-lg hover:shadow-xl relative"
+                        >
                           <span className="relative">
                             下一题
                             <ChevronRight className="w-5 h-5 absolute -right-7 top-1/2 -translate-y-1/2" />
                           </span>
-                        </>
-                      ) : (
-                        <span>结束练习</span>
-                      )}
-                    </button>
-                    <span className="text-xs text-gray-500">(回车键)</span>
+                        </button>
+                        <span className="text-xs text-gray-500">(回车键)</span>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={hasUnansweredQuestions() ? goToFirstUnanswered : handleContinue}
+                          className={`w-36 h-12 rounded-lg transition-colors flex items-center justify-center text-lg font-medium shadow-lg hover:shadow-xl ${
+                            hasUnansweredQuestions()
+                              ? 'bg-orange-500 text-white hover:bg-orange-600'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          <span>{hasUnansweredQuestions() ? '查看未答题' : '结束练习'}</span>
+                        </button>
+                        {hasUnansweredQuestions() ? (
+                          <span className="text-xs text-orange-600 font-medium">还有题目未完成</span>
+                        ) : (
+                          <span className="text-xs text-gray-500">(回车键)</span>
+                        )}
+                      </>
+                    )}
                   </div>
                 </>
               )}
