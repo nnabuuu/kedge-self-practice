@@ -295,4 +295,44 @@ export class AnalyticsService {
 
     return result;
   }
+
+  /**
+   * Get user learning progress trend
+   */
+  async getUserProgressTrend(params: {
+    userId: string;
+    subjectId?: string;
+    timeFrame: '7d' | '30d' | 'all';
+  }) {
+    const { userId, subjectId, timeFrame } = params;
+
+    this.logger.log(`Getting progress trend for user ${userId}, timeFrame: ${timeFrame}`);
+
+    const result = await this.analyticsRepository.getUserProgressTrend({
+      userId,
+      subjectId,
+      timeFrame,
+    });
+
+    return result;
+  }
+
+  /**
+   * Get knowledge point mastery heatmap
+   */
+  async getKnowledgePointHeatmap(params: {
+    userId: string;
+    subjectId?: string;
+  }) {
+    const { userId, subjectId } = params;
+
+    this.logger.log(`Getting knowledge point heatmap for user ${userId}`);
+
+    const result = await this.analyticsRepository.getKnowledgePointHeatmap({
+      userId,
+      subjectId,
+    });
+
+    return result;
+  }
 }

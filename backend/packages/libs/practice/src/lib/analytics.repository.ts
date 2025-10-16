@@ -545,4 +545,140 @@ export class AnalyticsRepository {
       throw error;
     }
   }
+
+  /**
+   * Get user learning progress trend over time
+   * Returns time series data showing accuracy trend
+   */
+  async getUserProgressTrend(params: {
+    userId: string;
+    subjectId?: string;
+    timeFrame: string;
+  }): Promise<Array<{
+    date: string;
+    total_questions: number;
+    correct_count: number;
+    accuracy: number;
+  }>> {
+    const { userId, subjectId, timeFrame } = params;
+
+    this.logger.log(`Getting progress trend for user ${userId}, timeFrame: ${timeFrame}`);
+
+    try {
+      // Calculate date filter based on timeFrame
+      let dateFilter = sql.fragment`TRUE`;
+      if (timeFrame === '7d') {
+        dateFilter = sql.fragment`ps.created_at >= NOW() - INTERVAL '7 days'`;
+      } else if (timeFrame === '30d') {
+        dateFilter = sql.fragment`ps.created_at >= NOW() - INTERVAL '30 days'`;
+      }
+
+      const subjectFilter = subjectId
+        ? sql.fragment`AND ps.subject_id = ${subjectId}`
+        : sql.fragment``;
+
+      const query = sql.type(z.object({
+        date: z.string(),
+        total_questions: z.number(),
+        correct_count: z.number(),
+        accuracy: z.number(),
+      }))`
+        SELECT
+          DATE(ps.created_at) AS date,
+          COUNT(pa.id) AS total_questions,
+          SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END) AS correct_count,
+          ROUND(
+            100.0 * SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END)::NUMERIC /
+            NULLIF(COUNT(pa.id)::NUMERIC, 0),
+            1
+          ) AS accuracy
+        FROM kedge_practice.practice_sessions ps
+        JOIN kedge_practice.practice_answers pa ON ps.id = pa.session_id
+        WHERE ps.user_id = ${userId}
+          AND ps.status = 'completed'
+          AND ${dateFilter}
+          ${subjectFilter}
+        GROUP BY DATE(ps.created_at)
+        ORDER BY DATE(ps.created_at) ASC
+      `;
+
+      const result = await this.persistentService.pgPool.query(query);
+      return [...result.rows];
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get user progress trend: ${errorMessage}`, errorStack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get knowledge point mastery heatmap data
+   * Returns aggregated accuracy data for each knowledge point
+   */
+  async getKnowledgePointHeatmap(params: {
+    userId: string;
+    subjectId?: string;
+  }): Promise<Array<{
+    knowledge_point_id: string;
+    name: string;
+    volume: string | null;
+    unit: string | null;
+    lesson: string | null;
+    topic: string;
+    correct_rate: number;
+    attempt_count: number;
+  }>> {
+    const { userId, subjectId } = params;
+
+    this.logger.log(`Getting knowledge point heatmap for user ${userId}`);
+
+    try {
+      const subjectFilter = subjectId
+        ? sql.fragment`AND ps.subject_id = ${subjectId}`
+        : sql.fragment``;
+
+      const query = sql.type(z.object({
+        knowledge_point_id: z.string().uuid(),
+        name: z.string(),
+        volume: z.string().nullable(),
+        unit: z.string().nullable(),
+        lesson: z.string().nullable(),
+        topic: z.string(),
+        correct_rate: z.number(),
+        attempt_count: z.number(),
+      }))`
+        SELECT
+          kp.id AS knowledge_point_id,
+          kp.name,
+          kp.volume,
+          kp.unit,
+          kp.lesson,
+          kp.topic,
+          ROUND(
+            100.0 * SUM(CASE WHEN pa.is_correct THEN 1 ELSE 0 END)::NUMERIC /
+            NULLIF(COUNT(pa.id)::NUMERIC, 0),
+            1
+          ) AS correct_rate,
+          COUNT(pa.id) AS attempt_count
+        FROM kedge_practice.practice_sessions ps
+        JOIN kedge_practice.practice_answers pa ON ps.id = pa.session_id
+        JOIN kedge.quizzes q ON pa.quiz_id = q.id
+        JOIN kedge.knowledge_points kp ON q.knowledge_point_id = kp.id
+        WHERE ps.user_id = ${userId}
+          AND ps.status = 'completed'
+          ${subjectFilter}
+        GROUP BY kp.id, kp.name, kp.volume, kp.unit, kp.lesson, kp.topic
+        ORDER BY kp.volume, kp.unit, kp.lesson, kp.topic
+      `;
+
+      const result = await this.persistentService.pgPool.query(query);
+      return [...result.rows];
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get knowledge point heatmap: ${errorMessage}`, errorStack);
+      throw error;
+    }
+  }
 }

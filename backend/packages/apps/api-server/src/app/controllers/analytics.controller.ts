@@ -419,4 +419,138 @@ export class AnalyticsController {
       );
     }
   }
+
+  @Get('user/progress-trend')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Get user learning progress trend',
+    description: 'Returns time series data showing user\'s accuracy trend over time'
+  })
+  @ApiQuery({ name: 'timeFrame', required: false, enum: ['7d', '30d', 'all'], description: 'Time frame for data (default: 30d)' })
+  @ApiQuery({ name: 'subjectId', required: false, description: 'Filter by subject ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Progress trend data retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              date: { type: 'string', description: 'Date in YYYY-MM-DD format' },
+              total_questions: { type: 'number', description: 'Total questions answered on this date' },
+              correct_count: { type: 'number', description: 'Number of correct answers' },
+              accuracy: { type: 'number', description: 'Accuracy percentage' },
+            }
+          }
+        }
+      }
+    }
+  })
+  async getUserProgressTrend(
+    @Query('timeFrame') timeFrame: string = '30d',
+    @Query('subjectId') subjectId: string | undefined,
+    @Request() req: any,
+  ) {
+    try {
+      // Validate timeFrame
+      const timeFrameSchema = z.enum(['7d', '30d', 'all']);
+      const validatedTimeFrame = timeFrameSchema.parse(timeFrame);
+
+      // Get user ID from JWT token
+      const userId = req.user?.sub || req.user?.userId;
+      if (!userId) {
+        throw new HttpException('User ID not found in token', HttpStatus.UNAUTHORIZED);
+      }
+
+      const result = await this.analyticsService.getUserProgressTrend({
+        userId,
+        subjectId,
+        timeFrame: validatedTimeFrame,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new HttpException(
+          {
+            message: 'Invalid parameters',
+            errors: error.errors,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw new HttpException(
+        error instanceof Error ? error.message : 'Failed to get progress trend',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('user/knowledge-point-heatmap')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Get knowledge point mastery heatmap',
+    description: 'Returns aggregated accuracy data for each knowledge point the user has practiced'
+  })
+  @ApiQuery({ name: 'subjectId', required: false, description: 'Filter by subject ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Knowledge point heatmap data retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              knowledge_point_id: { type: 'string', format: 'uuid' },
+              name: { type: 'string' },
+              volume: { type: 'string', nullable: true },
+              unit: { type: 'string', nullable: true },
+              lesson: { type: 'string', nullable: true },
+              topic: { type: 'string' },
+              correct_rate: { type: 'number', description: 'Accuracy percentage for this knowledge point' },
+              attempt_count: { type: 'number', description: 'Number of times practiced' },
+            }
+          }
+        }
+      }
+    }
+  })
+  async getKnowledgePointHeatmap(
+    @Query('subjectId') subjectId: string | undefined,
+    @Request() req: any,
+  ) {
+    try {
+      // Get user ID from JWT token
+      const userId = req.user?.sub || req.user?.userId;
+      if (!userId) {
+        throw new HttpException('User ID not found in token', HttpStatus.UNAUTHORIZED);
+      }
+
+      const result = await this.analyticsService.getKnowledgePointHeatmap({
+        userId,
+        subjectId,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      throw new HttpException(
+        error instanceof Error ? error.message : 'Failed to get knowledge point heatmap',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

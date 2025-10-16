@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, Award, Zap, Brain, Star, MessageSquare, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, Award, Zap, Brain, Star, MessageSquare, Loader2, RotateCcw, BarChart3 } from 'lucide-react';
 import { Subject, PracticeSession, QuizQuestion } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import TimeAnalysisChart from './TimeAnalysisChart';
@@ -12,6 +12,8 @@ import KnowledgePointTree from './results/KnowledgePointTree';
 import LearningSuggestions from './results/LearningSuggestions';
 import QuickActionsGrid from './results/QuickActionsGrid';
 import QuizPerformanceComparison from './results/QuizPerformanceComparison';
+import ProgressTrendChart from './charts/ProgressTrendChart';
+import KnowledgePointHeatmap from './charts/KnowledgePointHeatmap';
 
 interface QuizResultsProps {
   subject?: Subject;
@@ -77,7 +79,7 @@ export default function QuizResults({
   const [expandedVolumes, setExpandedVolumes] = useState<Set<string>>(new Set());
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'overview' | 'detailed' | 'suggestions'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'detailed' | 'suggestions' | 'charts'>('overview');
   const [typeDistribution, setTypeDistribution] = useState<{
     distribution: Array<{
       type: string;
@@ -104,6 +106,28 @@ export default function QuizResults({
   }>({});
   const [performanceLoading, setPerformanceLoading] = useState(false);
   const [showPerformanceForQuiz, setShowPerformanceForQuiz] = useState<string | null>(null);
+
+  // Chart data state
+  const [progressTrendData, setProgressTrendData] = useState<Array<{
+    date: string;
+    total_questions: number;
+    correct_count: number;
+    accuracy: number;
+  }> | null>(null);
+  const [progressTrendLoading, setProgressTrendLoading] = useState(false);
+  const [progressTrendTimeFrame, setProgressTrendTimeFrame] = useState<'7d' | '30d' | 'all'>('30d');
+
+  const [heatmapData, setHeatmapData] = useState<Array<{
+    knowledge_point_id: string;
+    name: string;
+    volume: string | null;
+    unit: string | null;
+    lesson: string | null;
+    topic: string;
+    correct_rate: number;
+    attempt_count: number;
+  }> | null>(null);
+  const [heatmapLoading, setHeatmapLoading] = useState(false);
 
   // Use API hook to get knowledge points
   const { data: knowledgePoints, loading: knowledgePointsLoading } = useKnowledgePoints(subject?.id || session.subjectId);

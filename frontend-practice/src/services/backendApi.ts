@@ -966,6 +966,63 @@ class BackendApiService {
     return response;
   }
 
+  // Analytics Chart Data Methods
+  async getUserProgressTrend(
+    timeFrame: '7d' | '30d' | 'all' = '30d',
+    subjectId?: string
+  ): Promise<ApiResponse<Array<{
+    date: string;
+    total_questions: number;
+    correct_count: number;
+    accuracy: number;
+  }>>> {
+    const params = new URLSearchParams();
+    params.append('timeFrame', timeFrame);
+    if (subjectId) {
+      params.append('subjectId', subjectId);
+    }
+
+    const response = await this.makeRequest<Array<{
+      date: string;
+      total_questions: number;
+      correct_count: number;
+      accuracy: number;
+    }>>(`/analytics/user/progress-trend?${params.toString()}`);
+
+    return response;
+  }
+
+  async getKnowledgePointHeatmap(
+    subjectId?: string
+  ): Promise<ApiResponse<Array<{
+    knowledge_point_id: string;
+    name: string;
+    volume: string | null;
+    unit: string | null;
+    lesson: string | null;
+    topic: string;
+    correct_rate: number;
+    attempt_count: number;
+  }>>> {
+    const params = new URLSearchParams();
+    if (subjectId) {
+      params.append('subjectId', subjectId);
+    }
+
+    const response = await this.makeRequest<Array<{
+      knowledge_point_id: string;
+      name: string;
+      volume: string | null;
+      unit: string | null;
+      lesson: string | null;
+      topic: string;
+      correct_rate: number;
+      attempt_count: number;
+    }>>(`/analytics/user/knowledge-point-heatmap?${params.toString()}`);
+
+    return response;
+  }
+
   // Report Management Methods for Teachers/Admins
   async getReportsForManagement(params?: {
     status?: ('pending' | 'reviewing' | 'resolved' | 'dismissed')[];
@@ -1114,6 +1171,12 @@ export const api = {
     updateStatus: (reportId: string, data: any) => backendApi.updateReportStatus(reportId, data),
     bulkUpdate: (data: any) => backendApi.bulkUpdateReports(data),
     getAnalytics: (period?: string) => backendApi.getReportAnalytics(period)
+  },
+  analytics: {
+    getProgressTrend: (params?: { timeFrame?: '7d' | '30d' | 'all'; subjectId?: string }) =>
+      backendApi.getUserProgressTrend(params?.timeFrame, params?.subjectId),
+    getKnowledgePointHeatmap: (subjectId?: string) =>
+      backendApi.getKnowledgePointHeatmap(subjectId),
   }
 };
 
