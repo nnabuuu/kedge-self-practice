@@ -851,122 +851,118 @@ export default function QuizResults({
                         点击题目查看您在该题上的表现与平均水平的对比
                       </p>
 
-                      {/* Show list of questions */}
+                      {/* Show list of questions with inline performance comparison */}
                       <div className="space-y-3 mb-4">
-                        {session.questions.slice(0, 5).map((question, index) => {
+                        {session.questions.map((question, index) => {
                           const answer = session.answers[index];
                           const isCorrect = answer === question.answer ||
                                           (Array.isArray(answer) && Array.isArray(question.answer) &&
                                            JSON.stringify(answer.sort()) === JSON.stringify(question.answer.sort()));
 
                           return (
-                            <button
-                              key={question.id}
-                              onClick={async () => {
-                                if (showPerformanceForQuiz === question.id) {
-                                  setShowPerformanceForQuiz(null);
-                                  return;
-                                }
-
-                                // Check if we already have the data
-                                if (performanceComparisons[question.id]) {
-                                  setShowPerformanceForQuiz(question.id);
-                                  return;
-                                }
-
-                                // Fetch performance comparison
-                                setPerformanceLoading(true);
-                                try {
-                                  const response = await api.practice.getQuizPerformanceComparison(
-                                    question.id,
-                                    session.id!
-                                  );
-
-                                  if (response.success && response.data) {
-                                    // Handle double-wrapped response
-                                    const data = response.data.data || response.data;
-                                    setPerformanceComparisons(prev => ({
-                                      ...prev,
-                                      [question.id]: data
-                                    }));
-                                    setShowPerformanceForQuiz(question.id);
+                            <div key={question.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                              {/* Question Card - Clickable header */}
+                              <button
+                                onClick={async () => {
+                                  if (showPerformanceForQuiz === question.id) {
+                                    setShowPerformanceForQuiz(null);
+                                    return;
                                   }
-                                } catch (error) {
-                                  console.error('Failed to fetch performance comparison:', error);
-                                } finally {
-                                  setPerformanceLoading(false);
-                                }
-                              }}
-                              className={`w-full text-left p-4 rounded-lg border transition-all duration-200 ${
-                                showPerformanceForQuiz === question.id
-                                  ? 'border-purple-300 bg-purple-50'
-                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center mb-2">
-                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-xs font-semibold text-gray-700 mr-2">
-                                      {index + 1}
-                                    </span>
-                                    <span className="text-sm font-medium text-gray-900 line-clamp-1">
-                                      {question.question.substring(0, 60)}
-                                      {question.question.length > 60 && '...'}
-                                    </span>
+
+                                  // Check if we already have the data
+                                  if (performanceComparisons[question.id]) {
+                                    setShowPerformanceForQuiz(question.id);
+                                    return;
+                                  }
+
+                                  // Fetch performance comparison
+                                  setPerformanceLoading(true);
+                                  try {
+                                    const response = await api.practice.getQuizPerformanceComparison(
+                                      question.id,
+                                      session.id!
+                                    );
+
+                                    if (response.success && response.data) {
+                                      // Handle double-wrapped response
+                                      const data = response.data.data || response.data;
+                                      setPerformanceComparisons(prev => ({
+                                        ...prev,
+                                        [question.id]: data
+                                      }));
+                                      setShowPerformanceForQuiz(question.id);
+                                    }
+                                  } catch (error) {
+                                    console.error('Failed to fetch performance comparison:', error);
+                                  } finally {
+                                    setPerformanceLoading(false);
+                                  }
+                                }}
+                                className={`w-full text-left p-4 transition-all duration-200 ${
+                                  showPerformanceForQuiz === question.id
+                                    ? 'bg-purple-50'
+                                    : 'hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center mb-2">
+                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-xs font-semibold text-gray-700 mr-2">
+                                        {index + 1}
+                                      </span>
+                                      <span className="text-sm font-medium text-gray-900 line-clamp-1">
+                                        {question.question.substring(0, 60)}
+                                        {question.question.length > 60 && '...'}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 ml-8">
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        isCorrect
+                                          ? 'bg-green-100 text-green-700'
+                                          : 'bg-red-100 text-red-700'
+                                      }`}>
+                                        {isCorrect ? '✓ 正确' : '✗ 错误'}
+                                      </span>
+                                      {session.questionDurations && session.questionDurations[index] && (
+                                        <span className="text-xs text-gray-500">
+                                          用时: {session.questionDurations[index]}秒
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2 ml-8">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      isCorrect
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-red-100 text-red-700'
-                                    }`}>
-                                      {isCorrect ? '✓ 正确' : '✗ 错误'}
-                                    </span>
-                                    {session.questionDurations && session.questionDurations[index] && (
-                                      <span className="text-xs text-gray-500">
-                                        用时: {session.questionDurations[index]}秒
+                                  <div className="ml-4">
+                                    {performanceLoading && showPerformanceForQuiz === question.id ? (
+                                      <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
+                                    ) : (
+                                      <span className="text-purple-600 text-sm">
+                                        {showPerformanceForQuiz === question.id ? '收起' : '查看对比'}
                                       </span>
                                     )}
                                   </div>
                                 </div>
-                                <div className="ml-4">
-                                  {performanceLoading && showPerformanceForQuiz === question.id ? (
-                                    <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
-                                  ) : (
-                                    <span className="text-purple-600 text-sm">
-                                      {showPerformanceForQuiz === question.id ? '收起' : '查看对比'}
-                                    </span>
-                                  )}
+                              </button>
+
+                              {/* Inline Performance Comparison - Shows directly below the question */}
+                              {showPerformanceForQuiz === question.id && performanceComparisons[question.id] && (
+                                <div className="border-t border-gray-200 bg-white p-4">
+                                  <QuizPerformanceComparison
+                                    quizId={performanceComparisons[question.id].quiz_id}
+                                    userTime={performanceComparisons[question.id].user_time}
+                                    avgTime={performanceComparisons[question.id].avg_time}
+                                    minTime={performanceComparisons[question.id].min_time}
+                                    maxTime={performanceComparisons[question.id].max_time}
+                                    timePercentile={performanceComparisons[question.id].time_percentile}
+                                    userCorrect={performanceComparisons[question.id].user_correct}
+                                    userAccuracy={performanceComparisons[question.id].user_accuracy}
+                                    avgAccuracy={performanceComparisons[question.id].avg_accuracy}
+                                    totalAttempts={performanceComparisons[question.id].total_attempts}
+                                  />
                                 </div>
-                              </div>
-                            </button>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
-
-                      {/* Show performance comparison for selected quiz */}
-                      {showPerformanceForQuiz && performanceComparisons[showPerformanceForQuiz] && (
-                        <div className="mt-4">
-                          <QuizPerformanceComparison
-                            quizId={performanceComparisons[showPerformanceForQuiz].quiz_id}
-                            userTime={performanceComparisons[showPerformanceForQuiz].user_time}
-                            avgTime={performanceComparisons[showPerformanceForQuiz].avg_time}
-                            minTime={performanceComparisons[showPerformanceForQuiz].min_time}
-                            maxTime={performanceComparisons[showPerformanceForQuiz].max_time}
-                            timePercentile={performanceComparisons[showPerformanceForQuiz].time_percentile}
-                            userCorrect={performanceComparisons[showPerformanceForQuiz].user_correct}
-                            userAccuracy={performanceComparisons[showPerformanceForQuiz].user_accuracy}
-                            avgAccuracy={performanceComparisons[showPerformanceForQuiz].avg_accuracy}
-                            totalAttempts={performanceComparisons[showPerformanceForQuiz].total_attempts}
-                          />
-                        </div>
-                      )}
-
-                      {session.questions.length > 5 && (
-                        <p className="text-xs text-gray-500 text-center mt-3">
-                          显示前 5 题，完整对比分析将在后续版本提供
-                        </p>
-                      )}
                     </div>
                   )}
 
