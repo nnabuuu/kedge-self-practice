@@ -7,12 +7,12 @@ export interface Subject {
 
 export interface KnowledgePoint {
   id: string;
-  subjectId: string; // 学科ID
-  volume: string;    // 分册，如：中外历史纲要上
-  unit: string;      // 单元名称，如：第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固
-  lesson: string;    // 单课名称，如：第1课 中华文明的起源与早期国家
-  section: string;   // 子目，如：第一子目 石器时代的古人类和文化遗存
-  topic: string;     // 知识点，如：旧石器时代与新石器文明
+  subject_id: string; // 学科ID (backend uses snake_case)
+  volume: string;     // 分册，如：中外历史纲要上
+  unit: string;       // 单元名称，如：第一单元 从中华文明起源到秦汉统一多民族封建国家的建立与巩固
+  lesson: string;     // 单课名称，如：第1课 中华文明的起源与早期国家
+  sub: string;        // 子目，如：第一子目 石器时代的古人类和文化遗存 (backend uses "sub" not "section")
+  topic: string;      // 知识点，如：旧石器时代与新石器文明
 }
 
 export interface QuizQuestion {
@@ -40,11 +40,11 @@ export interface QuizQuestion {
   extra_properties?: Record<string, any>; // Quiz-type-specific properties (e.g., order-independent-groups for fill-in-the-blank)
   knowledgePoint?: { // Full knowledge point data from backend
     id: string;
-    subjectId: string;
-    volume: string;
-    unit: string;
-    lesson: string;
-    section: string;
+    subject_id?: string;    // Backend uses snake_case
+    volume?: string;
+    unit?: string;
+    lesson?: string;
+    sub?: string;           // Backend uses "sub" not "section"
     topic: string;
   };
 }

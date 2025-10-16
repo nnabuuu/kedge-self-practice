@@ -137,11 +137,7 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
           />
 
           {/* Knowledge Point Display */}
-          {question.knowledge_point && (
-            <div className="mt-4">
-              <KnowledgePointDisplay knowledgePoint={question.knowledge_point} />
-            </div>
-          )}
+          <KnowledgePointDisplay question={question} />
         </div>
       )}
     </div>

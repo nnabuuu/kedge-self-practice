@@ -224,11 +224,11 @@ class BackendApiService {
   private convertKnowledgePoint(backendKP: BackendKnowledgePoint): KnowledgePoint {
     return {
       id: backendKP.id,
-      subjectId: 'history', // All current KPs are history
+      subject_id: 'history', // All current KPs are history
       volume: backendKP.volume || '',
       unit: backendKP.unit || '',
       lesson: backendKP.lesson || '',
-      section: backendKP.sub || '', // Backend uses 'sub' field
+      sub: backendKP.sub || '', // Keep backend field name
       topic: backendKP.topic || '',
     };
   }
@@ -561,11 +561,11 @@ class BackendApiService {
   // Create a knowledge point
   async createKnowledgePoint(knowledgePoint: Omit<KnowledgePoint, 'id'>): Promise<ApiResponse<KnowledgePoint>> {
     const backendKP = {
-      subject_id: knowledgePoint.subjectId,
+      subject_id: knowledgePoint.subject_id,
       volume: knowledgePoint.volume,
       unit: knowledgePoint.unit,
       lesson: knowledgePoint.lesson,
-      section: knowledgePoint.section,
+      sub: knowledgePoint.sub,
       topic: knowledgePoint.topic,
     };
 
@@ -589,12 +589,12 @@ class BackendApiService {
   // Update a knowledge point
   async updateKnowledgePoint(id: string, updates: Partial<KnowledgePoint>): Promise<ApiResponse<KnowledgePoint | null>> {
     const backendUpdates: any = {};
-    
-    if (updates.subjectId !== undefined) backendUpdates.subject_id = updates.subjectId;
+
+    if (updates.subject_id !== undefined) backendUpdates.subject_id = updates.subject_id;
     if (updates.volume !== undefined) backendUpdates.volume = updates.volume;
     if (updates.unit !== undefined) backendUpdates.unit = updates.unit;
     if (updates.lesson !== undefined) backendUpdates.lesson = updates.lesson;
-    if (updates.section !== undefined) backendUpdates.section = updates.section;
+    if (updates.sub !== undefined) backendUpdates.sub = updates.sub;
     if (updates.topic !== undefined) backendUpdates.topic = updates.topic;
 
     const response = await this.makeRequest<BackendKnowledgePoint>(`/knowledge-points/${id}`, {

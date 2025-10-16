@@ -34,10 +34,10 @@ export const KnowledgePointDisplay: React.FC<KnowledgePointDisplayProps> = ({ qu
             <span className="text-amber-700">{question.knowledgePoint.lesson}</span>
           </div>
         )}
-        {question.knowledgePoint.section && (
+        {question.knowledgePoint.sub && (
           <div className="flex">
             <span className="text-amber-600 font-medium min-w-[60px]">子目：</span>
-            <span className="text-amber-700">{question.knowledgePoint.section}</span>
+            <span className="text-amber-700">{question.knowledgePoint.sub}</span>
           </div>
         )}
         {question.knowledgePoint.topic && (
