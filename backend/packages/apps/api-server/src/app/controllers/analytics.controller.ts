@@ -7,6 +7,7 @@ import {
   HttpException,
   HttpStatus,
   Header,
+  Request,
 } from '@nestjs/common';
 import { JwtAuthGuard, TeacherGuard } from '@kedge/auth';
 import { AnalyticsService } from '@kedge/practice';
@@ -43,10 +44,16 @@ type QuizErrorRatesQuery = z.infer<typeof QuizErrorRatesQuerySchema>;
 type QuizErrorDetailsQuery = z.infer<typeof QuizErrorDetailsQuerySchema>;
 type ExportErrorRatesQuery = z.infer<typeof ExportErrorRatesQuerySchema>;
 
+// Validation schema for quiz performance comparison
+const QuizPerformanceComparisonQuerySchema = z.object({
+  sessionId: z.string().uuid(),
+});
+
+type QuizPerformanceComparisonQuery = z.infer<typeof QuizPerformanceComparisonQuerySchema>;
+
 @ApiTags('analytics')
 @ApiBearerAuth()
 @Controller('analytics')
-@UseGuards(JwtAuthGuard, TeacherGuard)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
@@ -325,6 +332,90 @@ export class AnalyticsController {
       throw new HttpException(
         error instanceof Error ? error.message : 'Failed to export quiz error rates',
         HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('quiz/:quizId/performance-comparison')
+  @UseGuards(JwtAuthGuard) // Allow all authenticated users, not just teachers
+  @ApiOperation({
+    summary: 'Get quiz performance comparison (time and accuracy)',
+    description: 'Returns comparison of user\'s time and accuracy against average for a specific quiz. Shows user\'s time spent, average time, time percentile, and accuracy comparison.'
+  })
+  @ApiQuery({ name: 'sessionId', required: true, description: 'Session UUID for the specific practice session' })
+  @ApiResponse({
+    status: 200,
+    description: 'Quiz performance comparison retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            quiz_id: { type: 'string', format: 'uuid' },
+            user_time: { type: 'number', description: 'User\'s time spent in seconds' },
+            avg_time: { type: 'number', description: 'Average time across all users in seconds' },
+            min_time: { type: 'number', description: 'Minimum time across all users' },
+            max_time: { type: 'number', description: 'Maximum time across all users' },
+            time_percentile: { type: 'number', description: 'User\'s time percentile (0-100)' },
+            user_correct: { type: 'boolean', description: 'Whether user answered correctly' },
+            user_accuracy: { type: 'number', description: 'User\'s historical accuracy on this quiz (%)' },
+            avg_accuracy: { type: 'number', description: 'Average accuracy across all users (%)' },
+            total_attempts: { type: 'number', description: 'Total attempts by all users' },
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Invalid parameters' })
+  @ApiResponse({ status: 404, description: 'Quiz or session not found' })
+  async getQuizPerformanceComparison(
+    @Param('quizId') quizId: string,
+    @Query('sessionId') sessionId: string,
+    @Request() req: any,
+  ) {
+    try {
+      // Validate UUID formats
+      const uuidSchema = z.string().uuid();
+      uuidSchema.parse(quizId);
+
+      // Validate query parameters
+      const validatedQuery = QuizPerformanceComparisonQuerySchema.parse({
+        sessionId,
+      });
+
+      // Get user ID from JWT token
+      const userId = req.user?.sub || req.user?.userId;
+      if (!userId) {
+        throw new HttpException('User ID not found in token', HttpStatus.UNAUTHORIZED);
+      }
+
+      const result = await this.analyticsService.getQuizPerformanceComparison({
+        quizId,
+        sessionId: validatedQuery.sessionId,
+        userId,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new HttpException(
+          {
+            message: 'Invalid parameters',
+            errors: error.errors,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw new HttpException(
+        error instanceof Error ? error.message : 'Failed to get quiz performance comparison',
+        error instanceof Error && error.message.includes('not found')
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

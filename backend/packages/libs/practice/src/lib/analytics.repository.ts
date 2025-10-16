@@ -59,6 +59,22 @@ const ErrorRateSummarySchema = z.object({
 
 export type ErrorRateSummary = z.infer<typeof ErrorRateSummarySchema>;
 
+// Schema for quiz performance comparison (time + accuracy)
+const QuizPerformanceComparisonSchema = z.object({
+  quiz_id: z.string().uuid(),
+  user_time: z.number(),
+  avg_time: z.number(),
+  min_time: z.number(),
+  max_time: z.number(),
+  time_percentile: z.number(),
+  user_correct: z.boolean(),
+  user_accuracy: z.number(), // User's historical accuracy on this quiz (0 or 100 for single attempt, average for multiple)
+  avg_accuracy: z.number(), // Average accuracy across all users
+  total_attempts: z.number(),
+});
+
+export type QuizPerformanceComparison = z.infer<typeof QuizPerformanceComparisonSchema>;
+
 @Injectable()
 export class AnalyticsRepository {
   private readonly logger = new Logger(AnalyticsRepository.name);
@@ -431,6 +447,101 @@ export class AnalyticsRepository {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Failed to get wrong answer distribution: ${errorMessage}`, errorStack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get quiz performance comparison for a specific quiz and user
+   * Compares user's time and accuracy against all other users
+   */
+  async getQuizPerformanceComparison(params: {
+    quizId: string;
+    sessionId: string;
+    userId: string;
+  }): Promise<QuizPerformanceComparison> {
+    const { quizId, sessionId, userId } = params;
+
+    this.logger.log(`Getting performance comparison for quiz ${quizId} in session ${sessionId}`);
+
+    try {
+      const query = sql.type(QuizPerformanceComparisonSchema)`
+        WITH user_current_answer AS (
+          SELECT
+            time_spent_seconds AS user_time,
+            is_correct AS user_correct
+          FROM kedge_practice.practice_answers
+          WHERE quiz_id = ${quizId}
+            AND session_id = ${sessionId}
+          LIMIT 1
+        ),
+        user_historical_accuracy AS (
+          SELECT
+            ROUND(
+              100.0 * SUM(CASE WHEN is_correct THEN 1 ELSE 0 END)::NUMERIC /
+              NULLIF(COUNT(*)::NUMERIC, 0),
+              1
+            ) AS user_accuracy
+          FROM kedge_practice.practice_answers pa
+          JOIN kedge_practice.practice_sessions ps ON pa.session_id = ps.id
+          WHERE pa.quiz_id = ${quizId}
+            AND ps.user_id = ${userId}
+        ),
+        quiz_stats AS (
+          SELECT
+            ${quizId}::uuid AS quiz_id,
+            AVG(time_spent_seconds)::NUMERIC AS avg_time,
+            MIN(time_spent_seconds) AS min_time,
+            MAX(time_spent_seconds) AS max_time,
+            ROUND(
+              100.0 * SUM(CASE WHEN is_correct THEN 1 ELSE 0 END)::NUMERIC /
+              NULLIF(COUNT(*)::NUMERIC, 0),
+              1
+            ) AS avg_accuracy,
+            COUNT(*) AS total_attempts
+          FROM kedge_practice.practice_answers
+          WHERE quiz_id = ${quizId}
+            AND time_spent_seconds > 0
+        ),
+        time_percentile_calc AS (
+          SELECT
+            ROUND(
+              100.0 * COUNT(CASE WHEN time_spent_seconds <= (SELECT user_time FROM user_current_answer) THEN 1 END)::NUMERIC /
+              NULLIF(COUNT(*)::NUMERIC, 0),
+              1
+            ) AS time_percentile
+          FROM kedge_practice.practice_answers
+          WHERE quiz_id = ${quizId}
+            AND time_spent_seconds > 0
+        )
+        SELECT
+          qs.quiz_id,
+          uca.user_time,
+          ROUND(qs.avg_time, 1) AS avg_time,
+          qs.min_time,
+          qs.max_time,
+          COALESCE(tpc.time_percentile, 50.0) AS time_percentile,
+          uca.user_correct,
+          COALESCE(uha.user_accuracy, CASE WHEN uca.user_correct THEN 100.0 ELSE 0.0 END) AS user_accuracy,
+          qs.avg_accuracy,
+          qs.total_attempts
+        FROM quiz_stats qs
+        CROSS JOIN user_current_answer uca
+        LEFT JOIN user_historical_accuracy uha ON true
+        LEFT JOIN time_percentile_calc tpc ON true
+      `;
+
+      const result = await this.persistentService.pgPool.query(query);
+
+      if (result.rows.length === 0) {
+        throw new Error(`No performance data found for quiz ${quizId} in session ${sessionId}`);
+      }
+
+      return result.rows[0];
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get quiz performance comparison: ${errorMessage}`, errorStack);
       throw error;
     }
   }

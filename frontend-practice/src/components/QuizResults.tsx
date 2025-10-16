@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, CheckCircle2, XCircle, RotateCcw, ChevronRight, ChevronDown, Award, Zap, Brain, Star, Sparkles, Gift, MessageSquare, Loader2, Home, History, BarChart3, Users } from 'lucide-react';
+import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, Award, Zap, Brain, Star, MessageSquare, Loader2, RotateCcw } from 'lucide-react';
 import { Subject, PracticeSession, QuizQuestion } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import TimeAnalysisChart from './TimeAnalysisChart';
 import { api } from '../services/backendApi';
+import PerformanceSummaryCard from './results/PerformanceSummaryCard';
+import QuickStatsGrid from './results/QuickStatsGrid';
+import QuestionTypeDistribution from './results/QuestionTypeDistribution';
+import AnswerDistributionChart from './results/AnswerDistributionChart';
+import KnowledgePointTree from './results/KnowledgePointTree';
+import LearningSuggestions from './results/LearningSuggestions';
+import QuickActionsGrid from './results/QuickActionsGrid';
+import QuizPerformanceComparison from './results/QuizPerformanceComparison';
 
 interface QuizResultsProps {
-  subject: Subject;
+  subject?: Subject;
   session: PracticeSession;
-  onReturnToMenu: () => void;
-  onRetryQuiz: () => void;
-  onEnhancementRound: (knowledgePoints: string[]) => void;
+  onReturnToMenu?: () => void;
+  onRetryQuiz?: () => void;
+  onEnhancementRound?: (knowledgePoints: string[]) => void;
   onViewHistory?: () => void;
   onViewKnowledgeAnalysis?: () => void;
   onReturnHome?: () => void;
+  onRestart?: () => void;
+  onBackToHome?: () => void;
 }
 
 interface KnowledgePointAnalysis {
@@ -52,15 +62,17 @@ interface GroupedAnalysis {
   };
 }
 
-export default function QuizResults({ 
-  subject, 
-  session, 
-  onReturnToMenu, 
-  onRetryQuiz, 
+export default function QuizResults({
+  subject,
+  session,
+  onReturnToMenu,
+  onRetryQuiz,
   onEnhancementRound,
   onViewHistory,
   onViewKnowledgeAnalysis,
-  onReturnHome
+  onReturnHome,
+  onRestart,
+  onBackToHome
 }: QuizResultsProps) {
   const [expandedVolumes, setExpandedVolumes] = useState<Set<string>>(new Set());
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
@@ -76,9 +88,25 @@ export default function QuizResults({
     total: number;
   } | null>(null);
   const [typeDistributionLoading, setTypeDistributionLoading] = useState(false);
+  const [performanceComparisons, setPerformanceComparisons] = useState<{
+    [quizId: string]: {
+      quiz_id: string;
+      user_time: number;
+      avg_time: number;
+      min_time: number;
+      max_time: number;
+      time_percentile: number;
+      user_correct: boolean;
+      user_accuracy: number;
+      avg_accuracy: number;
+      total_attempts: number;
+    };
+  }>({});
+  const [performanceLoading, setPerformanceLoading] = useState(false);
+  const [showPerformanceForQuiz, setShowPerformanceForQuiz] = useState<string | null>(null);
 
   // Use API hook to get knowledge points
-  const { data: knowledgePoints, loading: knowledgePointsLoading } = useKnowledgePoints(subject.id);
+  const { data: knowledgePoints, loading: knowledgePointsLoading } = useKnowledgePoints(subject?.id || session.subjectId);
 
   // Fetch type distribution from backend
   useEffect(() => {
@@ -511,47 +539,6 @@ export default function QuizResults({
     return `${hours}小时${remainingMinutes}分钟`;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'excellent': return 'text-green-600 bg-green-100';
-      case 'good': return 'text-blue-600 bg-blue-100';
-      case 'needs-improvement': return 'text-yellow-600 bg-yellow-100';
-      case 'poor': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'excellent': return '优秀';
-      case 'good': return '良好';
-      case 'needs-improvement': return '需加强';
-      case 'poor': return '较差';
-      default: return '未知';
-    }
-  };
-
-  // 渲染统计信息组件
-  const renderStatsInfo = (stats: CategoryStats, label: string) => (
-    <div className="flex items-center space-x-4 text-sm">
-      <div className="flex items-center space-x-1">
-        <CheckCircle2 className="w-4 h-4 text-green-500" />
-        <span className="text-green-600 font-medium">{stats.correct}</span>
-      </div>
-      <div className="flex items-center space-x-1">
-        <XCircle className="w-4 h-4 text-red-500" />
-        <span className="text-red-600 font-medium">{stats.total - stats.correct}</span>
-      </div>
-      <div className="flex items-center space-x-1">
-        <Target className="w-4 h-4 text-blue-500" />
-        <span className="text-blue-600 font-medium">{stats.accuracy}%</span>
-      </div>
-      <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(stats.status)}`}>
-        {getStatusText(stats.status)}
-      </div>
-    </div>
-  );
-
   // 生成实用的学习建议
   const getPersonalizedSuggestions = () => {
     const suggestions = [];
@@ -624,104 +611,56 @@ export default function QuizResults({
       <div className="relative z-10 p-6">
         <div className="max-w-6xl mx-auto">
           {/* Header - 统一样式 */}
-          <div className="flex items-center justify-between mb-8">
-            <button
-              onClick={onReturnToMenu}
-              className="group flex items-center text-gray-700 hover:text-gray-900 transition-all duration-300 ease-out bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-4 py-2 rounded-xl hover:bg-white/90 shadow-lg hover:shadow-xl border-2 border-transparent hover:border-gray-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
-              <span className="font-medium tracking-wide">返回菜单</span>
-            </button>
-          </div>
+          {(onReturnToMenu || onBackToHome) && (
+            <div className="flex items-center justify-between mb-8">
+              <button
+                onClick={onReturnToMenu || onBackToHome}
+                className="group flex items-center text-gray-700 hover:text-gray-900 transition-all duration-300 ease-out bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm px-4 py-2 rounded-xl hover:bg-white/90 shadow-lg hover:shadow-xl border-2 border-transparent hover:border-gray-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
+                <span className="font-medium tracking-wide">返回菜单</span>
+              </button>
+            </div>
+          )}
 
           {/* Title Section - 客观展示结果 */}
-          <div className="text-center mb-12">
-            <div className={`inline-flex items-center justify-center w-24 h-24 ${performance.bgColor} rounded-3xl mb-6 shadow-xl transform hover:scale-105 transition-all duration-300`}>
-              <PerformanceIcon className={`w-12 h-12 ${performance.color}`} />
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4 leading-tight tracking-wide">
-              {performance.message}
-            </h1>
-            <div className={`inline-flex items-center px-8 py-4 ${performance.bgColor} rounded-2xl mb-4 shadow-lg`}>
-              {hasEssayQuestions && !hasMultipleChoiceQuestions ? (
-                <div className="text-center">
-                  <div className={`text-xl font-bold ${performance.color} tracking-wide`}>{performance.level}</div>
-                  <div className={`text-sm ${performance.color} opacity-80`}>问答题练习</div>
-                </div>
-              ) : (
-                <>
-                  <span className={`text-3xl font-bold ${performance.color} mr-3`}>
-                    {accuracy}%
-                  </span>
-                  <div className="text-left">
-                    <div className={`text-xl font-bold ${performance.color} tracking-wide`}>{performance.level}</div>
-                    <div className={`text-sm ${performance.color} opacity-80`}>{subject.name}练习</div>
-                  </div>
-                </>
-              )}
-            </div>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed tracking-wide">
-              {performance.motivation}
-            </p>
-          </div>
+          <PerformanceSummaryCard
+            performance={performance}
+            accuracy={accuracy}
+            subjectName={subject?.name || ''}
+            hasEssayQuestions={hasEssayQuestions}
+            hasMultipleChoiceQuestions={hasMultipleChoiceQuestions}
+          />
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-            <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 text-center transform hover:scale-105 transition-all duration-300 ease-out">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/25">
-                <CheckCircle2 className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-green-600 mb-1">{correctAnswers}</div>
-              <div className="text-sm text-gray-600 font-medium tracking-wide">
-                {hasEssayQuestions ? '完成答题' : '正确答题'}
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 text-center transform hover:scale-105 transition-all duration-300 ease-out">
-              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-500/25">
-                <XCircle className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-red-600 mb-1">{wrongAnswers}</div>
-              <div className="text-sm text-gray-600 font-medium tracking-wide">错误题目</div>
-            </div>
-
-            <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 text-center transform hover:scale-105 transition-all duration-300 ease-out">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
-                <Target className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-blue-600 mb-1">
-                {hasEssayQuestions && !hasMultipleChoiceQuestions ? completionRate : accuracy}%
-              </div>
-              <div className="text-sm text-gray-600 font-medium tracking-wide">
-                {hasEssayQuestions && !hasMultipleChoiceQuestions ? '完成率' : '准确率'}
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 text-center transform hover:scale-105 transition-all duration-300 ease-out">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/25">
-                <Clock className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-purple-600 mb-1">{duration}</div>
-              <div className="text-sm text-gray-600 font-medium tracking-wide">用时(分钟)</div>
-            </div>
-          </div>
+          <QuickStatsGrid
+            correctAnswers={correctAnswers}
+            wrongAnswers={wrongAnswers}
+            accuracy={accuracy}
+            completionRate={completionRate}
+            duration={duration}
+            hasEssayQuestions={hasEssayQuestions}
+            hasMultipleChoiceQuestions={hasMultipleChoiceQuestions}
+          />
 
           {/* Action Buttons - 清晰的下一步行动 */}
           <div className="space-y-6 mb-12">
             {/* Primary Actions - 主要练习操作 */}
             <div className="flex flex-wrap justify-center gap-4">
-              <button
-                onClick={onRetryQuiz}
-                className="group flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out shadow-xl shadow-blue-500/25 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-              >
-                <RotateCcw className="w-6 h-6 mr-3 group-hover:rotate-180 transition-transform duration-300" />
-                <div>
-                  <div className="font-bold tracking-wide">重新练习</div>
-                  <div className="text-xs opacity-90">巩固学习效果</div>
-                </div>
-              </button>
+              {(onRetryQuiz || onRestart) && (
+                <button
+                  onClick={onRetryQuiz || onRestart}
+                  className="group flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out shadow-xl shadow-blue-500/25 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <RotateCcw className="w-6 h-6 mr-3 group-hover:rotate-180 transition-transform duration-300" />
+                  <div>
+                    <div className="font-bold tracking-wide">重新练习</div>
+                    <div className="text-xs opacity-90">巩固学习效果</div>
+                  </div>
+                </button>
+              )}
 
-              {weakKnowledgePoints.length > 0 && (
+              {weakKnowledgePoints.length > 0 && onEnhancementRound && (
                 <button
                   onClick={() => onEnhancementRound(weakKnowledgePoints)}
                   className="group flex items-center px-8 py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-2xl hover:from-orange-700 hover:to-red-700 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out shadow-xl shadow-orange-500/25 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-none"
@@ -757,13 +696,15 @@ export default function QuizResults({
                 </button>
               )}
 
-              <button
-                onClick={onReturnToMenu}
-                className="group flex items-center px-6 py-3 bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700 rounded-xl hover:from-gray-200 hover:to-slate-200 transform hover:scale-105 transition-all duration-300 ease-out shadow-lg border border-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none"
-              >
-                <BookOpen className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                <span className="font-medium tracking-wide">返回练习菜单</span>
-              </button>
+              {onReturnToMenu && (
+                <button
+                  onClick={onReturnToMenu}
+                  className="group flex items-center px-6 py-3 bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700 rounded-xl hover:from-gray-200 hover:to-slate-200 transform hover:scale-105 transition-all duration-300 ease-out shadow-lg border border-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <BookOpen className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                  <span className="font-medium tracking-wide">返回练习菜单</span>
+                </button>
+              )}
 
               {onReturnHome && (
                 <button
@@ -855,132 +796,22 @@ export default function QuizResults({
                   </div>
 
                   {/* 题型分布 */}
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4 tracking-wide">题型分布</h4>
-                    {typeDistributionLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                        <span className="ml-2 text-gray-600">加载题型分布...</span>
-                      </div>
-                    ) : typeDistribution && typeDistribution.distribution.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        {typeDistribution.distribution.map((item, index) => {
-                          // Choose icon based on type
-                          const Icon = 
-                            item.type === 'single-choice' || item.type === 'multiple-choice' ? CheckCircle2 :
-                            item.type === 'essay' || item.type === 'subjective' ? MessageSquare :
-                            BookOpen;
-                          
-                          // Get style classes based on type
-                          let bgClass, textClass, textBoldClass;
-                          if (item.type === 'single-choice') {
-                            bgClass = 'bg-blue-50';
-                            textClass = 'text-blue-800';
-                            textBoldClass = 'text-blue-600';
-                          } else if (item.type === 'multiple-choice') {
-                            bgClass = 'bg-indigo-50';
-                            textClass = 'text-indigo-800';
-                            textBoldClass = 'text-indigo-600';
-                          } else if (item.type === 'fill-in-the-blank') {
-                            bgClass = 'bg-green-50';
-                            textClass = 'text-green-800';
-                            textBoldClass = 'text-green-600';
-                          } else if (item.type === 'essay' || item.type === 'subjective') {
-                            bgClass = 'bg-purple-50';
-                            textClass = 'text-purple-800';
-                            textBoldClass = 'text-purple-600';
-                          } else {
-                            bgClass = 'bg-gray-50';
-                            textClass = 'text-gray-800';
-                            textBoldClass = 'text-gray-600';
-                          }
-                          
-                          return (
-                            <div key={item.type} className={`${bgClass} rounded-lg p-4`}>
-                              <div className="flex items-center mb-2">
-                                <Icon className={`w-5 h-5 ${textBoldClass} mr-2`} />
-                                <span className={`font-medium ${textClass} tracking-wide`}>
-                                  {item.displayName}
-                                </span>
-                              </div>
-                              <div className={`text-2xl font-bold ${textBoldClass}`}>
-                                {item.count}
-                              </div>
-                              <div className={`text-sm ${textBoldClass}`}>
-                                道题目 ({item.percentage}%)
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      // Fallback to old display if no distribution data
-                      <div className="grid grid-cols-2 gap-4">
-                        {hasMultipleChoiceQuestions && (
-                          <div className="bg-blue-50 rounded-lg p-4">
-                            <div className="flex items-center mb-2">
-                              <CheckCircle2 className="w-5 h-5 text-blue-600 mr-2" />
-                              <span className="font-medium text-blue-800 tracking-wide">选择题</span>
-                            </div>
-                            <div className="text-2xl font-bold text-blue-600">
-                              {session.questions.filter(q => q.type === 'multiple-choice').length}
-                            </div>
-                            <div className="text-sm text-blue-600">道题目</div>
-                          </div>
-                        )}
-                        {hasEssayQuestions && (
-                          <div className="bg-purple-50 rounded-lg p-4">
-                            <div className="flex items-center mb-2">
-                              <MessageSquare className="w-5 h-5 text-purple-600 mr-2" />
-                              <span className="font-medium text-purple-800 tracking-wide">问答题</span>
-                            </div>
-                            <div className="text-2xl font-bold text-purple-600">
-                              {session.questions.filter(q => q.type === 'essay').length}
-                            </div>
-                            <div className="text-sm text-purple-600">道题目</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <QuestionTypeDistribution
+                    typeDistribution={typeDistribution}
+                    typeDistributionLoading={typeDistributionLoading}
+                    hasMultipleChoiceQuestions={hasMultipleChoiceQuestions}
+                    hasEssayQuestions={hasEssayQuestions}
+                    questions={session.questions}
+                  />
 
                   {/* Progress Bar - 只在有选择题时显示 */}
                   {hasMultipleChoiceQuestions && (
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4 tracking-wide">答题分布</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center">
-                          <div className="w-20 text-sm text-gray-600 tracking-wide">正确</div>
-                          <div className="flex-1 bg-gray-200 rounded-full h-3 mx-3">
-                            <div 
-                              className="bg-green-500 h-3 rounded-full transition-all duration-1000"
-                              style={{ width: `${(correctAnswers / totalQuestions) * 100}%` }}
-                            />
-                          </div>
-                          <div className="w-16 text-sm font-medium text-green-600">{correctAnswers}题</div>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="w-20 text-sm text-gray-600 tracking-wide">错误</div>
-                          <div className="flex-1 bg-gray-200 rounded-full h-3 mx-3">
-                            <div 
-                              className="bg-red-500 h-3 rounded-full transition-all duration-1000"
-                              style={{ width: `${(wrongAnswers / totalQuestions) * 100}%` }}
-                            />
-                          </div>
-                          <div className="w-16 text-sm font-medium text-red-600">{wrongAnswers}题</div>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="w-20 text-sm text-gray-600 tracking-wide">未答</div>
-                          <div className="flex-1 bg-gray-200 rounded-full h-3 mx-3">
-                            <div 
-                              className="bg-gray-400 h-3 rounded-full transition-all duration-1000"
-                              style={{ width: `${(unansweredQuestions / totalQuestions) * 100}%` }}
-                            />
-                          </div>
-                          <div className="w-16 text-sm font-medium text-gray-600">{unansweredQuestions}题</div>
-                        </div>
-                      </div>
-                    </div>
+                    <AnswerDistributionChart
+                      correctAnswers={correctAnswers}
+                      wrongAnswers={wrongAnswers}
+                      unansweredQuestions={unansweredQuestions}
+                      totalQuestions={totalQuestions}
+                    />
                   )}
                 </div>
               )}
@@ -999,7 +830,7 @@ export default function QuizResults({
                         <Clock className="w-5 h-5 text-orange-500 mr-2" />
                         答题用时分析
                       </h4>
-                      
+
                       <TimeAnalysisChart
                         questions={session.questions}
                         answers={session.answers}
@@ -1008,272 +839,179 @@ export default function QuizResults({
                       />
                     </div>
                   )}
-                  
-                  {/* 知识点分析 */}
-                  {Object.entries(knowledgePointAnalysis).map(([volume, volumeData]) => (
-                    <div key={volume} className="border border-gray-200 rounded-xl overflow-hidden">
-                      {/* 册级别 - 包含统计信息 */}
-                      <button
-                        onClick={() => toggleExpand('volume', volume)}
-                        className="w-full p-4 bg-blue-50 hover:bg-blue-100 transition-colors duration-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center">
-                            <span className="font-bold text-blue-800 text-lg mr-3 tracking-wide">{volume}</span>
-                            {expandedVolumes.has(volume) ? (
-                              <ChevronDown className="w-5 h-5 text-blue-600" />
-                            ) : (
-                              <ChevronRight className="w-5 h-5 text-blue-600" />
-                            )}
-                          </div>
-                        </div>
-                        {renderStatsInfo(volumeData.stats, '册')}
-                      </button>
 
-                      {expandedVolumes.has(volume) && (
-                        <div className="bg-white">
-                          {Object.entries(volumeData.units).map(([unit, unitData]) => (
-                            <div key={unit} className="border-t border-gray-100">
-                              {/* 单元级别 - 包含统计信息 */}
-                              <button
-                                onClick={() => toggleExpand('unit', `${volume}-${unit}`)}
-                                className="w-full p-4 hover:bg-gray-50 transition-colors duration-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-                              >
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center">
-                                    <span className="font-semibold text-gray-800 mr-3 tracking-wide">{unit}</span>
-                                    {expandedUnits.has(`${volume}-${unit}`) ? (
-                                      <ChevronDown className="w-4 h-4 text-gray-600" />
-                                    ) : (
-                                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                  {/* 单题表现对比 - 只显示第一题作为示例 */}
+                  {session.questions.length > 0 && session.id && (
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+                      <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center tracking-wide">
+                        <Target className="w-5 h-5 text-purple-500 mr-2" />
+                        单题表现对比分析
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        点击题目查看您在该题上的表现与平均水平的对比
+                      </p>
+
+                      {/* Show list of questions */}
+                      <div className="space-y-3 mb-4">
+                        {session.questions.slice(0, 5).map((question, index) => {
+                          const answer = session.answers[index];
+                          const isCorrect = answer === question.answer ||
+                                          (Array.isArray(answer) && Array.isArray(question.answer) &&
+                                           JSON.stringify(answer.sort()) === JSON.stringify(question.answer.sort()));
+
+                          return (
+                            <button
+                              key={question.id}
+                              onClick={async () => {
+                                if (showPerformanceForQuiz === question.id) {
+                                  setShowPerformanceForQuiz(null);
+                                  return;
+                                }
+
+                                // Check if we already have the data
+                                if (performanceComparisons[question.id]) {
+                                  setShowPerformanceForQuiz(question.id);
+                                  return;
+                                }
+
+                                // Fetch performance comparison
+                                setPerformanceLoading(true);
+                                try {
+                                  const response = await api.practice.getQuizPerformanceComparison(
+                                    question.id,
+                                    session.id!
+                                  );
+
+                                  if (response.success && response.data) {
+                                    // Handle double-wrapped response
+                                    const data = response.data.data || response.data;
+                                    setPerformanceComparisons(prev => ({
+                                      ...prev,
+                                      [question.id]: data
+                                    }));
+                                    setShowPerformanceForQuiz(question.id);
+                                  }
+                                } catch (error) {
+                                  console.error('Failed to fetch performance comparison:', error);
+                                } finally {
+                                  setPerformanceLoading(false);
+                                }
+                              }}
+                              className={`w-full text-left p-4 rounded-lg border transition-all duration-200 ${
+                                showPerformanceForQuiz === question.id
+                                  ? 'border-purple-300 bg-purple-50'
+                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center mb-2">
+                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-xs font-semibold text-gray-700 mr-2">
+                                      {index + 1}
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-900 line-clamp-1">
+                                      {question.question.substring(0, 60)}
+                                      {question.question.length > 60 && '...'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 ml-8">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                      isCorrect
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-red-100 text-red-700'
+                                    }`}>
+                                      {isCorrect ? '✓ 正确' : '✗ 错误'}
+                                    </span>
+                                    {session.questionDurations && session.questionDurations[index] && (
+                                      <span className="text-xs text-gray-500">
+                                        用时: {session.questionDurations[index]}秒
+                                      </span>
                                     )}
                                   </div>
                                 </div>
-                                {renderStatsInfo(unitData.stats, '单元')}
-                              </button>
-
-                              {expandedUnits.has(`${volume}-${unit}`) && (
-                                <div className="bg-gray-50">
-                                  {Object.entries(unitData.lessons).map(([lesson, lessonData]) => (
-                                    <div key={lesson} className="border-t border-gray-200">
-                                      {/* 课级别 - 包含统计信息 */}
-                                      <button
-                                        onClick={() => toggleExpand('lesson', `${volume}-${unit}-${lesson}`)}
-                                        className="w-full p-4 hover:bg-gray-100 transition-colors duration-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-                                      >
-                                        <div className="flex items-center justify-between mb-3">
-                                          <div className="flex items-center">
-                                            <span className="font-medium text-gray-700 mr-3 tracking-wide">{lesson}</span>
-                                            {expandedLessons.has(`${volume}-${unit}-${lesson}`) ? (
-                                              <ChevronDown className="w-4 h-4 text-gray-600" />
-                                            ) : (
-                                              <ChevronRight className="w-4 h-4 text-gray-600" />
-                                            )}
-                                          </div>
-                                        </div>
-                                        {renderStatsInfo(lessonData.stats, '课')}
-                                      </button>
-
-                                      {expandedLessons.has(`${volume}-${unit}-${lesson}`) && (
-                                        <div className="bg-white p-4 space-y-3">
-                                          {lessonData.topics.map(topic => (
-                                            <div
-                                              key={topic.id}
-                                              className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:shadow-md transition-all duration-300"
-                                            >
-                                              <div className="flex-1">
-                                                <div className="font-medium text-gray-900 mb-1 tracking-wide">{topic.topic}</div>
-                                                <div className="text-sm text-gray-600">
-                                                  {topic.correct}/{topic.total} 题正确
-                                                </div>
-                                              </div>
-                                              <div className="flex items-center space-x-3">
-                                                <div className="text-right">
-                                                  <div className="text-2xl font-bold text-gray-900">{topic.accuracy}%</div>
-                                                  <div className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(topic.status)}`}>
-                                                    {getStatusText(topic.status)}
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                <div className="ml-4">
+                                  {performanceLoading && showPerformanceForQuiz === question.id ? (
+                                    <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
+                                  ) : (
+                                    <span className="text-purple-600 text-sm">
+                                      {showPerformanceForQuiz === question.id ? '收起' : '查看对比'}
+                                    </span>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          ))}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Show performance comparison for selected quiz */}
+                      {showPerformanceForQuiz && performanceComparisons[showPerformanceForQuiz] && (
+                        <div className="mt-4">
+                          <QuizPerformanceComparison
+                            quizId={performanceComparisons[showPerformanceForQuiz].quiz_id}
+                            userTime={performanceComparisons[showPerformanceForQuiz].user_time}
+                            avgTime={performanceComparisons[showPerformanceForQuiz].avg_time}
+                            minTime={performanceComparisons[showPerformanceForQuiz].min_time}
+                            maxTime={performanceComparisons[showPerformanceForQuiz].max_time}
+                            timePercentile={performanceComparisons[showPerformanceForQuiz].time_percentile}
+                            userCorrect={performanceComparisons[showPerformanceForQuiz].user_correct}
+                            userAccuracy={performanceComparisons[showPerformanceForQuiz].user_accuracy}
+                            avgAccuracy={performanceComparisons[showPerformanceForQuiz].avg_accuracy}
+                            totalAttempts={performanceComparisons[showPerformanceForQuiz].total_attempts}
+                          />
                         </div>
                       )}
+
+                      {session.questions.length > 5 && (
+                        <p className="text-xs text-gray-500 text-center mt-3">
+                          显示前 5 题，完整对比分析将在后续版本提供
+                        </p>
+                      )}
                     </div>
-                  ))}
+                  )}
+
+                  {/* 知识点分析 */}
+                  {Object.keys(knowledgePointAnalysis).length > 0 ? (
+                    <KnowledgePointTree
+                      knowledgePointAnalysis={knowledgePointAnalysis}
+                      expandedVolumes={expandedVolumes}
+                      expandedUnits={expandedUnits}
+                      expandedLessons={expandedLessons}
+                      onToggleExpand={toggleExpand}
+                    />
+                  ) : (
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
+                      <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <h4 className="text-lg font-semibold text-gray-600 mb-2">暂无知识点分析数据</h4>
+                      <p className="text-gray-500">
+                        本次练习未关联知识点信息，因此无法生成详细的知识点分析报告。
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
               {activeTab === 'suggestions' && (
-                <div className="space-y-8">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center tracking-wide">
-                    <Brain className="w-6 h-6 text-purple-500 mr-2" />
-                    学习建议
-                  </h3>
-
-                  {/* 实用建议卡片 */}
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {personalizedSuggestions.map((suggestion, index) => (
-                      <div key={index} className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
-                        <div className="flex items-center mb-4">
-                          <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center mr-3">
-                            <span className="text-lg">{suggestion.icon}</span>
-                          </div>
-                          <h4 className="text-lg font-bold text-blue-900 tracking-wide">{suggestion.title}</h4>
-                        </div>
-                        <p className="text-blue-800 tracking-wide">{suggestion.content}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* 薄弱点强化建议 */}
-                  {weakKnowledgePoints.length > 0 && (
-                    <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-6 border border-orange-200">
-                      <div className="flex items-center mb-4">
-                        <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center mr-3">
-                          <Zap className="w-5 h-5 text-white" />
-                        </div>
-                        <h4 className="text-lg font-bold text-orange-900 tracking-wide">薄弱点强化建议</h4>
-                      </div>
-                      <div className="space-y-4">
-                        <p className="text-orange-800 tracking-wide">
-                          发现 {weakKnowledgePoints.length} 个需要重点关注的知识点：
-                        </p>
-                        <div className="grid gap-3">
-                          {Object.values(knowledgePointAnalysis).map(volume =>
-                            Object.values(volume.units).map(unit =>
-                              Object.values(unit.lessons).map(lesson =>
-                                lesson.topics
-                                  .filter(topic => topic.status === 'poor' || topic.status === 'needs-improvement')
-                                  .slice(0, 5)
-                                  .map(topic => (
-                                    <div key={topic.id} className="flex items-center justify-between bg-white/70 rounded-lg p-3">
-                                      <span className="text-gray-900 font-medium tracking-wide">{topic.topic}</span>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-sm text-gray-600">{topic.accuracy}%</span>
-                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(topic.status)}`}>
-                                          {getStatusText(topic.status)}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ))
-                              )
-                            )
-                          )}
-                        </div>
-                        <button
-                          onClick={() => onEnhancementRound(weakKnowledgePoints)}
-                          className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 shadow-lg focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-none"
-                        >
-                          <Zap className="w-5 h-5 mr-2" />
-                          <span className="font-medium tracking-wide">开始薄弱点强化练习</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 学习计划建议 */}
-                  <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-200">
-                    <div className="flex items-center mb-4">
-                      <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center mr-3">
-                        <TrendingUp className="w-5 h-5 text-white" />
-                      </div>
-                      <h4 className="text-lg font-bold text-purple-900 tracking-wide">后续学习建议</h4>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-6 h-6 bg-purple-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-xs font-bold text-purple-700">1</span>
-                        </div>
-                        <p className="text-purple-800 tracking-wide">
-                          {hasEssayQuestions ? '回顾问答题的AI评价，理解逻辑思维的改进方向' : '复习本次练习中的错题，理解错误原因'}
-                        </p>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="w-6 h-6 bg-purple-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-xs font-bold text-purple-700">2</span>
-                        </div>
-                        <p className="text-purple-800 tracking-wide">针对薄弱知识点进行专项练习</p>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="w-6 h-6 bg-purple-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-xs font-bold text-purple-700">3</span>
-                        </div>
-                        <p className="text-purple-800 tracking-wide">
-                          {hasEssayQuestions ? '多练习问答题，提高逻辑表达和知识运用能力' : '定期进行综合练习，检验学习效果'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <LearningSuggestions
+                  personalizedSuggestions={personalizedSuggestions}
+                  weakKnowledgePoints={weakKnowledgePoints}
+                  knowledgePointAnalysis={knowledgePointAnalysis}
+                  hasEssayQuestions={hasEssayQuestions}
+                  onEnhancementRound={onEnhancementRound}
+                />
               )}
             </div>
           </div>
 
           {/* Quick Actions - 快速操作建议 */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center tracking-wide">
-              <Sparkles className="w-5 h-5 text-blue-500 mr-2" />
-              接下来您可以
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <button
-                onClick={onRetryQuiz}
-                className="group flex flex-col items-center p-4 bg-white rounded-xl hover:bg-blue-50 transition-all duration-300 border border-gray-200 hover:border-blue-300 hover:shadow-lg"
-              >
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-200 transition-colors">
-                  <RotateCcw className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="font-medium text-gray-900 group-hover:text-blue-600">重新练习</span>
-                <span className="text-xs text-gray-500 mt-1">巩固本次内容</span>
-              </button>
-
-              {onViewKnowledgeAnalysis && (
-                <button
-                  onClick={onViewKnowledgeAnalysis}
-                  className="group flex flex-col items-center p-4 bg-white rounded-xl hover:bg-purple-50 transition-all duration-300 border border-gray-200 hover:border-purple-300 hover:shadow-lg"
-                >
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors">
-                    <BarChart3 className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <span className="font-medium text-gray-900 group-hover:text-purple-600">知识点分析</span>
-                  <span className="text-xs text-gray-500 mt-1">查看整体掌握</span>
-                </button>
-              )}
-
-              {onViewHistory && (
-                <button
-                  onClick={onViewHistory}
-                  className="group flex flex-col items-center p-4 bg-white rounded-xl hover:bg-green-50 transition-all duration-300 border border-gray-200 hover:border-green-300 hover:shadow-lg"
-                >
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-green-200 transition-colors">
-                    <History className="w-6 h-6 text-green-600" />
-                  </div>
-                  <span className="font-medium text-gray-900 group-hover:text-green-600">练习历史</span>
-                  <span className="text-xs text-gray-500 mt-1">回顾学习进度</span>
-                </button>
-              )}
-
-              <button
-                onClick={onReturnToMenu}
-                className="group flex flex-col items-center p-4 bg-white rounded-xl hover:bg-orange-50 transition-all duration-300 border border-gray-200 hover:border-orange-300 hover:shadow-lg"
-              >
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-orange-200 transition-colors">
-                  <BookOpen className="w-6 h-6 text-orange-600" />
-                </div>
-                <span className="font-medium text-gray-900 group-hover:text-orange-600">新的练习</span>
-                <span className="text-xs text-gray-500 mt-1">选择其他内容</span>
-              </button>
-            </div>
-          </div>
+          <QuickActionsGrid
+            onRetryQuiz={onRetryQuiz}
+            onRestart={onRestart}
+            onViewKnowledgeAnalysis={onViewKnowledgeAnalysis}
+            onViewHistory={onViewHistory}
+            onReturnToMenu={onReturnToMenu}
+            onBackToHome={onBackToHome}
+          />
         </div>
       </div>
     </div>

@@ -8,4 +8,5 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../../coverage/packages/apps/api-server',
+  transformIgnorePatterns: ['node_modules/(?!(ali-oss)/)'],
 };

@@ -934,6 +934,38 @@ class BackendApiService {
     return response;
   }
 
+  // Get quiz performance comparison (time + accuracy vs average)
+  async getQuizPerformanceComparison(
+    quizId: string,
+    sessionId: string
+  ): Promise<ApiResponse<{
+    quiz_id: string;
+    user_time: number;
+    avg_time: number;
+    min_time: number;
+    max_time: number;
+    time_percentile: number;
+    user_correct: boolean;
+    user_accuracy: number;
+    avg_accuracy: number;
+    total_attempts: number;
+  }>> {
+    const response = await this.makeRequest<{
+      quiz_id: string;
+      user_time: number;
+      avg_time: number;
+      min_time: number;
+      max_time: number;
+      time_percentile: number;
+      user_correct: boolean;
+      user_accuracy: number;
+      avg_accuracy: number;
+      total_attempts: number;
+    }>(`/analytics/quiz/${quizId}/performance-comparison?sessionId=${sessionId}`);
+
+    return response;
+  }
+
   // Report Management Methods for Teachers/Admins
   async getReportsForManagement(params?: {
     status?: ('pending' | 'reviewing' | 'resolved' | 'dismissed')[];
@@ -1071,6 +1103,8 @@ export const api = {
     },
     completeSession: (sessionId: string) => backendApi.completePracticeSession(sessionId),
     getTypeDistribution: (sessionId: string) => backendApi.getSessionTypeDistribution(sessionId),
+    getQuizPerformanceComparison: (quizId: string, sessionId: string) =>
+      backendApi.getQuizPerformanceComparison(quizId, sessionId),
     getIncompleteSession: () => backendApi.getIncompleteSession(),
     resumeSession: (sessionId: string) => backendApi.resumePracticeSession(sessionId),
     abandonSession: (sessionId: string) => backendApi.abandonPracticeSession(sessionId)

@@ -12,6 +12,7 @@ describe('AnalyticsService', () => {
     getErrorRateSummary: jest.fn(),
     getQuizErrorDetails: jest.fn(),
     getWrongAnswerDistribution: jest.fn(),
+    getQuizPerformanceComparison: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -43,11 +44,14 @@ describe('AnalyticsService', () => {
         quiz_text: 'Test question',
         quiz_type: 'single_choice',
         correct_answer: 'A',
+        answer_index: [0],
+        options: null,
         knowledge_point_id: '123e4567-e89b-12d3-a456-426614174001',
         knowledge_point_name: 'Test KP',
         total_attempts: 100,
         incorrect_attempts: 60,
         error_rate: 60.0,
+        wrong_answer_distribution: null,
       },
     ];
 
@@ -286,22 +290,28 @@ describe('AnalyticsService', () => {
         quiz_text: 'What is "2+2"?',
         quiz_type: 'single_choice',
         correct_answer: 'A',
+        answer_index: [0],
+        options: null,
         knowledge_point_id: '123e4567-e89b-12d3-a456-426614174001',
         knowledge_point_name: 'Math Basics',
         total_attempts: 100,
         incorrect_attempts: 60,
         error_rate: 60.0,
+        wrong_answer_distribution: null,
       },
       {
         quiz_id: '123e4567-e89b-12d3-a456-426614174002',
         quiz_text: 'Simple question',
         quiz_type: 'fill_in_blank',
         correct_answer: 'answer',
+        answer_index: null,
+        options: null,
         knowledge_point_id: null,
         knowledge_point_name: null,
         total_attempts: 50,
         incorrect_attempts: 10,
         error_rate: 20.0,
+        wrong_answer_distribution: null,
       },
     ];
 
@@ -322,15 +332,16 @@ describe('AnalyticsService', () => {
       const lines = csv.split('\n');
       const headers = lines[0];
 
-      expect(headers).toContain('Rank');
-      expect(headers).toContain('Quiz ID');
-      expect(headers).toContain('Question');
-      expect(headers).toContain('Type');
-      expect(headers).toContain('Knowledge Point');
-      expect(headers).toContain('Error Rate');
-      expect(headers).toContain('Total Attempts');
-      expect(headers).toContain('Incorrect');
-      expect(headers).toContain('Correct');
+      // Check for Chinese headers
+      expect(headers).toContain('排名'); // Rank
+      expect(headers).toContain('题目ID'); // Quiz ID
+      expect(headers).toContain('题目内容'); // Question
+      expect(headers).toContain('题型'); // Type
+      expect(headers).toContain('知识点'); // Knowledge Point
+      expect(headers).toContain('错误率'); // Error Rate
+      expect(headers).toContain('总答题次数'); // Total Attempts
+      expect(headers).toContain('错误次数'); // Incorrect
+      expect(headers).toContain('正确次数'); // Correct
     });
 
     it('should generate CSV with correct data rows', async () => {
@@ -371,7 +382,7 @@ describe('AnalyticsService', () => {
         minAttempts: 5,
       });
 
-      expect(csv).toContain('N/A'); // For null knowledge point
+      expect(csv).toContain('无'); // For null knowledge point (Chinese)
     });
 
     it('should calculate correct answers from total and incorrect', async () => {
@@ -418,6 +429,170 @@ describe('AnalyticsService', () => {
           knowledgePointId: '123e4567-e89b-12d3-a456-426614174001',
         })
       );
+    });
+  });
+
+  describe('getQuizPerformanceComparison', () => {
+    const mockPerformanceComparison = {
+      quiz_id: '123e4567-e89b-12d3-a456-426614174000',
+      user_time: 45,
+      avg_time: 60,
+      min_time: 20,
+      max_time: 120,
+      time_percentile: 75,
+      user_correct: true,
+      user_accuracy: 85,
+      avg_accuracy: 65,
+      total_attempts: 150,
+    };
+
+    beforeEach(() => {
+      repository.getQuizPerformanceComparison.mockResolvedValue(mockPerformanceComparison);
+    });
+
+    it('should return quiz performance comparison data', async () => {
+      const result = await service.getQuizPerformanceComparison({
+        quizId: '123e4567-e89b-12d3-a456-426614174000',
+        sessionId: '123e4567-e89b-12d3-a456-426614174005',
+        userId: '123e4567-e89b-12d3-a456-426614174010',
+      });
+
+      expect(result).toEqual(mockPerformanceComparison);
+
+      expect(repository.getQuizPerformanceComparison).toHaveBeenCalledWith({
+        quizId: '123e4567-e89b-12d3-a456-426614174000',
+        sessionId: '123e4567-e89b-12d3-a456-426614174005',
+        userId: '123e4567-e89b-12d3-a456-426614174010',
+      });
+    });
+
+    it('should throw NotFoundException when performance data not found', async () => {
+      repository.getQuizPerformanceComparison.mockResolvedValue(null as any);
+
+      await expect(
+        service.getQuizPerformanceComparison({
+          quizId: '123e4567-e89b-12d3-a456-426614174000',
+          sessionId: '123e4567-e89b-12d3-a456-426614174005',
+          userId: '123e4567-e89b-12d3-a456-426614174010',
+        })
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should handle quiz where user was faster than average', async () => {
+      const fastUserData = {
+        ...mockPerformanceComparison,
+        user_time: 30,
+        avg_time: 60,
+        time_percentile: 90, // Faster than 90% of users
+      };
+
+      repository.getQuizPerformanceComparison.mockResolvedValue(fastUserData);
+
+      const result = await service.getQuizPerformanceComparison({
+        quizId: '123e4567-e89b-12d3-a456-426614174000',
+        sessionId: '123e4567-e89b-12d3-a456-426614174005',
+        userId: '123e4567-e89b-12d3-a456-426614174010',
+      });
+
+      expect(result.user_time).toBeLessThan(result.avg_time);
+      expect(result.time_percentile).toBeGreaterThan(50);
+    });
+
+    it('should handle quiz where user was slower than average', async () => {
+      const slowUserData = {
+        ...mockPerformanceComparison,
+        user_time: 90,
+        avg_time: 60,
+        time_percentile: 25, // Faster than only 25% of users
+      };
+
+      repository.getQuizPerformanceComparison.mockResolvedValue(slowUserData);
+
+      const result = await service.getQuizPerformanceComparison({
+        quizId: '123e4567-e89b-12d3-a456-426614174000',
+        sessionId: '123e4567-e89b-12d3-a456-426614174005',
+        userId: '123e4567-e89b-12d3-a456-426614174010',
+      });
+
+      expect(result.user_time).toBeGreaterThan(result.avg_time);
+      expect(result.time_percentile).toBeLessThan(50);
+    });
+
+    it('should handle quiz where user accuracy is above average', async () => {
+      const highAccuracyData = {
+        ...mockPerformanceComparison,
+        user_accuracy: 95,
+        avg_accuracy: 70,
+        user_correct: true,
+      };
+
+      repository.getQuizPerformanceComparison.mockResolvedValue(highAccuracyData);
+
+      const result = await service.getQuizPerformanceComparison({
+        quizId: '123e4567-e89b-12d3-a456-426614174000',
+        sessionId: '123e4567-e89b-12d3-a456-426614174005',
+        userId: '123e4567-e89b-12d3-a456-426614174010',
+      });
+
+      expect(result.user_accuracy).toBeGreaterThan(result.avg_accuracy);
+      expect(result.user_correct).toBe(true);
+    });
+
+    it('should handle quiz where user accuracy is below average', async () => {
+      const lowAccuracyData = {
+        ...mockPerformanceComparison,
+        user_accuracy: 40,
+        avg_accuracy: 70,
+        user_correct: false,
+      };
+
+      repository.getQuizPerformanceComparison.mockResolvedValue(lowAccuracyData);
+
+      const result = await service.getQuizPerformanceComparison({
+        quizId: '123e4567-e89b-12d3-a456-426614174000',
+        sessionId: '123e4567-e89b-12d3-a456-426614174005',
+        userId: '123e4567-e89b-12d3-a456-426614174010',
+      });
+
+      expect(result.user_accuracy).toBeLessThan(result.avg_accuracy);
+      expect(result.user_correct).toBe(false);
+    });
+
+    it('should handle edge case: user answered correctly but historical accuracy is low', async () => {
+      const edgeCaseData = {
+        ...mockPerformanceComparison,
+        user_correct: true,
+        user_accuracy: 33, // Only 1 out of 3 historical attempts correct
+        avg_accuracy: 70,
+      };
+
+      repository.getQuizPerformanceComparison.mockResolvedValue(edgeCaseData);
+
+      const result = await service.getQuizPerformanceComparison({
+        quizId: '123e4567-e89b-12d3-a456-426614174000',
+        sessionId: '123e4567-e89b-12d3-a456-426614174005',
+        userId: '123e4567-e89b-12d3-a456-426614174010',
+      });
+
+      expect(result.user_correct).toBe(true);
+      expect(result.user_accuracy).toBeLessThan(result.avg_accuracy);
+    });
+
+    it('should handle quiz with high number of total attempts', async () => {
+      const popularQuizData = {
+        ...mockPerformanceComparison,
+        total_attempts: 5000,
+      };
+
+      repository.getQuizPerformanceComparison.mockResolvedValue(popularQuizData);
+
+      const result = await service.getQuizPerformanceComparison({
+        quizId: '123e4567-e89b-12d3-a456-426614174000',
+        sessionId: '123e4567-e89b-12d3-a456-426614174005',
+        userId: '123e4567-e89b-12d3-a456-426614174010',
+      });
+
+      expect(result.total_attempts).toBe(5000);
     });
   });
 });

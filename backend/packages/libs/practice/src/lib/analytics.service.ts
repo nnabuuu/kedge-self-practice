@@ -1,5 +1,12 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { AnalyticsRepository, QuizErrorRate, QuizErrorDetails, ErrorRateSummary, WrongAnswerDistribution } from './analytics.repository';
+import {
+  AnalyticsRepository,
+  QuizErrorRate,
+  QuizErrorDetails,
+  ErrorRateSummary,
+  WrongAnswerDistribution,
+  QuizPerformanceComparison,
+} from './analytics.repository';
 
 type TimeFrame = '7d' | '30d' | '3m' | '6m' | 'all';
 
@@ -260,5 +267,32 @@ export class AnalyticsService {
     const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 
     return csv;
+  }
+
+  /**
+   * Get quiz performance comparison (time and accuracy)
+   */
+  async getQuizPerformanceComparison(params: {
+    quizId: string;
+    sessionId: string;
+    userId: string;
+  }): Promise<QuizPerformanceComparison> {
+    const { quizId, sessionId, userId } = params;
+
+    this.logger.log(`Getting performance comparison for quiz ${quizId}, session ${sessionId}, user ${userId}`);
+
+    const result = await this.analyticsRepository.getQuizPerformanceComparison({
+      quizId,
+      sessionId,
+      userId,
+    });
+
+    if (!result) {
+      throw new NotFoundException(
+        `Performance data not found for quiz ${quizId} in session ${sessionId}`
+      );
+    }
+
+    return result;
   }
 }

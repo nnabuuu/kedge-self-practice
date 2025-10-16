@@ -147,11 +147,18 @@ export default function PracticeHistory({
           }
         });
 
+        // Extract knowledge point IDs from quizzes since backend session doesn't provide them
+        const knowledgePointIds = Array.from(new Set(
+          quizzes
+            .map(q => q.relatedKnowledgePointId || q.knowledge_point_id)
+            .filter(Boolean)
+        ));
+
         // Transform backend data to PracticeSession format
         const practiceSession: PracticeSession = {
           id: session.id,
           subjectId: session.subject_id || 'history',
-          knowledgePoints: session.knowledge_point_ids || [],
+          knowledgePoints: knowledgePointIds, // Extract from quizzes instead of session
           questions: quizzes,
           answers: mappedAnswers, // Use converted answers
           startTime: new Date(session.created_at),
