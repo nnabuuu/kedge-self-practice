@@ -205,24 +205,41 @@ export class AnalyticsService {
             optionsStr = options.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt}`).join(' | ');
           }
 
-          // Get correct answer index and convert to letter
-          const correctAnswer = typeof row.correct_answer === 'string' ? JSON.parse(row.correct_answer) : row.correct_answer;
+          // Get correct answer - match against options to find index
+          let correctAnswer;
+          try {
+            correctAnswer = typeof row.correct_answer === 'string' ? JSON.parse(row.correct_answer) : row.correct_answer;
+          } catch (e) {
+            correctAnswer = row.correct_answer;
+          }
+
+          // Extract answer text (could be array like ["Option text"] or number like [2])
+          let answerValue: string | number | null = null;
           if (Array.isArray(correctAnswer) && correctAnswer.length > 0) {
-            // If correct_answer is array of indices like [2]
-            const answerIndex = typeof correctAnswer[0] === 'number' ? correctAnswer[0] : parseInt(correctAnswer[0]);
-            if (!isNaN(answerIndex)) {
-              correctAnswerStr = String.fromCharCode(65 + answerIndex);
-            }
-          } else if (typeof correctAnswer === 'number') {
-            // If correct_answer is a single number
-            correctAnswerStr = String.fromCharCode(65 + correctAnswer);
-          } else if (typeof correctAnswer === 'string') {
-            // If correct_answer is already a letter or number string
-            const parsed = parseInt(correctAnswer);
-            if (!isNaN(parsed)) {
-              correctAnswerStr = String.fromCharCode(65 + parsed);
-            } else if (/^[A-Z]$/i.test(correctAnswer)) {
-              correctAnswerStr = correctAnswer.toUpperCase();
+            answerValue = correctAnswer[0];
+          } else if (typeof correctAnswer === 'string' || typeof correctAnswer === 'number') {
+            answerValue = correctAnswer;
+          }
+
+          if (answerValue !== null) {
+            // Case 1: Answer is numeric index
+            if (typeof answerValue === 'number') {
+              correctAnswerStr = String.fromCharCode(65 + answerValue);
+            } else if (typeof answerValue === 'string') {
+              const parsed = parseInt(answerValue);
+              if (!isNaN(parsed)) {
+                // String number like "2"
+                correctAnswerStr = String.fromCharCode(65 + parsed);
+              } else if (/^[A-Z]$/i.test(answerValue)) {
+                // Already a letter like "C"
+                correctAnswerStr = answerValue.toUpperCase();
+              } else {
+                // Case 2: Answer is text - find matching option
+                const matchIndex = options.findIndex((opt: string) => opt === answerValue);
+                if (matchIndex >= 0) {
+                  correctAnswerStr = String.fromCharCode(65 + matchIndex);
+                }
+              }
             }
           }
         } catch (e) {
