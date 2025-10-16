@@ -114,7 +114,7 @@ export default function KnowledgePointHeatmap({ data }: KnowledgePointHeatmapPro
         </div>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-red-500 rounded"></div>
-          <span className="text-sm text-gray-700">待提高 (<60%)</span>
+          <span className="text-sm text-gray-700">待提高 (&lt;60%)</span>
         </div>
       </div>
 
