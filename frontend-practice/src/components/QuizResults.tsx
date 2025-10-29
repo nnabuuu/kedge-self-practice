@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, Award, Zap, Brain, Star, MessageSquare, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Trophy, Target, Clock, TrendingUp, BookOpen, Award, Zap, Brain, Star, MessageSquare, Loader2, RotateCcw, History, Home, BarChart3 } from 'lucide-react';
 import { Subject, PracticeSession, QuizQuestion } from '../types/quiz';
 import { useKnowledgePoints } from '../hooks/useApi';
 import TimeAnalysisChart from './TimeAnalysisChart';
