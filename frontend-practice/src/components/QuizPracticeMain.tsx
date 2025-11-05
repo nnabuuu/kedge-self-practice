@@ -800,14 +800,7 @@ export default function QuizPractice({
               const correctIndex = getCorrectAnswerIndex(currentQuestion);
               const selectedIndex = getSelectedAnswerIndex(selectedAnswer);
               const correctLetter = String.fromCharCode(65 + correctIndex);
-                questionId: currentQuestion.id,
-                selectedAnswer_letter: selectedAnswer,
-                selectedAnswer_index: selectedIndex,
-                correctAnswer_letter: correctLetter,
-                correctAnswer_index: correctIndex,
-                showResult,
-                matches: selectedIndex === correctIndex
-              });
+
               return (
                 <SingleChoiceQuestion
                   question={currentQuestion}

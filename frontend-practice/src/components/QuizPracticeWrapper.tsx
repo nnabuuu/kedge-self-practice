@@ -86,6 +86,8 @@ export default function QuizPracticeWrapper({
 
             mappedAnswers = new Array(actualData.quizzes.length).fill(null);
             actualData.submittedAnswers.forEach((answerObj: any, idx: number) => {
+              // Debug log for answer mapping
+              console.log('Mapping answer:', {
                 quiz_id: answerObj.quiz_id,
                 user_answer: answerObj.user_answer,
                 user_answer_type: typeof answerObj.user_answer,
@@ -122,6 +124,7 @@ export default function QuizPracticeWrapper({
                 }
 
                 mappedAnswers[questionIndex] = convertedAnswer;
+                console.log('Answer conversion:', {
                   original: answerObj.user_answer,
                   converted: convertedAnswer,
                   type: question.type
@@ -150,6 +153,7 @@ export default function QuizPracticeWrapper({
         // The GET endpoint now returns full session data including quizzes and answers
         const { session, quizzes, submittedAnswers, currentQuestionIndex } = sessionResponse.data;
 
+        console.log('Session data:', {
           quizzesCount: quizzes?.length,
           submittedAnswersCount: submittedAnswers?.length,
           currentQuestionIndex
@@ -196,6 +200,7 @@ export default function QuizPracticeWrapper({
                 }
 
                 mappedAnswers[questionIndex] = convertedAnswer;
+                console.log('Answer conversion:', {
                   original: answerObj.user_answer,
                   converted: convertedAnswer,
                   type: question.type
@@ -230,7 +235,8 @@ export default function QuizPracticeWrapper({
     try {
       setLoading(true);
       setError(null);
-      
+
+      console.log('Creating session with:', {
         selectedKnowledgePoints,
         config
       });
