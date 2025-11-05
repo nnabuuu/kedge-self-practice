@@ -7,8 +7,7 @@ module.exports = {
     {
       name: 'api-server',
       cwd: './backend',
-      script: 'npx',
-      args: 'nx serve api-server',
+      script: './dist/packages/apps/api-server/main.js',
       instances: 1,
       exec_mode: 'fork',
       env: {
