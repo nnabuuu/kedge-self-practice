@@ -17,7 +17,9 @@ module.exports = {
         REDIS_HOST: process.env.REDIS_HOST || 'localhost',
         REDIS_PORT: process.env.REDIS_PORT || 6379,
         JWT_SECRET: process.env.JWT_SECRET || 'your-production-jwt-secret-change-this',
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        LLM_API_KEY: process.env.LLM_API_KEY,
+        LLM_BASE_URL: process.env.LLM_BASE_URL,
+        LLM_MODEL_QUIZ_PARSER: process.env.LLM_MODEL_QUIZ_PARSER,
         QUIZ_STORAGE_PATH: '/var/lib/kedge/quiz-storage',
         CORS_ORIGIN: 'https://your-domain.com',  // Your frontend domain
       },
