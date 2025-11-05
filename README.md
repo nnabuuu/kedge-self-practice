@@ -193,6 +193,53 @@ docker run -p 8718:8718 \
   kedge-api
 ```
 
+### PM2 Deployment (Production)
+
+For production deployment with PM2 process manager:
+
+```bash
+# 1. Install PM2 globally (if not installed)
+npm install -g pm2
+
+# 2. Navigate to backend directory
+cd /home/zjsnxc/kedge-self-practice/backend
+
+# 3. Build the application
+npx nx build api-server
+
+# 4. Merge environment files (.envrc + .envrc.override = .env)
+./merge-env.sh
+
+# 5. Load environment variables and start with PM2
+export $(cat .env | grep -v '^#' | xargs)
+pm2 start dist/packages/apps/api-server/main.js \
+  --name cyez-kedge-self-practice \
+  --time
+
+# 6. Save PM2 configuration for auto-restart on reboot
+pm2 save
+pm2 startup
+
+# View logs
+pm2 logs cyez-kedge-self-practice
+
+# Other PM2 commands
+pm2 list                              # List all processes
+pm2 restart cyez-kedge-self-practice  # Restart the app
+pm2 stop cyez-kedge-self-practice     # Stop the app
+pm2 delete cyez-kedge-self-practice   # Remove from PM2
+pm2 monit                             # Monitor resources
+```
+
+**Quick update and restart:**
+```bash
+cd /home/zjsnxc/kedge-self-practice
+git pull
+cd backend
+npx nx build api-server
+pm2 restart cyez-kedge-self-practice
+```
+
 ## 🗄️ Database Management
 
 ### Migrations
