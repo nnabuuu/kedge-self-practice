@@ -32,13 +32,21 @@ function maskApiKey(key: string | undefined): string {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {});
   const logger = new Logger('bootstrap');
 
-  // Log LLM configuration
+  // Log environment configuration before starting the app
+  logger.log('=== Environment Configuration ===');
+  logger.log(`NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+  logger.log(`API_PORT: ${process.env.API_PORT || process.env.PORT || 8716}`);
+  logger.log(`JWT_SECRET: ${maskApiKey(process.env.JWT_SECRET)}`);
+  logger.log(`NODE_DATABASE_URL: ${process.env.NODE_DATABASE_URL ? 'configured' : '(not set)'}`);
+  logger.log(`REDIS_HOST: ${process.env.REDIS_HOST || 'localhost'}`);
   logger.log(`LLM_BASE_URL: ${process.env.LLM_BASE_URL || '(using default)'}`);
   logger.log(`LLM_API_KEY: ${maskApiKey(process.env.LLM_API_KEY)}`);
   logger.log(`LLM_MODEL_QUIZ_PARSER: ${process.env.LLM_MODEL_QUIZ_PARSER || 'gpt-4o (default)'}`);
+  logger.log('=================================');
+
+  const app = await NestFactory.create(AppModule, {});
 
   // Enable API versioning with /v1 prefix as default
   app.enableVersioning({
