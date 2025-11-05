@@ -125,6 +125,8 @@ function App() {
       // Preload ALL practice analysis data for students
       if (existingUser.role === 'student') {
         practiceAnalysisApi.preloadAllData().then(results => {
+          // Data is now cached in the API service
+          console.log('Preloaded practice analysis:', {
             hasWeakPoints: !!results.weakPoints,
             hasWrongQuestions: !!results.wrongQuestions,
             hasQuickSuggestion: !!results.quickSuggestion
