@@ -5,11 +5,12 @@
 module.exports = {
   apps: [
     {
-      name: 'api-server',
+      name: 'cyez-kedge-self-practice',
       cwd: './backend',
       script: './dist/packages/apps/api-server/main.js',
       instances: 1,
       exec_mode: 'fork',
+      instance_var: 'INSTANCE_ID',
       env: {
         NODE_ENV: 'development',
         API_PORT: process.env.API_PORT || 8718,
@@ -32,6 +33,19 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       min_uptime: '5s',
+      // Metadata
+      instance_var: 'INSTANCE_ID',
     },
   ],
+
+  // Deployment configuration
+  deploy: {
+    production: {
+      user: 'zjsnxc',
+      host: 'jiaoshi.one',
+      ref: 'origin/main',
+      repo: 'git@github.com:nnabuuu/kedge-self-practice.git',
+      path: '/home/zjsnxc/kedge-self-practice',
+    }
+  }
 };
