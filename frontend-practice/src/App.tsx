@@ -124,14 +124,7 @@ function App() {
       
       // Preload ALL practice analysis data for students
       if (existingUser.role === 'student') {
-        practiceAnalysisApi.preloadAllData().then(results => {
-          // Data is now cached in the API service
-          console.log('Preloaded practice analysis:', {
-            hasWeakPoints: !!results.weakPoints,
-            hasWrongQuestions: !!results.wrongQuestions,
-            hasQuickSuggestion: !!results.quickSuggestion
-          });
-        }).catch(error => {
+        practiceAnalysisApi.preloadAllData().catch(error => {
           console.error('Failed to preload practice analysis on start:', error);
         });
       }
@@ -329,13 +322,6 @@ function App() {
     if (type === 'student') {
       // Load all data in parallel and cache it
       practiceAnalysisApi.preloadAllData().then(results => {
-        // Data is now cached in the API service
-        console.log('Preloaded practice analysis during login:', {
-          hasWeakPoints: !!results.weakPoints,
-          hasWrongQuestions: !!results.wrongQuestions,
-          hasQuickSuggestion: !!results.quickSuggestion
-        });
-
         // If we have quick suggestion data, also update user preferences
         if (results.quickSuggestion?.knowledge_point_ids?.length > 0) {
           authService.updatePreference('cachedQuickPractice', {
@@ -394,14 +380,7 @@ function App() {
     
     // Reload practice analysis data for the new subject
     if (authService.isAuthenticated()) {
-      practiceAnalysisApi.preloadAllData().then(results => {
-        // Data is now cached in the API service
-        console.log('Reloaded practice analysis for new subject:', {
-          hasWeakPoints: !!results.weakPoints,
-          hasWrongQuestions: !!results.wrongQuestions,
-          hasQuickSuggestion: !!results.quickSuggestion
-        });
-      }).catch(error => {
+      practiceAnalysisApi.preloadAllData().catch(error => {
         console.error('Failed to reload practice analysis:', error);
       });
       
