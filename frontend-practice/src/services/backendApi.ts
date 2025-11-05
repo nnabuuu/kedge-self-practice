@@ -128,12 +128,6 @@ class BackendApiService {
     // Keep options in their original format (object or array)
     let options = backendQuiz.options;
 
-    // Debug: Log the options format
-    if (type === 'single-choice' || type === 'multiple-choice') {
-      console.log('[convertQuiz] Backend options type:', Array.isArray(backendQuiz.options) ? 'array' : 'object');
-      console.log('[convertQuiz] Backend options:', JSON.stringify(backendQuiz.options));
-    }
-
     // If options is an array and we need object format for compatibility
     if (Array.isArray(backendQuiz.options) && (type === 'single-choice' || type === 'multiple-choice')) {
       options = {};
@@ -143,12 +137,10 @@ class BackendApiService {
           options[keys[index]] = option;
         }
       });
-      console.log('[convertQuiz] Converted array to object:', JSON.stringify(options));
     } else if (!Array.isArray(backendQuiz.options) && (type === 'single-choice' || type === 'multiple-choice')) {
       // Options is an object - check if it has numeric keys and convert to letter keys
       const firstKey = Object.keys(backendQuiz.options || {})[0];
       if (firstKey && /^\d+$/.test(firstKey)) {
-        console.log('[convertQuiz] Detected numeric keys in options object, converting to letter keys');
         const tempOptions: any = {};
         const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
         Object.entries(backendQuiz.options).forEach(([numKey, value]) => {
@@ -158,7 +150,6 @@ class BackendApiService {
           }
         });
         options = tempOptions;
-        console.log('[convertQuiz] Converted numeric keys to letters:', JSON.stringify(options));
       }
     }
 
@@ -541,8 +532,6 @@ class BackendApiService {
       backendUpdates.alternative_answers = updates.alternative_answers;
     }
 
-    console.log('Backend updates being sent:', JSON.stringify(backendUpdates, null, 2));
-    
     const response = await this.makeRequest<BackendQuiz>(`/quiz/${id}`, {
       method: 'PUT',
       body: JSON.stringify(backendUpdates)
@@ -734,20 +723,14 @@ class BackendApiService {
       quiz_types: config.quiz_types,
       question_type: config.question_type || 'with-wrong'
     };
-    
-    console.log('Creating practice session with config:', sessionData);
-    console.log('Quiz types being sent:', config.quiz_types);
 
     const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[], submittedAnswers: any[], currentQuestionIndex: number}>('/practice/sessions/create', {
       method: 'POST',
       body: JSON.stringify(sessionData)
     });
 
-    
     // Convert the quizzes to frontend format if they exist
     if (response.success && response.data && response.data.quizzes) {
-      console.log('Received quizzes from backend:', response.data.quizzes.length);
-      console.log('Quiz types in response:', response.data.quizzes.map((q: any) => q.type));
       const convertedQuizzes = response.data.quizzes.map(quiz => this.convertQuiz(quiz));
       return {
         ...response,

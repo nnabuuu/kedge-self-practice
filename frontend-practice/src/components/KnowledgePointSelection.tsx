@@ -287,7 +287,6 @@ export default function KnowledgePointSelection({
           setSmartSuggestions(suggestionMap);
           setShowSmartSuggestionInfo(false); // Default to collapsed
           
-          console.log('Smart suggestions applied:', data.suggestions);
         } else {
           // Fallback to simple logic if no suggestions
           fallbackSmartRecommendation();

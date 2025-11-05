@@ -250,7 +250,6 @@ ${JSON.stringify(knowledgePoints, null, 2)}
     const hierarchyDescription = this.getStructuredHierarchyStrings(knowledgePoints).join('\n');
 
     this.logger.log(`Prepared hierarchyDescription:`)
-    console.log(hierarchyDescription);
 
     const prompt = `你是一位中学历史命题与教学专家，擅长分析历史选择题背后的考查意图。
 

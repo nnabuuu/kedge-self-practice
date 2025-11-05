@@ -42,7 +42,6 @@ export class SubjectsConfigService {
     }
 
     if (!this.configPath) {
-      console.warn('Subjects configuration file not found, using defaults');
       // Use default configuration if file not found
       this.config = this.getDefaultConfig();
     }

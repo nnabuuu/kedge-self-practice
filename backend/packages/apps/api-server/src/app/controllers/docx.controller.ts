@@ -81,16 +81,11 @@ export class DocxController {
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 200, description: 'Quiz extracted successfully' })
   async extractQuiz(@UploadedFile() file: MulterFile) {
-    console.log('=== LEGACY DOCX Extraction Debug (extract-quiz endpoint) ===');
-    console.log('Uploaded file size:', file.buffer.length, 'bytes');
-    console.log('File name:', file.originalname);
     
     const paragraphs = await this.docxService.extractAllHighlights(file.buffer);
-    console.log('Legacy extraction - paragraphs count:', paragraphs.length);
     
     // Check if legacy service is returning image data (it shouldn't)
     const hasImages = paragraphs.some(p => p.images && p.images.length > 0);
-    console.log('Legacy extraction - has images:', hasImages);
     
     if (hasImages) {
       console.error('ERROR: Legacy service returned image data!');
@@ -115,7 +110,6 @@ export class DocxController {
       })) : [],
     }));
     
-    console.log('=== Calling LLM with legacy paragraphs (converted to GPT format) ===');
     return this.llmService.extractQuizItems(gptParagraphs);
   }
 
@@ -163,43 +157,27 @@ export class DocxController {
     }
   })
   async extractQuizWithImages(@UploadedFile() file: MulterFile) {
-    console.log('=== DOCX Extraction Debug (extract-quiz-with-images endpoint) ===');
-    console.log('Uploaded file size:', file.buffer.length, 'bytes');
-    console.log('File name:', file.originalname);
     
     // Extract paragraphs and images from DOCX
     const { paragraphs, allImages } = await this.enhancedDocxService.extractAllHighlightsWithImages(file.buffer);
     
-    console.log('Extracted paragraphs count:', paragraphs.length);
-    console.log('Extracted images count:', allImages.length);
     
     // Check total content size before processing
     const totalContentSize = JSON.stringify(paragraphs).length;
-    console.log('Total extracted content size:', totalContentSize, 'characters');
-    console.log('Estimated tokens from extraction:', Math.ceil(totalContentSize / 4));
     
     // Log sample of first few paragraphs (if any)
     if (paragraphs.length > 0) {
-      console.log('First paragraph text length:', paragraphs[0].paragraph?.length || 0);
-      console.log('First paragraph sample:', paragraphs[0].paragraph?.substring(0, 200) || 'No text');
-      console.log('First paragraph image count:', paragraphs[0].images?.length || 0);
       
       if (paragraphs.length > 1) {
-        console.log('Second paragraph text length:', paragraphs[1].paragraph?.length || 0);
       }
       
       // Find first paragraph with images to analyze the structure
       const firstImageParagraph = paragraphs.find(p => p.images && p.images.length > 0);
       if (firstImageParagraph) {
-        console.log('First paragraph with images has', firstImageParagraph.images.length, 'images');
         const firstImage = firstImageParagraph.images[0];
-        console.log('First image structure keys:', Object.keys(firstImage));
-        console.log('First image has data?', !!firstImage.data);
-        console.log('First image data size:', firstImage.data ? (Buffer.isBuffer(firstImage.data) ? firstImage.data.length : JSON.stringify(firstImage.data).length) : 0);
       }
     }
     
-    console.log('=== End DOCX Extraction Debug ===');
     
     // First, create temporary image mappings without uploading
     // We'll only upload images that are actually referenced in the parsed content
@@ -234,11 +212,7 @@ export class DocxController {
     });
     
     // Debug: Verify paragraphsForGPT doesn't contain Buffer data
-    console.log('=== Verifying paragraphsForGPT ===');
     const gptDataSize = JSON.stringify(paragraphsForGPT).length;
-    console.log('paragraphsForGPT JSON size:', gptDataSize, 'characters');
-    console.log('paragraphsForGPT estimated tokens:', Math.ceil(gptDataSize / 4));
-    console.log('=== End Verification ===');
     
     // Generate quiz items using LLM
     const quizItems = await this.llmService.extractQuizItems(paragraphsForGPT);
@@ -268,8 +242,6 @@ export class DocxController {
       // Note: Quiz items don't have explanation field in current model
     });
     
-    console.log(`Found ${referencedImageIds.size} referenced images out of ${allImages.length} total images`);
-    console.log('Referenced image IDs:', Array.from(referencedImageIds));
     
     // Now only save the referenced images
     const savedImages: Array<{
@@ -286,13 +258,11 @@ export class DocxController {
     for (const tempUuid of referencedImageIds) {
       const docxImage = imageDataMap.get(tempUuid);
       if (!docxImage) {
-        console.log(`Warning: Referenced image ${tempUuid} not found in image data map`);
         continue;
       }
       try {
         // Skip empty images
         if (!docxImage.data || docxImage.data.length === 0) {
-          console.log(`Skipping empty referenced image: ${docxImage.filename} (size: 0 bytes)`);
           continue;
         }
         
@@ -303,7 +273,6 @@ export class DocxController {
         // Check if it's an EMF/WMF file that needs conversion
         const ext = filename.toLowerCase();
         if (ext.endsWith('.emf') || ext.endsWith('.wmf')) {
-          console.log(`Converting ${filename} from EMF/WMF to PNG...`);
           
           const conversionResult = await this.imageConverter.convertEmfWmf(
             docxImage.data,
@@ -316,11 +285,8 @@ export class DocxController {
             imageData = conversionResult.outputBuffer;
             filename = filename.replace(/\.(emf|wmf)$/i, '.png');
             contentType = 'image/png';
-            console.log(`Successfully converted ${docxImage.filename} to PNG`);
           } else {
             // Skip this image if conversion fails
-            console.warn(`Failed to convert ${filename}: ${conversionResult.error || 'Unknown error'}`);
-            console.log(`Skipping ${filename} due to conversion failure`);
             continue; // Skip this image
           }
         }
@@ -333,11 +299,9 @@ export class DocxController {
         
         // Skip if metadata is null (empty file)
         if (!metadata) {
-          console.log(`Skipped saving empty attachment: ${filename} (returned null from storage)`);
           continue;
         }
         
-        console.log(`Saved referenced image: ${filename} (size: ${metadata.size} bytes, id: ${metadata.id})`);
         
         // Map temp UUID to real saved UUID
         tempToRealUuidMap.set(tempUuid, metadata.id);
@@ -355,7 +319,6 @@ export class DocxController {
       }
     }
     
-    console.log(`Uploaded ${savedImages.length} images that were referenced in quiz content`);
     
     // Now replace temp UUIDs with real UUIDs in quiz items
     const finalQuizItems = quizItems.map(item => {

@@ -41,7 +41,6 @@ export class FillInBlankUtility {
           if (matches && matches.length > 0) {
             fixedQuestion = fixedQuestion.replace(pattern, '____');
             replacements++;
-            console.log(`FillInBlank: Auto-replaced "${answerText}" with blank`);
             break;
           }
         }
@@ -51,7 +50,6 @@ export class FillInBlankUtility {
     // If no replacements made, append blanks at the end
     if (!fixedQuestion.includes('____')) {
       fixedQuestion = this.appendBlanksToQuestion(fixedQuestion, answers.length);
-      console.log('FillInBlank: Added blanks at the end as fallback');
     }
     
     return { ...item, question: fixedQuestion };

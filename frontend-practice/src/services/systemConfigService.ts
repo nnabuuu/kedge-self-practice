@@ -115,21 +115,18 @@ class SystemConfigService {
       // Check if response is ok
       if (!response.ok) {
         // If backend is not available or endpoint doesn't exist, default to true
-        console.log('System config endpoint not available, defaulting to show demo accounts');
         return true;
       }
-      
+
       const data: ApiResponse<SystemConfig> = await response.json();
-      
+
       if (data.success && data.data?.value?.enabled !== undefined) {
         return data.data.value.enabled;
       }
       // Default to true if config not found
       return true;
     } catch (error) {
-      // Network error or backend not running - default to true
-      console.log('Backend not available, defaulting to show demo accounts');
-      // Default to true on error (for development convenience)
+      // Network error or backend not running - default to true on error (for development convenience)
       return true;
     }
   }

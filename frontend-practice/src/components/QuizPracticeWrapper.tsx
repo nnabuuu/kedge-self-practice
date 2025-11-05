@@ -37,14 +37,12 @@ export default function QuizPracticeWrapper({
   } | null>(null);
   const hasLoadedRef = React.useRef<string | null>(null);
 
-  console.log('QuizPracticeWrapper render - questions:', questions, 'loading:', loading, 'error:', error);
 
   useEffect(() => {
     // Prevent double-fetching in React strict mode
     // Use string comparison to handle both defined and undefined values
     const sessionKey = practiceSessionId || '__new_session__';
     if (hasLoadedRef.current === sessionKey) {
-      console.log('[QuizPracticeWrapper] Already loaded session:', sessionKey);
       return;
     }
 
@@ -64,12 +62,9 @@ export default function QuizPracticeWrapper({
 
       // Check if we have cached resume data (from clicking "继续练习")
       const cachedResumeData = sessionStorage.getItem('resumeSessionData');
-      console.log('[QuizPracticeWrapper] Checking cache, found:', cachedResumeData ? 'YES' : 'NO');
 
       if (cachedResumeData) {
-        console.log('[QuizPracticeWrapper] Raw cached data:', cachedResumeData.substring(0, 200));
         const resumeData = JSON.parse(cachedResumeData);
-        console.log('[QuizPracticeWrapper] Parsed resume data:', resumeData);
 
         // Clear the cache after using it
         sessionStorage.removeItem('resumeSessionData');
@@ -78,9 +73,6 @@ export default function QuizPracticeWrapper({
         const actualData = resumeData.data || resumeData;
 
         if (actualData.quizzes && actualData.quizzes.length > 0) {
-          console.log('[QuizPracticeWrapper] Loaded questions from resume data:', actualData.quizzes.length);
-          console.log('[QuizPracticeWrapper] Submitted answers:', actualData.submittedAnswers?.length);
-          console.log('[QuizPracticeWrapper] Current question index:', actualData.currentQuestionIndex);
 
           setQuestions(actualData.quizzes);
 
@@ -91,11 +83,9 @@ export default function QuizPracticeWrapper({
           //       Frontend displays them as letters (A,B,C)
           let mappedAnswers: any[] | undefined;
           if (actualData.submittedAnswers && actualData.submittedAnswers.length > 0) {
-            console.log('[QuizPracticeWrapper] Raw submitted answers from backend:', actualData.submittedAnswers);
 
             mappedAnswers = new Array(actualData.quizzes.length).fill(null);
             actualData.submittedAnswers.forEach((answerObj: any, idx: number) => {
-              console.log(`[QuizPracticeWrapper] Processing answer ${idx}:`, {
                 quiz_id: answerObj.quiz_id,
                 user_answer: answerObj.user_answer,
                 user_answer_type: typeof answerObj.user_answer,
@@ -132,14 +122,12 @@ export default function QuizPracticeWrapper({
                 }
 
                 mappedAnswers[questionIndex] = convertedAnswer;
-                console.log(`[QuizPracticeWrapper] Converted answer for question ${questionIndex}:`, {
                   original: answerObj.user_answer,
                   converted: convertedAnswer,
                   type: question.type
                 });
               }
             });
-            console.log('[QuizPracticeWrapper] Mapped answers to positions:', mappedAnswers);
           }
 
           // Store resume data for QuizPracticeMain to use
@@ -153,26 +141,21 @@ export default function QuizPracticeWrapper({
           setLoading(false);
           return;
         } else {
-          console.warn('[QuizPracticeWrapper] Resume data missing questions:', {resumeData, actualData});
         }
       }
 
-      console.log('Fetching session with ID:', practiceSessionId);
       const sessionResponse = await api.practice.getSession(practiceSessionId);
-      console.log('Session response:', sessionResponse);
 
       if (sessionResponse.success && sessionResponse.data) {
         // The GET endpoint now returns full session data including quizzes and answers
         const { session, quizzes, submittedAnswers, currentQuestionIndex } = sessionResponse.data;
 
-        console.log('[QuizPracticeWrapper] Session data from GET:', {
           quizzesCount: quizzes?.length,
           submittedAnswersCount: submittedAnswers?.length,
           currentQuestionIndex
         });
 
         if (quizzes && quizzes.length > 0) {
-          console.log('[QuizPracticeWrapper] Setting questions from GET response:', quizzes.length);
           setQuestions(quizzes);
 
           // Convert backend answer objects to frontend answer array format
@@ -180,7 +163,6 @@ export default function QuizPracticeWrapper({
           //       Frontend displays them as letters (A,B,C)
           let mappedAnswers: any[] | undefined;
           if (submittedAnswers && submittedAnswers.length > 0) {
-            console.log('[QuizPracticeWrapper] Processing submitted answers:', submittedAnswers);
 
             mappedAnswers = new Array(quizzes.length).fill(null);
             submittedAnswers.forEach((answerObj: any) => {
@@ -214,14 +196,12 @@ export default function QuizPracticeWrapper({
                 }
 
                 mappedAnswers[questionIndex] = convertedAnswer;
-                console.log(`[QuizPracticeWrapper] Converted answer for question ${questionIndex}:`, {
                   original: answerObj.user_answer,
                   converted: convertedAnswer,
                   type: question.type
                 });
               }
             });
-            console.log('[QuizPracticeWrapper] Mapped answers:', mappedAnswers);
           }
 
           // Store resume data for QuizPracticeMain to use
@@ -251,7 +231,6 @@ export default function QuizPracticeWrapper({
       setLoading(true);
       setError(null);
       
-      console.log('Creating new session with config:', {
         selectedKnowledgePoints,
         config
       });
@@ -259,7 +238,6 @@ export default function QuizPracticeWrapper({
       // Use the knowledge point IDs directly (already strings)
       const knowledgePointIds = selectedKnowledgePoints.filter(id => id && id.length > 0);
       
-      console.log('Valid knowledge point IDs:', knowledgePointIds);
 
       // Create session configuration
       const sessionConfig = {
@@ -273,11 +251,9 @@ export default function QuizPracticeWrapper({
                       config.questionType === 'wrong-only' ? 'wrong-only' : 'with-wrong'
       };
 
-      console.log('Creating session with config:', sessionConfig);
 
       // Create the session - now returns session with quiz data immediately
       const createResponse = await api.practice.createSession(sessionConfig);
-      console.log('Create session response:', createResponse);
 
       if (createResponse.success && createResponse.data) {
         // The response now contains session object AND quiz data
@@ -291,15 +267,12 @@ export default function QuizPracticeWrapper({
           return;
         }
 
-        console.log('Created session with ID:', sessionId);
-        console.log('Session created with quizzes:', quizzes.length);
         setCurrentSessionId(sessionId); // Save the session ID
 
         if (quizzes.length > 0) {
           // Set the questions from the create response
           setQuestions(quizzes);
         } else {
-          console.log('No questions found for the selected criteria');
           setError('没有找到符合条件的题目');
         }
       } else {

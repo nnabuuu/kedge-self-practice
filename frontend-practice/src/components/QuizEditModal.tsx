@@ -66,9 +66,6 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
     const cloned = JSON.parse(JSON.stringify(quiz));
     
     // Debug log to see what we're receiving
-    console.log('Original quiz data:', quiz);
-    console.log('Cloned quiz knowledge_point_id:', cloned.knowledge_point_id, 'type:', typeof cloned.knowledge_point_id);
-    console.log('Cloned quiz knowledgePointId:', cloned.knowledgePointId, 'type:', typeof cloned.knowledgePointId);
     
     // Ensure options is an array for editing
     if (cloned.options && !Array.isArray(cloned.options)) {
@@ -231,7 +228,6 @@ export default function QuizEditModal({ quiz, isOpen, onClose, onSave, onDelete 
       }
       
       // Log the data being sent for debugging
-      console.log('Sending quiz update:', JSON.stringify(dataToSave, null, 2));
       
       // Update the quiz
       const response = await api.questions.update(editingQuiz.id, dataToSave);

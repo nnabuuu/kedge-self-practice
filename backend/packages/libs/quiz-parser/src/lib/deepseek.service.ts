@@ -40,7 +40,6 @@ export class DeepSeekService {
     
     // Check if we should use optimized per-paragraph processing
     if (this.shouldUsePerParagraphProcessing(options)) {
-      console.log('DeepSeek: Using optimized per-paragraph processing for fill-in-the-blank');
       return this.extractFillInBlankPerParagraph(safeParagraphs, options);
     }
     
@@ -55,7 +54,6 @@ export class DeepSeekService {
     const jsonString = JSON.stringify(paragraphs, null, 2);
     const estimatedTokens = Math.ceil(jsonString.length / 4);
     
-    console.log(`DeepSeek: Input size - ${paragraphs.length} paragraphs, ~${estimatedTokens} tokens`);
     
     if (jsonString.length > 500000) {
       console.error('DeepSeek: Data exceeds safe limits!');
@@ -72,7 +70,6 @@ export class DeepSeekService {
     const jsonString = JSON.stringify(paragraphs, null, 2);
     
     if (jsonString.length > 400000) {
-      console.warn('DeepSeek: Data is large, truncating for safety...');
       return paragraphs.slice(0, 10);
     }
     
@@ -161,7 +158,6 @@ export class DeepSeekService {
         const item = await this.generateSingleFillInBlank(paragraph, i + 1, paragraphs.length);
         if (item) {
           results.push(item);
-          console.log(`DeepSeek: Generated fill-in-blank ${i + 1}/${paragraphs.length}`);
         }
       } catch (error) {
         console.error(`DeepSeek: Failed for paragraph ${i + 1}:`, error);
@@ -294,7 +290,6 @@ export class DeepSeekService {
     // Log parsing strategy for debugging
     const strategy = JsonParserUtility.getParsingStrategy(content);
     if (strategy !== 'direct') {
-      console.log(`DeepSeek: JSON parsed using ${strategy} strategy`);
     }
     
     // Validate and normalize response

@@ -96,7 +96,6 @@ export class QuizValidatorUtility {
     // Extract and validate question
     const question = this.extractQuestion(item);
     if (!question) {
-      console.warn('Quiz item missing question text, skipping');
       return null;
     }
     

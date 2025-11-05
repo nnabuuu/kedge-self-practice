@@ -163,7 +163,6 @@ export class EnhancedQuizStorageService {
     // For now, we'll search for the file in the directory structure
     // In production, this should query the attachments table for the file path
     
-    console.log(`Looking for attachment: ${uuid}.${extension}`);
     
     try {
       // Generate possible paths based on current and recent months
@@ -189,7 +188,6 @@ export class EnhancedQuizStorageService {
         possiblePaths.push(`${year}/${monthStr}/${uuid}.${extension}`);
       }
       
-      console.log(`Searching in ${possiblePaths.length} possible paths...`);
       
       for (const path of possiblePaths) {
         try {
@@ -197,7 +195,6 @@ export class EnhancedQuizStorageService {
           const buffer = await this.hybridStorage.getFile(path);
           
           if (buffer) {
-            console.log(`Found attachment at: ${path}`);
             
             const metadata: AttachmentMetadata = {
               id: uuid,

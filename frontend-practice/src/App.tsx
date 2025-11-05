@@ -125,7 +125,6 @@ function App() {
       // Preload ALL practice analysis data for students
       if (existingUser.role === 'student') {
         practiceAnalysisApi.preloadAllData().then(results => {
-          console.log('Practice analysis data preloaded on app start:', {
             hasWeakPoints: !!results.weakPoints,
             hasWrongQuestions: !!results.wrongQuestions,
             hasQuickSuggestion: !!results.quickSuggestion
@@ -328,7 +327,6 @@ function App() {
     if (type === 'student') {
       // Load all data in parallel and cache it
       practiceAnalysisApi.preloadAllData().then(results => {
-        console.log('Practice analysis data preloaded:', {
           hasWeakPoints: !!results.weakPoints,
           hasWrongQuestions: !!results.wrongQuestions,
           hasQuickSuggestion: !!results.quickSuggestion
@@ -393,7 +391,6 @@ function App() {
     // Reload practice analysis data for the new subject
     if (authService.isAuthenticated()) {
       practiceAnalysisApi.preloadAllData().then(results => {
-        console.log('Practice analysis data reloaded for new subject:', {
           hasWeakPoints: !!results.weakPoints,
           hasWrongQuestions: !!results.wrongQuestions,
           hasQuickSuggestion: !!results.quickSuggestion

@@ -23,19 +23,13 @@ export class GptService {
   }
 
   async extractQuizItems(paragraphs: GptParagraphBlock[]): Promise<QuizItem[]> {
-    console.log(JSON.stringify(paragraphs));
     // Debug logging to see what's causing the huge token count
-    console.log('=== GPT Input Debug ===');
-    console.log('Number of paragraphs:', paragraphs.length);
 
     // Check the size of the data being sent
     const jsonString = JSON.stringify(paragraphs, null, 2);
-    console.log('Total JSON string length:', jsonString.length);
-    console.log('Estimated tokens (rough):', Math.ceil(jsonString.length / 4));
 
     // Log detailed paragraph analysis
     if (paragraphs.length > 0) {
-      console.log('First paragraph sample:', JSON.stringify(paragraphs[0], null, 2).substring(0, 1000));
 
       // Analyze paragraph sizes
       const sizes = paragraphs.map((p, idx) => {
@@ -45,14 +39,11 @@ export class GptService {
 
       // Find largest paragraphs
       const largest = sizes.sort((a, b) => b.size - a.size).slice(0, 5);
-      console.log('Largest paragraphs by JSON size:', largest);
 
       // Check for abnormally long text content
       const longTextParagraphs = paragraphs.filter(p => p.paragraph && p.paragraph.length > 10000);
       if (longTextParagraphs.length > 0) {
-        console.warn(`Found ${longTextParagraphs.length} paragraphs with text longer than 10k characters`);
         longTextParagraphs.forEach((p, idx) => {
-          console.log(`Long paragraph ${idx}: ${p.paragraph?.length} chars, preview: "${p.paragraph?.substring(0, 200)}..."`);
         });
       }
     }
@@ -60,8 +51,6 @@ export class GptService {
     // If the data is too large, return an error instead of truncating
     if (jsonString.length > 500000) { // ~125k tokens (close to GPT-4's limit)
       console.error('Data exceeds safe limits! Rejecting request.');
-      console.log('Data size:', jsonString.length, 'characters');
-      console.log('Estimated tokens:', Math.ceil(jsonString.length / 4));
 
       return [{
         type: 'other',
@@ -72,20 +61,14 @@ export class GptService {
 
     // If the data is moderately large, truncate it
     if (jsonString.length > 400000) { // ~100k tokens
-      console.warn('Data is large, truncating paragraphs for safety...');
-      console.log('Original paragraphs count:', paragraphs.length);
 
       // Take only first 10 paragraphs as a safety measure
       paragraphs = paragraphs.slice(0, 10);
-      console.log('Truncated to:', paragraphs.length, 'paragraphs');
 
       // Re-check size after truncation
       const truncatedJsonString = JSON.stringify(paragraphs, null, 2);
-      console.log('After truncation - JSON length:', truncatedJsonString.length);
-      console.log('After truncation - Estimated tokens:', Math.ceil(truncatedJsonString.length / 4));
     }
 
-    console.log('=== End GPT Input Debug ===');
 
     const prompt = `
     你是一个教育出题助手。你的任务是从提供的段落中提取题目，并严格基于高亮部分生成题干和答案。
@@ -241,7 +224,6 @@ export class GptService {
           const blanksCount = item.question.split(/_{2,}/g).length - 1;
           
           if (blanksCount === 0) {
-            console.warn(`Fill-in-the-blank question has no blanks: "${item.question}"`);
             
             // Retry regenerating this specific quiz item up to 3 times
             let retryCount = 0;
@@ -249,7 +231,6 @@ export class GptService {
             
             while (retryCount < 3 && regeneratedItem.question.split(/_{2,}/g).length - 1 === 0) {
               retryCount++;
-              console.log(`Retrying generation for fill-in-the-blank question (attempt ${retryCount}/3)...`);
               
               try {
                 // Call polishQuizItem with specific guidance to add blanks
@@ -257,7 +238,6 @@ export class GptService {
                 
                 const newBlanksCount = regeneratedItem.question.split(/_{2,}/g).length - 1;
                 if (newBlanksCount > 0) {
-                  console.log(`Successfully regenerated with ${newBlanksCount} blank(s)`);
                   break;
                 }
               } catch (retryError) {

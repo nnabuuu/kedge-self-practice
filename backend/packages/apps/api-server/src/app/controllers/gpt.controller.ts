@@ -19,26 +19,17 @@ export class GptController {
       options?: QuizExtractionOptions;
     },
   ) {
-    console.log('=== DIRECT GPT Controller Debug ===');
-    console.log('Direct GPT call - paragraphs count:', body.paragraphs?.length || 0);
     
     if (body.paragraphs && body.paragraphs.length > 0) {
       const totalSize = JSON.stringify(body.paragraphs).length;
-      console.log('Direct GPT call - total data size:', totalSize, 'characters');
-      console.log('Direct GPT call - using GptParagraphBlock (no images)');
       
       // Check what's actually in the first few paragraphs
-      console.log('=== Analyzing received data structure ===');
       body.paragraphs.forEach((p, idx) => {
-        console.log(`Paragraph ${idx} keys:`, Object.keys(p));
-        console.log(`Paragraph ${idx} text length:`, p.paragraph?.length || 0);
         // Log paragraphs with images
         if (p.paragraph && p.paragraph.includes('{{image:')) {
-          console.log(`Paragraph ${idx} contains IMAGE placeholders:`, p.paragraph);
         }
         // Log paragraphs with highlights
         if (p.highlighted && p.highlighted.length > 0) {
-          console.log(`Paragraph ${idx} has highlights:`, p.highlighted);
         }
       });
       
@@ -52,32 +43,20 @@ export class GptController {
       }));
       
       const cleanedSize = JSON.stringify(cleanedParagraphs).length;
-      console.log('After cleaning - size:', cleanedSize, 'characters');
-      console.log('After cleaning - estimated tokens:', Math.ceil(cleanedSize / 4));
       
-      console.log('=== Calling GPT service with cleaned data ===');
       if (body.options?.targetTypes) {
-        console.log('Filtering for quiz types:', body.options.targetTypes);
       }
       const results = await this.llmService.extractQuizItems(cleanedParagraphs, body.options);
-      console.log('=== GPT Service Results ===');
-      console.log('Number of quiz items generated:', results.length);
       results.forEach((item, idx) => {
-        console.log(`Quiz ${idx}: type=${item.type}, has_image=${item.question?.includes('{{image:')}`);
         if (item.question?.includes('{{image:')) {
-          console.log(`  Question with image: ${item.question.substring(0, 100)}...`);
         }
       });
       return results;
     }
     
-    console.log('=== Calling GPT service from direct controller ===');
     if (body.options?.targetTypes) {
-      console.log('Filtering for quiz types:', body.options.targetTypes);
     }
     const results = await this.llmService.extractQuizItems(body.paragraphs, body.options);
-    console.log('=== GPT Service Results ===');
-    console.log('Number of quiz items generated:', results.length);
     return results;
   }
 

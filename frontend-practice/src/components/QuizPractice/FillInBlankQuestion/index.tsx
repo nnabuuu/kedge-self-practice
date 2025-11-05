@@ -40,7 +40,6 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   // Debug logging for hints
   useEffect(() => {
     if (question.hints) {
-      console.log('Fill-in-blank question hints:', question.hints);
     }
   }, [question]);
 

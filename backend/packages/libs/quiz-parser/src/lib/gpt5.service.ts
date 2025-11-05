@@ -38,10 +38,8 @@ export class GPT5Service {
     // Special handling for single type requests
     if (allowedTypes.length === 1) {
       if (allowedTypes[0] === 'fill-in-the-blank') {
-        console.log('Using optimized per-paragraph processing for fill-in-the-blank questions (O1 model)');
         return this.extractFillInBlankItemsPerParagraph(paragraphs, options);
       } else if (allowedTypes[0] === 'single-choice') {
-        console.log('Processing for single-choice questions only (O1 model)');
       }
     }
     
@@ -217,7 +215,6 @@ export class GPT5Service {
         const item = await this.generateSingleFillInBlank(context, i + 1, paragraphs.length);
         if (item) {
           results.push(item);
-          console.log(`O1: Generated fill-in-blank for paragraph ${i + 1}/${paragraphs.length}`);
         }
       } catch (error) {
         console.error(`O1: Failed to generate quiz for paragraph ${i + 1}:`, error);
@@ -310,7 +307,6 @@ ${JSON.stringify(context.next, null, 2)}` : ''}
         
         // Post-process to ensure blanks exist
         if (!item.question.includes('____')) {
-          console.warn(`O1: No blanks in question for paragraph ${paragraphNumber}, attempting to fix...`);
           const fixed = this.autoAddBlanksToQuestion(item);
           return fixed;
         }
@@ -497,7 +493,6 @@ ${JSON.stringify(item, null, 2)}
       if (item.type === 'fill-in-the-blank') {
         const blanksCount = (item.question.match(/____+/g) || []).length;
         if (blanksCount === 0) {
-          console.warn('Fill-in-the-blank question missing blanks:', item.question);
           // Try to auto-fix by replacing answer text with blanks
           if (item.answer) {
             const answers = Array.isArray(item.answer) ? item.answer : [item.answer];
@@ -533,7 +528,6 @@ ${JSON.stringify(item, null, 2)}
             }
             
             if (fixedQuestion !== item.question) {
-              console.log(`Auto-fixed fill-in-blank: "${item.question}" -> "${fixedQuestion}"`);
               item.question = fixedQuestion;
             }
           }

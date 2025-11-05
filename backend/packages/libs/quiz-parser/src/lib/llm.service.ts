@@ -20,7 +20,6 @@ export class LLMService {
   ) {
     const provider = this.getProvider();
     const modelConfig = getModelConfig('quizParser');
-    console.log(`LLM Service initialized - Model: ${modelConfig.model}, Provider: ${provider}`);
   }
 
   /**
@@ -57,9 +56,7 @@ export class LLMService {
     const modelConfig = getModelConfig('quizParser');
     const service = this.getServiceForModel(modelConfig.model);
     
-    console.log(`Using ${service} service with model ${modelConfig.model} for quiz extraction`);
     if (options?.targetTypes && options.targetTypes.length > 0) {
-      console.log(`Filtering for quiz types: ${options.targetTypes.join(', ')}`);
     }
     
     switch (service) {

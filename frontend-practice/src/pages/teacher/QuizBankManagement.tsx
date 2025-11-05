@@ -134,7 +134,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   // Load a specific quiz and open it for editing
   const loadQuizForEditing = async (quizId: string) => {
     try {
-      console.log('Loading quiz for editing:', quizId);
       const token = authService.getToken();
       if (!token) return;
       
@@ -164,7 +163,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
             images: quiz.images || []
           };
           
-          console.log('Quiz loaded for editing:', formattedQuiz);
           
           // Set the quiz for editing and open the modal
           setEditingQuiz(formattedQuiz);
@@ -253,14 +251,11 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       
       if (response.ok) {
         const data = await response.json();
-        console.log('API response:', data);
-        console.log('First quiz raw from API:', data.data?.[0]);
         // Check if we actually got quiz data
         if (data.data && data.data.length > 0) {
           // Check localStorage for any updates
           const cachedQuizzes = localStorage.getItem('cached_quizzes');
           let quizzesWithIds = data.data.map((quiz: any, index: number) => {
-            console.log(`Quiz ${index}:`, quiz, 'has ID:', quiz.id);
             return {
               ...quiz,
               id: quiz.id || quiz._id || `quiz-${index}` // Fallback to generated ID if missing
@@ -280,7 +275,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
                 }
                 return quiz;
               });
-              console.log('Merged with cached updates');
             } catch (e) {
               console.error('Failed to parse cached quizzes:', e);
             }
@@ -289,7 +283,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
           // Save to localStorage for future use
           localStorage.setItem('cached_quizzes', JSON.stringify(quizzesWithIds));
           
-          console.log('Processed quizzes:', quizzesWithIds);
           setQuizzes(quizzesWithIds);
           setTotalPages(Math.ceil((data.count || data.data.length) / itemsPerPage));
           
@@ -303,14 +296,12 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
           setAvailableTags(Array.from(allTags).sort());
         } else {
           // No quizzes in database - show empty state
-          console.log('No quizzes found in database');
           setQuizzes([]);
           setTotalPages(0);
           setAvailableTags([]);
         }
       } else {
         // API call failed - show empty state with error message
-        console.log('API call failed with status:', response.status);
         setQuizzes([]);
         setTotalPages(0);
         setAvailableTags([]);
@@ -343,7 +334,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Knowledge points response:', data);
         if (data.knowledgePoints && Array.isArray(data.knowledgePoints)) {
           setKnowledgePoints(data.knowledgePoints);
           setAllKnowledgePoints(data.knowledgePoints); // Store all knowledge points for hierarchy generation
@@ -441,7 +431,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
     }
     
     const quizIdsToDelete = Array.from(selectedQuizzes);
-    console.log('Batch deleting quizzes:', quizIdsToDelete);
     
     try {
       const token = localStorage.getItem('jwt_token');
@@ -458,7 +447,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
           );
           
           if (response.ok) {
-            console.log(`Successfully deleted quiz ${quizId}`);
             return { quizId, success: true };
           } else {
             console.error(`Failed to delete quiz ${quizId}:`, response.status);
@@ -477,20 +465,17 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       const successful = results.filter(r => r.success);
       const failed = results.filter(r => !r.success);
       
-      console.log(`Batch delete completed: ${successful.length} successful, ${failed.length} failed`);
       
       if (failed.length > 0) {
         console.error('Failed deletions:', failed);
         warning(`删除完成：${successful.length} 道题目删除成功，${failed.length} 道题目删除失败。请检查网络连接或权限。`);
       } else {
-        console.log('All quizzes deleted successfully');
       }
       
       // Remove successfully deleted quizzes from local state
       const successfulIds = new Set(successful.map(r => r.quizId));
       setQuizzes(prev => {
         const filtered = prev.filter(q => !successfulIds.has(q.id));
-        console.log(`Removed ${successfulIds.size} quizzes from local state, remaining: ${filtered.length}`);
         return filtered;
       });
       
@@ -509,7 +494,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   };
 
   const handleDeleteQuiz = async (quizId: string) => {
-    console.log('Attempting to delete quiz with ID:', quizId);
     
     if (!quizId) {
       console.error('Cannot delete quiz: ID is undefined');
@@ -537,7 +521,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
         // Remove from local state
         setQuizzes(prev => {
           const filtered = prev.filter(q => q.id !== quizId);
-          console.log(`Deleted quiz ${quizId}, remaining quizzes:`, filtered.length);
           return filtered;
         });
         // Clear selection if this quiz was selected
@@ -548,10 +531,8 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
         });
       } else {
         // For now, just remove from local state even if API fails (mock data scenario)
-        console.log('Delete API failed, removing from local state anyway');
         setQuizzes(prev => {
           const filtered = prev.filter(q => q.id !== quizId);
-          console.log(`Deleted quiz ${quizId} (API failed), remaining quizzes:`, filtered.length);
           return filtered;
         });
         // Clear selection if this quiz was selected
@@ -566,7 +547,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       // Remove from local state anyway for demo purposes
       setQuizzes(prev => {
         const filtered = prev.filter(q => q.id !== quizId);
-        console.log(`Deleted quiz ${quizId} (error), remaining quizzes:`, filtered.length);
         return filtered;
       });
       // Clear selection if this quiz was selected
@@ -677,7 +657,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
         setQuizzes(prev => prev.map(q => q.id === updatedQuiz.id ? updatedQuiz : q));
       } else {
         // For now, just update local state even if API fails (mock data scenario)
-        console.log('Update API failed, updating local state anyway');
         setQuizzes(prev => prev.map(q => q.id === updatedQuiz.id ? updatedQuiz : q));
       }
     } catch (error) {
@@ -695,7 +674,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
           q.id === updatedQuiz.id ? updatedQuiz : q
         );
         localStorage.setItem('cached_quizzes', JSON.stringify(updatedQuizzes));
-        console.log('Updated quiz saved to localStorage');
       } catch (e) {
         console.error('Failed to update localStorage:', e);
       }
@@ -1807,7 +1785,6 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
           setQuizzes(prev => prev.filter(q => q.id !== quizId));
           setShowEditModal(false);
           setEditingQuiz(null);
-          console.log('Quiz deleted:', quizId);
         }}
       />
 

@@ -73,7 +73,6 @@ const PersistentServiceProvider = {
     if (url !== undefined && url !== null && url !== '') {
       await service.connectPool();
     } else {
-      console.warn('NODE_DATABASE_URL is not set, skip connecting to DB');
     }
     return service;
   },

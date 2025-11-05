@@ -371,13 +371,11 @@ export function usePracticeSession(config: {
 
     // Skip if we're already creating a session
     if (isCreatingRef.current) {
-      console.log('Session creation already in progress, skipping');
       return;
     }
 
     // Skip if we already have a session with the same config
     if (sessionIdRef.current && lastConfigKeyRef.current === configKey) {
-      console.log('Session already exists for this config, skipping creation');
       return;
     }
 
@@ -394,7 +392,6 @@ export function usePracticeSession(config: {
         const startResponse = await api.practice.startSession(response.data.session.id);
         
         if (startResponse.success && startResponse.data) {
-          console.log('Start session response:', startResponse.data);
           sessionIdRef.current = startResponse.data.session.id; // Update ref
           setState({
             session: startResponse.data.session,

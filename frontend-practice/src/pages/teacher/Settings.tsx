@@ -58,7 +58,6 @@ export default function Settings({ onBack }: SettingsProps) {
       setIsAdmin(userIsAdmin);
       setIsStudent(userIsStudent);
       
-      console.log('Settings: User role check', { userData, userIsAdmin, userIsStudent });
       
       // Load user preferences
       const preferences = await preferencesService.getPreferences();

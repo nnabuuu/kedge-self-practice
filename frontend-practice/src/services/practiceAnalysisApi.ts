@@ -218,18 +218,9 @@ class PracticeAnalysisApi {
   // Preload all practice analysis data (called after login)
   async preloadAllData() {
     const promises = [
-      this.getWeakKnowledgePoints().catch(err => {
-        console.log('Failed to preload weak knowledge points:', err);
-        return null;
-      }),
-      this.getWrongQuestions().catch(err => {
-        console.log('Failed to preload wrong questions:', err);
-        return null;
-      }),
-      this.getQuickPracticeSuggestion().catch(err => {
-        console.log('Failed to preload quick practice suggestion:', err);
-        return null;
-      })
+      this.getWeakKnowledgePoints().catch(() => null),
+      this.getWrongQuestions().catch(() => null),
+      this.getQuickPracticeSuggestion().catch(() => null)
     ];
 
     const results = await Promise.allSettled(promises);

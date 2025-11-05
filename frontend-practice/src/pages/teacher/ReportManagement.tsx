@@ -178,13 +178,10 @@ export default function ReportManagement() {
         setReports(transformedReports);
       } else if (response.statusCode === 404) {
         // Backend endpoint not deployed yet - show message
-        console.log("Report management endpoint not available yet");
         setBackendReady(false);
         setReports([]);
       } else {
         console.error("Failed to fetch reports:", response);
-        console.log("Response status code:", response.statusCode);
-        console.log("Response error:", response.error);
         setReports([]);
       }
     } catch (error) {
@@ -258,7 +255,6 @@ export default function ReportManagement() {
 
   const handleSaveQuiz = (updatedQuiz: any) => {
     // Quiz saved successfully
-    console.log("Quiz updated:", updatedQuiz);
     setShowEditModal(false);
     setEditingQuiz(null);
 
@@ -271,7 +267,6 @@ export default function ReportManagement() {
 
   const handleDeleteQuiz = async (quizId: string) => {
     // Quiz deleted successfully
-    console.log("Quiz deleted:", quizId);
     setShowEditModal(false);
     setEditingQuiz(null);
 

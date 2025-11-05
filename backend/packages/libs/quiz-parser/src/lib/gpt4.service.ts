@@ -29,7 +29,6 @@ export class GPT4Service {
   ): Promise<QuizItem[]> {
     // Special handling for fill-in-the-blank only requests
     if (options?.targetTypes?.length === 1 && options.targetTypes[0] === 'fill-in-the-blank') {
-      console.log('Using optimized per-paragraph processing for fill-in-the-blank questions');
       return this.extractFillInBlankItemsPerParagraph(paragraphs, options);
     }
     
@@ -42,8 +41,6 @@ export class GPT4Service {
     const modelConfig = getModelConfig('quizParser');
     const maxTokens = modelConfig.maxTokens || 8000; // Increase default to prevent truncation
     
-    console.log(`GPT-4 extractQuizItems - Model: ${modelConfig.model}, MaxTokens: ${maxTokens}`);
-    console.log(`Processing ${paragraphs.length} paragraphs`);
     
     try {
       const response = await this.openai.chat.completions.create({
@@ -97,7 +94,6 @@ export class GPT4Service {
         if (extracted) {
           try {
             const parsed: QuizExtractionResult = JSON.parse(extracted);
-            console.log('Successfully extracted and parsed JSON from response');
             return this.postProcessQuizItems(parsed.items ?? []);
           } catch (secondError) {
             console.error('Failed to parse extracted JSON:', secondError);
@@ -145,7 +141,6 @@ export class GPT4Service {
         const item = await this.generateSingleFillInBlank(context, i + 1, paragraphs.length);
         if (item) {
           results.push(item);
-          console.log(`Generated fill-in-blank for paragraph ${i + 1}/${paragraphs.length}`);
         }
       } catch (error) {
         console.error(`Failed to generate quiz for paragraph ${i + 1}:`, error);
@@ -279,7 +274,6 @@ ${JSON.stringify(context.next, null, 2)}` : ''}
       
       // Post-process to ensure blanks exist
       if (!item.question.includes('____')) {
-        console.warn(`No blanks in question for paragraph ${paragraphNumber}, attempting to fix...`);
         const fixed = this.autoAddBlanksToQuestion(item);
         return fixed;
       }
@@ -551,7 +545,6 @@ ${JSON.stringify(context.next, null, 2)}` : ''}
       
       try {
         JSON.parse(fixed);
-        console.log('Successfully fixed truncated JSON');
         return fixed;
       } catch {
         // Could not fix
@@ -572,7 +565,6 @@ ${JSON.stringify(context.next, null, 2)}` : ''}
       if (item.type === 'fill-in-the-blank') {
         const blanksCount = (item.question.match(/____+/g) || []).length;
         if (blanksCount === 0) {
-          console.warn('Fill-in-the-blank question missing blanks:', item.question);
           // Try to auto-fix by replacing answer text with blanks
           if (item.answer) {
             const answers = Array.isArray(item.answer) ? item.answer : [item.answer];
@@ -608,7 +600,6 @@ ${JSON.stringify(context.next, null, 2)}` : ''}
             }
             
             if (fixedQuestion !== item.question) {
-              console.log(`Auto-fixed fill-in-blank: "${item.question}" -> "${fixedQuestion}"`);
               item.question = fixedQuestion;
             }
           }
@@ -618,7 +609,6 @@ ${JSON.stringify(context.next, null, 2)}` : ''}
       // Clean up choice questions and warn if they don't have options
       if ((item.type === 'single-choice' || item.type === 'multiple-choice')) {
         if (item.options.length === 0) {
-          console.warn(`${item.type} question missing options:`, item.question);
         } else {
           // Remove A./B./C./D. prefixes from options
           item.options = item.options.map(option => {

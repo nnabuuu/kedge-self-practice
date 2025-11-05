@@ -8,7 +8,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {}
 export const ParseUser = createParamDecorator(
   (data: unknown, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    console.log(`request.user: ${JSON.stringify(request.user)}`);
     return request.user;
   },
 );

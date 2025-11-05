@@ -54,7 +54,6 @@ export default function QuizPractice({
   const [workingQuestionIndex, setWorkingQuestionIndex] = useState(resumeData?.currentQuestionIndex || 0);
   const [answers, setAnswers] = useState<any[]>(() => {
     if (resumeData?.submittedAnswers && resumeData.submittedAnswers.length > 0) {
-      console.log('[QuizPracticeMain] Restoring submitted answers:', resumeData.submittedAnswers);
       return resumeData.submittedAnswers;
     }
     return Array(questions.length).fill(null);
@@ -211,11 +210,9 @@ export default function QuizPractice({
     // Load saved answer if exists
     if (hasBeenAnswered) {
       // Show result if question was already answered
-      console.log('[loadAnswerForQuestion] Question has been answered, setting showResult=true, savedAnswer:', savedAnswer);
       setShowResult(true);
 
       if (targetQuestion.type === 'single-choice') {
-        console.log('[loadAnswerForQuestion] Setting selectedAnswer for single-choice:', savedAnswer);
         setSelectedAnswer(savedAnswer);
       } else if (targetQuestion.type === 'multiple-choice') {
         setSelectedMultipleAnswers(Array.isArray(savedAnswer) ? savedAnswer : []);
@@ -226,7 +223,6 @@ export default function QuizPractice({
       }
     } else {
       // Question not yet answered
-      console.log('[loadAnswerForQuestion] Question not answered yet, setting showResult=false');
       setShowResult(false);
     }
   };
@@ -319,7 +315,6 @@ export default function QuizPractice({
     // Primary: Use answer_index if available
     if (question.answer_index && Array.isArray(question.answer_index) && question.answer_index.length > 0) {
       const index = question.answer_index[0];
-      console.log('[getCorrectAnswerIndex] ✅ Using answer_index:', index);
       return index;
     }
 
@@ -333,7 +328,6 @@ export default function QuizPractice({
 
     if (answerValue && /^[A-Z]$/i.test(answerValue)) {
       const index = answerValue.toUpperCase().charCodeAt(0) - 65;
-      console.log('[getCorrectAnswerIndex] ⚠️ Converted letter to index:', answerValue, '→', index);
       return index;
     }
 
@@ -341,7 +335,6 @@ export default function QuizPractice({
     if (question.options && Array.isArray(question.options)) {
       const index = question.options.findIndex(opt => opt === answerValue);
       if (index >= 0) {
-        console.log('[getCorrectAnswerIndex] ⚠️ Found answer in options at index:', index);
         return index;
       }
     }
@@ -532,7 +525,6 @@ export default function QuizPractice({
           
           // Store the result from backend
           if (response.success) {
-            console.log('Answer submitted to backend, is correct:', response.data?.isCorrect);
           }
         } catch (error) {
           console.error('Failed to submit answer to backend:', error);
@@ -792,7 +784,6 @@ export default function QuizPractice({
                   } else {
                     currentQuestion.alternative_answers = [userAnswer];
                   }
-                  console.log('AI-approved answer added to alternatives:', userAnswer);
                   // Force re-render to update isAnswerCorrect() check
                   setForceUpdate(prev => prev + 1);
                 }}
@@ -809,7 +800,6 @@ export default function QuizPractice({
               const correctIndex = getCorrectAnswerIndex(currentQuestion);
               const selectedIndex = getSelectedAnswerIndex(selectedAnswer);
               const correctLetter = String.fromCharCode(65 + correctIndex);
-              console.log('[QuizPracticeMain] Rendering SingleChoiceQuestion:', {
                 questionId: currentQuestion.id,
                 selectedAnswer_letter: selectedAnswer,
                 selectedAnswer_index: selectedIndex,

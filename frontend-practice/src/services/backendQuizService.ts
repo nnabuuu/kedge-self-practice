@@ -102,7 +102,6 @@ class BackendQuizService {
 
     // Gracefully handle backend submission failure
     if (!response.success) {
-      console.warn('Failed to submit practice session to backend, storing locally only');
       return { success: true }; // Continue with local storage
     }
 
