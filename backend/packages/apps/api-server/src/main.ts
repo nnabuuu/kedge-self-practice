@@ -25,9 +25,20 @@ function amendActionPath(document: OpenAPIObject) {
   }
 }
 
+function maskApiKey(key: string | undefined): string {
+  if (!key) return '(not set)';
+  if (key.length <= 8) return '****';
+  return `${key.slice(0, 4)}...${key.slice(-4)}`;
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {});
   const logger = new Logger('bootstrap');
+
+  // Log LLM configuration
+  logger.log(`LLM_BASE_URL: ${process.env.LLM_BASE_URL || '(using default)'}`);
+  logger.log(`LLM_API_KEY: ${maskApiKey(process.env.LLM_API_KEY)}`);
+  logger.log(`LLM_MODEL_QUIZ_PARSER: ${process.env.LLM_MODEL_QUIZ_PARSER || 'gpt-4o (default)'}`);
 
   // Enable API versioning with /v1 prefix as default
   app.enableVersioning({
