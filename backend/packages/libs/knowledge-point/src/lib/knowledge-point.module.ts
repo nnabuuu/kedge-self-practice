@@ -7,6 +7,8 @@ import { KnowledgePointGPTService } from './knowledge-point-gpt.service';
 import { KnowledgePointStorage } from './knowledge-point.storage';
 import { KnowledgePointBootstrapService } from './knowledge-point-bootstrap.service';
 import { KnowledgePointSuggestionService } from './knowledge-point-suggestion.service';
+import { CurriculumStandardService } from './curriculum-standard.service';
+import { CurriculumStandardRepository } from './curriculum-standard.repository';
 
 @Module({
   imports: [PersistentModule, ConfigsModule],
@@ -17,6 +19,8 @@ import { KnowledgePointSuggestionService } from './knowledge-point-suggestion.se
     KnowledgePointStorage,
     KnowledgePointBootstrapService,
     KnowledgePointSuggestionService,
+    CurriculumStandardService,
+    CurriculumStandardRepository,
   ],
   exports: [
     KnowledgePointServiceProvider,
@@ -24,6 +28,8 @@ import { KnowledgePointSuggestionService } from './knowledge-point-suggestion.se
     KnowledgePointStorage,
     KnowledgePointBootstrapService,
     KnowledgePointSuggestionService,
+    CurriculumStandardService,
+    CurriculumStandardRepository,
   ],
 })
 export class KnowledgePointModule {}

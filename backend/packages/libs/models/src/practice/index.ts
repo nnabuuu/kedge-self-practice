@@ -30,6 +30,21 @@ import {
 // Knowledge Point exports
 export { KnowledgePointSchema, type KnowledgePoint } from './knowledge-point.schema';
 
+// Curriculum Standard exports
+export {
+  CurriculumStandardSchema,
+  type CurriculumStandard,
+  CurriculumStandardCreateSchema,
+  type CurriculumStandardCreate,
+  CurriculumStandardFilterSchema,
+  type CurriculumStandardFilter,
+  CurriculumStandardImportRowSchema,
+  type CurriculumStandardImportRow,
+  CurriculumStandardImportResultSchema,
+  type CurriculumStandardImportResult,
+  HierarchyLevelsSchema,
+} from './curriculum-standard.schema';
+
 // Quiz exports (QuizItem and QuizItemSchema are now in quiz module)
 export {
   QuizWithKnowledgePointSchema,
