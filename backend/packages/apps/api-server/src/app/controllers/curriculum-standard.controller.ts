@@ -16,7 +16,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@kedge/auth';
-import { CurriculumStandardService } from '@kedge/knowledge-point';
+import { CurriculumStandardService, parseExcelFile } from '@kedge/knowledge-point';
 import {
   CurriculumStandardCreateSchema,
   CurriculumStandardFilterSchema,
@@ -26,6 +26,13 @@ import {
   CurriculumStandardFilter,
   CurriculumStandardImportResult,
 } from '@kedge/models';
+
+interface MulterFile {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+}
 
 @ApiTags('Curriculum Standards')
 @Controller('v1/curriculum-standards')
@@ -153,17 +160,14 @@ export class CurriculumStandardController {
     description: 'Invalid file or data',
   })
   async importCurriculumStandards(
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFile() file: MulterFile
   ): Promise<CurriculumStandardImportResult> {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
-    // Import Excel parsing utility
-    const ExcelImportUtility = await import(
-      '@kedge/knowledge-point/excel-import'
-    );
-    const rows = await ExcelImportUtility.parseExcelFile(file.buffer);
+    // Parse Excel file
+    const rows = await parseExcelFile(file.buffer);
 
     // Validate rows
     const validatedRows = rows.map((row) =>

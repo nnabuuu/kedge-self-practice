@@ -570,10 +570,17 @@ export class PracticeService {
     quizTypes?: string[]
   ): Promise<QuizItem[]> {
     try {
-      // Build the query to get wrong quiz IDs
+      // Build the query to get wrong quiz IDs from the last 5 completed sessions only
       let whereClause = sql.unsafe`
         ps.user_id = ${userId}::uuid
         AND pa.is_correct = false
+        AND ps.id IN (
+          SELECT id FROM kedge_practice.practice_sessions
+          WHERE user_id = ${userId}::uuid
+            AND status = 'completed'
+          ORDER BY completed_at DESC
+          LIMIT 5
+        )
       `;
 
       // Add knowledge point filter if specified
