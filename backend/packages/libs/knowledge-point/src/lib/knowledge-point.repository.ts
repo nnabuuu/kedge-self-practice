@@ -13,6 +13,7 @@ export class KnowledgePointRepository {
     data: Omit<KnowledgePoint, 'id'>,
   ): Promise<KnowledgePoint> {
     try {
+      const sortIndex = data.sort_index ?? 0;
       const result = await this.persistentService.pgPool.query(
         sql.type(KnowledgePointSchema)`
           INSERT INTO kedge_practice.knowledge_points (
@@ -20,16 +21,20 @@ export class KnowledgePointRepository {
             volume,
             unit,
             lesson,
-            sub
+            sub,
+            subject_id,
+            sort_index
           )
           VALUES (
             ${data.topic},
             ${data.volume},
             ${data.unit},
             ${data.lesson},
-            ${data.sub}
+            ${data.sub},
+            ${data.subject_id},
+            ${sortIndex}
           )
-          RETURNING id, topic, volume, unit, lesson, sub
+          RETURNING id, topic, volume, unit, lesson, sub, subject_id, sort_index
         `,
       );
       return result.rows[0];
@@ -44,7 +49,7 @@ export class KnowledgePointRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(KnowledgePointSchema)`
-          SELECT id, topic, volume, unit, lesson, sub
+          SELECT id, topic, volume, unit, lesson, sub, subject_id, sort_index
           FROM kedge_practice.knowledge_points
           WHERE id = ${id}
         `,
@@ -61,8 +66,9 @@ export class KnowledgePointRepository {
     try {
       const result = await this.persistentService.pgPool.query(
         sql.type(KnowledgePointSchema)`
-          SELECT id, topic, volume, unit, lesson, sub
+          SELECT id, topic, volume, unit, lesson, sub, subject_id, sort_index
           FROM kedge_practice.knowledge_points
+          ORDER BY volume ASC, CAST(SUBSTRING(id FROM 4) AS INTEGER) ASC
         `,
       );
       return [...result.rows];

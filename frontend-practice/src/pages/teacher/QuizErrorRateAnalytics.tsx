@@ -331,20 +331,34 @@ const QuizErrorRateAnalytics: React.FC<QuizErrorRateAnalyticsProps> = ({ selecte
   };
 
   // Get unique volumes from knowledge points
-  const uniqueVolumes = Array.from(
-    new Set(knowledgePoints.map(kp => kp.volume).filter(Boolean))
-  ).sort(naturalCompare);
+  // Note: Backend now returns knowledge points ordered by sort_index, so we preserve that order
+  const uniqueVolumes = (() => {
+    const volumeOrder: string[] = [];
+    const seen = new Set<string>();
+    knowledgePoints.forEach(kp => {
+      if (kp.volume && !seen.has(kp.volume)) {
+        seen.add(kp.volume);
+        volumeOrder.push(kp.volume);
+      }
+    });
+    return volumeOrder;
+  })();
 
-  // Get unique units for the selected volume
+  // Get unique units for the selected volume (preserve backend order)
   const uniqueUnits = selectedVolume
-    ? Array.from(
-        new Set(
-          knowledgePoints
-            .filter(kp => kp.volume === selectedVolume)
-            .map(kp => kp.unit)
-            .filter(Boolean)
-        )
-      ).sort(naturalCompare)
+    ? (() => {
+        const unitOrder: string[] = [];
+        const seen = new Set<string>();
+        knowledgePoints
+          .filter(kp => kp.volume === selectedVolume)
+          .forEach(kp => {
+            if (kp.unit && !seen.has(kp.unit)) {
+              seen.add(kp.unit);
+              unitOrder.push(kp.unit);
+            }
+          });
+        return unitOrder;
+      })()
     : [];
 
   return (

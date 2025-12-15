@@ -9,6 +9,7 @@ import { z } from 'zod';
  * - `topic`: actual knowledge point description
  * - `id`: unique identifier for the knowledge point
  * - `subject_id`: subject identifier (e.g. "history", "biology")
+ * - `sort_index`: explicit ordering for correct Chinese ordinal sorting
  */
 export const KnowledgePointSchema = z.object({
   id: z.string(),
@@ -18,6 +19,7 @@ export const KnowledgePointSchema = z.object({
   lesson: z.string(),
   sub: z.string(),
   subject_id: z.string(),
+  sort_index: z.number().int().default(0),
 });
 
 export type KnowledgePoint = z.infer<typeof KnowledgePointSchema>;

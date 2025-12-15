@@ -43,17 +43,19 @@ async function bootstrapKnowledgePoints() {
     await client.query('DELETE FROM kedge_practice.knowledge_points');
     console.log('Cleared existing knowledge points');
 
-    // Insert new knowledge points
+    // Insert new knowledge points with sort_index based on row order
     const kpIdMapping = {}; // Map topics to UUIDs
-    for (const kp of knowledgePoints) {
+    for (let idx = 0; idx < knowledgePoints.length; idx++) {
+      const kp = knowledgePoints[idx];
+      const sortIndex = idx + 1; // 1-based index for ordering
       const result = await client.query(
-        `INSERT INTO kedge_practice.knowledge_points (topic, volume, unit, lesson, sub)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [kp.topic, kp.volume, kp.unit, kp.lesson, kp.sub]
+        `INSERT INTO kedge_practice.knowledge_points (topic, volume, unit, lesson, sub, sort_index)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [kp.topic, kp.volume, kp.unit, kp.lesson, kp.sub, sortIndex]
       );
       const uuid = result.rows[0].id;
       kpIdMapping[kp.topic] = uuid;
-      console.log(`Inserted: ${kp.topic} with ID: ${uuid}`);
+      console.log(`Inserted: ${kp.topic} with ID: ${uuid}, sort_index: ${sortIndex}`);
     }
 
     console.log(`\nSuccessfully imported ${knowledgePoints.length} knowledge points`);

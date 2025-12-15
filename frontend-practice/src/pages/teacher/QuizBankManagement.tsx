@@ -349,16 +349,44 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   };
 
   // Helper functions for knowledge point hierarchical selection
+  // Note: Backend now returns knowledge points ordered by sort_index, so we preserve that order
   const getUniqueVolumes = () => {
-    return [...new Set(knowledgePoints.map(kp => kp.volume))].sort();
+    // Preserve order from backend (by sort_index) using first occurrence
+    const volumeOrder: string[] = [];
+    const seen = new Set<string>();
+    knowledgePoints.forEach(kp => {
+      if (kp.volume && !seen.has(kp.volume)) {
+        seen.add(kp.volume);
+        volumeOrder.push(kp.volume);
+      }
+    });
+    return volumeOrder;
   };
 
   const getUnitsForVolume = (volume: string) => {
-    return [...new Set(knowledgePoints.filter(kp => kp.volume === volume).map(kp => kp.unit))].sort();
+    // Preserve order from backend (by sort_index) using first occurrence
+    const unitOrder: string[] = [];
+    const seen = new Set<string>();
+    knowledgePoints.filter(kp => kp.volume === volume).forEach(kp => {
+      if (kp.unit && !seen.has(kp.unit)) {
+        seen.add(kp.unit);
+        unitOrder.push(kp.unit);
+      }
+    });
+    return unitOrder;
   };
 
   const getLessonsForVolumeAndUnit = (volume: string, unit: string) => {
-    return [...new Set(knowledgePoints.filter(kp => kp.volume === volume && kp.unit === unit).map(kp => kp.lesson))].sort();
+    // Preserve order from backend (by sort_index) using first occurrence
+    const lessonOrder: string[] = [];
+    const seen = new Set<string>();
+    knowledgePoints.filter(kp => kp.volume === volume && kp.unit === unit).forEach(kp => {
+      if (kp.lesson && !seen.has(kp.lesson)) {
+        seen.add(kp.lesson);
+        lessonOrder.push(kp.lesson);
+      }
+    });
+    return lessonOrder;
   };
 
   const getFilteredKnowledgePoints = () => {
@@ -559,6 +587,7 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
   };
 
   // Generate hierarchy options from local knowledge points
+  // Note: Backend now returns knowledge points ordered by sort_index, so we preserve that order
   const getLocalHierarchyOptions = (filters?: {
     volume?: string;
     unit?: string;
@@ -576,12 +605,16 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       return options;
     }
 
-    // Get unique volumes
-    const volumeSet = new Set<string>();
+    // Get unique volumes (preserve order from backend by using first occurrence)
+    const volumeOrder: string[] = [];
+    const seenVolumes = new Set<string>();
     allKnowledgePoints.forEach(kp => {
-      if (kp.volume) volumeSet.add(kp.volume);
+      if (kp.volume && !seenVolumes.has(kp.volume)) {
+        seenVolumes.add(kp.volume);
+        volumeOrder.push(kp.volume);
+      }
     });
-    options.volumes = Array.from(volumeSet).sort();
+    options.volumes = volumeOrder;
 
     // Filter by volume if specified
     let filtered = allKnowledgePoints;
@@ -589,36 +622,48 @@ export default function QuizBankManagement({ onBack, initialKnowledgePointId, in
       filtered = filtered.filter(kp => kp.volume === filters.volume);
     }
 
-    // Get unique units
-    const unitSet = new Set<string>();
+    // Get unique units (preserve order from backend)
+    const unitOrder: string[] = [];
+    const seenUnits = new Set<string>();
     filtered.forEach(kp => {
-      if (kp.unit) unitSet.add(kp.unit);
+      if (kp.unit && !seenUnits.has(kp.unit)) {
+        seenUnits.add(kp.unit);
+        unitOrder.push(kp.unit);
+      }
     });
-    options.units = Array.from(unitSet).sort();
+    options.units = unitOrder;
 
     // Filter by unit if specified
     if (filters?.unit) {
       filtered = filtered.filter(kp => kp.unit === filters.unit);
     }
 
-    // Get unique lessons
-    const lessonSet = new Set<string>();
+    // Get unique lessons (preserve order from backend)
+    const lessonOrder: string[] = [];
+    const seenLessons = new Set<string>();
     filtered.forEach(kp => {
-      if (kp.lesson) lessonSet.add(kp.lesson);
+      if (kp.lesson && !seenLessons.has(kp.lesson)) {
+        seenLessons.add(kp.lesson);
+        lessonOrder.push(kp.lesson);
+      }
     });
-    options.lessons = Array.from(lessonSet).sort();
+    options.lessons = lessonOrder;
 
     // Filter by lesson if specified
     if (filters?.lesson) {
       filtered = filtered.filter(kp => kp.lesson === filters.lesson);
     }
 
-    // Get unique subs (sections)
-    const subSet = new Set<string>();
+    // Get unique subs (sections) - preserve order from backend
+    const subOrder: string[] = [];
+    const seenSubs = new Set<string>();
     filtered.forEach(kp => {
-      if (kp.section) subSet.add(kp.section); // Note: frontend-practice uses 'section' not 'sub'
+      if (kp.section && !seenSubs.has(kp.section)) { // Note: frontend-practice uses 'section' not 'sub'
+        seenSubs.add(kp.section);
+        subOrder.push(kp.section);
+      }
     });
-    options.subs = Array.from(subSet).sort();
+    options.subs = subOrder;
 
     return options;
   };

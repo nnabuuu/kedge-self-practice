@@ -16,7 +16,7 @@ export class KnowledgePointStorage implements OnModuleInit {
 
   async loadKnowledgePoints(): Promise<void> {
     try {
-      // Load knowledge points from database
+      // Load knowledge points from database, ordered by sort_index for proper Chinese ordinal sorting
       const result = await this.persistentService.pgPool.query(
         sql.unsafe`
           SELECT
@@ -26,9 +26,10 @@ export class KnowledgePointStorage implements OnModuleInit {
             unit,
             lesson,
             sub,
-            subject_id
+            subject_id,
+            sort_index
           FROM kedge_practice.knowledge_points
-          ORDER BY id
+          ORDER BY volume ASC, CAST(SUBSTRING(id FROM 4) AS INTEGER) ASC
         `
       );
 
@@ -40,6 +41,7 @@ export class KnowledgePointStorage implements OnModuleInit {
         lesson: row.lesson || '',
         sub: row.sub || '',
         subject_id: row.subject_id || '',
+        sort_index: row.sort_index ?? 0,
       }));
 
       this.logger.log(`Loaded ${this.knowledgePoints.length} knowledge points from database`);
@@ -146,38 +148,46 @@ export class KnowledgePointStorage implements OnModuleInit {
   }
 
   getAllVolumes(): string[] {
-    const volumes = new Set<string>();
+    // Preserve order from database (by sort_index) using first occurrence
+    const volumeOrder: string[] = [];
+    const seen = new Set<string>();
     this.knowledgePoints.forEach(point => {
-      if (point.volume && point.volume.trim().length > 0) {
-        volumes.add(point.volume);
+      if (point.volume && point.volume.trim().length > 0 && !seen.has(point.volume)) {
+        seen.add(point.volume);
+        volumeOrder.push(point.volume);
       }
     });
-    return Array.from(volumes).sort();
+    return volumeOrder;
   }
 
   getAllLessons(volume?: string, unit?: string): string[] {
-    const lessons = new Set<string>();
+    // Preserve order from database (by sort_index) using first occurrence
+    const lessonOrder: string[] = [];
+    const seen = new Set<string>();
     let points = this.knowledgePoints;
-    
+
     if (volume) {
       points = points.filter(p => p.volume === volume);
     }
     if (unit) {
       points = points.filter(p => p.unit === unit);
     }
-    
+
     points.forEach(point => {
-      if (point.lesson && point.lesson.trim().length > 0) {
-        lessons.add(point.lesson);
+      if (point.lesson && point.lesson.trim().length > 0 && !seen.has(point.lesson)) {
+        seen.add(point.lesson);
+        lessonOrder.push(point.lesson);
       }
     });
-    return Array.from(lessons).sort();
+    return lessonOrder;
   }
 
   getAllSubs(volume?: string, unit?: string, lesson?: string): string[] {
-    const subs = new Set<string>();
+    // Preserve order from database (by sort_index) using first occurrence
+    const subOrder: string[] = [];
+    const seen = new Set<string>();
     let points = this.knowledgePoints;
-    
+
     if (volume) {
       points = points.filter(p => p.volume === volume);
     }
@@ -187,13 +197,14 @@ export class KnowledgePointStorage implements OnModuleInit {
     if (lesson) {
       points = points.filter(p => p.lesson === lesson);
     }
-    
+
     points.forEach(point => {
-      if (point.sub && point.sub.trim().length > 0) {
-        subs.add(point.sub);
+      if (point.sub && point.sub.trim().length > 0 && !seen.has(point.sub)) {
+        seen.add(point.sub);
+        subOrder.push(point.sub);
       }
     });
-    return Array.from(subs).sort();
+    return subOrder;
   }
 
   getHierarchyOptions(filters?: {
@@ -207,7 +218,7 @@ export class KnowledgePointStorage implements OnModuleInit {
     subs: string[];
   } {
     let points = this.knowledgePoints;
-    
+
     // Apply filters progressively
     if (filters?.volume) {
       points = points.filter(p => p.volume === filters.volume);
@@ -218,25 +229,41 @@ export class KnowledgePointStorage implements OnModuleInit {
     if (filters?.lesson) {
       points = points.filter(p => p.lesson === filters.lesson);
     }
-    
-    // Extract unique values at each level
-    const volumes = new Set<string>();
-    const units = new Set<string>();
-    const lessons = new Set<string>();
-    const subs = new Set<string>();
-    
+
+    // Extract unique values at each level, preserving order from database (by sort_index)
+    const volumeOrder: string[] = [];
+    const unitOrder: string[] = [];
+    const lessonOrder: string[] = [];
+    const subOrder: string[] = [];
+    const seenVolumes = new Set<string>();
+    const seenUnits = new Set<string>();
+    const seenLessons = new Set<string>();
+    const seenSubs = new Set<string>();
+
     points.forEach(point => {
-      if (point.volume) volumes.add(point.volume);
-      if (point.unit) units.add(point.unit);
-      if (point.lesson) lessons.add(point.lesson);
-      if (point.sub) subs.add(point.sub);
+      if (point.volume && !seenVolumes.has(point.volume)) {
+        seenVolumes.add(point.volume);
+        volumeOrder.push(point.volume);
+      }
+      if (point.unit && !seenUnits.has(point.unit)) {
+        seenUnits.add(point.unit);
+        unitOrder.push(point.unit);
+      }
+      if (point.lesson && !seenLessons.has(point.lesson)) {
+        seenLessons.add(point.lesson);
+        lessonOrder.push(point.lesson);
+      }
+      if (point.sub && !seenSubs.has(point.sub)) {
+        seenSubs.add(point.sub);
+        subOrder.push(point.sub);
+      }
     });
-    
+
     return {
-      volumes: Array.from(volumes).sort(),
-      units: Array.from(units).sort(),
-      lessons: Array.from(lessons).sort(),
-      subs: Array.from(subs).sort(),
+      volumes: volumeOrder,
+      units: unitOrder,
+      lessons: lessonOrder,
+      subs: subOrder,
     };
   }
 

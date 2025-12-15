@@ -319,11 +319,11 @@ export default function UserManagement() {
         if (failCount > 0) {
           message += `，失败 ${failCount} 个`;
         }
-        
-        // Add success details if there are both successes and failures
-        if (successCount > 0 && failCount > 0 && success && success.length <= 10) {
-          // Show successful users if not too many
-          const successList = success.slice(0, 5).map((s: any) => 
+
+        // Add success details - always show when there are successes
+        if (successCount > 0 && success && success.length > 0) {
+          // Show successful users
+          const successList = success.slice(0, 5).map((s: any) =>
             s.name || s.email || s.account
           );
           message += `\n✅ 成功: ${successList.join(', ')}${success.length > 5 ? ` 等${success.length}个` : ''}`;
