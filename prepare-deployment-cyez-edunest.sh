@@ -201,10 +201,10 @@ application/javascript application/json application/rss+xml application/atom+xml
 
     listen [::]:443 ssl ipv6only=on;
     listen 443 ssl;
-    
-    # SSL certificates (you need to copy these from 47.100.82.103)
-    ssl_certificate /etc/nginx/cert/_.edunest.cn_bundle.crt;
-    ssl_certificate_key /etc/nginx/cert/_.edunest.cn.key;
+
+    # SSL certificates (Let's Encrypt - auto-renewed by certbot)
+    ssl_certificate /etc/letsencrypt/live/cyez.edunest.cn/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/cyez.edunest.cn/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
@@ -261,14 +261,14 @@ if [ ! -L /etc/nginx/sites-enabled/cyez-edunest ]; then
     ln -s /etc/nginx/sites-available/cyez-edunest /etc/nginx/sites-enabled/
 fi
 
-# Check if certificates exist
-if [ ! -f /etc/nginx/cert/_.edunest.cn_bundle.crt ]; then
+# Check if Let's Encrypt certificates exist
+if [ ! -f /etc/letsencrypt/live/cyez.edunest.cn/fullchain.pem ]; then
     echo -e "${YELLOW}⚠️  SSL certificates not found!${NC}"
-    echo "Please copy certificates from nginx proxy server (47.100.82.103):"
-    echo "  scp root@47.100.82.103:/etc/nginx/cert/_.edunest.cn_bundle.crt /etc/nginx/cert/"
-    echo "  scp root@47.100.82.103:/etc/nginx/cert/_.edunest.cn.key /etc/nginx/cert/"
+    echo "Please run certbot to obtain Let's Encrypt certificates:"
+    echo "  sudo certbot certonly --nginx -d cyez.edunest.cn"
     echo ""
-    echo "Or from another location if you have them."
+    echo "Or if certbot is not installed:"
+    echo "  sudo apt install certbot python3-certbot-nginx"
     echo ""
 fi
 
@@ -311,7 +311,7 @@ cat > deployment-package/DEPLOY_INSTRUCTIONS.md << 'EOF'
 ## Prerequisites
 - Nginx installed on server
 - Backend API running on port 8718
-- SSL certificates for *.edunest.cn
+- Certbot installed for Let's Encrypt SSL
 
 ## Deployment Steps
 
@@ -329,11 +329,11 @@ cd deployment-package
 sudo ./setup-on-server.sh
 ```
 
-### 3. Copy SSL Certificates (if not already done)
-From your nginx proxy server (47.100.82.103):
+### 3. Setup SSL Certificates (if not already done)
+Use Let's Encrypt (free, auto-renewing):
 ```bash
-scp /etc/nginx/cert/_.edunest.cn_bundle.crt root@47.99.175.26:/etc/nginx/cert/
-scp /etc/nginx/cert/_.edunest.cn.key root@47.99.175.26:/etc/nginx/cert/
+sudo apt install certbot python3-certbot-nginx
+sudo certbot certonly --nginx -d cyez.edunest.cn
 ```
 
 ### 4. Update DNS
@@ -373,8 +373,9 @@ tail -f /var/log/nginx/cyez-edunest-error.log
 ## Troubleshooting
 
 ### Certificate Issues
-- Verify certificates are in /etc/nginx/cert/
-- Check certificate validity: `openssl x509 -in /etc/nginx/cert/_.edunest.cn_bundle.crt -text -noout`
+- Verify certificates exist: `ls /etc/letsencrypt/live/cyez.edunest.cn/`
+- Check certificate validity: `sudo certbot certificates`
+- Renew certificate: `sudo certbot renew --cert-name cyez.edunest.cn`
 
 ### 502 Bad Gateway
 - Check backend is running: `pm2 status` or `systemctl status kedge-api`
@@ -423,8 +424,8 @@ echo "   ${GREEN}ssh root@47.99.175.26${NC}"
 echo "   ${GREEN}cd /tmp && tar -xzf deployment-cyez-edunest.tar.gz${NC}"
 echo "   ${GREEN}cd deployment-package && sudo ./setup-on-server.sh${NC}"
 echo ""
-echo "3. Copy SSL certificates from nginx proxy (if needed):"
-echo "   ${GREEN}scp root@47.100.82.103:/etc/nginx/cert/*.edunest.cn* root@47.99.175.26:/etc/nginx/cert/${NC}"
+echo "3. Setup SSL certificates (if needed):"
+echo "   ${GREEN}sudo certbot certonly --nginx -d cyez.edunest.cn${NC}"
 echo ""
 echo "4. Update DNS A record:"
 echo "   ${GREEN}cyez.edunest.cn → 47.99.175.26${NC}"
