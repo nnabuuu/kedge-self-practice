@@ -58,11 +58,6 @@ export class QuizReportService {
 
       const report = result.rows[0] as QuizReport;
       this.logger.log(`Report submitted successfully with ID: ${report.id}`);
-      
-      // Refresh materialized view asynchronously
-      this.refreshReportSummary().catch(err => 
-        this.logger.error('Failed to refresh report summary', err)
-      );
 
       return report;
     } catch (error) {
@@ -168,6 +163,7 @@ export class QuizReportService {
 
   /**
    * Get reports for teachers/admins (grouped by quiz)
+   * Optimized: Uses single query with json_agg to avoid N+1 pattern
    */
   async getReportsForManagement(query: GetReportsQueryDto): Promise<{
     quizzes: Array<{
@@ -180,16 +176,14 @@ export class QuizReportService {
     }>;
     total: number;
   }> {
-    // Get aggregated quiz report data
+    // Build WHERE conditions
     const whereConditions: string[] = [];
 
-    // Status filter - use WHERE clause on base reports table
     if (query.status && query.status.length > 0) {
       const statusList = query.status.map(s => `'${s}'`).join(', ');
       whereConditions.push(`r.status IN (${statusList})`);
     }
 
-    // Report type filter
     if (query.report_type) {
       whereConditions.push(`r.report_type = '${query.report_type}'`);
     }
@@ -204,9 +198,15 @@ export class QuizReportService {
       ? 'ORDER BY pending_count DESC'
       : 'ORDER BY last_reported_at DESC';
 
-    // Build complete SQL query as string to avoid parameter binding issues
-    const summaryQuery = `
-      WITH report_summary AS (
+    // Single query that fetches both summary and detail reports using json_agg
+    // This eliminates the N+1 query pattern
+    const combinedQuery = `
+      WITH filtered_reports AS (
+        SELECT r.*
+        FROM kedge_practice.quiz_reports r
+        ${whereClause}
+      ),
+      quiz_summaries AS (
         SELECT
           r.quiz_id,
           COALESCE(q.question, '[已删除的题目]') as question,
@@ -219,26 +219,85 @@ export class QuizReportService {
           ARRAY_AGG(DISTINCT r.report_type) as report_types,
           MAX(r.created_at) as last_reported_at,
           MAX(r.resolved_at) as last_resolved_at
-        FROM kedge_practice.quiz_reports r
+        FROM filtered_reports r
         LEFT JOIN kedge_practice.quizzes q ON q.id = r.quiz_id
-        ${whereClause}
         GROUP BY r.quiz_id, q.question, q.type, q.knowledge_point_id
+      ),
+      ranked_reports AS (
+        SELECT
+          r.*,
+          json_build_object(
+            'id', u.id,
+            'name', u.name,
+            'class', u.class
+          ) as reporter,
+          CASE
+            WHEN r.resolved_by IS NOT NULL THEN
+              json_build_object(
+                'id', resolver.id,
+                'name', resolver.name
+              )
+            ELSE NULL
+          END as resolver,
+          ROW_NUMBER() OVER (PARTITION BY r.quiz_id ORDER BY r.created_at DESC) as rn
+        FROM filtered_reports r
+        JOIN kedge_practice.users u ON r.user_id = u.id
+        LEFT JOIN kedge_practice.users resolver ON r.resolved_by = resolver.id
+      ),
+      report_details AS (
+        SELECT
+          quiz_id,
+          json_agg(
+            json_build_object(
+              'id', id,
+              'quiz_id', quiz_id,
+              'user_id', user_id,
+              'session_id', session_id,
+              'report_type', report_type,
+              'reason', reason,
+              'user_answer', user_answer,
+              'status', status,
+              'resolved_by', resolved_by,
+              'resolved_at', resolved_at,
+              'resolution_note', resolution_note,
+              'created_at', created_at,
+              'updated_at', updated_at,
+              'reporter', reporter,
+              'resolver', resolver
+            )
+            ORDER BY created_at DESC
+          ) as reports
+        FROM ranked_reports
+        WHERE rn <= 10
+        GROUP BY quiz_id
       )
       SELECT
-        rs.*,
+        qs.quiz_id,
+        qs.question,
+        qs.quiz_type,
+        qs.knowledge_point_id,
+        qs.total_reports,
+        qs.unique_reporters,
+        qs.pending_count,
+        qs.resolved_count,
+        qs.report_types,
+        qs.last_reported_at,
+        qs.last_resolved_at,
         kp.topic as knowledge_point_topic,
         kp.volume as knowledge_point_volume,
-        kp.unit as knowledge_point_unit
-      FROM report_summary rs
-      LEFT JOIN kedge_practice.knowledge_points kp ON rs.knowledge_point_id = kp.id
+        kp.unit as knowledge_point_unit,
+        COALESCE(rd.reports, '[]'::json) as reports
+      FROM quiz_summaries qs
+      LEFT JOIN kedge_practice.knowledge_points kp ON qs.knowledge_point_id = kp.id
+      LEFT JOIN report_details rd ON qs.quiz_id = rd.quiz_id
       ${orderByClause}
       LIMIT ${query.limit}
       OFFSET ${query.offset}
     `;
 
-    const summaryResult = await this.persistentService.pgPool.query(sql.unsafe([summaryQuery], []));
+    const result = await this.persistentService.pgPool.query(sql.unsafe([combinedQuery], []));
 
-    // Get total count - need to match the same filtering logic
+    // Get total count
     const countWhere = whereConditions.length > 0
       ? `WHERE ${whereConditions.join(' AND ')}`
       : '';
@@ -251,66 +310,32 @@ export class QuizReportService {
 
     const countResult = await this.persistentService.pgPool.query(sql.unsafe([countQuery], []));
 
-    // Get detailed reports for each quiz
-    const quizzesWithReports = await Promise.all(
-      (summaryResult.rows as any[]).map(async (summary) => {
-        const statusFilter = query.status && query.status.length > 0
-          ? `AND r.status IN (${query.status.map(s => `'${s}'`).join(', ')})`
-          : '';
-
-        const detailQuery = `
-          SELECT
-            r.*,
-            json_build_object(
-              'id', u.id,
-              'name', u.name,
-              'class', u.class
-            ) as reporter,
-            CASE
-              WHEN r.resolved_by IS NOT NULL THEN
-                json_build_object(
-                  'id', resolver.id,
-                  'name', resolver.name
-                )
-              ELSE NULL
-            END as resolver
-          FROM kedge_practice.quiz_reports r
-          JOIN kedge_practice.users u ON r.user_id = u.id
-          LEFT JOIN kedge_practice.users resolver ON r.resolved_by = resolver.id
-          WHERE r.quiz_id = '${summary.quiz_id}'::uuid
-          ${statusFilter}
-          ORDER BY r.created_at DESC
-          LIMIT 10
-        `;
-
-        const reportsResult = await this.persistentService.pgPool.query(sql.unsafe([detailQuery], []));
-
-        return {
-          quiz_id: summary.quiz_id,
-          question: summary.question,
-          quiz_type: summary.quiz_type,
-          knowledge_point: summary.knowledge_point_id ? {
-            id: summary.knowledge_point_id,
-            topic: summary.knowledge_point_topic,
-            subject: summary.knowledge_point_subject
-          } : null,
-          report_summary: {
-            quiz_id: summary.quiz_id,
-            question: summary.question,
-            quiz_type: summary.quiz_type,
-            knowledge_point_id: summary.knowledge_point_id,
-            total_reports: parseInt(summary.total_reports),
-            unique_reporters: parseInt(summary.unique_reporters),
-            pending_count: parseInt(summary.pending_count),
-            resolved_count: parseInt(summary.resolved_count),
-            report_types: summary.report_types,
-            last_reported_at: summary.last_reported_at,
-            last_resolved_at: summary.last_resolved_at
-          },
-          reports: reportsResult.rows as QuizReportWithRelations[]
-        };
-      })
-    );
+    // Transform results to match expected structure
+    const quizzesWithReports = (result.rows as any[]).map((row) => ({
+      quiz_id: row.quiz_id,
+      question: row.question,
+      quiz_type: row.quiz_type,
+      knowledge_point: row.knowledge_point_id ? {
+        id: row.knowledge_point_id,
+        topic: row.knowledge_point_topic,
+        volume: row.knowledge_point_volume,
+        unit: row.knowledge_point_unit
+      } : null,
+      report_summary: {
+        quiz_id: row.quiz_id,
+        question: row.question,
+        quiz_type: row.quiz_type,
+        knowledge_point_id: row.knowledge_point_id,
+        total_reports: parseInt(row.total_reports),
+        unique_reporters: parseInt(row.unique_reporters),
+        pending_count: parseInt(row.pending_count),
+        resolved_count: parseInt(row.resolved_count),
+        report_types: row.report_types,
+        last_reported_at: row.last_reported_at,
+        last_resolved_at: row.last_resolved_at
+      },
+      reports: row.reports as QuizReportWithRelations[]
+    }));
 
     const countRow = countResult.rows[0] as { count: string };
     return {
@@ -341,11 +366,6 @@ export class QuizReportService {
     if (result.rows.length === 0) {
       throw new Error('Report not found');
     }
-
-    // Refresh materialized view asynchronously
-    this.refreshReportSummary().catch(err => 
-      this.logger.error('Failed to refresh report summary', err)
-    );
 
     return result.rows[0] as QuizReport;
   }
@@ -385,11 +405,6 @@ export class QuizReportService {
       )
       SELECT COUNT(*) as count FROM updated
     `);
-
-    // Refresh materialized view asynchronously
-    this.refreshReportSummary().catch(err => 
-      this.logger.error('Failed to refresh report summary', err)
-    );
 
     const countRow = result.rows[0] as { count: string };
     return { updated_count: parseInt(countRow.count) };
@@ -492,19 +507,5 @@ export class QuizReportService {
         }))
       }
     };
-  }
-
-  /**
-   * Refresh materialized view
-   */
-  private async refreshReportSummary(): Promise<void> {
-    try {
-      await this.persistentService.pgPool.query(sql.unsafe`
-        REFRESH MATERIALIZED VIEW CONCURRENTLY kedge_practice.quiz_report_summary
-      `);
-    } catch (error) {
-      // Ignore errors as this is optional optimization
-      this.logger.warn('Failed to refresh materialized view', error);
-    }
   }
 }
