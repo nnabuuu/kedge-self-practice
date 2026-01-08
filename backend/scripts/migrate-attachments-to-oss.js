@@ -137,7 +137,7 @@ class AttachmentMigrator {
         region: config.region,
         endpoint: config.endpoint || undefined,
         secure: true,
-        timeout: 60000,
+        timeout: 300000, // 5 minutes for large files
       });
       
       console.log(`✅ Connected to OSS bucket: ${config.bucket}`);
