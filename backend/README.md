@@ -72,9 +72,36 @@ hasura migrate status --endpoint $HASURA_ENDPOINT --admin-secret $HASURA_SECRET
 
 ## 环境配置
 
-1. `.envrc` - 默认开发配置
-2. `.envrc.override` - 本地覆盖配置 (gitignored)
-3. `.env` - 由 `.envrc` 自动生成
+### 环境变量加载机制
+
+```
+┌─────────────┐    ┌──────────────────┐    ┌───────────┐
+│   .envrc    │ +  │ .envrc.override  │ -> │   .env    │
+│ (默认配置)  │    │  (本地覆盖配置)   │    │ (运行时)  │
+└─────────────┘    └──────────────────┘    └───────────┘
+                          │
+                   tools/bin/get-env
+```
+
+1. `.envrc` - 默认开发配置（提交到 Git）
+2. `.envrc.override` - 本地覆盖配置（gitignored，包含敏感信息）
+3. `.env` - 由 `source .envrc` 自动生成（gitignored）
+
+### 应用如何加载环境变量
+
+应用启动时通过 `dotenv/config` 自动从当前工作目录读取 `.env` 文件：
+
+```typescript
+// main.ts 顶部
+import 'dotenv/config';  // 自动加载 .env
+```
+
+**重要说明**：
+- `.env` 文件**不会**被打包到 `dist/` 目录
+- `dotenv` 在运行时从**当前工作目录 (cwd)** 读取 `.env`
+- 因此必须在 `backend/` 目录下执行 `node dist/...`
+
+### 配置步骤
 
 ```bash
 # 创建本地覆盖配置
@@ -147,6 +174,21 @@ pm2 start ecosystem.config.js --env production
 # 6. Save PM2 process list (survives reboot)
 pm2 save
 ```
+
+### Direct Node Execution (without PM2)
+
+```bash
+# 1. Build
+npx nx build api-server --configuration=production
+
+# 2. Generate .env file
+source .envrc
+
+# 3. Run directly (must be in backend/ directory)
+node dist/packages/apps/api-server/main.js
+```
+
+**注意**: 必须在 `backend/` 目录下执行，因为 dotenv 从当前工作目录读取 `.env` 文件。
 
 ### PM2 Commands
 

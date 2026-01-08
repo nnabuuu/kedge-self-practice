@@ -1,3 +1,6 @@
+// Load .env file before any other imports
+import 'dotenv/config';
+
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 import assert from 'assert';
