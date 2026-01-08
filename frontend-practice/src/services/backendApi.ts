@@ -221,6 +221,7 @@ class BackendApiService {
       question: backendQuiz.question,
       options,
       answer,
+      answer_index: backendQuiz.answer_index, // Required for correct answer highlighting
       standardAnswer: type === 'essay' ? backendQuiz.answer : undefined,
       relatedKnowledgePointId,
       knowledge_point_id: relatedKnowledgePointId, // Include both forms
@@ -770,23 +771,46 @@ class BackendApiService {
     return response;
   }
 
+  // Map backend session fields (snake_case) to frontend format (camelCase)
+  private mapSessionFields(session: any): any {
+    if (!session) return session;
+    return {
+      ...session,
+      correctAnswers: session.correct_answers,
+      incorrectAnswers: session.incorrect_answers,
+      answeredQuestions: session.answered_questions,
+      totalQuestions: session.total_questions,
+      timeSpentSeconds: session.time_spent_seconds,
+      timeLimitMinutes: session.time_limit_minutes,
+      autoAdvanceDelay: session.auto_advance_delay,
+      lastQuestionIndex: session.last_question_index,
+      sessionState: session.session_state,
+      startedAt: session.started_at,
+      completedAt: session.completed_at,
+      createdAt: session.created_at,
+      updatedAt: session.updated_at,
+    };
+  }
+
   async getPracticeSession(sessionId: string): Promise<ApiResponse<{session: any, quizzes: any[], submittedAnswers: any[], currentQuestionIndex: number}>> {
 
     const response = await this.makeRequest<{session: any, quizzes: BackendQuiz[], submittedAnswers: any[], currentQuestionIndex: number}>(`/practice/sessions/${sessionId}`);
 
-    
-    // Convert the quizzes to frontend format
-    if (response.success && response.data && response.data.quizzes) {
-      const convertedQuizzes = response.data.quizzes.map(quiz => this.convertQuiz(quiz));
+
+    // Convert the quizzes to frontend format and map session fields
+    if (response.success && response.data) {
+      const convertedQuizzes = response.data.quizzes?.map(quiz => this.convertQuiz(quiz)) || [];
+      const mappedSession = this.mapSessionFields(response.data.session);
       return {
         ...response,
         data: {
           ...response.data,
+          session: mappedSession,
           quizzes: convertedQuizzes
         }
       };
     }
-    
+
     return response;
   }
 
@@ -870,13 +894,15 @@ class BackendApiService {
       method: 'GET'
     });
 
-    // Convert the quizzes to frontend format
-    if (response.success && response.data && response.data.quizzes) {
-      const convertedQuizzes = response.data.quizzes.map(quiz => this.convertQuiz(quiz));
+    // Convert the quizzes to frontend format and map session fields
+    if (response.success && response.data) {
+      const convertedQuizzes = response.data.quizzes?.map(quiz => this.convertQuiz(quiz)) || [];
+      const mappedSession = this.mapSessionFields(response.data.session);
       return {
         ...response,
         data: {
           ...response.data,
+          session: mappedSession,
           quizzes: convertedQuizzes
         }
       };

@@ -28,7 +28,13 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
         </div>
         {Object.entries(question.options).map(([key, option]) => {
           const isSelected = selectedAnswers.includes(key);
-          const isCorrect = Array.isArray(question.answer) && question.answer.includes(key);
+          // Handle both array and comma-separated string formats for answer
+          const getCorrectAnswers = (): string[] => {
+            if (Array.isArray(question.answer)) return question.answer;
+            if (typeof question.answer === 'string') return question.answer.split(',').map(s => s.trim());
+            return [];
+          };
+          const isCorrect = getCorrectAnswers().includes(key);
           const shouldShowCorrect = showResult && isCorrect;
           const shouldShowWrong = showResult && isSelected && !isCorrect;
           

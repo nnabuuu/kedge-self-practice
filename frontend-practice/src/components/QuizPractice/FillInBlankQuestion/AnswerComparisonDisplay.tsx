@@ -44,7 +44,7 @@ export const AnswerComparisonDisplay: React.FC<AnswerComparisonDisplayProps> = (
   return (
     <div className="mt-3">
       <div className="space-y-2">
-        {Array.isArray(question.answer) ? (
+        {Array.isArray(question.answer) && question.answer.length > 0 ? (
           <>
             {/* Multiple blanks */}
             {question.answer.map((correctAns, idx) => {

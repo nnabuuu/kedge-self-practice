@@ -213,13 +213,19 @@ export default function QuizPractice({
       setShowResult(true);
 
       if (targetQuestion.type === 'single-choice') {
-        setSelectedAnswer(savedAnswer);
+        // Ensure single-choice answer is a string
+        setSelectedAnswer(typeof savedAnswer === 'string' ? savedAnswer : String(savedAnswer ?? ''));
       } else if (targetQuestion.type === 'multiple-choice') {
+        // Ensure multiple-choice answer is an array
         setSelectedMultipleAnswers(Array.isArray(savedAnswer) ? savedAnswer : []);
       } else if (targetQuestion.type === 'fill-in-the-blank') {
-        setFillInBlankAnswers(Array.isArray(savedAnswer) ? savedAnswer : []);
+        // Ensure fill-in-blank answer is an array, handle string delimiter format
+        setFillInBlankAnswers(
+          Array.isArray(savedAnswer) ? savedAnswer :
+          typeof savedAnswer === 'string' ? savedAnswer.split('|||') : []
+        );
       } else if (targetQuestion.type === 'subjective') {
-        setEssayAnswer(savedAnswer);
+        setEssayAnswer(typeof savedAnswer === 'string' ? savedAnswer : String(savedAnswer ?? ''));
       }
     } else {
       // Question not yet answered
@@ -637,7 +643,10 @@ export default function QuizPractice({
             // Check if it's an index (number)
             if (/^\d+$/.test(imageRef)) {
               const imageIndex = parseInt(imageRef);
-              imageUrl = images?.[imageIndex];
+              // Validate index is within bounds
+              if (images && imageIndex >= 0 && imageIndex < images.length) {
+                imageUrl = images[imageIndex];
+              }
             } else {
               // It's a UUID or filename, construct the URL
               // Check if it's already a full URL

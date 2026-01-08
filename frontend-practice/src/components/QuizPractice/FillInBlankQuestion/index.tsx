@@ -44,9 +44,23 @@ export const FillInBlankQuestion: React.FC<FillInBlankQuestionProps> = ({
   }, [question]);
 
   // Load hint preference on mount and auto-show if preferred
+  // Priority: sessionStorage (current session choice) > backend preference
   useEffect(() => {
     const loadPreference = async () => {
       try {
+        // First check sessionStorage for current session preference
+        const sessionPref = sessionStorage.getItem('hintPreference');
+        if (sessionPref !== null) {
+          // User has made a choice in this session - respect it
+          const sessionShowHints = sessionPref === 'true';
+          if (sessionShowHints !== showHints) {
+            onToggleHints();
+          }
+          setIsLoadingPreference(false);
+          return;
+        }
+
+        // Fallback to backend preference (for first question in session)
         const preference = await preferencesService.getHintPreference();
         if (preference === true && !showHints) {
           // Auto-show hints if user preference is set
