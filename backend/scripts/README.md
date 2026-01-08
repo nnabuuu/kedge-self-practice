@@ -1,8 +1,53 @@
 # Backend Scripts
 
-This directory contains utility scripts for managing and maintaining the Kedge practice platform.
+后端脚本工具集，用于管理和维护 Kedge 练习平台。
 
-## Available Scripts
+## 目录结构
+
+```
+scripts/
+├── deploy/                 # 部署脚本
+│   ├── build-and-deploy.sh    # 构建和部署一键脚本
+│   ├── deploy.sh              # 部署脚本
+│   └── start-production.sh    # 生产环境启动
+│
+├── database/              # 数据库脚本
+│   ├── apply-knowledge-points-migration.sh  # 知识点迁移
+│   ├── apply-migrations-direct.sh           # 直接 SQL 迁移
+│   ├── fix-misplaced-items.sql             # 修复错位数据
+│   ├── fix-unit5-knowledge-points.sql      # 修复第5单元知识点
+│   └── populate-answer-index.sql           # 填充答案索引
+│
+├── test/                  # 测试脚本
+│   ├── test-china-mirrors.sh    # 测试中国镜像源
+│   ├── test-deepseek.sh         # 测试 DeepSeek API
+│   ├── test-llm-endpoint.sh     # 测试 LLM 端点
+│   └── verify-llm-config.sh     # 验证 LLM 配置
+│
+├── data/                  # 数据处理脚本
+│   ├── generate-fill-blank-alternatives.ts  # 生成填空题替代答案
+│   ├── fix-order-independent-blanks.ts      # 修复顺序无关填空题
+│   ├── migrate-attachments-to-oss.ts        # 迁移附件到 OSS
+│   └── validate-quiz-images.ts              # 验证题目图片
+│
+└── utils/                 # 工具脚本
+    ├── merge-env.sh           # 合并环境变量
+    └── generate-password-hash.js  # 生成密码哈希
+```
+
+## 快速导航
+
+| 任务 | 脚本 |
+|------|------|
+| 部署到生产 | `scripts/deploy/build-and-deploy.sh` |
+| 测试 LLM 配置 | `scripts/test/verify-llm-config.sh` |
+| 生成填空题替代答案 | `scripts/data/generate-fill-blank-alternatives.ts` |
+| 数据库迁移 | `scripts/database/apply-migrations-direct.sh` |
+| 合并环境配置 | `scripts/utils/merge-env.sh` |
+
+---
+
+## 数据处理脚本详细说明
 
 ### `generate-fill-blank-alternatives.ts`
 

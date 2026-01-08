@@ -1,14 +1,99 @@
-# Kedge Boilerplate
+# Kedge Backend
 
-- We use [Nx](./README_NX.md) as our build system.
+中学生自主练习平台后端服务。基于 NestJS + PostgreSQL + Redis 构建。
 
-## Workflow development
-- `nx run api-server:serve` to start api-server, endpoint exposed at http://localhost:8718/v1/
+## 项目结构
 
-## Development
-To manually update database, run:
+```
+backend/
+├── packages/                    # 源代码
+│   ├── apps/
+│   │   └── api-server/         # 主 API 应用 (NestJS)
+│   ├── libs/                   # 共享库
+│   │   ├── auth/              # JWT 认证 & Guards
+│   │   ├── common/            # 公共工具、日志、错误处理
+│   │   ├── configs/           # 配置管理
+│   │   ├── feedback/          # 用户反馈
+│   │   ├── knowledge-point/   # 知识点管理
+│   │   ├── leaderboard/       # 排行榜
+│   │   ├── models/            # 数据模型 (Zod schemas)
+│   │   ├── persistent/        # 数据库层 (Slonik)
+│   │   ├── practice/          # 练习会话
+│   │   ├── quiz/              # 题目管理
+│   │   └── quiz-parser/       # DOCX 解析 & LLM 集成
+│   └── dev/
+│       └── database/          # Hasura & 数据库迁移
+│
+├── docs/                       # 文档
+│   ├── deployment/            # 部署指南
+│   ├── database/              # 数据库文档
+│   ├── llm/                   # LLM 集成指南
+│   ├── api/                   # API 文档
+│   └── features/              # 功能设计文档
+│
+├── scripts/                    # 脚本工具
+│   ├── deploy/                # 部署脚本
+│   ├── database/              # 数据库脚本
+│   ├── test/                  # 测试脚本
+│   ├── data/                  # 数据处理脚本
+│   └── utils/                 # 工具脚本
+│
+├── templates/                  # 数据导入模板
+├── tools/                      # 构建工具
+└── patches/                    # npm patches
+```
 
-hasura migrate status --skip-update-check --endpoint $HASURA_ENDPOINT --admin-secret $HASURA_SECRET
+## 快速开始
+
+```bash
+# 安装依赖
+pnpm install
+
+# 启动开发服务器
+nx run api-server:serve
+
+# API 端点: http://localhost:8718/v1/
+```
+
+## 主要命令
+
+```bash
+# 开发
+nx run api-server:serve              # 启动 API 服务
+nx run-many --target=build --all     # 构建所有包
+
+# 测试
+nx test api-server                   # 测试 API
+nx run-many --target=test --all      # 测试所有
+
+# 数据库
+hasura migrate status --endpoint $HASURA_ENDPOINT --admin-secret $HASURA_SECRET
+```
+
+## 环境配置
+
+1. `.envrc` - 默认开发配置
+2. `.envrc.override` - 本地覆盖配置 (gitignored)
+3. `.env` - 由 `.envrc` 自动生成
+
+```bash
+# 创建本地覆盖配置
+cp .envrc.override.example .envrc.override
+# 编辑 .envrc.override 填入实际凭据
+```
+
+## 文档索引
+
+- [Docker 部署指南](./docs/deployment/docker.md)
+- [Hasura 升级指南](./docs/database/hasura-upgrade.md)
+- [DeepSeek 集成](./docs/llm/deepseek.md)
+- [LLM 配置指南](./docs/llm-configuration-guide.md)
+- [API 测试文档](./docs/api-testing-practice-endpoints.md)
+- [练习策略设计](./docs/practice-strategies-design.md)
+
+## 脚本说明
+
+详见 [scripts/README.md](./scripts/README.md)
 
 
 ## Environment Configuration

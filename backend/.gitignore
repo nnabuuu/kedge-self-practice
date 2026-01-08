@@ -59,3 +59,14 @@ packages/libs/intent-resolver/assets/*.api-schema-ts
 
 # Script error logs
 errors-*.json
+
+# Temporary validation output files
+missing-images-*.csv
+quiz-image-validation-*.json
+
+# Data dumps and backups (generated)
+/data-dumps/
+/backups/
+
+# Quiz storage (generated)
+/quiz-storage/
