@@ -72,3 +72,9 @@ docs/
 |------|------|
 | [领域模型重构](./domain-model-refactoring-example.md) | 领域模型设计示例 |
 | [领域模型实现](./domain-model-implementation-summary.md) | 领域模型实现总结 |
+
+## 版本更新
+
+| 文档 | 说明 |
+|------|------|
+| [2026-01-09 更新](./release-notes-2026-01-09.md) | 前端Bug修复、后端优化、图片迁移 |
