@@ -40,25 +40,45 @@ export class GPT4Service {
 
     const modelConfig = getModelConfig('quizParser');
     const maxTokens = modelConfig.maxTokens || 8000; // Increase default to prevent truncation
-    
-    
-    try {
-      const response = await this.openai.chat.completions.create({
-        model: modelConfig.model,
-        temperature: modelConfig.temperature,
-        top_p: modelConfig.topP,
-        max_tokens: maxTokens,
-        messages: [
-          {
-            role: 'user',
-            content: prompt + '\n\n' + JSON.stringify(paragraphs, null, 2),
-          },
-        ],
-        response_format: {
-          type: 'json_schema',
-          json_schema: schema,
+
+    const userContent = prompt + '\n\n' + JSON.stringify(paragraphs, null, 2);
+
+    const requestBody = {
+      model: modelConfig.model,
+      temperature: modelConfig.temperature,
+      top_p: modelConfig.topP,
+      max_tokens: maxTokens,
+      messages: [
+        {
+          role: 'user',
+          content: userContent,
         },
-      });
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: schema,
+      },
+    };
+
+    const startTime = Date.now();
+    console.log('='.repeat(80));
+    console.log('[LLM Request]');
+    console.log(`  URL: ${this.openai.baseURL}/chat/completions`);
+    console.log(`  Headers: Authorization: Bearer ${this.config.apiKey?.substring(0, 10)}...`);
+    console.log(`  Body: ${JSON.stringify(requestBody, null, 2)}`);
+    console.log('='.repeat(80));
+
+    try {
+      const response = await this.openai.chat.completions.create(requestBody as any);
+
+      const duration = Date.now() - startTime;
+      const usage = response.usage;
+      console.log('='.repeat(80));
+      console.log('[LLM Response]');
+      console.log(`  Duration: ${duration}ms`);
+      console.log(`  Tokens: prompt=${usage?.prompt_tokens}, completion=${usage?.completion_tokens}, total=${usage?.total_tokens}`);
+      console.log(`  Content preview: ${response.choices[0]?.message?.content?.substring(0, 200)}...`);
+      console.log('='.repeat(80));
 
       const content = response.choices[0]?.message?.content;
       

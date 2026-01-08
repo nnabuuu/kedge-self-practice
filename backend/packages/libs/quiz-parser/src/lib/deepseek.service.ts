@@ -330,11 +330,11 @@ export class DeepSeekService {
     temperature?: number
   ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
     const modelConfig = getModelConfig('quizParser');
-    const model = modelConfig.model.startsWith('deepseek') 
-      ? modelConfig.model 
+    const model = modelConfig.model.startsWith('deepseek')
+      ? modelConfig.model
       : 'deepseek-chat';
-      
-    return this.deepseek.chat.completions.create({
+
+    const requestBody = {
       model: model,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -346,7 +346,28 @@ export class DeepSeekService {
       response_format: {
         type: 'json_object'
       }
-    });
+    };
+
+    const startTime = Date.now();
+    console.log('='.repeat(80));
+    console.log('[LLM Request]');
+    console.log(`  URL: ${this.deepseek.baseURL}/chat/completions`);
+    console.log(`  Headers: Authorization: Bearer ${this.config.apiKey?.substring(0, 10)}...`);
+    console.log(`  Body: ${JSON.stringify(requestBody, null, 2)}`);
+    console.log('='.repeat(80));
+
+    const response = await this.deepseek.chat.completions.create(requestBody as any);
+
+    const duration = Date.now() - startTime;
+    const usage = response.usage;
+    console.log('='.repeat(80));
+    console.log('[LLM Response]');
+    console.log(`  Duration: ${duration}ms`);
+    console.log(`  Tokens: prompt=${usage?.prompt_tokens}, completion=${usage?.completion_tokens}, total=${usage?.total_tokens}`);
+    console.log(`  Content preview: ${response.choices[0]?.message?.content?.substring(0, 200)}...`);
+    console.log('='.repeat(80));
+
+    return response;
   }
 
   /**

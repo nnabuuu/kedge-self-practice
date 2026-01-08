@@ -8,6 +8,9 @@
     "migrate:oss:verify": "node scripts/migrate-attachments-to-oss.js --verify",
     "migrate:oss:help": "node scripts/migrate-attachments-to-oss.js --help",
     "test:oss": "node scripts/test-oss-config.js",
+    "validate:images": "ts-node -r tsconfig-paths/register scripts/validate-quiz-images.ts",
+    "validate:images:verbose": "ts-node -r tsconfig-paths/register scripts/validate-quiz-images.ts --verbose",
+    "validate:images:json": "ts-node -r tsconfig-paths/register scripts/validate-quiz-images.ts --json-only",
     "postinstall": "patch-package"
   },
   "private": true,
